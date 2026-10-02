@@ -258,3 +258,18 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 理由：已有真實公開行情驅動的開倉，但尚無完整flat-to-flat樣本，不能宣稱策略優勢。insufficient_reward_after_costs 與 single_position_or_pending 是原規則的拒絕，不為達到30筆而降低成本或風控標準。風險、策略與是否改版仍由助手決定，不交工程 agent。
 - Issues #1／#2／#3 已建立並讀回。外部 coding agent 尚待使用者人工轉交，建立 Issue 不等於 agent 已開始。新 PR 仍被紅燈 CI 擋住，不自動 merge main。
 
+## OBSERVER-004-ROLLBACK（2026-10-02，部署後失敗，已回滾）
+
+- 後續 Windows 與 Linux localhost 驗收均得到/api/status HTTP503，錯誤Snapshot unavailable or invalid。獨立/api/work仍為200。這推翻持續可用的假設，但沒有root cause證據，不自行debug，也不把之前213項通過改寫成沒有通過。
+- UTC2026-10-02T19:13:13.897451Z依使用者規則停止精確新版看板，恢復部署前原碼並移除這次新增檔，保留原失敗證據。舊版看板重啟後Linux及Windows讀回HTTP200、latest_error=null。交易runtime／策略／帳戶／研究窗口未受看板回滾改動。
+- freshness／brief修補不回滾。最新operational acceptance仍通過audit與source manifest，已有一筆完整flat-to-flat，仍unproven。未把單筆結果當優勢，也不因看板失敗更改策略。
+- 新開Issue #7（BUG／OBSERVABILITY）交外部agent獨立重現／修復，看板需求Issue #3加狀態更正，不能再聲稱新看板保持部署。CI通過與成果驗收之前不重新部署。
+
+## H1-PAPER-003-OPS-BACKLOG（2026-10-02，剩餘運行缺口交外部工程）
+
+- Issue #4（OBSERVABILITY）：既有staged健康watchdog只驗證H1-PAPER-002／v2 identity，且舊dashboard patch先於observer版。不能直接當v3已測可部署，交agent重用已測元件、補當前identity與看板整合。
+- Issue #5（ENGINEERING）：storage-capacity仍queued；唯讀觀察runtime audit DB已322035712 bytes，容量預算／安全停止及復原尚未驗收。不稱磁碟已滿、不自動刪前瞻證據。
+- Issue #6（ENGINEERING）：restart-autostart仍queued。常駐程序不是已驗證的開機自啟，交agent提供隔離驗證及operator部署／回滾契約，不重啟真實主機或reset帳戶。
+- entry-risk-sizing的舊testing狀態過時：原部署H1-PAPER-003父驗收199 IDs包含全部新增21個entry-risk tests，現存broker源碼與原entry-risk候選相同，test檔相同。視為先前已整合，不重派已完成工作。
+- 共七個Issue，全部已讀回body／label／branch-PR限制。external agent尚未收到人工轉交，工作狀態應queued或blocked，而不是假稱running。
+
