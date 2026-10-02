@@ -227,3 +227,34 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 首公開快照217檔已推送並從GitHub讀回SHA34212560c7f8a9f96afc4322b91da77e06c9c0ae，remote manifest fingerprint符合。無credential findings；3筆既有公開歷史仍含非憑證個人/context資料，新快照刪除不會抹除歷史。未rewrite或forcepush。
 - 排程2d2db10436e9改名public-review-sync並恢復，讀回一輪last_status=ok。新增V3檔案前暫停避免半份快照，待新版完整公開快照驗證後恢復。公開review不等於实盤或策略優勢。
 
+## OPS-ROLE-002（2026-10-02，交易決策與外部工程分工）
+
+- 使用者指定：助手負責自主交易、策略、研究方向、風險及實驗決策。工程實作、測試、code review、debug 全部透過 GitHub Issues 交外部 coding agent，使用者人工轉交。助手只做必要觀察、定義問題／成果／不變條件／驗收標準與部署，不自行實作或 review。
+- 每個 Issue 必須可公開，禁止個資、帳戶細節、本機絕對路徑、聊天識別與憑證。外部 agent 只在分支工作並開 PR，不能 push／merge main。main 只由 local 單向鏡像同步擁有。新 PR 的精確 head CI 與驗收須通過，再由助手套用 local，正常同步發布並追加版本紀錄。
+- 部署異常時回滾已備份版本並開 Issue，不自行 debug。交易判斷不交外部 agent。歷史要求父代理親跑測試或自行修碼的流程不再適用。
+
+## PRIVATE-SYNC-002（2026-10-02，私有同步恢复）
+
+- 遠端 metadata 確認 repo 為 private。既有 public visibility 設定不相容，依使用者授權只把排程入口 visibility 改為 private。未改遠端可見性、白名單、scanner、歷史或 main 所有權。
+- 實際同步已推送 SHA d3f8cd7d6b18850bc0dd4a41ca8cb9d688652cec，GitHub readback 確認同一 SHA 與 private。同步成功不等於 CI 成功。
+- CI run 37050913451 紅燈：exporter test 仍硬要求 public wrapper。較早 run 37036342095 另有缺失 evidence／機器路徑依賴等 lab failures。交 Issue #1（BUG／ENGINEERING）由外部 agent 修復，未自行修改測試。
+
+## H1-PAPER-003-ENG-004（2026-10-02，既有 freshness／brief 修補已部署）
+
+- 部署 UTC 2026-10-02T18:55:49Z。採用既有已測候選 commit 07c82ddaedb2803eb8e2bbda12a3bfcc0e97889c，既有 212 項測試證據與 source manifest 核對通過，未在新分工後自行重跑測試或 code review。
+- 受控停止精確舊 runtime，先保存原碼及 SQLite 一致備份，再套用 exact patch，部署 hashes 等於已測候選。常駐 runtime 恢復使用原 namespace。保持策略、設定、來源15000ms／延遲2000ms gates、研究 deadline、forward 起點與損失基準不變。
+- post-deploy operational acceptance 成功，source_manifest_verified=true、latest_error=null。部署前 audit head、舊 fills／ledger 前綴及策略／窗口 baselines 已唯讀核對保留。只做連續性與運行驗收，不宣稱新的全套測試或持續零故障。
+- 原始 wall／monotonic 差異與真正 HTTP timing 成因仍未確定，交 Issue #2（RESEARCH INFRASTRUCTURE）補足可解釋證據。不得放寬 gate、重寫 source timestamp、無限重試或稱 OS clock 已修好。
+
+## OBSERVER-004（2026-10-02，既有單帳本研究看板已部署）
+
+- 部署 UTC 2026-10-02T19:04:21Z。採用既有候選 commit 928091e297950631338edf78f48297b85f24d54f，213 個唯一測試與既有獨立14項回歸證據通過。部署前核對 source hashes／原版符合，停止精確看板 PID，備份原碼後套用候選，不停止交易 runtime。
+- 真實 localhost HTTP readback 確認200、observer.available=true、窗口樣本／已平倉表／拒單分布／統計欄位存在。零完整樣本的 win rate／mean／fee share 為 null，open episode 不冒稱完整交易。未執行新 code review 或測試實作。
+- 本金、symbols 與基準線跟隨已配置 snapshot。尚未交付跨帳本發現／選擇，不能把動態單帳本說成多帳本支援。Issue #3（OBSERVABILITY）列出全部使用者看板成果，外部 agent 重用已交付功能、補足配置帳本行為與 CI 驗收，不重做已完成實作。
+
+## H1-PAPER-003-DECISION-002（2026-10-02，保持原前瞻窗口）
+
+- 決策：繼續既有 PAPER 前瞻實驗與持倉退出規則。截止仍為2026-10-04T16:40:45.744Z，不重置樣本或帳戶，不因工程修補重新起跑。
+- 理由：已有真實公開行情驅動的開倉，但尚無完整flat-to-flat樣本，不能宣稱策略優勢。insufficient_reward_after_costs 與 single_position_or_pending 是原規則的拒絕，不為達到30筆而降低成本或風控標準。風險、策略與是否改版仍由助手決定，不交工程 agent。
+- Issues #1／#2／#3 已建立並讀回。外部 coding agent 尚待使用者人工轉交，建立 Issue 不等於 agent 已開始。新 PR 仍被紅燈 CI 擋住，不自動 merge main。
+

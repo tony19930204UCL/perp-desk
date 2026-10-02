@@ -6,12 +6,12 @@
     "README.md": "29ca1ff35eaea818ea049842bc2640413bb8163037329b4c478390895b056a28",
     "automation/review_sync.py": "5195ff36a000ebe49535846a1ed2e35789e8d11ef8b8213c19c0c25e8cc32d13",
     "automation/tests/test_review_sync.py": "88f2acf58dff0805b91243550c975b3b330a4eea455ac90e3c04dbc67b75253b",
-    "context/AGENTS.md": "5922a22517df58b6f356475c4bdf263220694f049cd63f5433e929d44b3683ca",
+    "context/AGENTS.md": "8819cce379c3d60651b358467216b79a9e7118fd69aae82c3e7893d39de76056",
     "context/OPERATING_AGREEMENT.md": "b340382e6dbfa64defb007ffac3a6dcbe875abcf7172b93c78849b72ede62b0a",
     "context/SOUL.md": "9ce768eab674de124d940a2e4c4b7f81dbd99961fc2fdfa3450bae985a7f772a",
     "context/SPEC.md": "fcdf6c3728a5d7854e1c5553835db6e1a36e05d26a62e23e51da67892b2d423d",
     "context/open_questions.md": "7247519ae062622c0c33a645a3be2569e1e7132773a2e850186099adfd1f31b0",
-    "context/versions.md": "fde2ef5c1bcb3023939b23c0b9e12d8954d4e604638fa88b86c50a383caa3700",
+    "context/versions.md": "c74ea078e9c0f93f2da1e7b68e4eae8a13df6f359ee2c8812f31429cfacf0fd0",
     "docs/AI_REVIEW_GUIDE.md": "208dbc2c8fc70f34ffcba27034b0a7c4c531992c6800bf4f3f069183a7c8c47d",
     "docs/ARCHITECTURE.md": "fbc1ac897a7640545ce764975539e204f8288a478640dbc7de0b946d487df634",
     "docs/AUTO_SYNC.md": "d4a02a00f38bdebc349cab54bdd86fd03a0e96f7169981aed22375fe9551accd",
@@ -236,7 +236,7 @@
     "scripts/paper_health_monitor.py": "c8425dbacbfa24a8a92b945f5560b1e9131e31e39536ba52ee3faf25e1e9a303",
     "scripts/paper_review_sync.py": "ad551e67f361cf4467cd372573362fb80eec68edbb881804bf78289b5f8642b6"
   },
-  "fingerprint": "6ceca4090c0cad09683a6a0e170249bc4f4099993f56dfdec32c3561a413afe3",
+  "fingerprint": "14590f6e7811f9e535a8f6b52cec2d54d0765c8a715f02488e2b97a709db4202",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
