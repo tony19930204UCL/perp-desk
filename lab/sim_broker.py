@@ -65,6 +65,8 @@ class Intent:
     limit_price: Decimal | None = None
     queue_ahead_qty: Decimal | None = None
     expires_ts: int | None = None
+    risk_limited: bool = False
+    risk_quantity_step: Decimal | None = None
 
 class SimBroker:
     def __init__(self, path, *, initial_cash, instruments, execution, risk, version_id, forward_start):
@@ -167,7 +169,10 @@ class SimBroker:
         self._check_metadata()
         if 'order:'+intent.intent_id in self.orders:
             existing = self.orders['order:'+intent.intent_id]
-            if json.dumps(existing['intent'], default=str, sort_keys=True) != json.dumps(asdict(intent), default=str, sort_keys=True):
+            prior_intent = dict(existing['intent'])
+            prior_intent.setdefault('risk_limited', False)
+            prior_intent.setdefault('risk_quantity_step', None)
+            if json.dumps(prior_intent, default=str, sort_keys=True) != json.dumps(asdict(intent), default=str, sort_keys=True):
                 raise ValueError('conflicting intent ID')
             return deepcopy(existing)
         if type(intent.decision_ts) is int and self.forward_start <= intent.decision_ts < self.last_ts:
@@ -185,6 +190,14 @@ class SimBroker:
             reason = 'instrument_filters'
         elif not intent.reduce_only and (not finite(intent.stop) or intent.stop % s.tick != 0):
             reason = 'stop_required_or_invalid'
+        if (type(intent.risk_limited) is not bool or
+                (intent.risk_limited and (intent.kind != 'TAKER' or intent.reduce_only))):
+            reason = 'invalid_risk_limited_contract'
+        if intent.risk_quantity_step is not None and (
+                not intent.risk_limited or not finite(intent.risk_quantity_step) or s is None
+                or intent.risk_quantity_step % s.quantity_step
+                or not finite(intent.qty) or intent.qty % intent.risk_quantity_step):
+            reason = 'invalid_risk_limited_contract'
         if reason is None and not intent.reduce_only and not self._funding_ready(intent.symbol, intent.decision_ts):
             reason = 'funding_feed_incomplete'
         if intent.reduce_only and reason is None:
@@ -430,6 +443,16 @@ class SimBroker:
                 if not levels:
                     continue
                 levels = list(levels)
+                if i.get('risk_limited', False):
+                    executable, reason = self._risk_limited_quantity(order, levels)
+                    if reason:
+                        order.update(status='REJECTED', reason=reason)
+                        self.audit.append(deepcopy(order))
+                        continue
+                    order['executable_qty'] = str(executable)
+                    order['canceled_qty'] = str(remaining - executable)
+                    order['remaining'] = str(executable)
+                    remaining = executable
                 total = sum(q for p, q in levels)
                 modeled = False
                 if total < remaining:
@@ -446,8 +469,11 @@ class SimBroker:
                             continue
                         levels.append([price, remaining - total])
                         modeled = True
-                worst = max(p for p, q in levels) if i['side'] == 'BUY' else min(p for p, q in levels)
-                reason = self._risk_reason(order, worst, remaining)
+                worst = (self._consumed_bound(levels, remaining) if i.get('risk_limited', False)
+                         else max(p for p, q in levels) if i['side'] == 'BUY' else min(p for p, q in levels))
+                exposure_price = self._adverse_price(order, levels[0][0])[0] if i.get('risk_limited', False) else None
+                reason = self._risk_reason(order, worst, remaining, exposure_price=exposure_price,
+                                           check_min_notional=not i.get('risk_limited', False))
                 if reason:
                     order.update(status='REJECTED', reason=reason)
                     self.audit.append(deepcopy(order))
@@ -459,6 +485,60 @@ class SimBroker:
                         levels[index][1] -= qty
                     if Decimal(order['remaining']) == 0:
                         break
+                if i.get('risk_limited', False) and Decimal(order['remaining']) == 0:
+                    if Decimal(order['canceled_qty']) > 0:
+                        order.update(status='CANCELED', reason='risk_limited_remainder', canceled_ts=event['ts'])
+                    self.audit.append(deepcopy(order))
+
+    def _risk_limited_quantity(self, order, levels):
+        """Largest safe grid quantity, never above intent or observed depth."""
+        i = order['intent']
+        s = self.instruments[i['symbol']]
+        if i['symbol'] in self.positions:
+            return Decimal(0), 'risk_limited_requires_flat'
+        exposure_price = self._adverse_price(order, levels[0][0])[0]
+        stop = Decimal(i['stop'])
+        if (i['side'] == 'BUY' and stop >= exposure_price) or (i['side'] == 'SELL' and stop <= exposure_price):
+            return Decimal(0), 'wrong_stop_side'
+        step = Decimal(i['risk_quantity_step']) if i.get('risk_quantity_step') is not None else s.quantity_step
+        upper = int(min(Decimal(order['remaining']), sum(q for p, q in levels)) / step)
+        low, high = 0, upper
+        while low < high:
+            middle = (low + high + 1) // 2
+            qty = middle * step
+            worst = self._consumed_bound(levels, qty)
+            reason = self._risk_reason(order, worst, qty, check_min_notional=False, exposure_price=exposure_price)
+            if reason:
+                high = middle - 1
+            else:
+                low = middle
+        qty = low * step
+        if qty <= 0:
+            return qty, self._risk_reason(order, levels[0][0], step, check_min_notional=False, exposure_price=exposure_price) or 'insufficient_depth'
+        if s.min_quantity is not None and qty < s.min_quantity:
+            return Decimal(0), 'instrument_filters'
+        remaining, notional = qty, Decimal(0)
+        for price, available in levels:
+            take = min(remaining, available)
+            notional += take * self._adverse_price(order, price)[0]
+            remaining -= take
+            if remaining == 0:
+                break
+        if notional < s.min_notional:
+            return Decimal(0), 'min_notional'
+        return qty, self._risk_reason(order, self._consumed_bound(levels, qty), qty,
+                                      exposure_price=exposure_price, check_min_notional=False)
+
+    @staticmethod
+    def _consumed_bound(levels, qty):
+        """Best-first levels: last consumed price bounds all selected fills."""
+        for price, available in levels:
+            if available <= 0:
+                continue
+            qty -= available
+            if qty <= 0:
+                return price
+        raise ValueError('selected quantity exceeds observed depth')
 
     def _adverse_price(self, order, price):
         i = order['intent']
@@ -469,7 +549,7 @@ class SimBroker:
         shift = self.instruments[i['symbol']].tick * ticks
         return price + (shift if i['side']=='BUY' else -shift), ticks
 
-    def _risk_reason(self, order, price, qty):
+    def _risk_reason(self, order, price, qty, *, check_min_notional=True, exposure_price=None):
         i = order['intent']
         if i['reduce_only']:
             p = self.positions.get(i['symbol'])
@@ -489,7 +569,8 @@ class SimBroker:
         if not self._funding_ready(i['symbol'], getattr(self, '_event_ts', i['decision_ts'])):
             return 'funding_feed_incomplete'
         s = self.instruments[i['symbol']]
-        if price * Decimal(i['qty']) < s.min_notional:
+        filter_qty = qty if i.get('risk_limited', False) else Decimal(i['qty'])
+        if check_min_notional and price * filter_qty < s.min_notional:
             return 'min_notional'
         stop = Decimal(i['stop'])
         if (i['side'] == 'BUY' and stop >= price) or (i['side'] == 'SELL' and stop <= price):
@@ -504,6 +585,7 @@ class SimBroker:
             if Decimal(p['stop']) != stop:
                 return 'stop_change_not_supported'
             existing_loss = abs(Decimal(p['qty'])) * (abs(Decimal(p['entry']) - stop) + slip + exit_price * s.taker_fee)
+            existing_loss += self._entry_fees(i['symbol'], p)
         if potential_loss + existing_loss > self.risk.max_loss_per_trade_usdt:
             return 'risk_per_trade'
         equity = self.equity
@@ -528,12 +610,22 @@ class SimBroker:
             return 'risk_total_loss'
         mark = Decimal(self.marks[i['symbol']]) if i['symbol'] in self.marks else price
         immediate_loss = max(Decimal(0), qty * (price - mark) * (1 if i['side']=='BUY' else -1))
-        equity_after = equity - price * qty * s.taker_fee - immediate_loss
-        new_gross = max(price, mark) * qty
+        fee_price = max(price, exposure_price) if exposure_price is not None else price
+        equity_after = equity - fee_price * qty * s.taker_fee - immediate_loss
+        new_gross = max(fee_price, mark) * qty
         current = sum(abs(Decimal(p['qty'])) * Decimal(self.marks[symbol]) for symbol, p in self.positions.items())
         if equity <= 0 or equity_after <= 0 or current / equity > self.risk.max_effective_exposure_x or (current + new_gross) / equity_after > self.risk.max_effective_exposure_x:
             return 'risk_exposure'
         return None
+
+    def _entry_fees(self, symbol, position):
+        if 'entry_fees' in position:
+            return Decimal(position['entry_fees'])
+        # Old persisted positions: conservatively retain all entry fees since
+        # opening, including any already reduced fraction. Do not rewrite history.
+        return sum((Decimal(f['fee']) for f in self.fills
+                    if f['symbol'] == symbol and f['ts'] >= position['opened_ts']
+                    and not self.orders[f['order_id']]['intent']['reduce_only']), Decimal(0))
 
     def _fill(self, order, price, qty, ts, liquidity, modeled_depth=False):
         i = order['intent']
@@ -550,6 +642,7 @@ class SimBroker:
         p = self.positions.get(i['symbol'])
         old_qty = Decimal(p['qty']) if p else Decimal(0)
         old_entry = Decimal(p['entry']) if p else Decimal(0)
+        old_entry_fees = self._entry_fees(i['symbol'], p) if p else Decimal(0)
         new_qty = old_qty + signed
         if old_qty and old_qty * signed < 0:
             realized = qty * (price - old_entry) * (1 if old_qty > 0 else -1)
@@ -559,9 +652,10 @@ class SimBroker:
                 del self.positions[i['symbol']]
             else:
                 p['qty'] = str(new_qty)
+                p['entry_fees'] = str(old_entry_fees * abs(new_qty) / abs(old_qty))
         else:
             entry = (old_entry * abs(old_qty) + price * qty) / abs(new_qty)
-            self.positions[i['symbol']] = dict(qty=str(new_qty), entry=str(entry), stop=str(i['stop']), opened_ts=p['opened_ts'] if p else ts)
+            self.positions[i['symbol']] = dict(qty=str(new_qty), entry=str(entry), stop=str(i['stop']), opened_ts=p['opened_ts'] if p else ts, entry_fees=str(old_entry_fees + fee))
         order['remaining'] = str(Decimal(order['remaining']) - qty)
         if Decimal(order['remaining']) == 0:
             order['status'] = 'FILLED'

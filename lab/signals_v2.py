@@ -14,6 +14,7 @@ def canonical(value):
     return json.dumps(value,sort_keys=True,separators=(',',':'),default=str)
 
 class Detector(ForwardDetector):
+    interval_name = "5m"
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
         self.context_path=self.path.with_name('indicator_context.sqlite3')
@@ -29,8 +30,8 @@ class Detector(ForwardDetector):
     def seed(self,receipt,*,cutoff_ms,now_ms):
         if self.seeded(cutoff_ms):
             return self.manifest()
-        end=(cutoff_ms-1)//STEP*STEP
-        if receipt.get('endpoint')!='/fapi/v1/klines' or receipt.get('params')!={'symbol':'ETHUSDT','interval':'5m','startTime':end-61*STEP,'endTime':end-1,'limit':61}:
+        end=(cutoff_ms-1)//self.interval_ms*self.interval_ms
+        if receipt.get('endpoint')!='/fapi/v1/klines' or receipt.get('params')!={'symbol':'ETHUSDT','interval':self.interval_name,'startTime':end-61*self.interval_ms,'endTime':end-1,'limit':61}:
             raise ValueError('invalid bootstrap source request')
         if not 0<=now_ms-receipt_ms(receipt)<=15000:
             raise ValueError('stale bootstrap receipt')
@@ -44,8 +45,8 @@ class Detector(ForwardDetector):
         self._bars={}
         try:
             for i,row in enumerate(rows):
-                expected=end-61*STEP+i*STEP
-                if type(row[0]) is not int or type(row[6]) is not int or row[0]!=expected or row[6]!=expected+STEP-1:
+                expected=end-61*self.interval_ms+i*self.interval_ms
+                if type(row[0]) is not int or type(row[6]) is not int or row[0]!=expected or row[6]!=expected+self.interval_ms-1:
                     raise ValueError('discontinuous bootstrap history')
                 if row[6]+1>=cutoff_ms or row[6]+1>now_ms:
                     raise ValueError('unclosed/preactivation boundary bootstrap history')

@@ -32,7 +32,12 @@ class RuntimeClient(PublicMarketClient):
     ALLOWED = {**PublicMarketClient.ALLOWED, '/fapi/v1/fundingInfo': set()}
 
 class PaperRuntime:
-    def __init__(self, root, config_path, *, client=None, clock_ms=None, fixture=False):
+    CONFIG_HASH = "dd1aa331f86df0892190dc4e06bb96a8b2086a605352e96702063dbc91879c96"
+    DETECTOR = Detector
+    EXTRA_SOURCES = ()
+    INTERVAL_MS = 300000
+    INTERVAL_NAME = "5m"
+    def __init__(self, root, config_path, *, client=None, clock_ms=None, sleep=None, monotonic=None, fixture=False):
         self.root = Path(root).resolve()
         live=Path(__file__).resolve().parent/'data'/'paper'
         if self.root==live or live in self.root.parents:
@@ -41,14 +46,16 @@ class PaperRuntime:
         self.config_bytes = Path(config_path).read_bytes()
         self.config = json.loads(self.config_bytes)
         self.config_hash = hashlib.sha256(self.config_bytes).hexdigest()
-        if self.config_hash != 'dd1aa331f86df0892190dc4e06bb96a8b2086a605352e96702063dbc91879c96':
+        if self.config_hash != self.CONFIG_HASH:
             raise ValueError('only the immutable H1-PAPER-002 configuration is implemented')
         lab=Path(__file__).resolve().parent
-        self.source_hashes={name:hashlib.sha256((lab/name).read_bytes()).hexdigest() for name in ('paper_runtime_v2.py','signals_v2.py','paper_runtime.py','signals.py','paper_market.py','paper_sizing.py','sim_broker.py','perp_collector.py')}
+        self.source_hashes={name:hashlib.sha256((lab/name).read_bytes()).hexdigest() for name in ('paper_runtime_v2.py','signals_v2.py','paper_runtime.py','signals.py','paper_market.py','paper_sizing.py','sim_broker.py','perp_collector.py') + self.EXTRA_SOURCES}
         c = self.config
         if c.get('approved') is not True or c.get('mode') != 'paper' or c['strategy']['symbol'] != 'ETHUSDT':
             raise ValueError('explicit approved ETH PAPER configuration required')
         self.clock = clock_ms or (lambda:int(time.time()*1000))
+        self.sleep = sleep or time.sleep
+        self.monotonic = monotonic or time.monotonic
         self.client = client or RuntimeClient()
         self.fixture = fixture
         self.broker = None
@@ -69,7 +76,7 @@ class PaperRuntime:
             if self.state['config_hash'] != self.config_hash or self.state['fixture'] != fixture:
                 raise ValueError('immutable config/fixture namespace conflict')
             self.save()
-            self.detector=Detector(self.root/'signals.sqlite3', c['version_id'], datetime.fromtimestamp(self.state['forward_start_ms']/1000, timezone.utc), {'ETHUSDT':'crypto'})
+            self.detector=self.DETECTOR(self.root/'signals.sqlite3', c['version_id'], datetime.fromtimestamp(self.state.get('strategy_start_ms',self.state['forward_start_ms'])/1000, timezone.utc), {'ETHUSDT':'crypto'})
         except Exception:
             self.close()
             raise
@@ -83,8 +90,12 @@ class PaperRuntime:
         with self.db:
             self.db.execute('INSERT INTO audit(payload,previous_hash,hash) VALUES(?,?,?)', (payload, previous, hashlib.sha256((previous+payload).encode()).hexdigest()))
     def fetch(self, endpoint, params=None):
+        start_ms=self.clock()
+        start_mono=self.monotonic()
         receipt=self.client.get(endpoint, params)
-        self.audit(dict(type='public_receipt', receipt=receipt))
+        returned_ms=self.clock()
+        returned_mono=self.monotonic()
+        self.audit(dict(type='public_receipt', receipt=receipt,request_start_ms=start_ms,request_start_monotonic_ms=start_mono*1000,request_return_ms=returned_ms,request_return_monotonic_ms=returned_mono*1000))
         age=self.clock()-receipt_ms(receipt)
         if not 0<=age<=15000:
             raise ValueError('stale/future receipt')
@@ -104,11 +115,11 @@ class PaperRuntime:
                 raise ValueError('public instrument filters changed; new review required')
             return
         e=c['execution_model']
-        self.broker=SimBroker(self.root/'broker.sqlite3', initial_cash=D(c['initial_equity_usdt']), instruments=[s], execution=ExecutionModel(e['latency_ms'],e['exit_slippage_ticks'],None,e['entry_slippage_ticks'],e['exit_slippage_ticks']), risk=RiskContract(True,c['risk_version'],D(c['max_loss_per_trade_usdt']),D(c['max_daily_loss_usdt']),D(c['max_effective_exposure_x']),c['max_positions'],D(c['total_loss_limit_usdt']),True), version_id=c['version_id'], forward_start=self.state['forward_start_ms'])
+        self.broker=SimBroker(self.root/'broker.sqlite3', initial_cash=D(c['initial_equity_usdt']), instruments=[s], execution=ExecutionModel(e['latency_ms'],e['exit_slippage_ticks'],None,e['entry_slippage_ticks'],e['exit_slippage_ticks']), risk=RiskContract(True,c['risk_version'],D(c['max_loss_per_trade_usdt']),D(c['max_daily_loss_usdt']),D(c['max_effective_exposure_x']),c['max_positions'],D(c['total_loss_limit_usdt']),True), version_id=self.state.get('account_version_id',c['version_id']), forward_start=self.state['forward_start_ms'])
         if self.state.get('gap_open'):
             self.cancel_entries_for_gap()
         with closing(sqlite3.connect(self.root/'signals.sqlite3')) as db:
-            intents=[json.loads(row[0]) for row in db.execute('SELECT intent FROM h1_signals')]
+            intents=[json.loads(row[0]) for row in db.execute('SELECT intent FROM h1_signals WHERE version_id=?',(c['version_id'],))]
         handled=self.state.setdefault('handled_signals',{})
         for signal in intents:
             sid=signal['signal_id']
@@ -123,15 +134,29 @@ class PaperRuntime:
             if not order['intent']['reduce_only'] and order['status'] in ('PENDING','RESTING'):
                 self.broker.cancel(order['order_id'],ts=max(self.clock(),self.broker.last_ts))
     def emit(self, event):
+        timing=None
         if event['type'] in ('book','mark'):
             delivery=self.clock()
+            dispatch_mono=self.monotonic()
             source=event['source_ts']
-            if type(source) is not int or not 0<=delivery-source<=self.config['execution_model']['max_source_age_ms']:
-                raise ValueError('stale/future source at actual broker delivery')
+            if type(source) is not int:
+                raise ValueError('invalid source at actual broker delivery')
+            if source>delivery:
+                raise ValueError(f'future source at actual broker delivery ahead_ms={source-delivery}')
+            if delivery-source>self.config['execution_model']['max_source_age_ms']:
+                raise ValueError(f'stale source at actual broker delivery age_ms={delivery-source}')
             event['received_ms']=event['ts']
             event['ts']=delivery
-        event['event_id']=digest(event)
+            event['event_id']=digest(event)
+            timing=dict(type='broker_dispatch',event_id=event['event_id'],event_type=event['type'],symbol=event['symbol'],received_ms=event['received_ms'],source_ms=source,dispatch_ms=delivery,dispatch_monotonic_ms=dispatch_mono*1000)
+        else:
+            event['event_id']=digest(event)
+        if timing:
+            timing['call_monotonic_ms']=self.monotonic()*1000
         self.broker.on_event(event)
+        if timing:
+            timing['return_monotonic_ms']=self.monotonic()*1000
+            self.audit(timing)
     def funding(self, spec):
         self.ensure_broker(spec)
         now=self.clock()
@@ -180,7 +205,7 @@ class PaperRuntime:
         return result
     def route_signals(self, spec):
         with closing(sqlite3.connect(self.root/'signals.sqlite3')) as db:
-            intents=[json.loads(row[0]) for row in db.execute('SELECT intent FROM h1_signals ORDER BY rowid')]
+            intents=[json.loads(row[0]) for row in db.execute('SELECT intent FROM h1_signals WHERE version_id=? ORDER BY rowid',(self.config['version_id'],))]
         handled=self.state.setdefault('handled_signals',{})
         market=next(m for m in self.state['markets'] if m['symbol']=='ETHUSDT')
         for signal in intents:
@@ -202,7 +227,7 @@ class PaperRuntime:
                 result=size_long(self.config,spec,equity=str(self.broker.equity),bid=market['bid'],ask=market['ask'],target=signal['reversion_target'])
                 if result['status']=='accepted':
                     s=self.broker.instruments['ETHUSDT']
-                    order=self.broker.submit(Intent(sid,'ETHUSDT','BUY',D(result['qty']),D(result['stop_price']),now,s.quantity_step,s.tick,s.min_notional,s.max_quantity,'TAKER',False,expires_ts=now+self.config['execution_model']['max_source_age_ms']))
+                    order=self.broker.submit(Intent(sid,'ETHUSDT','BUY',D(result['qty']),D(result['stop_price']),now,s.quantity_step,s.tick,s.min_notional,s.max_quantity,'TAKER',False,expires_ts=now+self.config['execution_model']['max_source_age_ms'],risk_limited=True,risk_quantity_step=D(result['execution_qty_step'])))
                     result.update(status='submitted' if order['status']=='PENDING' else 'rejected',reason=order['reason'],target=signal['reversion_target'])
             handled[sid]=result
             self.audit(dict(type='signal_routing',signal_id=sid,result=result))
@@ -222,6 +247,48 @@ class PaperRuntime:
             s=self.broker.instruments['ETHUSDT']
             order=self.broker.submit(Intent(f"exit:{entry['intent_id']}:{reason}",'ETHUSDT','SELL',D(p['qty']),None,now,s.quantity_step,s.tick,s.min_notional,s.max_quantity,'TAKER',True))
             self.audit(dict(type='exit_trigger',reason=reason,mark=mark,order=order))
+    def validate_sources(self, markets, context, *, allow_wait=False):
+        """Wait at most 2s for local wall time, never admit a future source.
+
+        This changes availability/dispatch delay, not the source-clock domain.
+        Receipt/source timestamps and the 15s age gate remain unchanged.
+        """
+        age=self.config['execution_model']['max_source_age_ms']
+        sources=[(m['symbol'],name,ts) for m in markets for name,ts in m['source_timestamps_ms'].items()]
+        start=self.clock()
+        mono=self.monotonic()
+        waited=False
+        outcome='failed'
+        error=None
+        now=start
+        try:
+            for attempt in range(81):
+                now=self.clock()
+                elapsed=self.monotonic()-mono
+                if not 0<=elapsed<=2.0:
+                    raise ValueError(f'{context}: future source wait budget exceeded')
+                for symbol,name,ts in sources:
+                    if type(ts) is not int:
+                        raise ValueError(f'{context}: invalid source timestamp {symbol}/{name}')
+                    if now-ts>age:
+                        raise ValueError(f'{context}: stale source {symbol}/{name} age_ms={now-ts} max_ms={age}')
+                future=[(symbol,name,ts) for symbol,name,ts in sources if ts>now]
+                if not future:
+                    outcome='valid'
+                    return now
+                symbol,name,ts=max(future,key=lambda item:item[2])
+                remaining=2.0-elapsed
+                if not allow_wait or ts-now>2000 or remaining<=0 or attempt==80:
+                    raise ValueError(f'{context}: future source {symbol}/{name} ahead_ms={ts-now} wait_limit_ms=2000')
+                waited=True
+                self.sleep(min((ts-now)/1000,remaining,0.05))
+            raise ValueError(f'{context}: future source wait iteration limit')
+        except ValueError as exc:
+            error=str(exc)
+            raise
+        finally:
+            self.audit(dict(type='source_clock_wait' if waited else 'source_validation',context=context,start_ms=start,validation_ms=now,end_ms=self.clock(),validation_monotonic_ms=self.monotonic()*1000,elapsed_monotonic_ms=(self.monotonic()-mono)*1000,wait_limit_ms=2000,outcome=outcome,error=error,sources=[dict(symbol=s,name=n,source_ms=t) for s,n,t in sources]))
+
     def collect_markets(self, ref):
         markets=[]
         events=[]
@@ -249,15 +316,10 @@ class PaperRuntime:
                 spec_eth=spec
                 events=[dict(type='book',symbol=symbol,ts=b['observed_ms'],source_ts=b['ts_ms'],bids=b['bids'],asks=b['asks']),dict(type='mark',symbol=symbol,ts=m['observed_ms'],source_ts=m['ts_ms'],price=m['mark_price'])]
                 # ETH execution/risk delivery precedes unrelated XAU observation.
-                now=self.clock()
-                if any(not 0<=now-ts<=age for ts in markets[-1]['source_timestamps_ms'].values()):
-                    raise ValueError('batch source age exceeded')
+                self.validate_sources(markets, 'ETH batch before broker delivery', allow_wait=True)
                 self.deliver_markets(markets, events, spec_eth)
         # Validate the entire batch again at decision time, not merely receipt time.
-        now=self.clock()
-        for market in markets:
-            if any(not 0<=now-ts<=age for ts in market['source_timestamps_ms'].values()):
-                raise ValueError('batch source age exceeded')
+        self.validate_sources(markets, 'batch before decision', allow_wait=True)
         return markets, spec_eth
     def deliver_markets(self, markets, events, spec_eth):
         self.ensure_broker(spec_eth)
@@ -275,15 +337,15 @@ class PaperRuntime:
         self.state['markets']=markets
         age=self.config['execution_model']['max_source_age_ms']
         self.bootstrap()
-        start=self.state['cursor'] if self.state['cursor'] is not None else self.state.get('decision_cutoff_ms',self.state['forward_start_ms'])//300000*300000
+        start=self.state['cursor'] if self.state['cursor'] is not None else self.state.get('decision_cutoff_ms',self.state['forward_start_ms'])//self.INTERVAL_MS*self.INTERVAL_MS
         # The durable cursor is the next bar open. Retry missing due bars, but
         # never ask for the same still-open candle on every quote cycle.
         rows=[]
-        if start+300000<=self.clock():
-            receipt=self.fetch('/fapi/v1/klines',dict(symbol='ETHUSDT',interval='5m',startTime=start,limit=1000))
+        if start+self.INTERVAL_MS<=self.clock():
+            receipt=self.fetch('/fapi/v1/klines',dict(symbol='ETHUSDT',interval=self.INTERVAL_NAME,startTime=start,limit=1000))
             rows=receipt['payload']
         for row in rows:
-            if type(row[0]) is not int or type(row[6]) is not int or row[6] != row[0]+299999:
+            if type(row[0]) is not int or type(row[6]) is not int or row[6] != row[0]+self.INTERVAL_MS-1:
                 raise ValueError('invalid API closed-bar timestamps')
             if row[6]+1>self.clock():
                 continue
@@ -301,7 +363,7 @@ class PaperRuntime:
                 self.save()
                 raise ValueError('bar gap requires context rebuild at new decision cutoff')
             self.state['diagnostic']=result['diagnostic']
-            self.state['cursor']=row[0]+300000
+            self.state['cursor']=row[0]+self.INTERVAL_MS
             self.save()
         with closing(sqlite3.connect(self.root/'signals.sqlite3')) as db:
             row=db.execute('SELECT bars FROM h1_state WHERE version_id=? AND symbol=?',(self.config['version_id'],'ETHUSDT')).fetchone()
@@ -311,8 +373,7 @@ class PaperRuntime:
             # Never retimestamp old receipts or relax the decision-age gate.
             markets, spec_eth=self.collect_markets(ref)
             self.state['markets']=markets
-        if any(not 0<=self.clock()-ts<=age for market in markets for ts in market['source_timestamps_ms'].values()):
-            raise ValueError('decision source age exceeded after kline request')
+        self.validate_sources(markets, 'decision after candle work')
         self.route_signals(spec_eth)
         self.state['last_success_ms']=self.clock()
         self.state['latest_error']=None
@@ -320,8 +381,8 @@ class PaperRuntime:
         cutoff=self.state.get('decision_cutoff_ms',self.state['forward_start_ms'])
         if self.detector.seeded(cutoff):
             return
-        end=(cutoff-1)//300000*300000
-        receipt=self.fetch('/fapi/v1/klines',dict(symbol='ETHUSDT',interval='5m',startTime=end-61*300000,endTime=end-1,limit=61))
+        end=(cutoff-1)//self.INTERVAL_MS*self.INTERVAL_MS
+        receipt=self.fetch('/fapi/v1/klines',dict(symbol='ETHUSDT',interval=self.INTERVAL_NAME,startTime=end-61*self.INTERVAL_MS,endTime=end-1,limit=61))
         manifest=self.detector.seed(receipt,cutoff_ms=cutoff,now_ms=self.clock())
         self.state['cursor']=end
         self.state['warmup']=61
@@ -337,7 +398,7 @@ class PaperRuntime:
         self.state['gaps']+=1
         self.state['warmup']=0
         self.state['decision_cutoff_ms']=now
-        self.state['cursor']=now//300000*300000
+        self.state['cursor']=now//self.INTERVAL_MS*self.INTERVAL_MS
         with closing(sqlite3.connect(self.root/'signals.sqlite3')) as db, db:
             db.execute('DELETE FROM h1_state WHERE version_id=?',(self.config['version_id'],))
         if self.broker:

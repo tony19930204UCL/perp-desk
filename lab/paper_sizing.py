@@ -53,6 +53,6 @@ def _size_long(config, instrument, *, equity, bid, ask, target):
             return {'status': 'rejected', 'reason': 'below_filters_or_invalid_loss'}
         if goal - entry <= cost * Decimal(config['strategy']['minimum_gross_reward_to_estimated_cost']):
             return {'status': 'rejected', 'reason': 'insufficient_reward_after_costs'}
-        return {'status': 'accepted', 'qty': str(qty), 'stop_price': str(stop),
+        return {'status': 'accepted', 'qty': str(qty), 'execution_qty_step': str(step), 'stop_price': str(stop),
                 'entry_price_bound': str(entry), 'planned_loss_per_unit': str(planned_loss),
                 'estimated_round_trip_cost_per_unit': str(cost), 'target': str(goal)}

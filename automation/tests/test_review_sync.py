@@ -595,10 +595,10 @@ class ReviewSyncTests(unittest.TestCase):
         self.assertIsNotNone(m,'review export implementation missing')
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)
-            for path,text in {'lab/a.py':'print(1)\n','lab/tests/test_a.py':'pass\n','lab/paper_config_v2.json':'{}','AGENTS.md':'project rules','lab/shared/status.json':'private runtime','lab/data/broker.sqlite3':'database','config.yaml':'private gateway','lab/.env':'private credential','lab/staging/x/probe-data/raw.json':'raw','lab/staging/x/a.py':'pass\n'}.items():
+            for path,text in {'lab/a.py':'print(1)\n','lab/tests/test_a.py':'pass\n','lab/paper_config_v2.json':'{}','lab/paper_config_v3.json':'{}','AGENTS.md':'project rules','lab/shared/status.json':'private runtime','lab/data/broker.sqlite3':'database','config.yaml':'private gateway','lab/.env':'private credential','lab/staging/x/probe-data/raw.json':'raw','lab/staging/x/a.py':'pass\n'}.items():
                 p=root/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
             files=m.collect(root)
-            self.assertEqual(set(files),{'lab/a.py','lab/tests/test_a.py','lab/paper_config_v2.json','context/AGENTS.md','lab/staging/x/a.py'})
+            self.assertEqual(set(files),{'lab/a.py','lab/tests/test_a.py','lab/paper_config_v2.json','lab/paper_config_v3.json','context/AGENTS.md','lab/staging/x/a.py'})
             self.assertEqual(files['lab/a.py'],b'print(1)\n')
 
 if __name__=='__main__':unittest.main()

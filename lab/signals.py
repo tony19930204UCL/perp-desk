@@ -8,6 +8,9 @@ from contextlib import closing
 from datetime import datetime, timezone, timedelta
 
 class Detector:
+    interval_ms = 300000
+    downside_sigma = Decimal("2")
+    volume_multiple = Decimal("2")
     def __init__(self, store_path, version_id, forward_start, symbols):
         if not isinstance(version_id, str) or not version_id.strip():
             raise ValueError('explicit nonempty version_id required')
@@ -93,8 +96,8 @@ class Detector:
                           and type(bar.get('open_time_ms')) is int
                           and type(bar.get('close_time_ms')) is int
                           and bar['open_time_ms'] >= 0
-                          and bar['open_time_ms'] % 300000 == 0
-                          and bar['close_time_ms'] == bar['open_time_ms'] + 300000)
+                          and bar['open_time_ms'] % self.interval_ms == 0
+                          and bar['close_time_ms'] == bar['open_time_ms'] + self.interval_ms)
         if not valid_metadata:
             return dict(diagnostic='reject_invalid_bar', intent=None)
         epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
@@ -127,8 +130,8 @@ class Detector:
             return dict(diagnostic='duplicate', intent=None)
         if bars and bar['open_time_ms'] <= bars[-1]['open_time_ms']:
             return dict(diagnostic='reject_out_of_order', intent=None)
-        if bars and bar['open_time_ms'] != bars[-1]['open_time_ms'] + 300000:
-            expected = bars[-1]['open_time_ms'] + 300000
+        if bars and bar['open_time_ms'] != bars[-1]['open_time_ms'] + self.interval_ms:
+            expected = bars[-1]['open_time_ms'] + self.interval_ms
             bars[:] = [dict(bar)]
             return dict(diagnostic='gap_reset', intent=None,
                         gap=dict(expected_open_ms=str(expected), actual_open_ms=str(bar['open_time_ms'])))
@@ -143,11 +146,11 @@ class Detector:
             volumes = sorted(b['volume'] for b in prior[-60:])
             median = (volumes[29] + volumes[30]) / 2
             current_return = bar['close'] / prior[-1]['close'] - 1
-            triggered = current_return < mean - 2 * stdev and bar['volume'] > 2 * median
+            triggered = current_return < mean - self.downside_sigma * stdev and bar['volume'] > self.volume_multiple * median
             features = dict(mean=str(mean), sample_stdev=str(stdev), median_volume=str(median),
                             current_return=str(current_return), reference_close=str(prior[-1]['close']),
                             current_close=str(bar['close']), current_volume=str(bar['volume']),
-                            return_threshold=str(mean - 2 * stdev), volume_threshold=str(2 * median),
+                            return_threshold=str(mean - self.downside_sigma * stdev), volume_threshold=str(self.volume_multiple * median),
                             decimal_precision='50', rounding=ctx.rounding,
                             prior_closes=[str(b['close']) for b in prior],
                             prior_volumes=[str(b['volume']) for b in prior[-60:]],

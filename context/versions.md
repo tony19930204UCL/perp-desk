@@ -211,3 +211,19 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 
 - 本次僅修改專案指引與追加版本紀錄，沒有修改交易策略、風控設定、程式或帳戶資料。使用者表示會開新 session 載入更新。
 
+## H1-PAPER-003-PARENT（2026-10-02，學習速度新版已部署）
+
+- 新假說於2026-10-02T15:38:21Z預先登記，ETHUSDT閉合1m、前60報酬、1.5sigma、1.2倍中位成交量。不是用舊績效選參數。反方：短週期波幅可能仍過不了成本門檻，增加訊號不保證增加完整交易，也可能增加虧損。
+- 保留PAPER-RISK-001（每筆1、日3、總損10 USDT，曝險3倍、一個持倉）、0.5%停損、前閉合收盤目標、30分鐘持有、兩倍完整成本門檻、真實深度、taker費、funding、每側2ticks、2000ms延遲與15000ms來源時效。工程整合批次有界等待及成交價sizing，沒有擴張風控或時效門檻。
+- 父代理199個唯一test ID全數親跑通過，逐ID無漏、重複或skip。證據learning-speed-v3/evidence/parent_suite_validation.json。首次公開probe前5次成功，第6次URLError timeout，保留失敗；同一隔離帳戶重試6次加restart成功，不把失敗刪除或算成功。
+- 精確停止舊PID2621427後，原lab/data/paper-v2原地migration，backup lab/data/pre-v3-parent-backup。cash/equity100、fills0、2歷史order、3funding ledger保留；原forward_start與損失基準不變，39626筆audit鏈及全部歷史前綴親驗。新研究窗口2026-10-02T16:40:45.744Z至2026-10-04T16:40:45.744Z，30筆完整flat-to-flat目標，不保證，不以partial fill湊樣本。截止只阻止新單，仍可退出。
+- 已持久mark_deployed，常駐Python PID3290190，cwd learning-speed-v3/lab，原帳戶與shared/paper_v2_live.json。看板WSL及Windows API讀回H1-PAPER-003、candidate_not_deployed=false。已把精確候選tracked lab來源同步至profile lab供review，原碼備份保留。
+- 初始部署驗收latest_error=null、零完整交易，沒有優勢證据。稍後Windows讀回一次ETH/bookTicker age15453ms合法拒絕，不能宣稱持續無故障，時效阻擋需繼續診斷。不改來源時間或放寬門檻。
+- 每日簡報改deterministic no_agent腳本paper_learning_brief.py，避免模型額度阻止報告，內容為新版樣本／成本／阻擋。來源過期時目前只報簡報不可用，此報告缺陷仍待修正，不冒稱完整8行已持續可用。
+
+## PUBLIC-REVIEW-SYNC-PARENT（2026-10-02，公開同步授權與驗收）
+
+- 使用者明確允許公開repo同步。顯式public及精確owner/repo opt-in，private仍default fail-closed，白名單與真實gitleaks current/history gate保留。父代理36項回歸與real CLI乾淨成功、合成current/history secret失敗親驗；V3 config白名單另有真實RED後GREEN及全36項回歸通過。
+- 首公開快照217檔已推送並從GitHub讀回SHA34212560c7f8a9f96afc4322b91da77e06c9c0ae，remote manifest fingerprint符合。無credential findings；3筆既有公開歷史仍含非憑證個人/context資料，新快照刪除不會抹除歷史。未rewrite或forcepush。
+- 排程2d2db10436e9改名public-review-sync並恢復，讀回一輪last_status=ok。新增V3檔案前暫停避免半份快照，待新版完整公開快照驗證後恢復。公開review不等於实盤或策略優勢。
+
