@@ -6,12 +6,12 @@
     "README.md": "7a678929783a6ebd3a9577ed707895ed9e150d2f520beb65216d3cbfa55fae8f",
     "automation/review_sync.py": "4ffaccb0074b39560b916b59f1c8bef245736f530db13d17e3d6fb25efc4cd7a",
     "automation/tests/test_review_sync.py": "a36b5442a5d38e4604ef2ccdbb8fc1f11bac7f9476400b8466b3828a91a76598",
-    "context/AGENTS.md": "50098daef98f451d99fa258f7c3495deace694af457de5e7b07d8b7f12ed8117",
+    "context/AGENTS.md": "5922a22517df58b6f356475c4bdf263220694f049cd63f5433e929d44b3683ca",
     "context/OPERATING_AGREEMENT.md": "b340382e6dbfa64defb007ffac3a6dcbe875abcf7172b93c78849b72ede62b0a",
-    "context/SOUL.md": "4663a8201657c41eaa0309c4550b59ff5a1e36ac798eacd0d0aeaddb4b342d3f",
+    "context/SOUL.md": "9ce768eab674de124d940a2e4c4b7f81dbd99961fc2fdfa3450bae985a7f772a",
     "context/SPEC.md": "fcdf6c3728a5d7854e1c5553835db6e1a36e05d26a62e23e51da67892b2d423d",
     "context/open_questions.md": "7247519ae062622c0c33a645a3be2569e1e7132773a2e850186099adfd1f31b0",
-    "context/versions.md": "00862e0fa24a06d86ba09377d5f6aad8898c3567ebaed6f8cc7066ec03f08144",
+    "context/versions.md": "d68c3354b7138b735438205e15b406865a604a09e2e24eb7b1c34229d8f2ad05",
     "docs/AI_REVIEW_GUIDE.md": "d571eb8bd1eb0c1af3d0ac5e6fa9e3600753ffc5c17bae15e1eb78f6bc93f733",
     "docs/ARCHITECTURE.md": "45e99a3fe0175f74c7396313e2ce0cd769bffd604030fa0c7b3ca17e65b299c7",
     "docs/AUTO_SYNC.md": "bde2e4eaad5574a8cf07f9738459eb7b5c1ed0bf050c5695c616afb603729f65",
@@ -220,7 +220,7 @@
     "scripts/paper_health_monitor.py": "c8425dbacbfa24a8a92b945f5560b1e9131e31e39536ba52ee3faf25e1e9a303",
     "scripts/paper_review_sync.py": "b6f67ebb2e5779d89ada1eb22cbc469f623eea36702057a64c4da2c703f57733"
   },
-  "fingerprint": "f9a4f2bb771dbc5204616a365692415a67ce7f0d36e7431cc13fff5339ce1783",
+  "fingerprint": "f9579c5a4f9bc63d66b77d54175980f0a0e605032acad642dc088428dfedf94d",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }

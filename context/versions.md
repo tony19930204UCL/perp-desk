@@ -195,3 +195,19 @@
 - candidate runtime SHA256 6791abcfd1b9911d12160ce92992ac03f2d66732402d17fbb51e798560608c6c，exact.patch SHA256 f609ac57b2c32c2a9590d9a875578de24ac65c635840502ba82df74ae0b62dfa。base仍9efba1777f4cc2b7ed1c295c58cad9cf8a885fb10608cc9f22c22c1ec1e66288，frozen config仍dd1aa331f86df0892190dc4e06bb96a8b2086a605352e96702063dbc91879c96，其餘策略／broker／risk源碼byte相同。exact diff在主目錄只做git apply --check，不套用live。
 - 06:27:33.609 UTC唯讀live為cash100.0000000000000000、fills0、flat、4 signals，但已存在REJECTED risk_per_trade order及一筆amount0E-16的finalized funding ledger。父代理不可沿用零order／ledger假設，更不可重置帳戶。PID2621427仍是原data/paper-v2及live快照，未停止／改live模組／改帳戶／改dashboard。須在真正停機前後重讀完整account/ledger/version/window與風控基準。
 - 看板batch-time-recurrence維持verifying交接，未completed。父代理須獨立重驗accepted exact diff、公開probe、保留原namespace部署與restart／看板讀回。所有命令、hash與剩餘2秒cap／REST／storage限制見lab/staging/batch_time/README.md。
+
+## DOC-LEARNING-SPEED（2026-10-02T17:01:54+02:00，使用者指定原文新增）
+
+- 依使用者要求，在本 profile AGENTS.md 加入以下原文。原檔沒有「怎麼算成功」段落，因此新增同名段落，未改寫其他原文：
+
+paper 階段還有一個同樣重要的標準：學習速度。
+paper 是假錢，它的價值在於盡快產生可判斷的樣本。
+沒有成交的日子就是沒有學習的日子。
+一個太保守而永遠無法得出結論的系統，跟一個虧錢的系統一樣是失敗的。
+
+- SOUL.md 的 Stance 加入以下原文：
+
+- 你是交易員，不是稽核員。工程紀律是為了讓交易可信，不是取代交易。
+
+- 本次僅修改專案指引與追加版本紀錄，沒有修改交易策略、風控設定、程式或帳戶資料。使用者表示會開新 session 載入更新。
+
