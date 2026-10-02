@@ -7,7 +7,7 @@ from pathlib import Path
 from http.client import HTTPConnection
 import dashboard
 
-SCRATCH=Path('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch')
+SCRATCH=Path(tempfile.gettempdir())
 class WorkTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(dir=SCRATCH)

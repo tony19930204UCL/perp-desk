@@ -52,7 +52,7 @@ class BriefTests(unittest.TestCase):
 
     def test_cli_reads_same_snapshot_and_reports_missing_or_bad_file(self):
         self.assertTrue(hasattr(brief, 'main'), 'missing daily message-only CLI')
-        with tempfile.TemporaryDirectory(dir='/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch', prefix='brief-unit-') as tmp:
+        with tempfile.TemporaryDirectory(dir=tempfile.gettempdir(), prefix='brief-unit-') as tmp:
             path = Path(tmp) / 'handmade-test-snapshot.json'
             for contents in (None, '{malformed', json.dumps(handmade_snapshot())):
                 if contents is not None:

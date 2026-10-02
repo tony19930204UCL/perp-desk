@@ -71,7 +71,7 @@ class PaperPresentationTests(unittest.TestCase):
         import tempfile
         from types import SimpleNamespace
         from unittest.mock import patch
-        scratch = '/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch'
+        scratch = tempfile.gettempdir()
         with tempfile.TemporaryDirectory(dir=scratch, prefix='paper-presentation-') as directory:
             path = Path(directory) / 'synthetic-status.json'
             with patch.object(dashboard, 'ThreadingHTTPServer') as constructor:

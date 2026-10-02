@@ -355,7 +355,10 @@ def collect(profile):
     for name in ('AGENTS.md','SOUL.md','versions.md','SPEC.md','OPERATING_AGREEMENT.md','open_questions.md'):
         p=profile/name
         if p.is_file():files['context/'+name]=safe_read(p,profile)
-    for p in (profile/'scripts').glob('paper_health_*.py'):
+    scripts=list((profile/'scripts').glob('paper_health_*.py'))
+    sync_entry=profile/'scripts/paper_review_sync.py'
+    if sync_entry.is_file():scripts.append(sync_entry)
+    for p in scripts:
         if p.is_file():files['scripts/'+p.name]=safe_read(p,profile)
     sync=profile/'repo_sync'
     for p in sync.rglob('*'):

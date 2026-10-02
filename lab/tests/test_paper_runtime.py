@@ -9,7 +9,7 @@ from decimal import Decimal
 
 LAB = Path(__file__).resolve().parents[1]
 BASE = 1790812800000
-SCRATCH = '/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch'
+SCRATCH = tempfile.gettempdir()
 
 def iso(ms):
     return datetime.fromtimestamp(ms / 1000, timezone.utc).isoformat()

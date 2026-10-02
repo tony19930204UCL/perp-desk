@@ -10,7 +10,7 @@ from http.client import HTTPConnection, HTTPException
 from pathlib import Path
 
 LAB = Path(__file__).resolve().parents[1]
-SCRATCH = Path('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch')
+SCRATCH = Path(tempfile.gettempdir())
 
 
 def fixture():

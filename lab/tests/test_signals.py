@@ -11,7 +11,7 @@ try:
 except ImportError:
     signals = None
 
-SCRATCH = Path('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch')
+SCRATCH = Path(tempfile.gettempdir())
 START = datetime(2026, 10, 1, tzinfo=timezone.utc)
 STEP = 300000
 BASE = int(START.timestamp()) * 1000

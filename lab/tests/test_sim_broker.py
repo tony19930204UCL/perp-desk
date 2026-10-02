@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from decimal import Decimal as D
 
-ROOT = Path('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch')
+ROOT = Path(tempfile.gettempdir())
 
 class BrokerTests(unittest.TestCase):
     def setUp(self):

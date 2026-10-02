@@ -1,0 +1,11 @@
+test_scheduler_wrapper_is_profile_bound_and_script_only (test_review_sync.ReviewSyncTests.test_scheduler_wrapper_is_profile_bound_and_script_only) ... FAIL
+
+======================================================================
+FAIL: test_scheduler_wrapper_is_profile_bound_and_script_only (test_review_sync.ReviewSyncTests.test_scheduler_wrapper_is_profile_bound_and_script_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/tests/test_review_sync.py", line 18, in test_scheduler_wrapper_is_profile_bound_and_script_only
+    self.assertIn('scripts/paper_review_sync.py',m.collect(Path(__file__).resolve().parents[2]))
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'scripts/paper_review_sync.py' not found in {'lab/paper_config_v2.json': b'{\n  "schema_version": 1,\n  "mode": "paper",\n  "version_id": "H1-PAPER-002",\n  "risk_version": "PAPER-RISK-001",\n  "approved": true,\n  "approval_basis": "User explicitly authorized assistant to choose PAPER risk in current session; no live authorization.",\n  "initial_equity_usdt": "100",\n  "max_loss_per_trade_usdt": "1",\n  "max_daily_loss_usdt": "3",\n  "max_effective_exposure_x": "3",\n  "max_positions": 1,\n  "total_loss_limit_usdt": "10",\n  "stop_required": true,\n  "paper_leverage": "3",\n  "strategy": {\n    "symbol": "ETHUSDT",\n    "category": "crypto",\n    "interval_ms": 300000,\n    "prior_return_samples": 60,\n    "downside_sigma": "2",\n    "
+[Original RED traceback truncated after diagnostic because assertion expanded the entire export dictionary.]

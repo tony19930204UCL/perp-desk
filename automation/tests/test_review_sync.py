@@ -6,6 +6,17 @@ import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 
 class ReviewSyncTests(unittest.TestCase):
+    def test_scheduler_wrapper_is_profile_bound_and_script_only(self):
+        p=Path(__file__).resolve().parents[2]/'scripts/paper_review_sync.py'
+        self.assertTrue(p.exists(),'deployed no-agent scheduler entry missing')
+        source=p.read_text()
+        self.assertIn('tony19930204UCL/perp-desk',source)
+        self.assertIn('/home/chihcheng/.hermes/profiles/perp-desk',source)
+        self.assertNotIn('subprocess',source)
+        self.assertIn('main(',source)
+        import review_sync as m
+        self.assertTrue('scripts/paper_review_sync.py' in m.collect(Path(__file__).resolve().parents[2]),'scheduler entry absent from export')
+
     def test_git_uses_only_fixed_official_github_credential_helper(self):
         import review_sync as m
         from unittest.mock import patch

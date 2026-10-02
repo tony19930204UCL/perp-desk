@@ -1,0 +1,6 @@
+test_scheduler_wrapper_is_profile_bound_and_script_only (test_review_sync.ReviewSyncTests.test_scheduler_wrapper_is_profile_bound_and_script_only) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.070s
+
+OK

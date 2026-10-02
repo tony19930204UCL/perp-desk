@@ -45,7 +45,7 @@ class HandmadeClient:
         return {'endpoint': endpoint, 'params': params or {}, 'payload': payload,
                 'received_at': self.now, 'source_timestamp_ms': payload.get('time', payload.get('E')) if isinstance(payload, dict) else None}
 
-SCRATCH = '/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch'
+SCRATCH = tempfile.gettempdir()
 
 try:
     collector = importlib.import_module('perp_collector')

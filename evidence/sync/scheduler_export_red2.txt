@@ -1,0 +1,15 @@
+test_scheduler_wrapper_is_profile_bound_and_script_only (test_review_sync.ReviewSyncTests.test_scheduler_wrapper_is_profile_bound_and_script_only) ... FAIL
+
+======================================================================
+FAIL: test_scheduler_wrapper_is_profile_bound_and_script_only (test_review_sync.ReviewSyncTests.test_scheduler_wrapper_is_profile_bound_and_script_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/tests/test_review_sync.py", line 18, in test_scheduler_wrapper_is_profile_bound_and_script_only
+    self.assertTrue('scripts/paper_review_sync.py' in m.collect(Path(__file__).resolve().parents[2]),'scheduler entry absent from export')
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : scheduler entry absent from export
+
+----------------------------------------------------------------------
+Ran 1 test in 0.059s
+
+FAILED (failures=1)
