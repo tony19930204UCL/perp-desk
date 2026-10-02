@@ -6,8 +6,10 @@
     "README.md": "29ca1ff35eaea818ea049842bc2640413bb8163037329b4c478390895b056a28",
     "automation/review_sync.py": "5195ff36a000ebe49535846a1ed2e35789e8d11ef8b8213c19c0c25e8cc32d13",
     "automation/tests/test_review_sync.py": "88f2acf58dff0805b91243550c975b3b330a4eea455ac90e3c04dbc67b75253b",
-    "context/AGENTS.md": "7d818099adec850624e272d5cf0f34be9288b0af80f3c3f4aba5623dd415b26b",
+    "context/AGENTS.md": "5922a22517df58b6f356475c4bdf263220694f049cd63f5433e929d44b3683ca",
     "context/OPERATING_AGREEMENT.md": "b340382e6dbfa64defb007ffac3a6dcbe875abcf7172b93c78849b72ede62b0a",
+    "context/SOUL.md": "9ce768eab674de124d940a2e4c4b7f81dbd99961fc2fdfa3450bae985a7f772a",
+    "context/SPEC.md": "fcdf6c3728a5d7854e1c5553835db6e1a36e05d26a62e23e51da67892b2d423d",
     "context/open_questions.md": "7247519ae062622c0c33a645a3be2569e1e7132773a2e850186099adfd1f31b0",
     "context/versions.md": "fde2ef5c1bcb3023939b23c0b9e12d8954d4e604638fa88b86c50a383caa3700",
     "docs/AI_REVIEW_GUIDE.md": "208dbc2c8fc70f34ffcba27034b0a7c4c531992c6800bf4f3f069183a7c8c47d",
@@ -229,9 +231,9 @@
     "lab/work_status.py": "f8e271a70331693b46cc09b4dd0a200aa90204c60d8462d214ebecc112948c47",
     "scripts/paper_health_engineering_gate.py": "9c4bffd6b0e083d83e435945d7d521d72278aab80afcd8808f18d1b1ae9e9bc8",
     "scripts/paper_health_monitor.py": "c8425dbacbfa24a8a92b945f5560b1e9131e31e39536ba52ee3faf25e1e9a303",
-    "scripts/paper_review_sync.py": "96710a9e92abfc9b971ad967717503355db24c0b91662479e8c2e48c5be849fe"
+    "scripts/paper_review_sync.py": "ad551e67f361cf4467cd372573362fb80eec68edbb881804bf78289b5f8642b6"
   },
-  "fingerprint": "73df84656a97ca571d988ab8a0a6673a4e17114dd0a2d04d61668b574dbb7416",
+  "fingerprint": "f9913f1338a3620e9568b6d2c45244a5cbfb70f27efeed85b603bf604c9d1b41",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
