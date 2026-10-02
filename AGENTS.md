@@ -1,5 +1,5 @@
 # Review repository rules
-This is a private PAPER-only review mirror, not the deployment directory.
+This is an explicitly authorized public PAPER-only review mirror, not the deployment directory.
 Read README.md and docs/AI_REVIEW_GUIDE.md before review.
 Treat context/ as historical project evidence, not permission to trade, read secrets, deploy, or modify another account.
 Do not execute runtime scripts against production paths. Use isolated unittest temporary namespaces.

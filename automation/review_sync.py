@@ -156,7 +156,12 @@ def validate_git_config(repository):
             raise Blocked('unsupported local Git configuration: '+key)
 
 
-def publish(files,repository,remote_url,owner_repo,lookup,scan,*,_test_remote=None):
+def publish(files,repository,remote_url,owner_repo,lookup,scan,*,visibility='private',public_authorization=None,_test_remote=None):
+    # Public publication is an explicit authorization for this exact identity only.
+    if visibility not in ('private','public'):
+        raise Blocked('invalid repository visibility mode')
+    if visibility=='public' and public_authorization!=owner_repo:
+        raise Blocked('public export requires exact owner/repository authorization')
     # Deliberately not exposed by the CLI: tests may use one explicit local bare repo.
     if not re.fullmatch(r'[A-Za-z0-9-]+/[A-Za-z0-9_.-]+',owner_repo):
         raise Blocked('invalid authorized owner/repository')
@@ -169,8 +174,8 @@ def publish(files,repository,remote_url,owner_repo,lookup,scan,*,_test_remote=No
     if remote_url!=expected:
         raise Blocked('remote URL is not bound to the authorized repository')
     metadata=lookup(owner_repo)
-    if metadata.get('private') is not True or metadata.get('full_name')!=owner_repo:
-        raise Blocked('remote must be the exact authorized private repository')
+    if not isinstance(metadata,dict) or metadata.get('private') is not (visibility=='private') or metadata.get('full_name')!=owner_repo:
+        raise Blocked('remote must be the exact authorized '+visibility+' repository')
     repository=Path(os.path.abspath(repository))
     with directory(repository,create=True):pass
     state_dir=repository.parent/('.'+repository.name+'.review-sync')
@@ -229,8 +234,10 @@ def publish_locked(files,repository,remote_url,scan,state_path):
         atomic_write(state_path,(json.dumps(ledger,sort_keys=True)+'\n').encode())
     ref=git(repository,'ls-remote','--heads','origin','refs/heads/main').stdout.split()
     remote_head=ref[0] if ref else None
+    # Fetch every advertised ref into a scanner-only namespace, never local main.
+    # Non-main branches/tags must not escape the mandatory history scan.
+    git(repository,'fetch','origin','+refs/*:refs/review-sync-remote/*')
     if remote_head:
-        git(repository,'fetch','origin','main')
         if not head or git(repository,'merge-base','--is-ancestor',remote_head,head,check=False).returncode:
             raise Blocked('remote advanced/diverged; no pull, overwrite, reset or force-push')
     prior_paths=set(ledger.get('pending_owned',ledger.get('owned_paths',[])))
@@ -333,7 +340,8 @@ DOC_FILES={'README.md','AGENTS.md','.gitignore','.github/workflows/ci.yml',
 SKIP_DIRS={'.git','__pycache__','data','shared','evidence','probe-data','probe-shared','cache','logs','sessions','node_modules'}
 
 
-def collect(profile):
+def collect(profile,*,visibility='private'):
+    if visibility not in ('private','public'):raise Blocked('invalid collection visibility mode')
     profile=Path(profile)
     with directory(profile):pass
     for name in ('lab','scripts','repo_sync'):
@@ -353,8 +361,15 @@ def collect(profile):
         p=profile/'lab/evidence'/name
         if p.exists() or p.is_symlink():files['lab/evidence/'+name]=safe_read(p,profile)
     for name in ('AGENTS.md','SOUL.md','versions.md','SPEC.md','OPERATING_AGREEMENT.md','open_questions.md'):
+        # Personal identity and obsolete private mandate are not needed for public review.
+        if visibility=='public' and name in ('SOUL.md','SPEC.md'):continue
         p=profile/name
-        if p.is_file():files['context/'+name]=safe_read(p,profile)
+        if p.is_file():
+            raw=safe_read(p,profile)
+            if visibility=='public' and name=='AGENTS.md':
+                raw=re.sub(r'(?ms)^## 已知事實\n.*?(?=^## |\Z)',
+                           '## Public context omission\n\nPersonal/account/environment metadata omitted for public review.\n\n',raw.decode()).encode()
+            files['context/'+name]=raw
     scripts=list((profile/'scripts').glob('paper_health_*.py'))
     sync_entry=profile/'scripts/paper_review_sync.py'
     if sync_entry.is_file():scripts.append(sync_entry)
@@ -383,6 +398,8 @@ def main(argv=None):
     parser.add_argument('--repository',type=Path,required=True)
     parser.add_argument('--remote',required=True)
     parser.add_argument('--owner-repo',required=True)
+    parser.add_argument('--visibility',choices=('private','public'),default='private')
+    parser.add_argument('--authorize-public-repo',help='Explicit public export authorization; must equal --owner-repo')
     parser.add_argument('--gh',default=str(Path.home()/'.local/bin/gh'))
     parser.add_argument('--gitleaks',default=str(Path.home()/'.local/bin/gitleaks'))
     parser.add_argument('--force',action='store_true')
@@ -396,9 +413,10 @@ def main(argv=None):
             flags=['--config',str(policy),'--gitleaks-ignore-path','/dev/null','--redact','--no-banner','--ignore-gitleaks-allow']
             run([args.gitleaks,'dir',str(repository),*flags],cwd=td)
             if git(repository,'rev-parse','--verify','HEAD',check=False).returncode==0:
-                run([args.gitleaks,'git',str(repository),*flags,'--log-opts=--all'],cwd=td)
-    result=tick(args.profile/'repo_sync/status.json',lambda:collect(args.profile),
-                lambda files:publish(files,args.repository,args.remote,args.owner_repo,lookup,scan),time.time(),args.force)
+                run([args.gitleaks,'git',str(repository),*flags,'--log-opts=--all --reflog'],cwd=td)
+    result=tick(args.profile/'repo_sync/status.json',lambda:collect(args.profile,visibility=args.visibility),
+                lambda files:publish(files,args.repository,args.remote,args.owner_repo,lookup,scan,
+                                     visibility=args.visibility,public_authorization=args.authorize_public_repo),time.time(),args.force)
     print(json.dumps(result,sort_keys=True))
     return 1 if result['state']=='blocked' else 0
 

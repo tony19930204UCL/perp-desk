@@ -34,12 +34,9 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 沒有成交的日子就是沒有學習的日子。
 一個太保守而永遠無法得出結論的系統，跟一個虧錢的系統一樣是失敗的。
 
-## 已知事實
+## Public context omission
 
-- 帳戶：台灣註冊的 Binance 帳號，可交易 USDT-M crypto 永續與 TradFi 永續
-- 手續費：TradFi 永續 maker 0% / taker 0.04%，crypto 永續 maker 0.02% / taker 0.05%
-- 運算環境：Windows + WSL，幾乎不關機
-- 模型：Codex 為主，Gemini 額度另計，本機有 Ollama
+Personal/account/environment metadata omitted for public review.
 
 ## 主動執行與漏做防線（使用者要求後新增）
 

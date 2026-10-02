@@ -10,7 +10,7 @@ Binance public REST
        -> isolated live SQLite namespace + read-only snapshot
 snapshot -> dashboard.py / brief.py
 snapshot + process identity + work + capacity -> health_watchdog.py
-source allowlist -> automation/review_sync.py -> private GitHub mirror
+source allowlist -> automation/review_sync.py -> explicitly authorized public GitHub mirror
 ```
 
 REST polling is not tick-complete websocket execution. Raw source and local receipt are different clocks.

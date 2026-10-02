@@ -7,7 +7,7 @@
 5. Check raw timestamps, close cursors, arrival/latency, forward start, accounting equality, Decimal precision, idempotency and evidence retention.
 6. Check dashboard host/origin/path security, stale-data failure modes and safe textContent rendering.
 7. Check incident lifecycle/dedup/ownership. Engineering completed must not erase new operational faults.
-8. Check auto-sync allowlist, secret scans, remote private identity, remote SHA verification, no force push and retry behavior.
+8. Check auto-sync allowlist, explicit public authorization bound to exact owner/repository and HTTPS URL, strict boolean visibility metadata, real current/export and all-ref/reflog history secret scans, remote SHA verification, no force push and retry behavior.
 9. Identify untested real execution concerns separately from paper behavior.
 
 Report: severity, exact file/line, minimal repro command, observed versus expected, scope (live/candidate), and missing proof.

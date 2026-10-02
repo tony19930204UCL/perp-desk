@@ -7,4 +7,5 @@ from review_sync import main
 if __name__=='__main__':
     raise SystemExit(main(['--profile',str(PROFILE),'--repository',str(PROFILE/'repo_sync/mirror'),
                           '--remote','https://github.com/tony19930204UCL/perp-desk.git',
-                          '--owner-repo','tony19930204UCL/perp-desk']))
+                          '--owner-repo','tony19930204UCL/perp-desk',
+                          '--visibility','public','--authorize-public-repo','tony19930204UCL/perp-desk']))

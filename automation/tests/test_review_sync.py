@@ -6,6 +6,104 @@ import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 
 class ReviewSyncTests(unittest.TestCase):
+    def test_public_mode_requires_exact_explicit_authorization_and_private_default(self):
+        import review_sync as m
+        import inspect
+        self.assertIn('visibility',inspect.signature(m.publish).parameters,'explicit public opt-in missing')
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);repo,remote,pub=self.local_fixture(root)
+            public=lambda name:{'private':False,'full_name':name}
+            with self.assertRaises(m.Blocked):pub({'lab/a.py':b'pass\n'},lookup=public)
+            for authorization in (None,'other/repo'):
+                with self.subTest(authorization=authorization),self.assertRaises(m.Blocked):
+                    pub({'lab/a.py':b'pass\n'},lookup=public,visibility='public',public_authorization=authorization)
+            result=pub({'lab/a.py':b'print(2)\n'},lookup=public,visibility='public',public_authorization='owner/repo')
+            self.assertEqual(result['state'],'pushed')
+            self.assertEqual(m.git(repo,'ls-remote','--heads','origin','main').stdout.split()[0],result['sha'])
+            with self.assertRaises(m.Blocked):
+                pub({'lab/a.py':b'pass\n'},visibility='public',public_authorization='owner/repo')
+
+    def test_public_metadata_is_strict_and_identity_precedes_side_effects(self):
+        import review_sync as m
+        from unittest.mock import Mock
+        owner='tony19930204UCL/perp-desk';url='https://github.com/'+owner+'.git'
+        invalid=[None,[],{}, {'private':False,'full_name':'other/perp-desk'}]
+        invalid += [{'private':v,'full_name':owner} for v in (None,0,1,'false','true',True)]
+        for metadata in invalid:
+            with self.subTest(metadata=metadata),tempfile.TemporaryDirectory() as td:
+                repo=Path(td)/'repo';scanner=Mock()
+                with self.assertRaises(m.Blocked):
+                    m.publish({'a.py':b'pass\n'},repo,url,owner,lambda n:metadata,scanner,
+                              visibility='public',public_authorization=owner)
+                scanner.assert_not_called();self.assertFalse(repo.exists())
+        for bad in ('https://github.com/other/perp-desk.git',url+'?x=1','http://github.com/'+owner+'.git'):
+            query=Mock()
+            with tempfile.TemporaryDirectory() as td,self.assertRaises(m.Blocked):
+                m.publish({},Path(td)/'repo',bad,owner,query,Mock(),visibility='public',public_authorization=owner)
+            query.assert_not_called()
+        for mode in ('PUBLIC','auto',None):
+            with tempfile.TemporaryDirectory() as td,self.assertRaises(m.Blocked):
+                m.publish({},Path(td)/'repo',url,owner,Mock(),Mock(),visibility=mode,public_authorization=owner)
+
+    def test_public_cli_and_scheduler_require_exact_opt_in(self):
+        import review_sync as m
+        import subprocess,contextlib,io,json
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);(root/'lab').mkdir();(root/'lab/a.py').write_text('pass\n')
+            remote=root/'remote.git';subprocess.run(['git','init','--bare',str(remote)],check=True,capture_output=True)
+            gh=root/'gh';gh.write_text('#!/usr/bin/env python3\nprint(\'{"private":false,"full_name":"owner/repo"}\')\n');gh.chmod(0o700)
+            scanner=root/'scanner';scanner.write_text('#!/bin/sh\nexit 0\n');scanner.chmod(0o700)
+            base=['--profile',str(root),'--repository',str(root/'mirror'),'--remote',str(remote),'--owner-repo','owner/repo','--gh',str(gh),'--gitleaks',str(scanner),'--force']
+            original=m.publish
+            def local(*a,**kw):return original(*a,**kw,_test_remote=remote)
+            with patch.object(m,'publish',local),contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(m.main(base),1,'private default must reject public remote')
+                try:result=m.main(base+['--visibility','public','--authorize-public-repo','owner/repo'])
+                except SystemExit as error:result=error.code
+                self.assertEqual(result,0,'CLI lacks authorized public mode')
+                self.assertEqual(m.main(base+['--visibility','public']),1)
+                self.assertEqual(m.main(base+['--visibility','public','--authorize-public-repo','other/repo']),1)
+                scanner.write_text('#!/bin/sh\nexit 1\n')
+                self.assertEqual(m.main(base+['--visibility','public','--authorize-public-repo','owner/repo']),1)
+            self.assertEqual(json.loads((root/'repo_sync/status.json').read_text())['state'],'blocked')
+        wrapper=(Path(__file__).resolve().parents[2]/'scripts/paper_review_sync.py').read_text()
+        self.assertIn("'--visibility','public'",wrapper)
+        self.assertIn("'--authorize-public-repo','tony19930204UCL/perp-desk'",wrapper)
+
+    def test_public_fetches_all_remote_refs_before_security_scan(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);repo,remote,pub=self.local_fixture(root)
+            branch=root/'reviewer';m.run(['git','-c','init.templateDir=','clone','--no-hardlinks','--branch','main',str(remote),str(branch)])
+            m.git(branch,'config','user.name','reviewer');m.git(branch,'config','user.email','review@example.invalid')
+            m.git(branch,'checkout','-b','separate-review');(branch/'review.md').write_text('other remote history')
+            m.git(branch,'add','review.md');m.git(branch,'commit','-m','independent branch');sha=m.git(branch,'rev-parse','HEAD').stdout.strip()
+            m.git(branch,'push','origin','separate-review')
+            def scanner(path):
+                self.assertIn(sha,m.git(path,'rev-list','--all').stdout.splitlines(),'remote non-main history omitted from scan')
+            pub({'lab/a.py':b'print(2)\n'},lookup=lambda n:{'private':False,'full_name':n},
+                visibility='public',public_authorization='owner/repo',scan=scanner)
+
+    def test_public_collection_omits_personal_account_context_but_keeps_review_rules(self):
+        import review_sync as m
+        import inspect
+        self.assertIn('visibility',inspect.signature(m.collect).parameters,'public privacy policy missing')
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            agents='## Review rules\nPAPER only\n## 已知事實\nprivate account metadata\n## Engineering\nDo not deploy\n'
+            (root/'AGENTS.md').write_text(agents)
+            for name in ('SOUL.md','SPEC.md'):(root/name).write_text('private observer identity\n')
+            (root/'lab').mkdir();(root/'lab/a.py').write_text('pass\n')
+            raw=m.collect(root);public=m.collect(root,visibility='public')
+            self.assertEqual(raw['context/AGENTS.md'],agents.encode())
+            self.assertNotIn(b'private account metadata',public['context/AGENTS.md'])
+            self.assertIn(b'PAPER only',public['context/AGENTS.md']);self.assertIn(b'Do not deploy',public['context/AGENTS.md'])
+            for name in ('SOUL.md','SPEC.md'):self.assertNotIn('context/'+name,public)
+            self.assertEqual(public['lab/a.py'],raw['lab/a.py'])
+            self.assertEqual(set(public),set(raw)-{'context/SOUL.md','context/SPEC.md'})
+            with self.assertRaises(m.Blocked):m.collect(root,visibility='auto')
+
     def test_scheduler_wrapper_is_profile_bound_and_script_only(self):
         p=Path(__file__).resolve().parents[2]/'scripts/paper_review_sync.py'
         self.assertTrue(p.exists(),'deployed no-agent scheduler entry missing')
@@ -106,6 +204,19 @@ class ReviewSyncTests(unittest.TestCase):
                     with self.assertRaises(m.Blocked):m.mirror({'lab/a.py':b'print(2)\n'} if action=='read' else {},repo)
                 self.assertEqual(victim.read_bytes(),b'private')
 
+    def test_group_writable_git_entries_fail_before_scanner_or_hooks(self):
+        import review_sync as m
+        from unittest.mock import Mock
+        for target in ('.git','.git/index'):
+            with self.subTest(target=target),tempfile.TemporaryDirectory() as td:
+                root=Path(td);repo,remote,pub=self.local_fixture(root)
+                before=m.git(repo,'rev-parse','HEAD').stdout.strip()
+                unsafe=repo/target;unsafe.chmod(unsafe.stat().st_mode|0o020);scanner=Mock()
+                with self.assertRaisesRegex(m.Blocked,'permissions'):
+                    pub({'lab/a.py':b'print(2)\n'},scan=scanner)
+                scanner.assert_not_called();unsafe.chmod(0o700 if unsafe.is_dir() else 0o600)
+                self.assertEqual(m.git(repo,'rev-parse','HEAD').stdout.strip(),before)
+
     def test_existing_hook_files_never_execute(self):
         import review_sync as m
         with tempfile.TemporaryDirectory() as td:
@@ -134,6 +245,9 @@ class ReviewSyncTests(unittest.TestCase):
                 self.assertEqual(m.main(args),0)
             records=[json.loads(line) for line in log.read_text().splitlines()]
             self.assertTrue(records)
+            history=[record for record in records if record['args'][0]=='git']
+            self.assertTrue(history)
+            for record in history:self.assertIn('--log-opts=--all --reflog',record['args'])
             for record in records:
                 self.assertIn('--config',record['args']);self.assertIn('--gitleaks-ignore-path',record['args'])
                 self.assertEqual(record['args'][record['args'].index('--gitleaks-ignore-path')+1],'/dev/null')

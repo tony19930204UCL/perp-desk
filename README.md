@@ -1,4 +1,4 @@
-# Perp Desk (PRIVATE, PAPER only)
+# Perp Desk (PUBLIC, PAPER only)
 
 這是給人與其他 AI 審查的工程快照，不是可直接啟用實盤的產品。
 
@@ -16,7 +16,8 @@
 `lab/staging/` 候選改動，**不代表已部署**。
 `automation/` 機械同步工具及測試。
 `evidence/` 經 allowlist 匯出的可審查證據。
-`context/` 專案規範與歷史。舊 SPEC/OPERATING_AGREEMENT 的限制若與較新 AGENTS 不同，先核对時序。
+`context/` 公開審查用的專案規範與歷史。個人角色／舊 SPEC 不公開匯出，AGENTS 的個人帳戶／環境段落明示省略。較新 AGENTS 優先於舊 OPERATING_AGREEMENT。
+公開倉庫只供審查，實盤未部署。`main` 由機械同步管理，cron 目前暫停，須父代理獨立驗收後才可恢復。
 
 ## 安全
 沒有 API keys、OAuth token、聊天紀錄、Hermes config、運行 SQLite 或原始帳戶快照。
