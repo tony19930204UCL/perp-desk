@@ -1,0 +1,21 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________ ReviewSyncTests.test_pathspec_magic_is_staged_literally ____________
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_pathspec_magic_is_staged_literally>
+
+    def test_pathspec_magic_is_staged_literally(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);repo,remote,pub=self.local_fixture(root)
+            (repo/'private-note.txt').write_text('not exporter owned')
+            pub({'lab/a.py':b'pass\n',':(glob)**':b'literal file'})
+            paths=m.git(repo,'ls-tree','-r','--name-only','HEAD').stdout.splitlines()
+>           self.assertIn(':(glob)**',paths);self.assertNotIn('private-note.txt',paths)
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: 'private-note.txt' unexpectedly found in [':(glob)**', 'lab/a.py', 'private-note.txt', 'source_manifest.json']
+
+tests/test_review_sync.py:27: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_pathspec_magic_is_staged_literally
+1 failed in 2.76s

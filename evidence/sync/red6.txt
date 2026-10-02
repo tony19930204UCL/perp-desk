@@ -1,0 +1,20 @@
+test_allowlisted_framework_only_no_runtime_or_credentials (test_review_sync.ReviewSyncTests.test_allowlisted_framework_only_no_runtime_or_credentials) ... ok
+test_atomic_mirror_provenance_deletes_only_owned_files (test_review_sync.ReviewSyncTests.test_atomic_mirror_provenance_deletes_only_owned_files) ... ok
+test_export_rejects_symlinks_secrets_binary_and_oversize (test_review_sync.ReviewSyncTests.test_export_rejects_symlinks_secrets_binary_and_oversize) ... ok
+test_framework_docs_automation_and_evidence_are_exported_without_status (test_review_sync.ReviewSyncTests.test_framework_docs_automation_and_evidence_are_exported_without_status) ... FAIL
+test_real_git_push_no_change_and_remote_divergence_fail_closed (test_review_sync.ReviewSyncTests.test_real_git_push_no_change_and_remote_divergence_fail_closed) ... ok
+test_scheduled_tick_debounces_records_failures_and_recovers (test_review_sync.ReviewSyncTests.test_scheduled_tick_debounces_records_failures_and_recovers) ... ok
+
+======================================================================
+FAIL: test_framework_docs_automation_and_evidence_are_exported_without_status (test_review_sync.ReviewSyncTests.test_framework_docs_automation_and_evidence_are_exported_without_status)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/tests/test_review_sync.py", line 16, in test_framework_docs_automation_and_evidence_are_exported_without_status
+    self.assertIn('automation/review_sync.py',files)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'automation/review_sync.py' not found in {}
+
+----------------------------------------------------------------------
+Ran 6 tests in 4.592s
+
+FAILED (failures=1)

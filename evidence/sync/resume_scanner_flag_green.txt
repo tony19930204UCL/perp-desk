@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/chihcheng/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python
+cachedir: .pytest_cache
+rootdir: /home/chihcheng
+plugins: platformdirs-4.12.2, anyio-4.15.1
+collecting ... collected 1 item
+
+.hermes/profiles/perp-desk/repo_sync/tests/test_review_sync.py::ReviewSyncTests::test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment PASSED [100%]
+
+============================== 1 passed in 7.74s ===============================

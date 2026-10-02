@@ -1,0 +1,3 @@
+Git hooks directory injected mode=0770
+publish rejected: unsafe Git entry permissions
+No permission relaxation applied.

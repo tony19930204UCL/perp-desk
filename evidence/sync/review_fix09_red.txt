@@ -1,0 +1,68 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___ ReviewSyncTests.test_erroneous_python_is_exported_as_raw_review_evidence ___
+
+path = PosixPath('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmpymod99eg/lab/broken.py')
+profile = PosixPath('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmpymod99eg')
+
+    def safe_read(path, profile):
+        path=Path(os.path.abspath(path));profile=Path(os.path.abspath(profile))
+        with directory(profile):pass
+        if not path.is_relative_to(profile):raise Blocked('outside profile')
+        raw=read_bytes(path)
+        if b'\0' in raw:raise Blocked('binary export rejected: '+path.name)
+        try:text=raw.decode('utf-8')
+        except UnicodeError:raise Blocked('non-UTF8 export rejected: '+path.name)
+        if re.search(r'gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY',text):
+            raise Blocked('credential pattern detected; value not logged: '+path.name)
+        if path.suffix=='.py':
+>           try:compile(text,str(path),'exec')
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E             File "/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmpymod99eg/lab/broken.py", line 1
+E               def broken(
+E                         ^
+E           SyntaxError: '(' was never closed
+
+review_sync.py:239: SyntaxError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_erroneous_python_is_exported_as_raw_review_evidence>
+
+    def test_erroneous_python_is_exported_as_raw_review_evidence(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);(root/'lab').mkdir();p=root/'lab/broken.py';p.write_bytes(b'def broken(')
+>           self.assertEqual(m.collect(root)['lab/broken.py'],b'def broken(')
+                             ^^^^^^^^^^^^^^^
+
+tests/test_review_sync.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+review_sync.py:265: in collect
+    if allowed:files['lab/'+rel.as_posix()]=safe_read(p,profile)
+                                            ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = PosixPath('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmpymod99eg/lab/broken.py')
+profile = PosixPath('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmpymod99eg')
+
+    def safe_read(path, profile):
+        path=Path(os.path.abspath(path));profile=Path(os.path.abspath(profile))
+        with directory(profile):pass
+        if not path.is_relative_to(profile):raise Blocked('outside profile')
+        raw=read_bytes(path)
+        if b'\0' in raw:raise Blocked('binary export rejected: '+path.name)
+        try:text=raw.decode('utf-8')
+        except UnicodeError:raise Blocked('non-UTF8 export rejected: '+path.name)
+        if re.search(r'gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY',text):
+            raise Blocked('credential pattern detected; value not logged: '+path.name)
+        if path.suffix=='.py':
+            try:compile(text,str(path),'exec')
+>           except SyntaxError:raise Blocked('incomplete Python file: '+path.name)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           review_sync.Blocked: incomplete Python file: broken.py
+
+review_sync.py:240: Blocked
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_erroneous_python_is_exported_as_raw_review_evidence
+1 failed in 0.03s

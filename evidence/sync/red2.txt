@@ -1,0 +1,16 @@
+test_allowlisted_framework_only_no_runtime_or_credentials (test_review_sync.ReviewSyncTests.test_allowlisted_framework_only_no_runtime_or_credentials) ... ok
+test_export_rejects_symlinks_secrets_binary_and_oversize (test_review_sync.ReviewSyncTests.test_export_rejects_symlinks_secrets_binary_and_oversize) ... FAIL
+
+======================================================================
+FAIL: test_export_rejects_symlinks_secrets_binary_and_oversize (test_review_sync.ReviewSyncTests.test_export_rejects_symlinks_secrets_binary_and_oversize)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/tests/test_review_sync.py", line 11, in test_export_rejects_symlinks_secrets_binary_and_oversize
+    self.assertTrue(hasattr(m,'Blocked'),'fail-closed export guard missing')
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : fail-closed export guard missing
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.002s
+
+FAILED (failures=1)

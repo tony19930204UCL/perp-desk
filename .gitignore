@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+*.sqlite*
+data/
+shared/
+probe-data/
+probe-shared/

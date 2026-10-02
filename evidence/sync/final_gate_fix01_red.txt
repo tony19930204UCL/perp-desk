@@ -1,0 +1,131 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/chihcheng/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python
+cachedir: .pytest_cache
+rootdir: /home/chihcheng/.hermes/profiles/perp-desk/repo_sync
+plugins: platformdirs-4.12.2, anyio-4.15.1
+collecting ... collected 1 item
+
+tests/test_review_sync.py::ReviewSyncTests::test_tick_rejects_preexisting_symlinks_before_outside_io 
+tests/test_review_sync.py::ReviewSyncTests::test_tick_rejects_preexisting_symlinks_before_outside_io PASSED [100%]
+
+=================================== FAILURES ===================================
+_ ReviewSyncTests.test_tick_rejects_preexisting_symlinks_before_outside_io (target='profile') _
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_tick_rejects_preexisting_symlinks_before_outside_io>
+
+    def test_tick_rejects_preexisting_symlinks_before_outside_io(self):
+        import review_sync as m
+        import builtins
+        from unittest.mock import patch
+        for target in ('profile','status','lock'):
+            with self.subTest(target=target),tempfile.TemporaryDirectory() as td:
+                root=Path(td);outside=root/'outside';outside.mkdir()
+                profile=root/'profile';profile.mkdir();sync=profile/'repo_sync';sync.mkdir()
+                state=sync/'status.json';victim=outside/'status.json';victim.write_text('{}')
+                outside_lock=outside/'status.json.lock';reads=[];writes=[]
+                if target=='profile':
+                    sync.rmdir();profile.rmdir();profile.symlink_to(outside,target_is_directory=True)
+                    (outside/'repo_sync').mkdir();victim=outside/'repo_sync/status.json';victim.write_text('{}')
+                    outside_lock=outside/'repo_sync/status.json.lock'
+                elif target=='status':state.symlink_to(victim)
+                else:Path(str(state)+'.lock').symlink_to(outside_lock)
+                real_read=Path.read_text;real_open=builtins.open
+                def read(path,*args,**kwargs):
+                    if path.resolve().is_relative_to(outside):reads.append(str(path))
+                    return real_read(path,*args,**kwargs)
+                def open_file(path,*args,**kwargs):
+                    if Path(path).resolve().is_relative_to(outside):writes.append(str(path))
+                    return real_open(path,*args,**kwargs)
+                with patch.object(Path,'read_text',read),patch.object(builtins,'open',open_file):
+                    with self.assertRaises(m.Blocked):
+                        m.tick(state,lambda:m.collect(profile),lambda files:{'state':'pushed'},100,force=True)
+>               self.assertEqual(reads,[],'outside status read before rejection')
+E               AssertionError: Lists differ: ['/home/chihcheng/.hermes/profiles/perp-de[55 chars]son'] != []
+E               
+E               First list contains 1 additional elements.
+E               First extra element 0:
+E               '/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmp9vjnrec3/profile/repo_sync/status.json'
+E               
+E               - ['/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmp9vjnrec3/profile/repo_sync/status.json']
+E               + [] : outside status read before rejection
+
+tests/test_review_sync.py:46: AssertionError
+_ ReviewSyncTests.test_tick_rejects_preexisting_symlinks_before_outside_io (target='status') _
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_tick_rejects_preexisting_symlinks_before_outside_io>
+
+    def test_tick_rejects_preexisting_symlinks_before_outside_io(self):
+        import review_sync as m
+        import builtins
+        from unittest.mock import patch
+        for target in ('profile','status','lock'):
+            with self.subTest(target=target),tempfile.TemporaryDirectory() as td:
+                root=Path(td);outside=root/'outside';outside.mkdir()
+                profile=root/'profile';profile.mkdir();sync=profile/'repo_sync';sync.mkdir()
+                state=sync/'status.json';victim=outside/'status.json';victim.write_text('{}')
+                outside_lock=outside/'status.json.lock';reads=[];writes=[]
+                if target=='profile':
+                    sync.rmdir();profile.rmdir();profile.symlink_to(outside,target_is_directory=True)
+                    (outside/'repo_sync').mkdir();victim=outside/'repo_sync/status.json';victim.write_text('{}')
+                    outside_lock=outside/'repo_sync/status.json.lock'
+                elif target=='status':state.symlink_to(victim)
+                else:Path(str(state)+'.lock').symlink_to(outside_lock)
+                real_read=Path.read_text;real_open=builtins.open
+                def read(path,*args,**kwargs):
+                    if path.resolve().is_relative_to(outside):reads.append(str(path))
+                    return real_read(path,*args,**kwargs)
+                def open_file(path,*args,**kwargs):
+                    if Path(path).resolve().is_relative_to(outside):writes.append(str(path))
+                    return real_open(path,*args,**kwargs)
+                with patch.object(Path,'read_text',read),patch.object(builtins,'open',open_file):
+                    with self.assertRaises(m.Blocked):
+                        m.tick(state,lambda:m.collect(profile),lambda files:{'state':'pushed'},100,force=True)
+>               self.assertEqual(reads,[],'outside status read before rejection')
+E               AssertionError: Lists differ: ['/home/chihcheng/.hermes/profiles/perp-de[55 chars]son'] != []
+E               
+E               First list contains 1 additional elements.
+E               First extra element 0:
+E               '/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmp4483bz1y/profile/repo_sync/status.json'
+E               
+E               - ['/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmp4483bz1y/profile/repo_sync/status.json']
+E               + [] : outside status read before rejection
+
+tests/test_review_sync.py:46: AssertionError
+_ ReviewSyncTests.test_tick_rejects_preexisting_symlinks_before_outside_io (target='lock') _
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_tick_rejects_preexisting_symlinks_before_outside_io>
+
+    def test_tick_rejects_preexisting_symlinks_before_outside_io(self):
+        import review_sync as m
+        import builtins
+        from unittest.mock import patch
+        for target in ('profile','status','lock'):
+            with self.subTest(target=target),tempfile.TemporaryDirectory() as td:
+                root=Path(td);outside=root/'outside';outside.mkdir()
+                profile=root/'profile';profile.mkdir();sync=profile/'repo_sync';sync.mkdir()
+                state=sync/'status.json';victim=outside/'status.json';victim.write_text('{}')
+                outside_lock=outside/'status.json.lock';reads=[];writes=[]
+                if target=='profile':
+                    sync.rmdir();profile.rmdir();profile.symlink_to(outside,target_is_directory=True)
+                    (outside/'repo_sync').mkdir();victim=outside/'repo_sync/status.json';victim.write_text('{}')
+                    outside_lock=outside/'repo_sync/status.json.lock'
+                elif target=='status':state.symlink_to(victim)
+                else:Path(str(state)+'.lock').symlink_to(outside_lock)
+                real_read=Path.read_text;real_open=builtins.open
+                def read(path,*args,**kwargs):
+                    if path.resolve().is_relative_to(outside):reads.append(str(path))
+                    return real_read(path,*args,**kwargs)
+                def open_file(path,*args,**kwargs):
+                    if Path(path).resolve().is_relative_to(outside):writes.append(str(path))
+                    return real_open(path,*args,**kwargs)
+                with patch.object(Path,'read_text',read),patch.object(builtins,'open',open_file):
+>                   with self.assertRaises(m.Blocked):
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   AssertionError: Blocked not raised
+
+tests/test_review_sync.py:44: AssertionError
+=========================== short test summary info ============================
+SUBFAILED(target='profile') tests/test_review_sync.py::ReviewSyncTests::test_tick_rejects_preexisting_symlinks_before_outside_io
+SUBFAILED(target='status') tests/test_review_sync.py::ReviewSyncTests::test_tick_rejects_preexisting_symlinks_before_outside_io
+SUBFAILED(target='lock') tests/test_review_sync.py::ReviewSyncTests::test_tick_rejects_preexisting_symlinks_before_outside_io
+========================= 3 failed, 1 passed in 0.06s ==========================

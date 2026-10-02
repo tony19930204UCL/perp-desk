@@ -1,0 +1,21 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__ ReviewSyncTests.test_filesystem_roots_and_manifest_symlinks_fail_before_io __
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_filesystem_roots_and_manifest_symlinks_fail_before_io>
+
+    def test_filesystem_roots_and_manifest_symlinks_fail_before_io(self):
+        import review_sync as m
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);outside=root/'outside';outside.mkdir()
+            link=root/'link';link.symlink_to(outside,target_is_directory=True)
+            for repo in (link,link/'nested'):
+>               with self.assertRaises(m.Blocked):m.mirror({'a.py':b'pass\n'},repo)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               AssertionError: Blocked not raised
+
+tests/test_review_sync.py:27: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_filesystem_roots_and_manifest_symlinks_fail_before_io
+1 failed in 0.03s

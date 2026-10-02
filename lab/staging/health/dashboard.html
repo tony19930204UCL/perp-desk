@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Perp Desk｜影子研究台</title>
+<style>
+:root{color-scheme:light;--purple:#7132f5;--ink:#101114;--muted:#686b82;--border:#dedee5;--green:#149e61;--red:#bb3249}*{box-sizing:border-box}body{margin:0;background:#f5f5fa;color:var(--ink);font-family:system-ui,-apple-system,'Segoe UI',sans-serif}main{max-width:1320px;margin:auto;padding:30px 28px}header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}h1{font-size:26px;letter-spacing:-.6px;margin:0}h2{font-size:17px;margin:0 0 18px}p{line-height:1.7}small,.muted{color:var(--muted)}.badge{font-size:12px;letter-spacing:.8px;font-weight:700;color:var(--purple);background:#ede4fe;padding:8px 12px;border-radius:8px}.notice{background:#fff8e9;border:1px solid #efd49c;border-left:4px solid #d29526;border-radius:12px;padding:14px 18px;font-size:14px;margin-bottom:22px}.notice strong{display:block;margin-bottom:5px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}.card,.panel{background:white;border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 4px 24px #10111404}.card label{display:block;font-size:13px;color:var(--muted);margin-bottom:12px}.value{font:600 31px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:-1px;overflow-wrap:anywhere}.unit{font-size:11px;color:var(--muted);margin-top:10px}.split{display:grid;grid-template-columns:1.7fr 1fr;gap:16px;margin-bottom:16px}.panel{min-width:0}.status{font-size:14px;padding:12px 15px;border-radius:10px;background:#f1edf9;margin-bottom:18px}.good{color:var(--green)}.bad{color:var(--red)}.scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}td,th{padding:12px 10px;border-bottom:1px solid #eeeef4;text-align:left}th{color:var(--muted);font-weight:500}td.number{font-family:ui-monospace,Consolas,monospace}ul{padding-left:20px;margin:0;font-size:14px;line-height:1.9}#empty{padding:24px 0;color:var(--muted)}svg{width:100%;height:150px;border-bottom:1px solid #eee}footer{font-size:12px;color:var(--muted);padding:15px 0}.counts{display:flex;gap:22px;margin-top:16px;font-size:13px}.counts b{font-size:20px;display:block;margin-top:6px}.sub{font-size:12px;color:var(--muted);margin-top:12px}.version{border-left:3px solid var(--purple);padding:8px 12px;margin:12px 0;font-size:13px;overflow-wrap:anywhere}@media(max-width:800px){main{padding:20px 14px}.cards{grid-template-columns:repeat(2,1fr)}.split{grid-template-columns:1fr}header{align-items:flex-start}.value{font-size:25px}.card,.panel{padding:18px}}@media(max-width:420px){.cards{gap:9px}.value{font-size:22px}h1{font-size:22px}}
+</style></head><body><main>
+<header><div><h1>Perp Desk <span class="muted">/ 影子研究台</span></h1><small>Crypto + TradFi · 公開行情 · 唯讀介面</small></div><span class="badge">PAPER ONLY</span></header>
+<div class="notice"><strong>100 USDT 是 PAPER 初始本金，不是實際 Binance 錢包餘額</strong><span id="modeNotice">尚未確認快照模式與引擎狀態。沒有讀取你的帳戶；本介面唯讀，實盤停用。</span></div>
+<section class="panel" style="margin-bottom:20px" aria-label="現在健康與未解問題"><h2>現在健康／未解問題</h2><div id="opsHealth" class="status bad" role="status">健康未確認。尚未讀取監控資料</div><div id="opsIssues"></div><div id="opsLimit" class="sub">監控候選介面，尚待父代理部署排程。工程已完成不代表運行沒有新故障。</div></section>
+<div id="health" class="status" role="status">正在讀取快照，尚未確認資料有效</div>
+<section class="panel" style="margin-bottom:20px" aria-label="背景工程工作"><h2>背景工作 / 下一步</h2><div id="workHealth" class="muted" role="status">正在讀取工程狀態</div><div id="workTasks"></div><div class="sub">工程進度與交易引擎分開。沒有更新不代表正在執行，超過 5 分鐘會標為活動未確認。下一步是計畫，不是已完成。</div></section>
+<section class="cards" aria-label="影子帳戶資金">
+<div class="card"><label>目前影子權益</label><div id="equity" class="value">—</div><div class="unit">USDT · 不是實盤餘額</div></div>
+<div class="card"><label>影子現金</label><div id="cash" class="value">—</div><div class="unit">USDT</div></div>
+<div class="card"><label>合計 PNL</label><div id="total" class="value">—</div><div class="unit">USDT · 記帳損益不等於策略優勢</div></div>
+<div class="card"><label>已實現 PNL</label><div id="realized" class="value">—</div><div class="unit">USDT · 扣成本後記帳欄位</div></div>
+<div class="card"><label>未實現 PNL</label><div id="unrealized" class="value">—</div><div class="unit">USDT · 依真實持倉，沒有就為零</div></div>
+<div class="card"><label>目前持倉數</label><div id="positionCount" class="value">—</div><div class="unit">不產生示範持倉或假成交</div></div>
+</section>
+<section class="split"><div class="panel"><h2>公開市場觀察</h2><div class="scroll"><table><thead><tr><th>合約 / 類別</th><th>買一</th><th>賣一</th><th>標記價</th><th>預估 funding rate</th><th>最小名目</th></tr></thead><tbody id="markets"></tbody></table></div><div id="marketNote" class="sub">行情未確認</div></div><div class="panel"><h2>開倉阻擋原因</h2><ul id="blockers"><li>尚未讀取有效快照</li></ul><div class="sub">不會自動提高曝險或把初始化資料當績效。</div><div class="counts"><div>候選訊號<b id="signals">—</b></div><div>成交<b id="fills">—</b></div><div>拒絕候選<b id="blocked">—</b></div></div></div></section>
+<section class="split"><div class="panel"><h2>影子權益紀錄</h2><svg id="chart" viewBox="0 0 720 150" aria-label="來自實際快照的權益紀錄"></svg><div id="chartNote" class="sub">尚未取得紀錄。初始化的水平線不是策略獲利證據。</div></div><div class="panel"><h2>版本 / 前瞻資料</h2><div id="versions" class="muted">尚未讀取</div><div class="sub">工程採集批次不等於策略版本，正式紀錄見 versions.md。</div></div></section>
+<section class="panel"><h2>持倉</h2><div id="accounting" class="sub">淨已實現損益含全部費用與 funding；未提供分項時不推定。</div><div id="empty">尚未讀取有效快照</div><div id="positionList"></div></section>
+<footer id="stamp">只綁本機 localhost · 每 5 秒刷新介面 · 公開 REST 採集不是逐筆成交引擎</footer>
+</main><script>
+'use strict';
+const $=id=>document.getElementById(id);
+const labels={risk_limits_not_set:'風險限額未設定，禁止 paper 開倉',sim_broker_not_implemented:'模擬券商尚未完成，沒有成交驗證',signals_not_implemented:'策略訊號尚未實作，沒有績效樣本'};
+function text(id,value){$(id).textContent=String(value??'—');}
+function cell(row,value,cls=''){const e=document.createElement('td');e.textContent=String(value??'—');e.className=cls;row.appendChild(e);}
+function amount(id,value){text(id,value);$(id).classList.remove('good','bad');const n=Number(value);if(Number.isFinite(n)&&n!==0)$(id).classList.add(n>0?'good':'bad');}
+function unavailable(reason){text('health','資料不可用 / 未確認：'+reason);$('health').className='status bad';for(const id of ['equity','cash','total','realized','unrealized','positionCount','signals','fills','blocked'])text(id,'—');$('markets').replaceChildren();$('chart').replaceChildren();$('positionList').replaceChildren();text('accounting','快照不可用，不推定費用或 funding 分項');text('modeNotice','快照不可用；不推定 PAPER 引擎狀態或當前交易權限，實盤停用。');text('empty','快照無效，不推定持倉或餘額');text('marketNote','不能把舊行情視為即時');text('chartNote','資料不可用，不繪製假績效');text('versions','資料不可用');text('stamp','讀取失敗。只使用本地唯讀快照，不觸碰實盤。');$('blockers').replaceChildren();const li=document.createElement('li');li.textContent='資料不可用，所有交易維持停用';$('blockers').appendChild(li);}
+function render(s){
+ if(s.schema_version!==1||!['shadow','paper'].includes(s.mode)||s.live_trading_enabled!==false||typeof s.paper_trading_enabled!=='boolean'||!Array.isArray(s.markets)||!Array.isArray(s.positions)||typeof s.feed_stale!=='boolean')throw Error('不支援或不完整的快照');
+ const paper=s.mode==='paper',traded=s.fills_count>0?'已交易':'未交易（成交計數 0）';
+ let state='影子觀察 · PAPER 開倉停用 · 未交易，非績效';
+ if(paper){if(!s.engine||!s.risk||s.risk.approved!==true)throw Error('缺少 PAPER 引擎／風險證明');const names={warmup:'暖機',ready:'就緒',running:'運行',halted:'停止',error:'錯誤停止'};state='PAPER 引擎 '+names[s.engine.status];if(s.engine.status==='warmup'&&s.engine.warmup_received!==undefined&&s.engine.warmup_required!==undefined)state+=' '+s.engine.warmup_received+'/'+s.engine.warmup_required;state+=' · '+traded+' · 紙上交易'+(s.paper_trading_enabled?'啟用':'停用')+' · 實盤停用';}
+ text('modeNotice',state+'。沒有讀取你的帳戶；本介面唯讀，不能交易或變更配置。');
+ text('equity',s.equity_usdt);text('cash',s.cash_usdt);amount('total',s.total_pnl_usdt);amount('realized',s.realized_pnl_usdt);amount('unrealized',s.unrealized_pnl_usdt);text('positionCount',s.positions.length);text('signals',s.signals_count);text('fills',s.fills_count);text('blocked',s.blocked_signals_count);
+ text('health',(s.feed_stale?'行情過期 / 中斷，僅顯示最後快照；不推定當前交易權限 · ':'行情新鮮 · ')+state);$('health').className='status '+(s.feed_stale||['halted','error'].includes(s.engine?.status)?'bad':'');
+ $('markets').replaceChildren();for(const m of s.markets){const row=document.createElement('tr');cell(row,m.symbol+' / '+m.category);for(const k of ['bid','ask','mark_price','funding_rate','min_notional'])cell(row,m[k],'number');$('markets').appendChild(row);}
+ text('marketNote','資料來源：'+s.feed.transport+'（非 WebSocket） · Funding 顯示是預估值，不是已结算現金流');
+ $('blockers').replaceChildren();for(const b of (s.blockers.length?s.blockers:['無開倉阻擋記錄（不代表交易授權）'])){const li=document.createElement('li');li.textContent=labels[b]??b;$('blockers').appendChild(li);}
+ $('versions').replaceChildren();if(paper){const div=document.createElement('div');div.className='version';div.textContent=s.engine.version_id+' · '+s.engine.status+' · '+s.engine.implementation+'\n前瞻起點 '+s.engine.forward_start_at+'\n模型 '+s.engine.model_sha256+'\n風險 '+s.risk.risk_version+' · '+s.risk.risk_config_sha256;$('versions').appendChild(div);}for(const v of s.versions){const div=document.createElement('div');div.className='version';div.textContent=v.id+' · '+v.status+'\n前瞻起點 '+v.sample_start_at;$('versions').appendChild(div);}
+ text('accounting','淨已實現含全部費用與 funding；'+[['gross_realized_pnl_usdt','毛已實現'],['fees_usdt','費用'],['funding_pnl_usdt','funding']].filter(([key])=>s[key]!==undefined).map(([key,label])=>label+' '+s[key]+' USDT').join('；'));
+ text('empty',s.positions.length?'以下為快照中記錄的 PAPER 持倉':'沒有持倉。'+(paper?traded:'未交易，零 PNL 不是策略成績。'));$('positionList').replaceChildren();for(const p of s.positions){const div=document.createElement('div');div.className='version';div.textContent=p.symbol+' · '+p.side+' · 數量 '+p.qty+' · 入場 '+p.entry_price+' · 標記 '+p.mark_price+' · 止損 '+p.stop_price+' · 未實現 '+p.unrealized_pnl_usdt+' USDT';$('positionList').appendChild(div);}
+ const history=s.equity_history.filter(p=>Number.isFinite(Number(p.equity_usdt)));$('chart').replaceChildren();if(history.length){const values=history.map(p=>Number(p.equity_usdt)),lo=Math.min(...values),hi=Math.max(...values),range=hi-lo;const d=values.map((v,i)=>(i?'L':'M')+(values.length===1?360:20+i*680/(values.length-1))+','+(range===0?75:130-(v-lo)*110/range)).join(' ');const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',d);path.setAttribute('fill','none');path.setAttribute('stroke','#7132f5');path.setAttribute('stroke-width','2');$('chart').appendChild(path);}
+ text('chartNote','僅繪出 '+history.length+' 個真實狀態快照。初始 100 USDT 的水平線不是策略獲利證據。');
+ text('stamp','快照 '+s.updated_at+' · 行情年齡 '+Math.round(s.feed_age_seconds??0)+' 秒 · 累計錯誤 '+s.feed.errors_count+' · 缺口 '+s.feed.gaps_count+' · '+(s.latest_error??'無最近錯誤'));
+}
+let busy=false;async function refresh(){if(busy)return;busy=true;const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const r=await fetch('/api/status',{cache:'no-store',signal:ctl.signal});if(!r.ok)throw Error('HTTP '+r.status);render(await r.json());}catch(e){unavailable(e.message);}finally{clearTimeout(timer);busy=false;}}
+function renderWork(data){
+ if(data.available!==true||!Array.isArray(data.tasks))throw Error('工作狀態格式錯誤');
+ const names={queued:'待執行',running:'進行中',testing:'測試中',verifying:'驗收中',completed:'已完成',failed:'失敗',blocked:'受阻',cancelled:'已取消'};
+ $('workTasks').replaceChildren();text('workHealth',data.tasks.length?'最後回報如下（非逐字直播）':'沒有登記背景工作');
+ for(const t of data.tasks){const card=document.createElement('div');card.className='version';card.style.whiteSpace='pre-wrap';
+ card.textContent=t.title+' · '+(t.activity_unconfirmed?'活動未確認（最後回報 '+names[t.state]+'）':names[t.state])+'\n目前：'+t.current_step+'\n下一步：'+t.next_step+'\n最後更新：'+t.updated_at+'（'+Math.floor(t.update_age_seconds)+' 秒前）'+(t.evidence.length?'\n證據：'+t.evidence.join('、'):'\n證據：尚未登記');$('workTasks').appendChild(card);}
+}
+let workBusy=false;async function refreshWork(){if(workBusy)return;workBusy=true;const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const r=await fetch('/api/work',{cache:'no-store',signal:ctl.signal});if(!r.ok)throw Error('HTTP '+r.status);renderWork(await r.json());}catch(e){text('workHealth','工程狀態不可用 / 活動未確認：'+e.message);$('workTasks').replaceChildren();}finally{clearTimeout(timer);workBusy=false;}}
+function renderHealth(data){
+ if(data.available!==true||!Array.isArray(data.incidents)||!Array.isArray(data.pending_work)||typeof data.operational_healthy!=='boolean'||typeof data.health_stale!=='boolean')throw Error('健康狀態格式錯誤');
+ const unresolved=data.incidents.filter(i=>i.status!=='resolved');
+ text('opsHealth',data.health_stale?'監控過期／未確認，不推定健康':(!data.operational_healthy?'運行故障／待處理':(unresolved.length?'目前運行恢復，工程問題未結案':'目前檢查未見故障，不保證未來無錯誤')));
+ $('opsHealth').className='status '+(data.health_stale||!data.operational_healthy||unresolved.length?'bad':'');
+ $('opsIssues').replaceChildren();
+ const names={open:'未解／故障',recovered_monitoring:'恢復觀察（未結案）',resolved:'已明確驗證結案'};
+ for(const i of unresolved){const div=document.createElement('div');div.className='version';div.style.whiteSpace='pre-wrap';div.textContent=i.id+' · '+names[i.status]+'\n'+(i.message??'')+'\n首次偵測 '+i.first_seen+' · 最後觀察 '+i.last_observed+'\n最後錯誤：'+(i.last_error??'沒有記錄')+'\n修復工作：'+(i.linked_task_id??'尚未連結（不表示已派工）');$('opsIssues').appendChild(div);}
+ if(!unresolved.length){const div=document.createElement('div');div.textContent='未解事件 '+unresolved.length+' · '+Object.values(data.faults??{}).join('、');$('opsIssues').appendChild(div);}
+ text('opsLimit','監控檢查 '+(data.checked_at??'未確認')+'。'+(data.service_restart_limitation??'')+'。連續三次恢復觀察不是根因修復。已完成工程只表示歷史驗收，不保證未來資料無故障。');
+}
+let healthBusy=false;async function refreshHealth(){if(healthBusy)return;healthBusy=true;const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const r=await fetch('/api/health',{cache:'no-store',signal:ctl.signal});if(!r.ok)throw Error('HTTP '+r.status);renderHealth(await r.json());}catch(e){text('opsHealth','健康不可用／未確認：'+e.message);$('opsHealth').className='status bad';$('opsIssues').replaceChildren();}finally{clearTimeout(timer);healthBusy=false;}}
+refreshHealth();setInterval(refreshHealth,5000);
+refresh();setInterval(refresh,5000);
+if(typeof window!=='undefined'){refreshWork();setInterval(refreshWork,5000);}
+</script></body></html>

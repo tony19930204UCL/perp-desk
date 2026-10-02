@@ -1,0 +1,67 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/chihcheng/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python
+cachedir: .pytest_cache
+rootdir: /home/chihcheng/.hermes/profiles/perp-desk/repo_sync
+plugins: platformdirs-4.12.2, anyio-4.15.1
+collecting ... collected 1 item
+
+tests/test_review_sync.py::ReviewSyncTests::test_scanner_failure_new_unstaged_file_removed_next_snapshot_converges FAILED [100%]
+
+=================================== FAILURES ===================================
+_ ReviewSyncTests.test_scanner_failure_new_unstaged_file_removed_next_snapshot_converges _
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_scanner_failure_new_unstaged_file_removed_next_snapshot_converges>
+
+    def test_scanner_failure_new_unstaged_file_removed_next_snapshot_converges(self):
+        import review_sync as m
+        import json,subprocess
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);repo,remote,pub=self.local_fixture(root)
+            before=m.git(repo,'rev-parse','HEAD').stdout.strip()
+            ledger=root/'.repo.review-sync/state.json';failed=[]
+            def fail(path):
+                failed.append(path)
+                self.assertTrue((path/'lab/transient.py').is_file())
+                self.assertNotIn('lab/transient.py',m.git(path,'ls-files','-z').stdout.split('\0'))
+                raise m.Blocked('scanner transient failure')
+            with self.assertRaisesRegex(m.Blocked,'scanner transient failure'):
+                pub({'lab/a.py':b'print(2)\n','lab/transient.py':b'transient\n'},scan=fail)
+            self.assertEqual(failed,[repo])
+            self.assertIn('lab/transient.py',json.loads(ledger.read_text())['pending_owned'])
+            self.assertEqual(m.git(repo,'rev-parse','HEAD').stdout.strip(),before)
+            read_remote=lambda:subprocess.run(['git','--git-dir',str(remote),'rev-parse','refs/heads/main'],check=True,capture_output=True,text=True).stdout.strip()
+            self.assertEqual(read_remote(),before)
+>           result=pub({'lab/a.py':b'print(2)\n'})
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_review_sync.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+review_sync.py:180: in publish
+    return publish_locked(files,repository,remote_url,scan,state_dir/'state.json')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+review_sync.py:240: in publish_locked
+    git(repository,'--literal-pathspecs','add','--all','--',*sorted(owned))
+review_sync.py:132: in git
+    return run(['git','-c','core.hooksPath=/dev/null','-c','commit.gpgsign=false',
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ['git', '-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', '-c', ...]
+cwd = PosixPath('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmpbl5q1hbt/repo')
+check = True
+
+    def run(args,cwd=None,check=True):
+        def execute(directory_fd=None):
+            return subprocess.run(args,cwd=('/proc/self/fd/'+str(directory_fd)) if directory_fd is not None else None,
+                                  pass_fds=(directory_fd,) if directory_fd is not None else (),
+                                  capture_output=True,text=True,timeout=90,env=controlled_env(),umask=0o077)
+        if cwd is None:result=execute()
+        else:
+            with directory(cwd) as fd:result=execute(fd)
+        if check and result.returncode:
+>           raise Blocked('command failed: '+Path(args[0]).name+' '+args[1]+' (exit '+str(result.returncode)+')')
+E           review_sync.Blocked: command failed: git -c (exit 128)
+
+review_sync.py:109: Blocked
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_scanner_failure_new_unstaged_file_removed_next_snapshot_converges
+============================== 1 failed in 14.27s ==============================

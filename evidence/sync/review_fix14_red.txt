@@ -1,0 +1,57 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ ReviewSyncTests.test_exporter_owned_staged_commit_failure_retries_but_unknown_stage_blocks _
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_exporter_owned_staged_commit_failure_retries_but_unknown_stage_blocks>
+
+    def test_exporter_owned_staged_commit_failure_retries_but_unknown_stage_blocks(self):
+        import review_sync as m
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            repo,remote,pub=self.local_fixture(Path(td));real_git=m.git
+            def fail_commit(repository,*args,**kwargs):
+                if args[0]=='commit':raise m.Blocked('transient commit failure')
+                return real_git(repository,*args,**kwargs)
+            with patch.object(m,'git',fail_commit):
+                with self.assertRaises(m.Blocked):pub({'lab/a.py':b'print(2)\n'})
+            self.assertTrue(m.git(repo,'diff','--cached','--name-only').stdout)
+>           self.assertEqual(pub({'lab/a.py':b'print(3)\n'})['state'],'pushed')
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_review_sync.py:31: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+review_sync.py:144: in publish
+    return publish_locked(files,repository,remote_url,scan,state_dir/'state.json')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+files = {'lab/a.py': b'print(3)\n'}
+repository = PosixPath('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmpu161b2pw/repo')
+remote_url = '/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmpu161b2pw/remote.git'
+scan = <function ReviewSyncTests.local_fixture.<locals>.<lambda> at 0x7b13dab37530>
+state_path = PosixPath('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmpu161b2pw/.repo.review-sync/state.json')
+
+    def publish_locked(files,repository,remote_url,scan,state_path):
+        ledger=json.loads(read_bytes(state_path,missing=True) or b'{}')
+        if ledger and ledger.get('remote')!=remote_url:raise Blocked('ownership state remote mismatch')
+        if not (repository/'.git').exists():
+            repository.mkdir(parents=True,exist_ok=True)
+            git(repository,'init','--initial-branch=main')
+            git(repository,'config','user.name','Perp Desk Auto Sync')
+            git(repository,'config','user.email','perp-desk-sync@users.noreply.github.com')
+            git(repository,'config','commit.gpgsign','false')
+            git(repository,'config','core.hooksPath','/dev/null')
+            git(repository,'remote','add','origin',remote_url)
+        validate_git_config(repository)
+        for args in [('remote','get-url','--all','origin'),('remote','get-url','--push','--all','origin')]:
+            if git(repository,*args).stdout.splitlines()!=[remote_url]:raise Blocked('unexpected fetch/push remote URL')
+        if git(repository,'branch','--show-current').stdout.strip()!='main':raise Blocked('unexpected mirror branch')
+        staged=git(repository,'diff','--cached','--name-only','-z').stdout
+>       if staged:raise Blocked('pre-existing staged changes require manual review')
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       review_sync.Blocked: pre-existing staged changes require manual review
+
+review_sync.py:181: Blocked
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_exporter_owned_staged_commit_failure_retries_but_unknown_stage_blocks
+1 failed in 2.68s

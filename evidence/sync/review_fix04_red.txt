@@ -1,0 +1,47 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__ ReviewSyncTests.test_inherited_git_environment_cannot_redirect_or_execute ___
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_inherited_git_environment_cannot_redirect_or_execute>
+
+    def test_inherited_git_environment_cannot_redirect_or_execute(self):
+        import os,subprocess
+        import review_sync as m
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);repo,remote,pub=self.local_fixture(root)
+            marker=root/'executed';global_config=root/'global'
+            global_config.write_text('[core]\n hooksPath = '+str(root/'hooks')+'\n')
+            hooks=root/'hooks';hooks.mkdir();hook=hooks/'pre-commit'
+            hook.write_text('#!/bin/sh\ntouch '+str(marker)+'\n');hook.chmod(0o755)
+            env={'GIT_DIR':str(root/'wrong.git'),'GIT_WORK_TREE':str(root/'wrong'),
+                 'GIT_INDEX_FILE':str(root/'wrong-index'),'GIT_CONFIG_GLOBAL':str(global_config),
+                 'GIT_CONFIG_COUNT':'1','GIT_CONFIG_KEY_0':'core.hooksPath','GIT_CONFIG_VALUE_0':str(hooks),
+                 'GIT_CONFIG_PARAMETERS':"'core.hooksPath='+str(hooks)+'\"",'GIT_TEMPLATE_DIR':str(hooks)}
+            with patch.dict(os.environ,env):
+>               result=pub({'lab/a.py':b'print(2)\n'})
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_review_sync.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+review_sync.py:85: in publish
+    validate_git_config(repository)
+review_sync.py:47: in validate_git_config
+    result=run(['git','config','--file',str(config),'--no-includes','--null','--list'])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ['git', 'config', '--file', '/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmpo2c9o2ft/repo/.git/config', '--no-includes', '--null', ...]
+cwd = None, check = True
+
+    def run(args,cwd=None,check=True):
+        result=subprocess.run(args,cwd=cwd,capture_output=True,text=True,timeout=90,
+                              env=dict(os.environ,GIT_TERMINAL_PROMPT='0'))
+        if check and result.returncode:
+>           raise Blocked('command failed: '+Path(args[0]).name+' '+args[1]+' (exit '+str(result.returncode)+')')
+E           review_sync.Blocked: command failed: git config (exit 128)
+
+review_sync.py:37: Blocked
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_inherited_git_environment_cannot_redirect_or_execute
+1 failed in 1.91s

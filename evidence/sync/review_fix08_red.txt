@@ -1,0 +1,23 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____ ReviewSyncTests.test_exact_reviewed_lab_failure_evidence_is_exported _____
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_exact_reviewed_lab_failure_evidence_is_exported>
+
+    def test_exact_reviewed_lab_failure_evidence_is_exported(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            names=('freshness_actual_failure.json','v2_timestamp_failure_actual.json','unreviewed.json')
+            for name in names:
+                p=root/'lab/evidence'/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('{"failure":true}')
+            files=m.collect(root)
+>           self.assertEqual(set(files),{'lab/evidence/'+name for name in names[:2]})
+E           AssertionError: Items in the second set but not the first:
+E           'lab/evidence/freshness_actual_failure.json'
+E           'lab/evidence/v2_timestamp_failure_actual.json'
+
+tests/test_review_sync.py:28: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_exact_reviewed_lab_failure_evidence_is_exported
+1 failed in 0.02s

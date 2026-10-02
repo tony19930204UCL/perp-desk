@@ -1,0 +1,41 @@
+..........F...............                                               [100%]
+=================================== FAILURES ===================================
+____________ ReviewSyncTests.test_existing_hook_files_never_execute ____________
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_existing_hook_files_never_execute>
+
+    def test_existing_hook_files_never_execute(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);repo,remote,pub=self.local_fixture(root)
+            m.git(repo,'config','--unset','core.hooksPath')
+            marker=root/'executed';hook=repo/'.git/hooks/pre-commit';hook.parent.mkdir(exist_ok=True)
+            hook.write_text('#!/bin/sh\ntouch '+str(marker)+'\n');hook.chmod(0o755)
+>           pub({'lab/a.py':b'print(2)\n'})
+
+tests/test_review_sync.py:56: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+review_sync.py:175: in publish
+    return publish_locked(files,repository,remote_url,scan,state_dir/'state.json')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+review_sync.py:207: in publish_locked
+    check_private_tree(repository/'.git')
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = PosixPath('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmp52o3ueh4/repo/.git')
+
+    def check_private_tree(path):
+        """Locking assumes same-uid processes cooperate; refuse other writable owners."""
+        with directory(path) as fd:
+            info=os.fstat(fd)
+            if info.st_uid!=os.getuid() or info.st_mode&0o022:raise Blocked('unsafe Git directory ownership/permissions')
+            for name in os.listdir(fd):
+                entry=os.stat(name,dir_fd=fd,follow_symlinks=False)
+>               if entry.st_uid!=os.getuid() or entry.st_mode&0o022:raise Blocked('unsafe Git entry permissions')
+                                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               review_sync.Blocked: unsafe Git entry permissions
+
+review_sync.py:115: Blocked
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_existing_hook_files_never_execute
+1 failed, 25 passed in 157.70s (0:02:37)

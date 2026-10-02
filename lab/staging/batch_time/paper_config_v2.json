@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "mode": "paper",
+  "version_id": "H1-PAPER-002",
+  "risk_version": "PAPER-RISK-001",
+  "approved": true,
+  "approval_basis": "User explicitly authorized assistant to choose PAPER risk in current session; no live authorization.",
+  "initial_equity_usdt": "100",
+  "max_loss_per_trade_usdt": "1",
+  "max_daily_loss_usdt": "3",
+  "max_effective_exposure_x": "3",
+  "max_positions": 1,
+  "total_loss_limit_usdt": "10",
+  "stop_required": true,
+  "paper_leverage": "3",
+  "strategy": {
+    "symbol": "ETHUSDT",
+    "category": "crypto",
+    "interval_ms": 300000,
+    "prior_return_samples": 60,
+    "downside_sigma": "2",
+    "volume_multiple": "2",
+    "stop_distance_fraction": "0.005",
+    "take_profit_reference": "previous_closed_bar_close",
+    "max_holding_ms": 1800000,
+    "minimum_gross_reward_to_estimated_cost": "2",
+    "execution": "taker_only"
+  },
+  "execution_model": {
+    "latency_ms": 2000,
+    "poll_interval_seconds": 5,
+    "max_source_age_ms": 15000,
+    "gap_exit_after_ms": 60000,
+    "entry_slippage_ticks": 2,
+    "exit_slippage_ticks": 2,
+    "beyond_observed_depth": "reject",
+    "funding": "finalized_public_fundingRate_events_only",
+    "funding_refresh_seconds": 30
+  },
+  "fee_assumptions": {
+    "source": "User supplied AGENTS.md rates, not independently account/VIP verified",
+    "crypto": {
+      "maker": "0.0002",
+      "taker": "0.0005"
+    },
+    "TradFi": {
+      "maker": "0",
+      "taker": "0.0004"
+    }
+  },
+  "tradfi_activation": "disabled_until_verified_session_calendar",
+  "decision": {
+    "reason": "First establish honest forward execution and cost accounting before attempting aggressive sizing. One percent planned loss per entry with three percent UTC-day stop and ten percent total stop bounds planned, not guaranteed, losses. Leverage is a ceiling, not a target.",
+    "counterargument": "H1 mean reversion has no proven edge. Taker costs and information-driven continuation can dominate. The collector polls REST and cannot reconstruct tick-by-tick stop execution. Gaps can exceed all planned loss budgets.",
+    "evaluation": "New forward data only. No historical winner selection. Review after seven UTC days or thirty closed trades, whichever is later. Risk stops, data failures or accounting errors can halt earlier. Insufficient samples means unproven, not profitable."
+  },
+  "indicator_bootstrap": {
+    "bars": 61,
+    "source": "public_closed_contiguous_5m",
+    "performance": false,
+    "eligibility": "next_closed_bar_after_persisted_cutoff"
+  }
+}

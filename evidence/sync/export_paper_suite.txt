@@ -1,0 +1,208 @@
+test_cli_reads_same_snapshot_and_reports_missing_or_bad_file (test_brief.BriefTests.test_cli_reads_same_snapshot_and_reports_missing_or_bad_file) ... ok
+test_fresh_report_is_factual_eight_lines_with_decimal_precision (test_brief.BriefTests.test_fresh_report_is_factual_eight_lines_with_decimal_precision) ... ok
+test_missing_or_malformed_snapshot_is_explicit_and_fail_closed (test_brief.BriefTests.test_missing_or_malformed_snapshot_is_explicit_and_fail_closed) ... ok
+test_multiline_or_wrong_transport_metadata_is_malformed (test_brief.BriefTests.test_multiline_or_wrong_transport_metadata_is_malformed) ... ok
+test_ninety_second_old_data_is_not_reported_as_fresh (test_brief.BriefTests.test_ninety_second_old_data_is_not_reported_as_fresh) ... ok
+test_read_time_freshness_rejects_old_or_disconnected_feed (test_brief.BriefTests.test_read_time_freshness_rejects_old_or_disconnected_feed) ... ok
+test_api_failure_exports_stale_without_success_heartbeat (test_collector.CollectorTests.test_api_failure_exports_stale_without_success_heartbeat) ... ok
+test_continuous_loop_backs_off_and_recovers_without_fake_heartbeat (test_collector.CollectorTests.test_continuous_loop_backs_off_and_recovers_without_fake_heartbeat) ... ok
+test_exchange_reference_is_reused_until_daily_expiry (test_collector.CollectorTests.test_exchange_reference_is_reused_until_daily_expiry) ... ok
+test_fresh_forward_poll_persists_public_observations (test_collector.CollectorTests.test_fresh_forward_poll_persists_public_observations) ... ok
+test_initial_shadow_is_fail_closed (test_collector.CollectorTests.test_initial_shadow_is_fail_closed) ... ok
+test_invalid_market_values_fail_closed_using_decimal (test_collector.CollectorTests.test_invalid_market_values_fail_closed_using_decimal) ... ok
+test_live_metadata_filters_and_categories (test_collector.CollectorTests.test_live_metadata_filters_and_categories) ... ok
+test_observation_payload_digest_is_linked_to_audit (test_collector.CollectorTests.test_observation_payload_digest_is_linked_to_audit) ... ok
+test_once_cli_refuses_duplicate_collector_instance (test_collector.CollectorTests.test_once_cli_refuses_duplicate_collector_instance) ... ok
+test_polling_does_not_create_new_strategy_versions (test_collector.CollectorTests.test_polling_does_not_create_new_strategy_versions) ... ok
+test_public_transport_retries_without_secret_endpoints (test_collector.CollectorTests.test_public_transport_retries_without_secret_endpoints) ... ok
+test_restart_preserves_canonical_state_and_atomic_snapshot (test_collector.CollectorTests.test_restart_preserves_canonical_state_and_atomic_snapshot) ... ok
+test_restart_records_missed_heartbeat_without_resetting_forward_start (test_collector.CollectorTests.test_restart_records_missed_heartbeat_without_resetting_forward_start) ... ok
+test_stale_source_timestamps_cannot_make_success_heartbeat (test_collector.CollectorTests.test_stale_source_timestamps_cannot_make_success_heartbeat) ... ok
+test_storage_budget_stops_public_collection_without_deleting_history (test_collector.CollectorTests.test_storage_budget_stops_public_collection_without_deleting_history) ... ok
+test_cli_exposes_read_only_local_server_options (test_dashboard.DashboardTests.test_cli_exposes_read_only_local_server_options) ... usage: python3 -m unittest [-h] [--port PORT] [--status STATUS] [--html HTML]
+
+Local read-only paper snapshot dashboard; no exchange or broker access.
+
+options:
+  -h, --help       show this help message and exit
+  --port PORT
+  --status STATUS
+  --html HTML
+ok
+test_dashboard_asset_is_self_contained_and_labels_paper (test_dashboard.DashboardTests.test_dashboard_asset_is_self_contained_and_labels_paper) ... ok
+test_get_preserves_snapshot_and_reads_each_request (test_dashboard.DashboardTests.test_get_preserves_snapshot_and_reads_each_request) ... ok
+test_malformed_fields_do_not_render_as_valid_money (test_dashboard.DashboardTests.test_malformed_fields_do_not_render_as_valid_money) ... ok
+test_read_only_methods_and_paths_never_mutate_snapshot (test_dashboard.DashboardTests.test_read_only_methods_and_paths_never_mutate_snapshot) ... ok
+test_rejects_untrusted_host_or_origin (test_dashboard.DashboardTests.test_rejects_untrusted_host_or_origin) ... ok
+test_source_quotes_expire_even_if_heartbeat_is_new (test_dashboard.DashboardTests.test_source_quotes_expire_even_if_heartbeat_is_new) ... ok
+test_stale_snapshot_is_labeled_at_request_time (test_dashboard.DashboardTests.test_stale_snapshot_is_labeled_at_request_time) ... ok
+test_unavailable_snapshot_has_explicit_503_and_never_fakes_balance (test_dashboard.DashboardTests.test_unavailable_snapshot_has_explicit_503_and_never_fakes_balance) ... ok
+test_actual_delay_refreshes_real_inputs_before_decision (test_freshness.FreshnessTests.test_actual_delay_refreshes_real_inputs_before_decision) ... ERROR
+test_late_signal_after_candle_delay_is_rejected_not_backfilled (test_freshness.FreshnessTests.test_late_signal_after_candle_delay_is_rejected_not_backfilled) ... ok
+test_no_new_close_skips_klines_across_restart (test_freshness.FreshnessTests.test_no_new_close_skips_klines_across_restart) ... ok
+test_refreshed_sources_still_obey_arrival_latency_and_restart (test_freshness.FreshnessTests.test_refreshed_sources_still_obey_arrival_latency_and_restart) ... ok
+test_xau_failure_cannot_block_gap_exit_on_actual_eth_book (test_freshness.FreshnessTests.test_xau_failure_cannot_block_gap_exit_on_actual_eth_book) ... ok
+test_engineering_gate_bounded_wake_no_duplicate_active_repair (test_health_watchdog.HealthTests.test_engineering_gate_bounded_wake_no_duplicate_active_repair) ... ok
+test_error_rate_baseline_bounded_samples_and_counter_reset (test_health_watchdog.HealthTests.test_error_rate_baseline_bounded_samples_and_counter_reset) ... ok
+test_exact_process_identity_handles_actual_python_unbuffered_flag (test_health_watchdog.HealthTests.test_exact_process_identity_handles_actual_python_unbuffered_flag) ... ok
+test_explicit_tested_resolution_and_new_error_delivery (test_health_watchdog.HealthTests.test_explicit_tested_resolution_and_new_error_delivery) ... ok
+test_health_api_independent_freshness_security_and_invalid_data (test_health_watchdog.HealthTests.test_health_api_independent_freshness_security_and_invalid_data) ... ok
+test_missing_snapshot_cannot_be_healthy (test_health_watchdog.HealthTests.test_missing_snapshot_cannot_be_healthy) ... ok
+test_once_cli_reads_only_live_inputs_and_deduplicates_stdout (test_health_watchdog.HealthTests.test_once_cli_reads_only_live_inputs_and_deduplicates_stdout) ... ok
+test_parallel_watchers_preserve_links_and_concurrent_work_writers (test_health_watchdog.HealthTests.test_parallel_watchers_preserve_links_and_concurrent_work_writers) ... ok
+test_persistent_dedup_recovery_hysteresis_and_explicit_resolution (test_health_watchdog.HealthTests.test_persistent_dedup_recovery_hysteresis_and_explicit_resolution) ... ok
+test_ready_monitor_scripts_are_profile_bound_and_gate_is_script_only (test_health_watchdog.HealthTests.test_ready_monitor_scripts_are_profile_bound_and_gate_is_script_only) ... FAIL
+test_schema_identity_and_raw_timestamp_gates (test_health_watchdog.HealthTests.test_schema_identity_and_raw_timestamp_gates) ... ok
+test_ui_executes_fault_overview_even_when_all_jobs_completed (test_health_watchdog.HealthTests.test_ui_executes_fault_overview_even_when_all_jobs_completed) ... ok
+test_work_and_storage_are_independent_and_do_not_claim_execution (test_health_watchdog.HealthTests.test_work_and_storage_are_independent_and_do_not_claim_execution) ... ok
+test_book_depth_rejects_stale_crossed_and_nonfinite_sources (test_paper_market.MarketTests.test_book_depth_rejects_stale_crossed_and_nonfinite_sources) ... ok
+test_finalized_funding_is_available_only_through_public_get (test_paper_market.MarketTests.test_finalized_funding_is_available_only_through_public_get) ... ok
+test_finalized_funding_uses_exact_settlement_price_and_time (test_paper_market.MarketTests.test_finalized_funding_uses_exact_settlement_price_and_time) ... ok
+test_instrument_uses_exchange_filters_not_display_precision (test_paper_market.MarketTests.test_instrument_uses_exchange_filters_not_display_precision) ... ok
+test_mark_event_is_not_a_funding_settlement (test_paper_market.MarketTests.test_mark_event_is_not_a_funding_settlement) ... ok
+test_probe_exercises_normalizers_without_paper_trades (test_paper_market.MarketTests.test_probe_exercises_normalizers_without_paper_trades) ... ok
+test_api_reads_paper_and_nested_malformed_fields_fail_closed_without_server (test_paper_presentation.PaperPresentationTests.test_api_reads_paper_and_nested_malformed_fields_fail_closed_without_server) ... ok
+test_dashboard_accepts_proven_paper_positions_and_rejects_invalid_proof (test_paper_presentation.PaperPresentationTests.test_dashboard_accepts_proven_paper_positions_and_rejects_invalid_proof) ... ok
+test_exact_currency_invariants_fail_closed_but_net_fees_allow_positive_cash (test_paper_presentation.PaperPresentationTests.test_exact_currency_invariants_fail_closed_but_net_fees_allow_positive_cash) ... ok
+test_html_renders_actual_paper_positions_status_and_clears_invalid_data (test_paper_presentation.PaperPresentationTests.test_html_renders_actual_paper_positions_status_and_clears_invalid_data) ... ok
+test_optional_accounting_is_displayed_without_subtracting_costs_twice (test_paper_presentation.PaperPresentationTests.test_optional_accounting_is_displayed_without_subtracting_costs_twice) ... ok
+test_optional_market_history_money_and_unknown_categories_fail_closed (test_paper_presentation.PaperPresentationTests.test_optional_market_history_money_and_unknown_categories_fail_closed) ... ok
+test_paper_brief_reports_net_pnl_states_and_fails_closed (test_paper_presentation.PaperPresentationTests.test_paper_brief_reports_net_pnl_states_and_fails_closed) ... ok
+test_actual_funding_metadata_and_millisecond_settlement_preserved (test_paper_runtime.RuntimeTests.test_actual_funding_metadata_and_millisecond_settlement_preserved) ... ok
+test_broker_arrival_rejections_are_visible_in_snapshot (test_paper_runtime.RuntimeTests.test_broker_arrival_rejections_are_visible_in_snapshot) ... ok
+test_changed_funding_deadline_blocks_unverified_schedule (test_paper_runtime.RuntimeTests.test_changed_funding_deadline_blocks_unverified_schedule) ... ok
+test_corrupt_persisted_cash_cannot_become_fictitious_pnl (test_paper_runtime.RuntimeTests.test_corrupt_persisted_cash_cannot_become_fictitious_pnl) ... ok
+test_daily_total_halt_after_actual_fixture_gap_loss (test_paper_runtime.RuntimeTests.test_daily_total_halt_after_actual_fixture_gap_loss) ... ok
+test_exit_triggers_use_later_real_book_stop_takeprofit_maxhold (test_paper_runtime.RuntimeTests.test_exit_triggers_use_later_real_book_stop_takeprofit_maxhold) ... ok
+test_funding_missing_intermediate_slot_is_not_complete (test_paper_runtime.RuntimeTests.test_funding_missing_intermediate_slot_is_not_complete) ... ok
+test_gap_and_stale_inputs_fail_closed_cancel_pending_reset_warmup (test_paper_runtime.RuntimeTests.test_gap_and_stale_inputs_fail_closed_cancel_pending_reset_warmup) ... ok
+test_new_namespace_rejects_unimplemented_or_loosened_strategy (test_paper_runtime.RuntimeTests.test_new_namespace_rejects_unimplemented_or_loosened_strategy) ... ok
+test_once_cli_publishes_separate_valid_snapshot (test_paper_runtime.RuntimeTests.test_once_cli_publishes_separate_valid_snapshot) ... ok
+test_public_pipeline_warmup_restart_hash_lock (test_paper_runtime.RuntimeTests.test_public_pipeline_warmup_restart_hash_lock) ... ok
+test_quote_age_rechecked_after_slow_kline_request (test_paper_runtime.RuntimeTests.test_quote_age_rechecked_after_slow_kline_request) ... ok
+test_signal_delayed_entry_and_restart_exact_accounting (test_paper_runtime.RuntimeTests.test_signal_delayed_entry_and_restart_exact_accounting) ... ok
+test_nonfinite_unapproved_costly_or_below_filters_reject (test_paper_sizing.SizingTests.test_nonfinite_unapproved_costly_or_below_filters_reject) ... ok
+test_size_is_capped_by_full_cost_risk_and_exposure (test_paper_sizing.SizingTests.test_size_is_capped_by_full_cost_risk_and_exposure) ... ok
+test_actual_public_clock_skew_uses_real_delivery_time_not_forged_source (test_paper_v2.V2Tests.test_actual_public_clock_skew_uses_real_delivery_time_not_forged_source) ... ERROR
+test_bar_gap_requires_new_cutoff_context_only_rebuild (test_paper_v2.V2Tests.test_bar_gap_requires_new_cutoff_context_only_rebuild) ... ok
+test_bootstrap_ready_only_next_closed_bar_then_delayed_fill (test_paper_v2.V2Tests.test_bootstrap_ready_only_next_closed_bar_then_delayed_fill) ... ok
+test_exact_boundary_activation_still_waits_next_closed_bar (test_paper_v2.V2Tests.test_exact_boundary_activation_still_waits_next_closed_bar) ... ok
+test_failed_gap_bootstrap_does_not_block_position_reduction (test_paper_v2.V2Tests.test_failed_gap_bootstrap_does_not_block_position_reduction) ... ok
+test_historical_trigger_is_not_performance_or_intent (test_paper_v2.V2Tests.test_historical_trigger_is_not_performance_or_intent) ... ok
+test_parent_deployment_marker_persists_without_changing_account (test_paper_v2.V2Tests.test_parent_deployment_marker_persists_without_changing_account) ... ok
+test_preactivation_and_current_unclosed_never_intents (test_paper_v2.V2Tests.test_preactivation_and_current_unclosed_never_intents) ... ok
+test_reserved_live_namespace_refused_before_any_write (test_paper_v2.V2Tests.test_reserved_live_namespace_refused_before_any_write) ... ok
+test_restart_does_not_fetch_or_change_historical_baseline (test_paper_v2.V2Tests.test_restart_does_not_fetch_or_change_historical_baseline) ... ok
+test_stale_discontinuous_and_unclosed_history_fail_closed (test_paper_v2.V2Tests.test_stale_discontinuous_and_unclosed_history_fail_closed) ... ok
+test_all_exit_reasons_use_delayed_actual_book_under_staged_runtime (test_paper_v2.V2UnchangedContracts.test_all_exit_reasons_use_delayed_actual_book_under_staged_runtime) ... ok
+test_broker_arrival_rejections_are_visible_in_snapshot (test_paper_v2.V2UnchangedContracts.test_broker_arrival_rejections_are_visible_in_snapshot) ... ok
+test_changed_funding_deadline_blocks_unverified_schedule (test_paper_v2.V2UnchangedContracts.test_changed_funding_deadline_blocks_unverified_schedule) ... ok
+test_corrupt_persisted_cash_cannot_become_fictitious_pnl (test_paper_v2.V2UnchangedContracts.test_corrupt_persisted_cash_cannot_become_fictitious_pnl) ... ok
+test_frozen_config_rejects_relaxed_rule_risk_and_leverage (test_paper_v2.V2UnchangedContracts.test_frozen_config_rejects_relaxed_rule_risk_and_leverage) ... ok
+test_gap_cancels_unfilled_entry_before_resume_book (test_paper_v2.V2UnchangedContracts.test_gap_cancels_unfilled_entry_before_resume_book) ... ok
+test_quote_age_rechecked_after_slow_kline_request (test_paper_v2.V2UnchangedContracts.test_quote_age_rechecked_after_slow_kline_request) ... ok
+test_risk_halt_and_later_real_book_exit_persist_across_restart (test_paper_v2.V2UnchangedContracts.test_risk_halt_and_later_real_book_exit_persist_across_restart) ... ok
+test_ambient_decimal_context_cannot_change_signal_features (test_signals.SignalTests.test_ambient_decimal_context_cannot_change_signal_features) ... ok
+test_bar_metadata_is_validated_and_not_coerced_or_persisted (test_signals.SignalTests.test_bar_metadata_is_validated_and_not_coerced_or_persisted) ... ok
+test_bar_timestamps_closed_symbol_and_future_validation (test_signals.SignalTests.test_bar_timestamps_closed_symbol_and_future_validation) ... ok
+test_current_return_equal_threshold_does_not_trigger (test_signals.SignalTests.test_current_return_equal_threshold_does_not_trigger) ... ok
+test_current_volume_equal_threshold_does_not_trigger (test_signals.SignalTests.test_current_volume_equal_threshold_does_not_trigger) ... ok
+test_decimal_overflow_rejects_without_consuming_bar (test_signals.SignalTests.test_decimal_overflow_rejects_without_consuming_bar) ... ok
+test_duplicate_closed_bar_never_repeats_signal (test_signals.SignalTests.test_duplicate_closed_bar_never_repeats_signal) ... ok
+test_early_insufficient_60_prior_returns (test_signals.SignalTests.test_early_insufficient_60_prior_returns) ... ok
+test_features_reproduce_decision_from_frozen_decimal_snapshot (test_signals.SignalTests.test_features_reproduce_decision_from_frozen_decimal_snapshot) ... ok
+test_foreign_sqlite_namespace_is_rejected (test_signals.SignalTests.test_foreign_sqlite_namespace_is_rejected) ... ok
+test_gap_resets_warmup_without_interpolation (test_signals.SignalTests.test_gap_resets_warmup_without_interpolation) ... ok
+test_h1_long_research_intent (test_signals.SignalTests.test_h1_long_research_intent) ... ok
+test_ingest_integration_api_requires_matching_category (test_signals.SignalTests.test_ingest_integration_api_requires_matching_category) ... ok
+test_invalid_decimal_ohlcv_rejected_without_state_change (test_signals.SignalTests.test_invalid_decimal_ohlcv_rejected_without_state_change) ... ok
+test_new_version_needs_new_forward_warmup (test_signals.SignalTests.test_new_version_needs_new_forward_warmup) ... ok
+test_out_of_order_and_revised_bars_rejected (test_signals.SignalTests.test_out_of_order_and_revised_bars_rejected) ... ok
+test_registration_cannot_be_mutated_by_callers (test_signals.SignalTests.test_registration_cannot_be_mutated_by_callers) ... ok
+test_registration_is_immutable (test_signals.SignalTests.test_registration_is_immutable) ... ok
+test_registration_requires_explicit_category_and_utc (test_signals.SignalTests.test_registration_requires_explicit_category_and_utc) ... ok
+test_restart_restores_state_and_seen_signal_ids (test_signals.SignalTests.test_restart_restores_state_and_seen_signal_ids) ... ok
+test_self_check_cli_is_labeled_fixture_not_fills (test_signals.SignalTests.test_self_check_cli_is_labeled_fixture_not_fills) ... ok
+test_tradfi_requires_valid_open_session (test_signals.SignalTests.test_tradfi_requires_valid_open_session) ... ok
+test_adverse_reduce_closes_without_risk_with_realized_ledger (test_sim_broker.BrokerTests.test_adverse_reduce_closes_without_risk_with_realized_ledger) ... ok
+test_arrival_risk_checks_stop_loss_exit_cost_exposure_min_notional (test_sim_broker.BrokerTests.test_arrival_risk_checks_stop_loss_exit_cost_exposure_min_notional) ... ok
+test_artificial_selfcheck_callable_and_sim_only_interface (test_sim_broker.BrokerTests.test_artificial_selfcheck_callable_and_sim_only_interface) ... ok
+test_constructor_rejects_nonfinite_fees_filters_and_negative_models (test_sim_broker.BrokerTests.test_constructor_rejects_nonfinite_fees_filters_and_negative_models) ... ok
+test_daily_budget_reserves_existing_open_stop_losses (test_sim_broker.BrokerTests.test_daily_budget_reserves_existing_open_stop_losses) ... ok
+test_decimal_context_and_model_metadata_cannot_change_past_version (test_sim_broker.BrokerTests.test_decimal_context_and_model_metadata_cannot_change_past_version) ... ok
+test_depth_shortfall_reject_or_explicit_adverse_slippage (test_sim_broker.BrokerTests.test_depth_shortfall_reject_or_explicit_adverse_slippage) ... ok
+test_duplicate_intent_event_restart_lock_and_version_freeze (test_sim_broker.BrokerTests.test_duplicate_intent_event_restart_lock_and_version_freeze) ... ok
+test_equity_uses_mark_unrealized_daily_total_and_position_risk (test_sim_broker.BrokerTests.test_equity_uses_mark_unrealized_daily_total_and_position_risk) ... ok
+test_exact_finalized_funding_long_short_idempotent_boundaries (test_sim_broker.BrokerTests.test_exact_finalized_funding_long_short_idempotent_boundaries) ... ok
+test_explicit_entry_exit_fill_slippage_ticks_are_adverse (test_sim_broker.BrokerTests.test_explicit_entry_exit_fill_slippage_ticks_are_adverse) ... ok
+test_external_min_quantity_category_filters_and_fill_tags (test_sim_broker.BrokerTests.test_external_min_quantity_category_filters_and_fill_tags) ... ok
+test_incomplete_funding_blocks_entries_not_reductions (test_sim_broker.BrokerTests.test_incomplete_funding_blocks_entries_not_reductions) ... ok
+test_incomplete_risk_revoked_at_arrival_and_snapshot_return_not_mutable (test_sim_broker.BrokerTests.test_incomplete_risk_revoked_at_arrival_and_snapshot_return_not_mutable) ... ok
+test_incomplete_unapproved_nonfinite_contract_rejects (test_sim_broker.BrokerTests.test_incomplete_unapproved_nonfinite_contract_rejects) ... ok
+test_invalid_intent_filters_fail_closed (test_sim_broker.BrokerTests.test_invalid_intent_filters_fail_closed) ... ok
+test_invalid_public_events_are_atomic_pre_forward_out_of_order_conflicts (test_sim_broker.BrokerTests.test_invalid_public_events_are_atomic_pre_forward_out_of_order_conflicts) ... ok
+test_late_funding_close_boundary_conflicts_and_cancel_persist (test_sim_broker.BrokerTests.test_late_funding_close_boundary_conflicts_and_cancel_persist) ... ok
+test_maker_rechecks_funding_gate_before_partial_fill (test_sim_broker.BrokerTests.test_maker_rechecks_funding_gate_before_partial_fill) ... ok
+test_maker_strict_trade_through_queue_partial_fee (test_sim_broker.BrokerTests.test_maker_strict_trade_through_queue_partial_fee) ... ok
+test_mark_stop_only_gap_no_quote_no_fabricated_closure (test_sim_broker.BrokerTests.test_mark_stop_only_gap_no_quote_no_fabricated_closure) ... ok
+test_max_positions_and_aggregate_same_symbol_stop_risk (test_sim_broker.BrokerTests.test_max_positions_and_aggregate_same_symbol_stop_risk) ... ok
+test_missing_risk_rejects_opening_records_reason (test_sim_broker.BrokerTests.test_missing_risk_rejects_opening_records_reason) ... ok
+test_opposite_opening_position_limit_and_concurrent_depth_budget (test_sim_broker.BrokerTests.test_opposite_opening_position_limit_and_concurrent_depth_budget) ... ok
+test_parent_event_aliases_late_funding_after_close_exact_milliseconds (test_sim_broker.BrokerTests.test_parent_event_aliases_late_funding_after_close_exact_milliseconds) ... ok
+test_post_only_cross_unknown_queue_cancel_expiry_no_fill (test_sim_broker.BrokerTests.test_post_only_cross_unknown_queue_cancel_expiry_no_fill) ... ok
+test_postfill_exposure_reserves_immediate_adverse_mark_difference (test_sim_broker.BrokerTests.test_postfill_exposure_reserves_immediate_adverse_mark_difference) ... ok
+test_regular_and_special_funding_same_exact_timestamp_are_distinct (test_sim_broker.BrokerTests.test_regular_and_special_funding_same_exact_timestamp_are_distinct) ... ok
+test_restart_preserves_submission_fifo_not_lexical_ids (test_sim_broker.BrokerTests.test_restart_preserves_submission_fifo_not_lexical_ids) ... ok
+test_sell_maker_short_stop_negative_funding_and_source_time (test_sim_broker.BrokerTests.test_sell_maker_short_stop_negative_funding_and_source_time) ... ok
+test_stop_partial_depth_retries_and_no_overclose_after_manual_close (test_sim_broker.BrokerTests.test_stop_partial_depth_retries_and_no_overclose_after_manual_close) ... ok
+test_taker_waits_latency_consumes_depth_charges_each_fill (test_sim_broker.BrokerTests.test_taker_waits_latency_consumes_depth_charges_each_fill) ... ok
+test_triggered_stop_cancels_unfilled_opening_remainder (test_sim_broker.BrokerTests.test_triggered_stop_cancels_unfilled_opening_remainder) ... ok
+test_asset_shows_steps_and_separate_work_fetch_without_html_injection (test_work_status.WorkTests.test_asset_shows_steps_and_separate_work_fetch_without_html_injection) ... ok
+test_missing_invalid_and_security_fail_closed (test_work_status.WorkTests.test_missing_invalid_and_security_fail_closed) ... ok
+test_old_active_update_is_unconfirmed_not_completed (test_work_status.WorkTests.test_old_active_update_is_unconfirmed_not_completed) ... ok
+test_update_is_persistent_preserves_other_tasks_and_evidence (test_work_status.WorkTests.test_update_is_persistent_preserves_other_tasks_and_evidence) ... ok
+test_work_reads_independently_of_missing_market_snapshot (test_work_status.WorkTests.test_work_reads_independently_of_missing_market_snapshot) ... ok
+
+======================================================================
+ERROR: test_actual_delay_refreshes_real_inputs_before_decision (test_freshness.FreshnessTests.test_actual_delay_refreshes_real_inputs_before_decision)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/preflight/lab/tests/test_freshness.py", line 26, in test_actual_delay_refreshes_real_inputs_before_decision
+    actual=json.loads((LAB/'evidence/freshness_actual_failure.json').read_text())
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/chihcheng/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/chihcheng/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/preflight/lab/evidence/freshness_actual_failure.json'
+
+======================================================================
+ERROR: test_actual_public_clock_skew_uses_real_delivery_time_not_forged_source (test_paper_v2.V2Tests.test_actual_public_clock_skew_uses_real_delivery_time_not_forged_source)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/preflight/lab/tests/test_paper_v2.py", line 138, in test_actual_public_clock_skew_uses_real_delivery_time_not_forged_source
+    record=json.loads((LAB/'evidence/v2_timestamp_failure_actual.json').read_text())
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/chihcheng/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/pathlib/__init__.py", line 787, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/chihcheng/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/preflight/lab/evidence/v2_timestamp_failure_actual.json'
+
+======================================================================
+FAIL: test_ready_monitor_scripts_are_profile_bound_and_gate_is_script_only (test_health_watchdog.HealthTests.test_ready_monitor_scripts_are_profile_bound_and_gate_is_script_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/preflight/lab/tests/test_health_watchdog.py", line 37, in test_ready_monitor_scripts_are_profile_bound_and_gate_is_script_only
+    self.assertIn(str(ROOT),source)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+AssertionError: '/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/preflight/lab' not found in '"""Scheduler candidate: collect PAPER operational state, stdout only on change."""\nfrom pathlib import Path\nimport sys\nROOT=Path(\'/home/chihcheng/.hermes/profiles/perp-desk/lab\')\nsys.path.insert(0,str(ROOT))\nfrom health_watchdog import main\nif __name__==\'__main__\':\n    raise SystemExit(main([\'--once\']))\n'
+
+----------------------------------------------------------------------
+Ran 155 tests in 334.139s
+
+FAILED (failures=1, errors=2)

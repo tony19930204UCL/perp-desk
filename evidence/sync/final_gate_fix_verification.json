@@ -1,0 +1,127 @@
+{
+  "handle": "sa-0-e58c902e",
+  "state": "verifying",
+  "exporter_tests": 28,
+  "test_ids": [
+    "tests/test_review_sync.py::ReviewSyncTests::test_allowlisted_framework_only_no_runtime_or_credentials",
+    "tests/test_review_sync.py::ReviewSyncTests::test_atomic_mirror_provenance_deletes_only_owned_files",
+    "tests/test_review_sync.py::ReviewSyncTests::test_cli_runs_real_private_metadata_and_secret_scanner",
+    "tests/test_review_sync.py::ReviewSyncTests::test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment",
+    "tests/test_review_sync.py::ReviewSyncTests::test_crash_after_commit_recovers_only_exact_transaction_commit",
+    "tests/test_review_sync.py::ReviewSyncTests::test_docs_reject_nonallowlisted_names_before_read",
+    "tests/test_review_sync.py::ReviewSyncTests::test_entire_outgoing_tree_must_match_snapshot_bytes",
+    "tests/test_review_sync.py::ReviewSyncTests::test_erroneous_python_is_exported_as_raw_review_evidence",
+    "tests/test_review_sync.py::ReviewSyncTests::test_exact_reviewed_lab_failure_evidence_is_exported",
+    "tests/test_review_sync.py::ReviewSyncTests::test_existing_git_execution_config_is_rejected_before_scan",
+    "tests/test_review_sync.py::ReviewSyncTests::test_existing_hook_files_never_execute",
+    "tests/test_review_sync.py::ReviewSyncTests::test_export_rejects_symlinks_secrets_binary_and_oversize",
+    "tests/test_review_sync.py::ReviewSyncTests::test_exporter_owned_staged_commit_failure_retries_but_unknown_stage_blocks",
+    "tests/test_review_sync.py::ReviewSyncTests::test_filesystem_roots_and_manifest_symlinks_fail_before_io",
+    "tests/test_review_sync.py::ReviewSyncTests::test_flattened_evidence_collisions_fail_closed",
+    "tests/test_review_sync.py::ReviewSyncTests::test_framework_docs_automation_and_evidence_are_exported_without_status",
+    "tests/test_review_sync.py::ReviewSyncTests::test_git_directory_symlinks_rejected_before_config_read",
+    "tests/test_review_sync.py::ReviewSyncTests::test_inherited_git_environment_cannot_redirect_or_execute",
+    "tests/test_review_sync.py::ReviewSyncTests::test_mirror_parent_swap_before_read_or_delete_never_follows_symlink",
+    "tests/test_review_sync.py::ReviewSyncTests::test_pathspec_magic_is_staged_literally",
+    "tests/test_review_sync.py::ReviewSyncTests::test_production_url_is_bound_before_metadata_or_network",
+    "tests/test_review_sync.py::ReviewSyncTests::test_real_git_push_no_change_and_remote_divergence_fail_closed",
+    "tests/test_review_sync.py::ReviewSyncTests::test_scanner_failure_new_unstaged_file_removed_next_snapshot_converges",
+    "tests/test_review_sync.py::ReviewSyncTests::test_scanner_failure_preserves_deletions_for_retry",
+    "tests/test_review_sync.py::ReviewSyncTests::test_scheduled_tick_debounces_records_failures_and_recovers",
+    "tests/test_review_sync.py::ReviewSyncTests::test_secondary_push_url_is_rejected",
+    "tests/test_review_sync.py::ReviewSyncTests::test_tick_rejects_preexisting_symlinks_before_outside_io",
+    "tests/test_review_sync.py::ReviewSyncTests::test_unknown_descendant_history_is_never_published"
+  ],
+  "suite_log": "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/evidence/final_gate_fix_full_suite_final.txt",
+  "source_hashes": {
+    "review_sync.py": "cd7c798b89e9cb17712f38c73c0c82b10dd23beeb1f8d77b18458916c2800a7c",
+    "tests/test_review_sync.py": "5bccfef8adc3f4ca6aa2e5f9cd96aede6490b5c3e420027222be9a0b5528bec0"
+  },
+  "core_hashes_unchanged": {
+    "paper_runtime.py": "7e9a9a21e4dd93a9464429ffbde01e93d54322ee7c8d16ac8234a28f394d3b05",
+    "work_status.py": "f8e271a70331693b46cc09b4dd0a200aa90204c60d8462d214ebecc112948c47",
+    "perp_collector.py": "971148d36b45bb68157f8c04848fe1b35aa6259c9b2a3ca96ab5bfaa62cb6dea",
+    "signals_v2.py": "b76a70cceb780488c49706a9db6d62ee678a064d19b7145f42886f2245df0064",
+    "health_watchdog.py": "41191b12ccfff12e8996ebf1294d41da8c2a0b5a729f47ef60f6fe6d4555e9fb",
+    "paper_sizing.py": "a785860d01582a6189cbf5cbbb51bf7dda80dbca8ba952a6eae976891b92ffdc",
+    "sim_broker.py": "eafaf8831e1d13e14beb6fdb6cb57bb64dcf1d0b629535e068e006f0d2f03db5",
+    "signals.py": "c0ee60685631870eefcec12a855412e89fbd9c49ed7fb607f87a4ae941f45c7a",
+    "dashboard.py": "37644c9fb107196fbd3b7aee1bb121ad5dc684bc525dda115e6e882d25981a01",
+    "brief.py": "2fef164675bb750786d80d573da77e3169a3c79f8b585c2175bedd017d3053eb",
+    "paper_runtime_v2.py": "9efba1777f4cc2b7ed1c295c58cad9cf8a885fb10608cc9f22c22c1ec1e66288",
+    "paper_market.py": "31867ad2cb50c98847f24a92e1a7facafc366c02073384973bf56a5aba0e9ad8"
+  },
+  "installed_gitleaks_version": "8.30.1",
+  "scanner_calls": [
+    {
+      "kind": "dir",
+      "exit": 0,
+      "args": [
+        "/home/chihcheng/.local/bin/gitleaks",
+        "dir",
+        "/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/final-gate-export-9t4ayqic/export",
+        "--config",
+        "/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/review-scanner-0bs2jovm/policy.toml",
+        "--gitleaks-ignore-path",
+        "/dev/null",
+        "--redact",
+        "--no-banner",
+        "--ignore-gitleaks-allow"
+      ],
+      "stdout": "",
+      "stderr": "\u001b[90m2:03PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~2096325 bytes (2.10 MB) in 84.5ms\u001b[0m\n\u001b[90m2:03PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n"
+    },
+    {
+      "kind": "dir",
+      "exit": 0,
+      "args": [
+        "/home/chihcheng/.local/bin/gitleaks",
+        "dir",
+        "/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/final-gate-export-9t4ayqic/export",
+        "--config",
+        "/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/review-scanner-9eh_f6w8/policy.toml",
+        "--gitleaks-ignore-path",
+        "/dev/null",
+        "--redact",
+        "--no-banner",
+        "--ignore-gitleaks-allow"
+      ],
+      "stdout": "",
+      "stderr": "\u001b[90m2:03PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~2096325 bytes (2.10 MB) in 78.6ms\u001b[0m\n\u001b[90m2:03PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n"
+    },
+    {
+      "kind": "git",
+      "exit": 0,
+      "args": [
+        "/home/chihcheng/.local/bin/gitleaks",
+        "git",
+        "/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/final-gate-export-9t4ayqic/export",
+        "--config",
+        "/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/review-scanner-9eh_f6w8/policy.toml",
+        "--gitleaks-ignore-path",
+        "/dev/null",
+        "--redact",
+        "--no-banner",
+        "--ignore-gitleaks-allow",
+        "--log-opts=--all"
+      ],
+      "stdout": "",
+      "stderr": "\u001b[90m2:03PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUnknown SCM platform. Use --platform to include links in findings.\u001b[0m \u001b[36mhost=\u001b[0m\n\u001b[90m2:03PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1m1 commits scanned.\u001b[0m\n\u001b[90m2:03PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~2096325 bytes (2.10 MB) in 463ms\u001b[0m\n\u001b[90m2:03PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n"
+    }
+  ],
+  "isolated_export": "/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/final-gate-export-9t4ayqic/export",
+  "local_bare_remote": "/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/final-gate-export-9t4ayqic/remote.git",
+  "export_files": 206,
+  "fingerprint": "0c5839728ccea3c85470738dbad3daf36f3a3b608496a5682d261964efc43e0a",
+  "local_sha": "59e3faa0802bfe4aa301e28c33ba37efa40afb71",
+  "tree": "0c34541c5cbf32bf7d210172ec738d31b4c332a6",
+  "limitations": [
+    "No GitHub writes, schedules, deployment or trading/core source changes",
+    "Metadata lookup is an explicit test seam; local bare remote only",
+    "Actual production main scanner closure executed installed gitleaks against full collected export; collect callback returns frozen source snapshot",
+    "Same-UID hostile concurrent mutation remains outside scope",
+    "Scratch export is temporary; evidence and hashes are persistent",
+    "No new full trading/lab suite run; prior 155-test evidence not claimed as this run",
+    "Parent independent acceptance remains required"
+  ]
+}

@@ -1,0 +1,30 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ ReviewSyncTests.test_mirror_parent_swap_before_read_or_delete_never_follows_symlink _
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_mirror_parent_swap_before_read_or_delete_never_follows_symlink>
+
+    def test_mirror_parent_swap_before_read_or_delete_never_follows_symlink(self):
+        import review_sync as m
+        from unittest.mock import patch
+        for action in ('read','delete'):
+            with tempfile.TemporaryDirectory() as td:
+                root=Path(td);repo=root/'repo';outside=root/'outside';outside.mkdir()
+                m.mirror({'lab/a.py':b'pass\n'},repo)
+                victim=outside/'a.py';victim.write_bytes(b'private')
+                real=Path.is_symlink;triggered=[]
+                def swap(path):
+                    result=real(path)
+                    if path==repo/'lab' and not triggered:
+                        triggered.append(True);path.rename(repo/'moved');path.symlink_to(outside,target_is_directory=True)
+                        return False
+                    return result
+                with patch.object(Path,'is_symlink',swap):
+>                   with self.assertRaises(m.Blocked):m.mirror({'lab/a.py':b'print(2)\n'} if action=='read' else {},repo)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   AssertionError: Blocked not raised
+
+tests/test_review_sync.py:36: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_mirror_parent_swap_before_read_or_delete_never_follows_symlink
+1 failed in 0.08s

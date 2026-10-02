@@ -1,0 +1,62 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ ReviewSyncTests.test_crash_after_commit_recovers_only_exact_transaction_commit _
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_crash_after_commit_recovers_only_exact_transaction_commit>
+
+    def test_crash_after_commit_recovers_only_exact_transaction_commit(self):
+        import review_sync as m
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            repo,remote,pub=self.local_fixture(Path(td));real_git=m.git
+            def crash(repository,*args,**kwargs):
+                result=real_git(repository,*args,**kwargs)
+                if args[0]=='commit':raise m.Blocked('process interrupted after commit')
+                return result
+            with patch.object(m,'git',crash):
+                with self.assertRaises(m.Blocked):pub({'lab/a.py':b'print(2)\n'})
+            committed=m.git(repo,'rev-parse','HEAD').stdout.strip()
+>           result=pub({'lab/a.py':b'print(2)\n'})
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_review_sync.py:32: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+review_sync.py:144: in publish
+    return publish_locked(files,repository,remote_url,scan,state_dir/'state.json')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+files = {'lab/a.py': b'print(2)\n'}
+repository = PosixPath('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmph_3ep20l/repo')
+remote_url = '/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmph_3ep20l/remote.git'
+scan = <function ReviewSyncTests.local_fixture.<locals>.<lambda> at 0x763881636e50>
+state_path = PosixPath('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmph_3ep20l/.repo.review-sync/state.json')
+
+    def publish_locked(files,repository,remote_url,scan,state_path):
+        ledger=json.loads(read_bytes(state_path,missing=True) or b'{}')
+        if ledger and ledger.get('remote')!=remote_url:raise Blocked('ownership state remote mismatch')
+        if not (repository/'.git').exists():
+            repository.mkdir(parents=True,exist_ok=True)
+            git(repository,'init','--initial-branch=main')
+            git(repository,'config','user.name','Perp Desk Auto Sync')
+            git(repository,'config','user.email','perp-desk-sync@users.noreply.github.com')
+            git(repository,'config','commit.gpgsign','false')
+            git(repository,'config','core.hooksPath','/dev/null')
+            git(repository,'remote','add','origin',remote_url)
+        validate_git_config(repository)
+        for args in [('remote','get-url','--all','origin'),('remote','get-url','--push','--all','origin')]:
+            if git(repository,*args).stdout.splitlines()!=[remote_url]:raise Blocked('unexpected fetch/push remote URL')
+        if git(repository,'branch','--show-current').stdout.strip()!='main':raise Blocked('unexpected mirror branch')
+        staged=git(repository,'diff','--cached','--name-only','-z').stdout
+        if staged and (not ledger.get('pending_tree') or git(repository,'write-tree').stdout.strip()!=ledger['pending_tree']):
+            raise Blocked('pre-existing staged changes require manual review')
+        head_result=git(repository,'rev-parse','--verify','HEAD',check=False)
+        head=head_result.stdout.strip() if head_result.returncode==0 else None
+>       if head!=ledger.get('owned_head'):raise Blocked('unowned local history; manual review required')
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       review_sync.Blocked: unowned local history; manual review required
+
+review_sync.py:185: Blocked
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_crash_after_commit_recovers_only_exact_transaction_commit
+1 failed in 4.36s

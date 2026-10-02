@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/chihcheng/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python
+cachedir: .pytest_cache
+rootdir: /home/chihcheng/.hermes/profiles/perp-desk/repo_sync
+plugins: platformdirs-4.12.2, anyio-4.15.1
+collecting ... collected 2 items
+
+tests/test_review_sync.py::ReviewSyncTests::test_scanner_failure_new_unstaged_file_removed_next_snapshot_converges PASSED [ 50%]
+tests/test_review_sync.py::ReviewSyncTests::test_scanner_failure_preserves_deletions_for_retry PASSED [100%]
+
+============================== 2 passed in 48.27s ==============================

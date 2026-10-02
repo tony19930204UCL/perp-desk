@@ -1,0 +1,44 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______ ReviewSyncTests.test_docs_reject_nonallowlisted_names_before_read _______
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_docs_reject_nonallowlisted_names_before_read>
+
+    def test_docs_reject_nonallowlisted_names_before_read(self):
+        import review_sync as m
+        from unittest.mock import patch
+        for name in ('.env','credentials.txt','source_manifest.json','.gitleaks.toml',
+                     'lab/a.py','automation/review_sync.py','evidence/sync/test.txt','docs/random.pem'):
+            with tempfile.TemporaryDirectory() as td:
+                root=Path(td);p=root/'repo_sync/docs'/name;p.parent.mkdir(parents=True);p.write_text('credential material')
+                with patch.object(m,'safe_read',side_effect=AssertionError('must reject before read')):
+>                   with self.assertRaises(m.Blocked):m.collect(root)
+                                                      ^^^^^^^^^^^^^^^
+
+tests/test_review_sync.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+review_sync.py:275: in collect
+    if dest:files[dest]=safe_read(p,profile)
+                        ^^^^^^^^^^^^^^^^^^^^
+../../../tools/python-3.14.7+20260901-linux-x64/lib/python3.14/unittest/mock.py:1176: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../tools/python-3.14.7+20260901-linux-x64/lib/python3.14/unittest/mock.py:1180: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               AssertionError: must reject before read
+
+../../../tools/python-3.14.7+20260901-linux-x64/lib/python3.14/unittest/mock.py:1241: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_docs_reject_nonallowlisted_names_before_read
+1 failed in 0.07s

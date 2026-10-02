@@ -1,0 +1,23 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________ ReviewSyncTests.test_secondary_push_url_is_rejected ______________
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_secondary_push_url_is_rejected>
+
+    def test_secondary_push_url_is_rejected(self):
+        import subprocess
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);repo,remote,pub=self.local_fixture(root)
+            secondary=root/'secondary.git'
+            subprocess.run(['git','init','--bare',str(secondary)],check=True,capture_output=True)
+            for url in (remote,secondary):
+                subprocess.run(['git','config','--add','remote.origin.pushurl',str(url)],cwd=repo,check=True)
+>           with self.assertRaises(m.Blocked):pub({'lab/a.py':b'print(2)\n'})
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Blocked not raised
+
+tests/test_review_sync.py:29: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_secondary_push_url_is_rejected
+1 failed in 2.56s

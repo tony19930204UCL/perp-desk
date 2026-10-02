@@ -1,0 +1,15 @@
+test_git_uses_only_fixed_official_github_credential_helper (test_review_sync.ReviewSyncTests.test_git_uses_only_fixed_official_github_credential_helper) ... FAIL
+
+======================================================================
+FAIL: test_git_uses_only_fixed_official_github_credential_helper (test_review_sync.ReviewSyncTests.test_git_uses_only_fixed_official_github_credential_helper)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/tests/test_review_sync.py", line 19, in test_git_uses_only_fixed_official_github_credential_helper
+    self.assertIn(trusted,args)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+AssertionError: 'credential.https://github.com.helper=!/home/chihcheng/.local/bin/gh auth git-credential' not found in ['git', '-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', '-c', 'tag.gpgsign=false', '-c', 'core.fsmonitor=false', '-c', 'core.attributesFile=/dev/null', '-c', 'credential.helper=', '-c', 'init.templateDir=', '-c', 'core.autocrlf=false', '-c', 'core.safecrlf=false', '-c', 'core.filemode=false', 'version']
+
+----------------------------------------------------------------------
+Ran 1 test in 0.020s
+
+FAILED (failures=1)

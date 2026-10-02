@@ -1,0 +1,25 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__ ReviewSyncTests.test_existing_git_execution_config_is_rejected_before_scan __
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_existing_git_execution_config_is_rejected_before_scan>
+
+    def test_existing_git_execution_config_is_rejected_before_scan(self):
+        import subprocess
+        import review_sync as m
+        from unittest.mock import Mock
+        for key,value in (('core.hooksPath','/tmp/evil'),('filter.evil.clean','touch /tmp/evil'),
+                          ('include.path','/tmp/evil'),('core.worktree','/tmp/evil'),
+                          ('credential.helper','!touch /tmp/evil'),('url.file:///tmp/.insteadOf','https://github.com/')):
+            with tempfile.TemporaryDirectory() as td:
+                repo,remote,pub=self.local_fixture(Path(td))
+                subprocess.run(['git','config',key,value],cwd=repo,check=True)
+                scanner=Mock()
+>               with self.assertRaises(m.Blocked):pub({'lab/a.py':b'print(2)\n'},scan=scanner)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               AssertionError: Blocked not raised
+
+tests/test_review_sync.py:31: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_existing_git_execution_config_is_rejected_before_scan
+1 failed in 2.89s

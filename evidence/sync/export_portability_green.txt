@@ -1,0 +1,8 @@
+test_ready_monitor_scripts_are_profile_bound_and_gate_is_script_only (test_health_watchdog.HealthTests.test_ready_monitor_scripts_are_profile_bound_and_gate_is_script_only) ... ok
+test_actual_delay_refreshes_real_inputs_before_decision (test_freshness.FreshnessTests.test_actual_delay_refreshes_real_inputs_before_decision) ... ok
+test_actual_public_clock_skew_uses_real_delivery_time_not_forged_source (test_paper_v2.V2Tests.test_actual_public_clock_skew_uses_real_delivery_time_not_forged_source) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 2.392s
+
+OK

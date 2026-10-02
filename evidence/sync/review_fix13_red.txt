@@ -1,0 +1,47 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______ ReviewSyncTests.test_scanner_failure_preserves_deletions_for_retry ______
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_scanner_failure_preserves_deletions_for_retry>
+
+    def test_scanner_failure_preserves_deletions_for_retry(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            repo,remote,pub=self.local_fixture(Path(td))
+            pub({'lab/a.py':b'pass\n','lab/old.py':b'old\n'})
+            def fail(path):raise m.Blocked('scanner transient failure')
+            with self.assertRaises(m.Blocked):pub({'lab/a.py':b'print(2)\n'},scan=fail)
+            self.assertFalse((repo/'lab/old.py').exists())
+>           result=pub({'lab/a.py':b'print(2)\n'})
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_review_sync.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+review_sync.py:144: in publish
+    return publish_locked(files,repository,remote_url,scan,state_dir/'state.json')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+review_sync.py:194: in publish_locked
+    verify_tree(repository,git(repository,'write-tree').stdout.strip(),files)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+repository = PosixPath('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmpf7vuzany/repo')
+tree = '15c5b71c2550b72b4d805079c6259082cce4a8de'
+files = {'lab/a.py': b'print(2)\n'}
+
+    def verify_tree(repository,tree,files):
+        expected=dict(files)
+        expected['source_manifest.json']=manifest_bytes(files)
+        blobs={name:'100644 blob '+hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
+               for name,raw in expected.items()}
+        observed={}
+        for entry in git(repository,'ls-tree','-rz','--full-tree',tree).stdout.split('\0'):
+            if entry:
+                metadata,name=entry.split('\t',1);observed[name]=metadata
+>       if observed!=blobs:raise Blocked('entire outgoing tree differs from owned snapshot')
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       review_sync.Blocked: entire outgoing tree differs from owned snapshot
+
+review_sync.py:162: Blocked
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_scanner_failure_preserves_deletions_for_retry
+1 failed in 4.13s

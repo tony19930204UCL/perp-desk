@@ -1,0 +1,6 @@
+test_allowlisted_framework_only_no_runtime_or_credentials (test_review_sync.ReviewSyncTests.test_allowlisted_framework_only_no_runtime_or_credentials) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.003s
+
+OK

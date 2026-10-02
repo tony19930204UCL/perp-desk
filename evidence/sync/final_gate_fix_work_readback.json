@@ -1,0 +1,14 @@
+{
+  "id": "github-review-sync",
+  "started_at": "2026-10-02T07:46:44.353317+00:00",
+  "title": "Private review exporter second-gate fixes",
+  "state": "verifying",
+  "current_step": "sa-0-e58c902e: two vertical RED/GREEN fixes; 28/28 exporter IDs passed; production scanner closure with installed gitleaks 8.30.1 passed 2 dir + 1 history scans on 206-file isolated local export; 12 core hashes unchanged",
+  "next_step": "Parent independent acceptance and security review required; no GitHub writes or schedule/deploy changes performed",
+  "updated_at": "2026-10-02T12:04:48.152489+00:00",
+  "evidence": [
+    "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/evidence/final_gate_fix_verification.json",
+    "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/evidence/final_gate_fix_full_suite_final.txt",
+    "/home/chihcheng/.hermes/profiles/perp-desk/cache/delegation/live/deleg_6588793d/task-0.log"
+  ]
+}

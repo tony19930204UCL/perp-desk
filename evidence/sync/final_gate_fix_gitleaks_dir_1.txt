@@ -1,0 +1,4 @@
+version=8.30.1
+exit=0
+[90m2:03PM[0m [32mINF[0m [1mscanned ~2096325 bytes (2.10 MB) in 84.5ms[0m
+[90m2:03PM[0m [32mINF[0m [1mno leaks found[0m

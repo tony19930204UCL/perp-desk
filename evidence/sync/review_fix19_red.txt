@@ -1,0 +1,46 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___ ReviewSyncTests.test_git_directory_symlinks_rejected_before_config_read ____
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_git_directory_symlinks_rejected_before_config_read>
+
+    def test_git_directory_symlinks_rejected_before_config_read(self):
+        import review_sync as m
+        from unittest.mock import patch
+        for target in ('.git','.git/config','.git/refs/heads'):
+            with tempfile.TemporaryDirectory() as td:
+                root=Path(td);repo,remote,pub=self.local_fixture(root)
+                path=repo/target;backup=root/'original';path.rename(backup);path.symlink_to(backup,target_is_directory=backup.is_dir())
+                with patch.object(m,'validate_git_config',side_effect=AssertionError('unsafe config read')):
+>                   with self.assertRaises(m.Blocked):pub({'lab/a.py':b'print(2)\n'})
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_review_sync.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+review_sync.py:149: in publish
+    return publish_locked(files,repository,remote_url,scan,state_dir/'state.json')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+review_sync.py:181: in publish_locked
+    validate_git_config(repository)
+../../../tools/python-3.14.7+20260901-linux-x64/lib/python3.14/unittest/mock.py:1176: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../tools/python-3.14.7+20260901-linux-x64/lib/python3.14/unittest/mock.py:1180: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               AssertionError: unsafe config read
+
+../../../tools/python-3.14.7+20260901-linux-x64/lib/python3.14/unittest/mock.py:1241: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_git_directory_symlinks_rejected_before_config_read
+1 failed in 2.24s

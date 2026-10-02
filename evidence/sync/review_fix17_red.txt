@@ -1,0 +1,21 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________ ReviewSyncTests.test_existing_hook_files_never_execute ____________
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_existing_hook_files_never_execute>
+
+    def test_existing_hook_files_never_execute(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);repo,remote,pub=self.local_fixture(root)
+            m.git(repo,'config','--unset','core.hooksPath')
+            marker=root/'executed';hook=repo/'.git/hooks/pre-commit'
+            hook.write_text('#!/bin/sh\ntouch '+str(marker)+'\n');hook.chmod(0o755)
+            pub({'lab/a.py':b'print(2)\n'})
+>           self.assertFalse(marker.exists())
+E           AssertionError: True is not false
+
+tests/test_review_sync.py:28: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_existing_hook_files_never_execute
+1 failed in 4.00s

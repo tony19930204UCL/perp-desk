@@ -1,0 +1,19 @@
+test_allowlisted_framework_only_no_runtime_or_credentials (test_review_sync.ReviewSyncTests.test_allowlisted_framework_only_no_runtime_or_credentials) ... ok
+test_atomic_mirror_provenance_deletes_only_owned_files (test_review_sync.ReviewSyncTests.test_atomic_mirror_provenance_deletes_only_owned_files) ... ok
+test_export_rejects_symlinks_secrets_binary_and_oversize (test_review_sync.ReviewSyncTests.test_export_rejects_symlinks_secrets_binary_and_oversize) ... ok
+test_real_git_push_no_change_and_remote_divergence_fail_closed (test_review_sync.ReviewSyncTests.test_real_git_push_no_change_and_remote_divergence_fail_closed) ... ok
+test_scheduled_tick_debounces_records_failures_and_recovers (test_review_sync.ReviewSyncTests.test_scheduled_tick_debounces_records_failures_and_recovers) ... FAIL
+
+======================================================================
+FAIL: test_scheduled_tick_debounces_records_failures_and_recovers (test_review_sync.ReviewSyncTests.test_scheduled_tick_debounces_records_failures_and_recovers)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/tests/test_review_sync.py", line 11, in test_scheduled_tick_debounces_records_failures_and_recovers
+    self.assertTrue(hasattr(m,'tick'),'persistent scheduled tick missing')
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : persistent scheduled tick missing
+
+----------------------------------------------------------------------
+Ran 5 tests in 4.854s
+
+FAILED (failures=1)

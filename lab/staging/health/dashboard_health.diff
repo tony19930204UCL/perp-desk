@@ -1,0 +1,68 @@
+--- dashboard.py
++++ dashboard.py
+@@ -161,7 +161,34 @@
+                     or self.headers.get('Sec-Fetch-Site') == 'cross-site'):
+                 self.send(403, b'Forbidden', 'text/plain; charset=utf-8')
+                 return
+-            if self.path == '/api/work':
++            if self.path == '/api/health':
++                try:
++                    data = json.loads((status_path.parent / 'health_status.json').read_text())
++                    if (not isinstance(data, dict) or data.get('schema_version') != 1
++                            or data.get('available') is not True or data.get('mode') != 'paper'
++                            or type(data.get('operational_healthy')) is not bool
++                            or type(data.get('engineering_resolved')) is not bool
++                            or not isinstance(data.get('incidents'), list)
++                            or not isinstance(data.get('faults'), dict)
++                            or not isinstance(data.get('pending_work'), list)):
++                        raise ValueError('invalid health report')
++                    now = datetime.now(timezone.utc)
++                    health_age = age_seconds(data.get('checked_at'), now)
++                    if health_age is None or health_age < 0:
++                        raise ValueError('invalid or future health timestamp')
++                    for incident in data['incidents']:
++                        if (not isinstance(incident,dict) or incident.get('status') not in ('open','recovered_monitoring','resolved')
++                                or not isinstance(incident.get('id'),str)):
++                            raise ValueError('invalid incident')
++                    data['health_age_seconds'] = health_age
++                    data['health_stale'] = health_age > 180
++                    if data['health_stale']:
++                        data['operational_healthy'] = False
++                except (OSError, ValueError, UnicodeError, TypeError, KeyError, OverflowError):
++                    self.send(503, json.dumps({'available': False, 'operational_healthy': False, 'error': 'Health report unavailable or invalid'}).encode(), 'application/json; charset=utf-8')
++                    return
++                self.send(200, json.dumps(data).encode(), 'application/json; charset=utf-8')
++            elif self.path == '/api/work':
+                 from work_status import load_status
+                 try:
+                     data = load_status(status_path.parent / 'work_status.json')
+--- dashboard.html
++++ dashboard.html
+@@ -5,6 +5,7 @@
+ </style></head><body><main>
+ <header><div><h1>Perp Desk <span class="muted">/ 影子研究台</span></h1><small>Crypto + TradFi · 公開行情 · 唯讀介面</small></div><span class="badge">PAPER ONLY</span></header>
+ <div class="notice"><strong>100 USDT 是 PAPER 初始本金，不是實際 Binance 錢包餘額</strong><span id="modeNotice">尚未確認快照模式與引擎狀態。沒有讀取你的帳戶；本介面唯讀，實盤停用。</span></div>
++<section class="panel" style="margin-bottom:20px" aria-label="現在健康與未解問題"><h2>現在健康／未解問題</h2><div id="opsHealth" class="status bad" role="status">健康未確認。尚未讀取監控資料</div><div id="opsIssues"></div><div id="opsLimit" class="sub">監控候選介面，尚待父代理部署排程。工程已完成不代表運行沒有新故障。</div></section>
+ <div id="health" class="status" role="status">正在讀取快照，尚未確認資料有效</div>
+ <section class="panel" style="margin-bottom:20px" aria-label="背景工程工作"><h2>背景工作 / 下一步</h2><div id="workHealth" class="muted" role="status">正在讀取工程狀態</div><div id="workTasks"></div><div class="sub">工程進度與交易引擎分開。沒有更新不代表正在執行，超過 5 分鐘會標為活動未確認。下一步是計畫，不是已完成。</div></section>
+ <section class="cards" aria-label="影子帳戶資金">
+@@ -54,6 +55,19 @@
+  card.textContent=t.title+' · '+(t.activity_unconfirmed?'活動未確認（最後回報 '+names[t.state]+'）':names[t.state])+'\n目前：'+t.current_step+'\n下一步：'+t.next_step+'\n最後更新：'+t.updated_at+'（'+Math.floor(t.update_age_seconds)+' 秒前）'+(t.evidence.length?'\n證據：'+t.evidence.join('、'):'\n證據：尚未登記');$('workTasks').appendChild(card);}
+ }
+ let workBusy=false;async function refreshWork(){if(workBusy)return;workBusy=true;const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const r=await fetch('/api/work',{cache:'no-store',signal:ctl.signal});if(!r.ok)throw Error('HTTP '+r.status);renderWork(await r.json());}catch(e){text('workHealth','工程狀態不可用 / 活動未確認：'+e.message);$('workTasks').replaceChildren();}finally{clearTimeout(timer);workBusy=false;}}
++function renderHealth(data){
++ if(data.available!==true||!Array.isArray(data.incidents)||!Array.isArray(data.pending_work)||typeof data.operational_healthy!=='boolean'||typeof data.health_stale!=='boolean')throw Error('健康狀態格式錯誤');
++ const unresolved=data.incidents.filter(i=>i.status!=='resolved');
++ text('opsHealth',data.health_stale?'監控過期／未確認，不推定健康':(!data.operational_healthy?'運行故障／待處理':(unresolved.length?'目前運行恢復，工程問題未結案':'目前檢查未見故障，不保證未來無錯誤')));
++ $('opsHealth').className='status '+(data.health_stale||!data.operational_healthy||unresolved.length?'bad':'');
++ $('opsIssues').replaceChildren();
++ const names={open:'未解／故障',recovered_monitoring:'恢復觀察（未結案）',resolved:'已明確驗證結案'};
++ for(const i of unresolved){const div=document.createElement('div');div.className='version';div.style.whiteSpace='pre-wrap';div.textContent=i.id+' · '+names[i.status]+'\n'+(i.message??'')+'\n首次偵測 '+i.first_seen+' · 最後觀察 '+i.last_observed+'\n最後錯誤：'+(i.last_error??'沒有記錄')+'\n修復工作：'+(i.linked_task_id??'尚未連結（不表示已派工）');$('opsIssues').appendChild(div);}
++ if(!unresolved.length){const div=document.createElement('div');div.textContent='未解事件 '+unresolved.length+' · '+Object.values(data.faults??{}).join('、');$('opsIssues').appendChild(div);}
++ text('opsLimit','監控檢查 '+(data.checked_at??'未確認')+'。'+(data.service_restart_limitation??'')+'。連續三次恢復觀察不是根因修復。已完成工程只表示歷史驗收，不保證未來資料無故障。');
++}
++let healthBusy=false;async function refreshHealth(){if(healthBusy)return;healthBusy=true;const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const r=await fetch('/api/health',{cache:'no-store',signal:ctl.signal});if(!r.ok)throw Error('HTTP '+r.status);renderHealth(await r.json());}catch(e){text('opsHealth','健康不可用／未確認：'+e.message);$('opsHealth').className='status bad';$('opsIssues').replaceChildren();}finally{clearTimeout(timer);healthBusy=false;}}
++refreshHealth();setInterval(refreshHealth,5000);
+ refresh();setInterval(refresh,5000);
+ if(typeof window!=='undefined'){refreshWork();setInterval(refreshWork,5000);}
+ </script></body></html>

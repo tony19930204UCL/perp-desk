@@ -1,0 +1,9 @@
+test_allowlisted_framework_only_no_runtime_or_credentials (test_review_sync.ReviewSyncTests.test_allowlisted_framework_only_no_runtime_or_credentials) ... ok
+test_atomic_mirror_provenance_deletes_only_owned_files (test_review_sync.ReviewSyncTests.test_atomic_mirror_provenance_deletes_only_owned_files) ... ok
+test_export_rejects_symlinks_secrets_binary_and_oversize (test_review_sync.ReviewSyncTests.test_export_rejects_symlinks_secrets_binary_and_oversize) ... ok
+test_real_git_push_no_change_and_remote_divergence_fail_closed (test_review_sync.ReviewSyncTests.test_real_git_push_no_change_and_remote_divergence_fail_closed) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 3.349s
+
+OK

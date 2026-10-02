@@ -1,0 +1,17 @@
+{
+  "id": "github-review-sync",
+  "started_at": "2026-10-02T07:46:44.353317+00:00",
+  "title": "Private review exporter security verification",
+  "state": "verifying",
+  "current_step": "repo-export-resume-3020199: 26/26 exporter and 155/155 isolated lab tests passed, real gitleaks dir/history clean; artifact ready",
+  "next_step": "Parent independent acceptance and third-party review required before any upload; no push/timer/deploy authorized",
+  "updated_at": "2026-10-02T11:34:08.426076+00:00",
+  "evidence": [
+    "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/evidence/resume_verification.json",
+    "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/evidence/resume_exporter_suite.txt",
+    "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/evidence/resume_isolated_lab_suite.txt",
+    "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/evidence/resume_final_gitleaks_dir.txt",
+    "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/evidence/resume_final_gitleaks_git.txt",
+    "/home/chihcheng/.hermes/profiles/perp-desk/repo_sync/verified_export_resume.tar"
+  ]
+}

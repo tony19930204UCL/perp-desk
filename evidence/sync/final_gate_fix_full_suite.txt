@@ -1,0 +1,38 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/chihcheng/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python
+cachedir: .pytest_cache
+rootdir: /home/chihcheng/.hermes/profiles/perp-desk/repo_sync
+plugins: platformdirs-4.12.2, anyio-4.15.1
+collecting ... collected 28 items
+
+tests/test_review_sync.py::ReviewSyncTests::test_allowlisted_framework_only_no_runtime_or_credentials PASSED [  3%]
+tests/test_review_sync.py::ReviewSyncTests::test_atomic_mirror_provenance_deletes_only_owned_files PASSED [  7%]
+tests/test_review_sync.py::ReviewSyncTests::test_cli_runs_real_private_metadata_and_secret_scanner PASSED [ 10%]
+tests/test_review_sync.py::ReviewSyncTests::test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment PASSED [ 14%]
+tests/test_review_sync.py::ReviewSyncTests::test_crash_after_commit_recovers_only_exact_transaction_commit PASSED [ 17%]
+tests/test_review_sync.py::ReviewSyncTests::test_docs_reject_nonallowlisted_names_before_read PASSED [ 21%]
+tests/test_review_sync.py::ReviewSyncTests::test_entire_outgoing_tree_must_match_snapshot_bytes PASSED [ 25%]
+tests/test_review_sync.py::ReviewSyncTests::test_erroneous_python_is_exported_as_raw_review_evidence PASSED [ 28%]
+tests/test_review_sync.py::ReviewSyncTests::test_exact_reviewed_lab_failure_evidence_is_exported PASSED [ 32%]
+tests/test_review_sync.py::ReviewSyncTests::test_existing_git_execution_config_is_rejected_before_scan PASSED [ 35%]
+tests/test_review_sync.py::ReviewSyncTests::test_existing_hook_files_never_execute PASSED [ 39%]
+tests/test_review_sync.py::ReviewSyncTests::test_export_rejects_symlinks_secrets_binary_and_oversize PASSED [ 42%]
+tests/test_review_sync.py::ReviewSyncTests::test_exporter_owned_staged_commit_failure_retries_but_unknown_stage_blocks PASSED [ 46%]
+tests/test_review_sync.py::ReviewSyncTests::test_filesystem_roots_and_manifest_symlinks_fail_before_io PASSED [ 50%]
+tests/test_review_sync.py::ReviewSyncTests::test_flattened_evidence_collisions_fail_closed PASSED [ 53%]
+tests/test_review_sync.py::ReviewSyncTests::test_framework_docs_automation_and_evidence_are_exported_without_status PASSED [ 57%]
+tests/test_review_sync.py::ReviewSyncTests::test_git_directory_symlinks_rejected_before_config_read PASSED [ 60%]
+tests/test_review_sync.py::ReviewSyncTests::test_inherited_git_environment_cannot_redirect_or_execute PASSED [ 64%]
+tests/test_review_sync.py::ReviewSyncTests::test_mirror_parent_swap_before_read_or_delete_never_follows_symlink PASSED [ 67%]
+tests/test_review_sync.py::ReviewSyncTests::test_pathspec_magic_is_staged_literally PASSED [ 71%]
+tests/test_review_sync.py::ReviewSyncTests::test_production_url_is_bound_before_metadata_or_network PASSED [ 75%]
+tests/test_review_sync.py::ReviewSyncTests::test_real_git_push_no_change_and_remote_divergence_fail_closed PASSED [ 78%]
+tests/test_review_sync.py::ReviewSyncTests::test_scanner_failure_new_unstaged_file_removed_next_snapshot_converges PASSED [ 82%]
+tests/test_review_sync.py::ReviewSyncTests::test_scanner_failure_preserves_deletions_for_retry PASSED [ 85%]
+tests/test_review_sync.py::ReviewSyncTests::test_scheduled_tick_debounces_records_failures_and_recovers PASSED [ 89%]
+tests/test_review_sync.py::ReviewSyncTests::test_secondary_push_url_is_rejected PASSED [ 92%]
+tests/test_review_sync.py::ReviewSyncTests::test_tick_rejects_preexisting_symlinks_before_outside_io 
+tests/test_review_sync.py::ReviewSyncTests::test_tick_rejects_preexisting_symlinks_before_outside_io PASSED [ 96%]
+tests/test_review_sync.py::ReviewSyncTests::test_unknown_descendant_history_is_never_published PASSED [100%]
+
+============== 28 passed, 3 subtests passed in 214.94s (0:03:34) ===============

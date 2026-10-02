@@ -1,0 +1,23 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____ ReviewSyncTests.test_entire_outgoing_tree_must_match_snapshot_bytes ______
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_entire_outgoing_tree_must_match_snapshot_bytes>
+
+    def test_entire_outgoing_tree_must_match_snapshot_bytes(self):
+        import review_sync as m
+        for mutation in ('owned','unowned'):
+            with tempfile.TemporaryDirectory() as td:
+                repo,remote,pub=self.local_fixture(Path(td));before=m.git(repo,'rev-parse','HEAD').stdout.strip()
+                def scanner(path):
+                    if mutation=='owned':(path/'lab/a.py').write_text('not the source bytes')
+                    else:
+                        (path/'private.txt').write_text('not owned');m.git(path,'add','private.txt')
+>               with self.assertRaises(m.Blocked):pub({'lab/a.py':b'print(2)\n'},scan=scanner)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               AssertionError: Blocked not raised
+
+tests/test_review_sync.py:29: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_entire_outgoing_tree_must_match_snapshot_bytes
+1 failed in 2.77s

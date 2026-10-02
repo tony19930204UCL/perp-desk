@@ -1,0 +1,8 @@
+test_allowlisted_framework_only_no_runtime_or_credentials (test_review_sync.ReviewSyncTests.test_allowlisted_framework_only_no_runtime_or_credentials) ... ok
+test_atomic_mirror_provenance_deletes_only_owned_files (test_review_sync.ReviewSyncTests.test_atomic_mirror_provenance_deletes_only_owned_files) ... ok
+test_export_rejects_symlinks_secrets_binary_and_oversize (test_review_sync.ReviewSyncTests.test_export_rejects_symlinks_secrets_binary_and_oversize) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.038s
+
+OK

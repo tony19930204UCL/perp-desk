@@ -1,0 +1,42 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- /home/chihcheng/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python
+cachedir: .pytest_cache
+rootdir: /home/chihcheng
+plugins: platformdirs-4.12.2, anyio-4.15.1
+collecting ... collected 1 item
+
+.hermes/profiles/perp-desk/repo_sync/tests/test_review_sync.py::ReviewSyncTests::test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment FAILED [100%]
+
+=================================== FAILURES ===================================
+_ ReviewSyncTests.test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment _
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment>
+
+    def test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment(self):
+        import review_sync as m
+        import os,json
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);repo,remote,pub=self.local_fixture(root)
+            (root/'lab').mkdir();(root/'lab/a.py').write_text('pass\n')
+            gh=root/'gh';gh.write_text('#!/usr/bin/env python3\nprint(\'{"private":true,"full_name":"owner/repo"}\')\n');gh.chmod(0o755)
+            log=root/'scanner-log';scanner=root/'scanner'
+            scanner.write_text('#!/usr/bin/env python3\nimport sys,json,os,pathlib\na=sys.argv[1:]\nr={"args":a,"cwd":os.getcwd(),"env":{k:v for k,v in os.environ.items() if k.startswith("GITLEAKS")}}\nif "--config" in a:r["config"]=pathlib.Path(a[a.index("--config")+1]).read_text()\nwith open('+repr(str(log))+',"a") as f:f.write(json.dumps(r)+"\\n")\n');scanner.chmod(0o755)
+            args=['--profile',str(root),'--repository',str(repo),'--remote',str(remote),'--owner-repo','owner/repo','--gh',str(gh),'--gitleaks',str(scanner),'--force']
+            original=m.publish
+            def local(*a,**kw):return original(*a,**kw,_test_remote=remote)
+            with patch.object(m,'publish',local),patch.dict(os.environ,{'GITLEAKS_CONFIG':'/evil','GITLEAKS_CONFIG_TOML':'[allowlist]\npaths=[".*"]'}):
+                self.assertEqual(m.main(args),0)
+            records=[json.loads(line) for line in log.read_text().splitlines()]
+            self.assertTrue(records)
+            for record in records:
+>               self.assertIn('--config',record['args']);self.assertIn('--gitleaks-ignore-path',record['args'])
+                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               AssertionError: '--gitleaks-ignore-path' not found in ['dir', '/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmp699ld02d/repo', '--config', '/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/review-scanner-ywb6ncyb/policy.toml', '--ignore-path', '/dev/null', '--redact', '--no-banner', '--ignore-gitleaks-allow']
+
+.hermes/profiles/perp-desk/repo_sync/tests/test_review_sync.py:78: AssertionError
+----------------------------- Captured stdout call -----------------------------
+{"checked_at": 1790940089.8795078, "files": 1, "fingerprint": "a812047f9f667f31ee585a7f7fe2a35a9876a9ff33676b48ccc4ab1eea80ef31", "last_success_at": 1790940089.8795078, "pending_fingerprint": "a812047f9f667f31ee585a7f7fe2a35a9876a9ff33676b48ccc4ab1eea80ef31", "pending_since": 1790940089.8795078, "sha": "05346e05191aa646d1c11b1a375336a55d1122ff", "state": "unchanged"}
+=========================== short test summary info ============================
+FAILED .hermes/profiles/perp-desk/repo_sync/tests/test_review_sync.py::ReviewSyncTests::test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment - AssertionError: '--gitleaks-ignore-path' not found in ['dir', '/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/tmp699ld02d/repo', '--config', '/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/review-scanner-ywb6ncyb/policy.toml', '--ignore-path', '/dev/null', '--redact', '--no-banner', '--ignore-gitleaks-allow']
+============================== 1 failed in 9.16s ===============================

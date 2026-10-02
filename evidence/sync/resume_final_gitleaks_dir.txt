@@ -1,0 +1,4 @@
+gitleaks=8.30.1
+exit=0
+[90m1:34PM[0m [32mINF[0m [1mscanned ~2685486 bytes (2.69 MB) in 70.3ms[0m
+[90m1:34PM[0m [32mINF[0m [1mno leaks found[0m

@@ -1,0 +1,24 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______ ReviewSyncTests.test_unknown_descendant_history_is_never_published ______
+
+self = <test_review_sync.ReviewSyncTests testMethod=test_unknown_descendant_history_is_never_published>
+
+    def test_unknown_descendant_history_is_never_published(self):
+        import subprocess
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            repo,remote,pub=self.local_fixture(Path(td))
+            before=m.git(repo,'rev-parse','HEAD').stdout.strip()
+            p=repo/'private.txt';p.write_text('out of scope')
+            m.git(repo,'add','private.txt');m.git(repo,'commit','-m','unowned intermediate')
+            m.git(repo,'rm','private.txt');m.git(repo,'commit','-m','hide unowned intermediate')
+            local=m.git(repo,'rev-parse','HEAD').stdout.strip()
+>           with self.assertRaises(m.Blocked):pub({'lab/a.py':b'print(2)\n'})
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: Blocked not raised
+
+tests/test_review_sync.py:30: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_review_sync.py::ReviewSyncTests::test_unknown_descendant_history_is_never_published
+1 failed in 3.62s
