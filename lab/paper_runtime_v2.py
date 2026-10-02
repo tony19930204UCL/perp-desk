@@ -289,12 +289,12 @@ class PaperRuntime:
         finally:
             self.audit(dict(type='source_clock_wait' if waited else 'source_validation',context=context,start_ms=start,validation_ms=now,end_ms=self.clock(),validation_monotonic_ms=self.monotonic()*1000,elapsed_monotonic_ms=(self.monotonic()-mono)*1000,wait_limit_ms=2000,outcome=outcome,error=error,sources=[dict(symbol=s,name=n,source_ms=t) for s,n,t in sources]))
 
-    def collect_markets(self, ref):
+    def collect_markets(self, ref, *, symbols=None, refresh_stale=True):
         markets=[]
         events=[]
         spec_eth=None
         age=self.config['execution_model']['max_source_age_ms']
-        for symbol, category in [('ETHUSDT','crypto'),('XAUUSDT','TradFi')]:
+        for symbol, category in (symbols if symbols is not None else [('ETHUSDT','crypto'),('XAUUSDT','TradFi')]):
             spec=instrument(ref,symbol,category,self.config['fee_assumptions'][category])
             ticker=self.fetch('/fapi/v1/ticker/bookTicker', {'symbol':symbol})
             depth=self.fetch('/fapi/v1/depth', {'symbol':symbol,'limit':20})
@@ -318,7 +318,24 @@ class PaperRuntime:
                 # ETH execution/risk delivery precedes unrelated XAU observation.
                 self.validate_sources(markets, 'ETH batch before broker delivery', allow_wait=True)
                 self.deliver_markets(markets, events, spec_eth)
-        # Validate the entire batch again at decision time, not merely receipt time.
+        # Unrelated observation requests may age an earlier, initially fresh quote.
+        # Refresh only affected symbols once with actual GETs, never retimestamp.
+        refreshed=set()
+        for _ in range(len(markets) if refresh_stale else 0):
+            now=self.clock()
+            aged=[(m['symbol'],m['category']) for m in markets
+                  if m['symbol'] not in refreshed and any(type(ts) is int and now-ts>age for ts in m['source_timestamps_ms'].values())]
+            if not aged:
+                break
+            self.audit(dict(type='batch_quote_refresh',at_ms=now,symbols=[s for s,c in aged],
+                            sources_before=[dict(symbol=m['symbol'],sources=m['source_timestamps_ms']) for m in markets]))
+            fresh, refreshed_spec=self.collect_markets(ref,symbols=aged,refresh_stale=False)
+            refreshed.update(s for s,c in aged)
+            replacements={m['symbol']:m for m in fresh}
+            markets=[replacements.get(m['symbol'],m) for m in markets]
+            if refreshed_spec is not None:
+                spec_eth=refreshed_spec
+        # Validate every source, including untouched observations, at decision.
         self.validate_sources(markets, 'batch before decision', allow_wait=True)
         return markets, spec_eth
     def deliver_markets(self, markets, events, spec_eth):

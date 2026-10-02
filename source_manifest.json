@@ -123,7 +123,7 @@
     "lab/SIM_BROKER_README.md": "691b60fecbebc803676748906efb581cef9947c1a29a7f297937a108dd08ce73",
     "lab/accept_learning_v3.py": "2853c08276d3be871e1041714ab152ea70db4adf2a478ce21384b40f7762588a",
     "lab/brief.py": "2fef164675bb750786d80d573da77e3169a3c79f8b585c2175bedd017d3053eb",
-    "lab/brief_learning_v3.py": "b6002d2965a585126d0264f746c013262a613511289cef28adce88714abb1420",
+    "lab/brief_learning_v3.py": "7816f402383fdfaa214735d273c3d3156b56e58c7835696f29360ba287698ea4",
     "lab/dashboard.html": "ece727968adf6be45ad1cb2f1ae8e97c7dbed690aeaefdaa9c3c7a1001a1d322",
     "lab/dashboard.py": "37644c9fb107196fbd3b7aee1bb121ad5dc684bc525dda115e6e882d25981a01",
     "lab/evidence/freshness_actual_failure.json": "0c38cb2ad3a590c2b84ba31c693123fb39f008f9c73650c514bc7023d7ffbda6",
@@ -135,7 +135,7 @@
     "lab/paper_market.py": "31867ad2cb50c98847f24a92e1a7facafc366c02073384973bf56a5aba0e9ad8",
     "lab/paper_migrate_v3.py": "8d246b1db15d1a7437df616b9cdd15471eeaf908601323e65bf8397b4cbc6e65",
     "lab/paper_runtime.py": "7e9a9a21e4dd93a9464429ffbde01e93d54322ee7c8d16ac8234a28f394d3b05",
-    "lab/paper_runtime_v2.py": "3a9ed8c4c135c6de88ec305602f6462253e5f0a2ae1c48018d095bad025baaa5",
+    "lab/paper_runtime_v2.py": "359782b42843e2f420c3f3843525547bb0d2dc93b76dad8fb97035ad7ee2f178",
     "lab/paper_runtime_v3.py": "c75b32cb966f06d12a90e48ee3154867a99e66b323a620c11786ffa5b56a2b2c",
     "lab/paper_sizing.py": "b74b5b38141f6dfd2d19bbc5da63d81ccdee93689678b2428606c9dfc07c553e",
     "lab/perp_collector.py": "971148d36b45bb68157f8c04848fe1b35aa6259c9b2a3ca96ab5bfaa62cb6dea",
@@ -227,13 +227,14 @@
     "lab/tests/test_paper_v2.py": "dc117a80b56951cea3b8867ed3cbfa71a6e087ae65ad89978393c3086918f446",
     "lab/tests/test_signals.py": "ba953c2c5989d9d48affddc0c3451fbe99e1f612389b01073424bb2efbcf03ac",
     "lab/tests/test_sim_broker.py": "26f56fed3cbf84176ee3076eaef304a4fb19978a87566b3fde64df956f06a1c5",
+    "lab/tests/test_v3_freshness_brief.py": "c1731b3d114e7f42caadcef46d5af7a3f6eb56be6beacd95feada1e65c7c1674",
     "lab/tests/test_work_status.py": "29a5d02f14ec577059806a6aab880a1ac686f4f01b8d34fd119375bc45053c94",
     "lab/work_status.py": "f8e271a70331693b46cc09b4dd0a200aa90204c60d8462d214ebecc112948c47",
     "scripts/paper_health_engineering_gate.py": "9c4bffd6b0e083d83e435945d7d521d72278aab80afcd8808f18d1b1ae9e9bc8",
     "scripts/paper_health_monitor.py": "c8425dbacbfa24a8a92b945f5560b1e9131e31e39536ba52ee3faf25e1e9a303",
     "scripts/paper_review_sync.py": "ad551e67f361cf4467cd372573362fb80eec68edbb881804bf78289b5f8642b6"
   },
-  "fingerprint": "f9913f1338a3620e9568b6d2c45244a5cbfb70f27efeed85b603bf604c9d1b41",
+  "fingerprint": "e6b9f67811ba7804b39023a57be7072c71297194552ef78a1232fdc5ab406ae2",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
