@@ -55,8 +55,7 @@ def validate_paper(data):
         raise ValueError('unapproved paper risk')
     _nonempty(risk.get('risk_version'))
     _hash(risk.get('risk_config_sha256'))
-    if decimal_value(data['initial_equity_usdt']) != Decimal('100'):
-        raise ValueError('unexpected initial paper equity')
+    decimal_value(data['initial_equity_usdt'], positive=True)
     initial, cash, equity, realized, unrealized, total = (
         decimal_value(data[name]) for name in ('initial_equity_usdt', 'cash_usdt',
             'equity_usdt', 'realized_pnl_usdt', 'unrealized_pnl_usdt', 'total_pnl_usdt'))
@@ -69,6 +68,9 @@ def validate_paper(data):
     for name in ('gross_realized_pnl_usdt', 'fees_usdt', 'funding_pnl_usdt'):
         if name in data:
             decimal_value(data[name])
+    if 'cost_ledger' in data:
+        from observer_analytics import reconcile_account
+        reconcile_account(data)
     for name in ('signals_count', 'fills_count', 'blocked_signals_count'):
         _counter(data.get(name))
     for name in ('warmup_received', 'warmup_required'):
@@ -78,9 +80,9 @@ def validate_paper(data):
         raise ValueError('invalid REST feed metadata')
     for name in ('errors_count', 'gaps_count'):
         _counter(data['feed'].get(name))
-    categories = {'ETHUSDT': 'crypto', 'XAUUSDT': 'TradFi'}
     for market in data['markets']:
-        if not isinstance(market, dict) or market.get('symbol') not in categories or categories[market['symbol']] != market.get('category'):
+        if (not isinstance(market, dict) or not isinstance(market.get('symbol'),str)
+                or not market['symbol'].strip() or market.get('category') not in ('crypto','TradFi')):
             raise ValueError('unsupported market category')
         for name in ('bid', 'ask', 'mark_price'):
             decimal_value(market.get(name), positive=True)
@@ -192,6 +194,8 @@ def make_server(port, status_path, html_path):
                         stamp = sources.get(endpoint)
                         if not isinstance(stamp, (int, float)) or not -5 <= now.timestamp() - stamp / 1000 <= 60:
                             data['feed_stale'] = True
+                from observer_analytics import analyze
+                data['observer'] = analyze(data, now_ms=int(now.timestamp()*1000))
                 self.send(200, json.dumps(data).encode(), 'application/json; charset=utf-8')
             elif self.path == '/':
                 self.send(200, html_path.read_bytes(), 'text/html; charset=utf-8')
