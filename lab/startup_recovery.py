@@ -97,6 +97,12 @@ def _read_sqlite(path,required_tables):
 
 def inspect_durable_state(cfg):
     """Read-only cold-recovery proof. Never initializes a missing namespace."""
+    if not cfg.state_dir.is_dir() or cfg.state_dir.is_symlink():
+        raise StartupBlocked('missing or unsafe configured state namespace')
+    if not cfg.runtime_root.is_dir() or cfg.runtime_root.is_symlink():
+        raise StartupBlocked('missing or unsafe runtime root')
+    if not cfg.monitor_root.is_dir() or cfg.monitor_root.is_symlink():
+        raise StartupBlocked('missing or unsafe monitor root')
     if not cfg.runtime_python.is_file():
         raise StartupBlocked('configured Python interpreter unavailable')
     for path,label in ((cfg.runtime_root/'paper_runtime_v3.py','runtime script'),
@@ -233,6 +239,9 @@ def run_supervisor(cfg,*,popen=subprocess.Popen,sleep=time.sleep,health=health_o
             rc=runtime.poll()
             if rc is not None:
                 if rc==2:
+                    try:health(cfg.monitor_root,runtime_root=cfg.runtime_root,
+                               state_dir=cfg.state_dir,status_path=cfg.status_path)
+                    except Exception:pass
                     return dict(state='operator-hold',reason='intentional-storage-stop',runtime_exit=rc,
                                 durable=check['durable'])
                 raise StartupBlocked('runtime failed during cold recovery; operator action required')
