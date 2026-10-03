@@ -248,7 +248,7 @@ class StartupRecoveryTests(unittest.TestCase):
             def popen(cmd,**kwargs):
                 child=self.Child([None]);children.append(child);return child
             result=m.run_supervisor(cfg,popen=popen,sleep=lambda _:None,
-                                    health=lambda *a,**k:{'operational_healthy':True},
+                                    health=lambda *a,**k:{'operational_healthy':True,'faults':{}},
                                     stop_requested=lambda:True)
             self.assertEqual(result['state'],'stopped-by-operator')
             self.assertEqual(before,{p.name:p.read_bytes() for p in fx['state'].iterdir() if p.is_file()})
