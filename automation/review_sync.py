@@ -367,7 +367,8 @@ def safe_read(path, profile):
 DOC_FILES={'README.md','AGENTS.md','.gitignore','.github/workflows/ci.yml',
            'docs/DEPLOYMENT_AND_GAPS.md','docs/AUTO_SYNC.md','docs/ARCHITECTURE.md',
            'docs/AI_REVIEW_GUIDE.md','docs/VERIFICATION.md','docs/HEALTH_V3_OPERATOR.md',
-           'docs/STORAGE_PROTECTION_V3.md','docs/STARTUP_RECOVERY_V3.md'}
+           'docs/STORAGE_PROTECTION_V3.md','docs/STARTUP_RECOVERY_V3.md',
+           'docs/SOURCE_TIMING_EVIDENCE.md'}
 
 SKIP_DIRS={'.git','__pycache__','data','shared','evidence','probe-data','probe-shared','cache','logs','sessions','node_modules'}
 
@@ -404,6 +405,7 @@ def collect(profile,*,visibility='private'):
             files['context/'+name]=raw
     scripts=list((profile/'scripts').glob('paper_health_*.py'))
     scripts += list((profile/'scripts').glob('paper_startup_*.py'))
+    scripts += list((profile/'scripts').glob('public_source_timing_probe.py'))
     sync_entry=profile/'scripts/paper_review_sync.py'
     if sync_entry.is_file():scripts.append(sync_entry)
     for p in scripts:

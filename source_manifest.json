@@ -1,11 +1,11 @@
 {
   "files": {
-    ".github/workflows/ci.yml": "ac9edbfdec79c1bbf6d6f0826af1254f28e6f32f34aab4ae864bb0f61dccabe2",
+    ".github/workflows/ci.yml": "1ecefd57b46262e502163c2f096af19d1e41e731a79e2d9ee4ca72b24b18e769",
     ".gitignore": "e49fe1b585b7bfea6a86ae02f17b24a0cefc3f01b55300f481e6e1f37c791632",
     "AGENTS.md": "4cb6f42aa5ec4263567a7dec156b86784ccc522d8a675572b62d23f711193525",
     "README.md": "29ca1ff35eaea818ea049842bc2640413bb8163037329b4c478390895b056a28",
-    "automation/review_sync.py": "b6c4b9b50379eb4c8b9824d72dea5d80446e77f1645b6d8fad51b1f145a84fb8",
-    "automation/tests/test_review_sync.py": "5889b3108037375bc32fe93739524785610ac8fac4d64d2f32c2fc05c43749f9",
+    "automation/review_sync.py": "892b6ea9d555d51710d570fe43f610cede193e07e8a604340114654c6a329b96",
+    "automation/tests/test_review_sync.py": "a79466054ddff17b632886bf6ceb56d6a10ca7fb0dce39980d31dac91291fe1c",
     "context/AGENTS.md": "8819cce379c3d60651b358467216b79a9e7118fd69aae82c3e7893d39de76056",
     "context/OPERATING_AGREEMENT.md": "b340382e6dbfa64defb007ffac3a6dcbe875abcf7172b93c78849b72ede62b0a",
     "context/SOUL.md": "9ce768eab674de124d940a2e4c4b7f81dbd99961fc2fdfa3450bae985a7f772a",
@@ -17,6 +17,7 @@
     "docs/AUTO_SYNC.md": "d4a02a00f38bdebc349cab54bdd86fd03a0e96f7169981aed22375fe9551accd",
     "docs/DEPLOYMENT_AND_GAPS.md": "9bcdfef909f6a4cf7c473ec3c35ac6fb084aee943475221422a5590117fba49c",
     "docs/HEALTH_V3_OPERATOR.md": "df5aaa4571afca2b4692c743535612ddae642448cd5b71e5bbbb805e3454ec77",
+    "docs/SOURCE_TIMING_EVIDENCE.md": "ad313dcd4ff67e9a36ead8685b866b8fe75dac56a2896ba3b1233e760cd0706d",
     "docs/STARTUP_RECOVERY_V3.md": "b88e098a18c7181ffd34d79083e709e921e5b3c39987fd1c1fa41a2255e143fd",
     "docs/STORAGE_PROTECTION_V3.md": "cb97fa2bf504a5d7d03d6b78d0bc6a933ace117adcaa47f572fd9c3bb1d951b2",
     "docs/VERIFICATION.md": "bd0d3efc82a88ddb4d3bdd53a6b9ab5dc62b7beacc641e6885b220eafc5c723f",
@@ -139,10 +140,10 @@
     "lab/paper_market.py": "31867ad2cb50c98847f24a92e1a7facafc366c02073384973bf56a5aba0e9ad8",
     "lab/paper_migrate_v3.py": "8d246b1db15d1a7437df616b9cdd15471eeaf908601323e65bf8397b4cbc6e65",
     "lab/paper_runtime.py": "7e9a9a21e4dd93a9464429ffbde01e93d54322ee7c8d16ac8234a28f394d3b05",
-    "lab/paper_runtime_v2.py": "359782b42843e2f420c3f3843525547bb0d2dc93b76dad8fb97035ad7ee2f178",
+    "lab/paper_runtime_v2.py": "a0ace2f6136455bfb8064a10fab2aa7e54b8829590b4e81619e098a9e0408334",
     "lab/paper_runtime_v3.py": "3299867303a4c38a6b8d41ea017d9057167191b89f08509c57ebe94a303c0fe8",
     "lab/paper_sizing.py": "b74b5b38141f6dfd2d19bbc5da63d81ccdee93689678b2428606c9dfc07c553e",
-    "lab/perp_collector.py": "971148d36b45bb68157f8c04848fe1b35aa6259c9b2a3ca96ab5bfaa62cb6dea",
+    "lab/perp_collector.py": "1392146a1c631506445023f1b88a779a13be2e606162a35f47b027ed349be076",
     "lab/signals.py": "c1598c372b836cb6d819585e5e8f8fdd947a1562e36954ccd62053fdafe489c1",
     "lab/signals_v2.py": "34bf560e47baf87ad85edc15b77f6c94fc14b90c1efffd19bff0af0139c6cedb",
     "lab/signals_v3.py": "e9e4bc74ea528b0cd566b86415cdf5c391458e8b2dffc9403148509c96a23892",
@@ -235,6 +236,7 @@
     "lab/tests/test_paper_v2.py": "dc117a80b56951cea3b8867ed3cbfa71a6e087ae65ad89978393c3086918f446",
     "lab/tests/test_signals.py": "ba953c2c5989d9d48affddc0c3451fbe99e1f612389b01073424bb2efbcf03ac",
     "lab/tests/test_sim_broker.py": "26f56fed3cbf84176ee3076eaef304a4fb19978a87566b3fde64df956f06a1c5",
+    "lab/tests/test_source_timing_evidence.py": "8ed546cc6bde7d6fd5f38edfa486821ff0d4e39cbb747ea8bc627c5d60cf0873",
     "lab/tests/test_startup_recovery.py": "37d464c6fb96b743665b91b583059bd8ce6254606c710447a7fe248c42e348b2",
     "lab/tests/test_storage_protection.py": "3a17ed49b5e82e8d5bf62849c4b5468a4faac08e1d93fa3a5234b2bb83fb1b3d",
     "lab/tests/test_v3_freshness_brief.py": "f841855a58a6050a05389346f02c2fc407c73ae60bd5f48d0d639775d247a971",
@@ -243,9 +245,10 @@
     "scripts/paper_health_engineering_gate.py": "7291eb2bdbe5b824e1ab557bf44d711cb5b221503e3980604bda5e7c2e57ee74",
     "scripts/paper_health_monitor.py": "bf9056927276b9285da80423aa3a1061d5a941ccb434bbb0905a0d54af2f1b45",
     "scripts/paper_review_sync.py": "0ea9ad5b8467afa45168d107bf4709597264ec713b4db37e4e544354e55c9e8c",
-    "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d"
+    "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
+    "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "a17f394d4ab46c95675b363226d2e6a2d42dc8d012b1c2f4cf88b44dd39dc6be",
+  "fingerprint": "6ea972c4a11a71ffaade559988bdd8a28e2d8766bf54866db9e8c9b0d2503223",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
