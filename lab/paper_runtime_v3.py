@@ -69,25 +69,61 @@ class PaperRuntime(BaseRuntime):
         return [o for o in self.broker.orders.values()
                 if not o['intent']['reduce_only'] and o['status'] in ('PENDING','RESTING')]
 
+    def _storage_exposed(self):
+        return bool(self.broker and (self.broker.positions or any(
+            o['intent']['reduce_only'] and o['status'] in ('PENDING','RESTING')
+            for o in self.broker.orders.values())))
+
+    def _storage_cancel_pending_entries(self,state):
+        pending=self._pending_entry_orders()
+        if not pending:
+            return state
+        if not state['exit_accounting_cycle_allowed']:
+            raise StorageProtectionHalt(
+                'pending entry cannot be durably canceled before further market delivery')
+        for order in pending:
+            self.broker.cancel(order['order_id'],ts=max(self.clock(),self.broker.last_ts))
+        state=self.storage_guard.observe()
+        self._storage_status=state
+        return state
+
+    def _storage_before_durable_runtime_write(self,context):
+        if not self.storage_guard:
+            return None
+        state=self.storage_guard.observe()
+        self._storage_status=state
+        if state['new_risk_allowed']:
+            return state
+        if self._storage_exposed() and state['exit_accounting_cycle_allowed']:
+            return state
+        raise StorageProtectionHalt(
+            context+': storage protection refuses further non-exit durable growth; '+','.join(state['reasons']))
+
+    def audit(self,event):
+        if self.storage_guard:
+            self._storage_before_durable_runtime_write('runtime audit')
+        return super().audit(event)
+
+    def emit(self,event):
+        if self.storage_guard:
+            state=self.storage_guard.observe()
+            self._storage_status=state
+            if not state['new_risk_allowed']:
+                state=self._storage_cancel_pending_entries(state)
+            if self._storage_exposed() and not state['exit_accounting_cycle_allowed']:
+                raise StorageProtectionHalt(
+                    'broker market delivery blocked: durable exit/accounting headroom unavailable')
+        return super().emit(event)
+
     def _storage_preflight(self):
         if not self.storage_guard:
             return None
         state=self.storage_guard.observe()
         self._storage_status=state
-        pending=self._pending_entry_orders()
         if state['new_risk_allowed']:
             return state
-        if pending:
-            if not state['exit_accounting_cycle_allowed']:
-                raise StorageProtectionHalt(
-                    'pending entry cannot be durably canceled before further market delivery')
-            for order in pending:
-                self.broker.cancel(order['order_id'],ts=max(self.clock(),self.broker.last_ts))
-            state=self.storage_guard.observe()
-            self._storage_status=state
-        exposed=bool(self.broker and (self.broker.positions or any(
-            o['intent']['reduce_only'] and o['status'] in ('PENDING','RESTING')
-            for o in self.broker.orders.values())))
+        state=self._storage_cancel_pending_entries(state)
+        exposed=self._storage_exposed()
         if exposed:
             self.storage_guard.require_exit_cycle('open PAPER exposure')
             self._storage_cycle_start_bytes=state['used_bytes']
