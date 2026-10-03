@@ -68,9 +68,9 @@ def validate_paper(data):
     for name in ('gross_realized_pnl_usdt', 'fees_usdt', 'funding_pnl_usdt'):
         if name in data:
             decimal_value(data[name])
-    if 'cost_ledger' in data:
-        from observer_analytics import reconcile_account
-        reconcile_account(data)
+    # Detailed ledger reconstruction belongs to observer analytics. A failure there
+    # must suppress unverified trade statistics without making an otherwise valid
+    # read-only account snapshot disappear behind a global HTTP 503.
     for name in ('signals_count', 'fills_count', 'blocked_signals_count'):
         _counter(data.get(name))
     for name in ('warmup_received', 'warmup_required'):
