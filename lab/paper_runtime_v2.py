@@ -114,6 +114,13 @@ class PaperRuntime:
             else:
                 receipt=self.client.get(endpoint,params)
                 events.append({'kind':'instrumentation_unavailable','reason':'client_fixture_has_no_get_timed'})
+            returned_ms=self.clock()
+            returned_mono=self.monotonic()
+            self.audit(dict(type='public_receipt',receipt=receipt,
+                            request_start_ms=outer_start_ms,
+                            request_start_monotonic_ms=outer_start_mono*1000,
+                            request_return_ms=returned_ms,
+                            request_return_monotonic_ms=returned_mono*1000))
             received=receipt_ms(receipt)
             age=self.clock()-received
             if not 0<=age<=15000:
