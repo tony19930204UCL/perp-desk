@@ -314,3 +314,12 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 有界hosted證據不是永久無故障保證。新的不安全檔案／permission／symlink／provenance／scanner違規仍應fail-closed，不忽略Git entry或放寬安全policy。
 - 發布驗收完成：正常private mirror推送70e8e3ff12338944dcb32e88aea58f7d09b52985，remote兩個artifact bytes與精確head相符，版本紀錄已發布；其CI run37121212981 success。PR#11驗收comment及Issue#10 CLOSED均從GitHub讀回。交易source manifest、帳戶fill／ledger歷史前綴與研究起點／deadline維持，HTTP200且observer.available=true。
 
+## PR-012-OPERATIONAL-BLOCKED-ROLLBACK（2026-10-03）
+
+- PR#12精確head06443d22d4c42d4701160630a02f135359fc9e62、run37123222563的GitHub metadata／實際log確認38 exporter＋228 PAPER通過。保留agent早期UI測試失敗說明，不把CI綠燈當真實部署驗收。
+- 八個candidate檔經正確export來源映射、base bytes與head hash核對及備份後試套用。docs實際來源為repo_sync/docs/docs，不是profile root docs。monitor真實read-only tick回報runtime_pids=[]及runtime-absent，但獨立/proc確認既有唯一v3程序仍運行。monitor／runtime的lab分属profile root／runtime worktree，是既有不同cwd部署，不移動交易引擎以迎合candidate。
+- 真實程序辨識驗收失敗，八檔恢復原byte hashes，新文件移除。交易引擎與看板均未重啟，HTTP200／observer available、交易source manifest／deployment／fill與ledger歷史前綴／研究起點deadline保持。失敗health事件歷史與原證據另保留，不刪除或改成healthy。
+- Issue#13 BUG／OBSERVABILITY已建立並讀回，PR#12補修comment已讀回；Issue#4仍open、work task blocked。要求外部agent補split-root exact process驗收與operator文件export，不由operator寫碼、測試或debug。不建立監控排程，候選尚未正式部署。
+- storage observation為namespace超過配置budget，不是disk full，已補safe evidence於Issue#5。其餘error-growth／work-overdue屬獨立觀察，不以本次false absent推論真實交易中斷或擅自resolve。
+- 證據位於cache/scratch/pr12-06443d2-acceptance，包括metadata、ci.log、manifest、deployment、health_failed、process_evidence及rollback。
+

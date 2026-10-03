@@ -11,7 +11,7 @@
     "context/SOUL.md": "9ce768eab674de124d940a2e4c4b7f81dbd99961fc2fdfa3450bae985a7f772a",
     "context/SPEC.md": "fcdf6c3728a5d7854e1c5553835db6e1a36e05d26a62e23e51da67892b2d423d",
     "context/open_questions.md": "7247519ae062622c0c33a645a3be2569e1e7132773a2e850186099adfd1f31b0",
-    "context/versions.md": "8982be6509cd546d42793a130a6a8245af4ba494fbe27d256675ff3a0c23e0c5",
+    "context/versions.md": "3be5f5d3e67d1d5e676a36f7ffb381e9afefadd697383d7085e3e19806b58e48",
     "docs/AI_REVIEW_GUIDE.md": "208dbc2c8fc70f34ffcba27034b0a7c4c531992c6800bf4f3f069183a7c8c47d",
     "docs/ARCHITECTURE.md": "fbc1ac897a7640545ce764975539e204f8288a478640dbc7de0b946d487df634",
     "docs/AUTO_SYNC.md": "d4a02a00f38bdebc349cab54bdd86fd03a0e96f7169981aed22375fe9551accd",
@@ -237,7 +237,7 @@
     "scripts/paper_health_monitor.py": "c8425dbacbfa24a8a92b945f5560b1e9131e31e39536ba52ee3faf25e1e9a303",
     "scripts/paper_review_sync.py": "0ea9ad5b8467afa45168d107bf4709597264ec713b4db37e4e544354e55c9e8c"
   },
-  "fingerprint": "2403474dddb1a3008b6ec039a45340974ed21ead5cc4f142d98ebcd2b70ef32f",
+  "fingerprint": "8f0ae0fea709d33bd272d2d7948826c22c10963b5407a47c0eb6261fb71dab55",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
