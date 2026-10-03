@@ -341,5 +341,5 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - Policy只存local shared/storage_policy_v3.json，原namespace原status啟動附--storage-policy，persistent handle proc_ae63aa351fb2，實際Python PID4079131。不reset、遷移、刪除、truncate／compact證據，不補離線單或延長窗口。看板不重啟。
 - 真實post snapshot storage_protection=warning／disk_full=false／new_risk_allowed=true，原512MiB警告仍可見且尚未達新增禁止風險門檻。health匹配新唯一runtime PID；API observer available，Linux／Windows status／health／work各200。歷史incident保留，當前work-overdue不冒稱全健康。
 - SQLite runtime audit原101215行逐row比對exact prefix保持，SHA256 721ec3aa2f8b951603892235999dd945337880dc6c7a98b8d1d69b837377c466。Snapshot fills／cost ledger前綴、initial equity／risk／deployment、research start／deadline讀回保持，source v3 hash等於accepted head。已snapshot／operational驗收，不宣稱live觸發了protect/halt或實際故障恢復（該部分為agent隔離CI證據）。
-- Private mirror bytes／新operator doc及policy排除／發布CI、Issue#5結案另作final readback。證據cache/scratch/pr14-becba34-acceptance。
+- Final：private mirror 38d7a15eba6301f8de6688b582a6b518b6341b18全部八artifact bytes與accepted head匹配，新operator docs已export，local storage policy不在tree。發布CI37137829793 success，PR#14 acceptance comment與Issue#5 CLOSED從GitHub讀回。證據cache/scratch/pr14-becba34-acceptance。
 
