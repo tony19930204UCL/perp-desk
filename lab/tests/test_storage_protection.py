@@ -164,6 +164,32 @@ class StorageProtectionTests(unittest.TestCase):
                 self.assertEqual((r.broker.fills,r.broker.ledger,r.broker.positions),before)
             finally:r.close()
 
+    def test_restart_preserves_runtime_audit_and_research_baselines_under_storage_policy(self):
+        from paper_runtime_v3 import PaperRuntime
+        with tempfile.TemporaryDirectory() as td:
+            probe=MutableProbe(used=50,free=1000);policy=self.policy()
+            r=PaperRuntime(td,LAB/'paper_config_v3.json',clock_ms=lambda:100000000,
+                           fixture=True,storage_policy=policy,storage_probe=probe)
+            r.state['strategy_fill_baseline']=7
+            r.state['strategy_ledger_baseline']=11
+            r.state['research_deadline_ms']=222222222
+            r.audit(dict(type='synthetic_storage_prefix',value='preserve'))
+            r.save()
+            with sqlite3.connect(Path(td)/'runtime.sqlite3') as db:
+                before=list(db.execute('SELECT id,payload,previous_hash,hash FROM audit ORDER BY id'))
+            r.close()
+            probe.used=210
+            r=PaperRuntime(td,LAB/'paper_config_v3.json',clock_ms=lambda:100001000,
+                           fixture=True,storage_policy=policy,storage_probe=probe)
+            try:
+                self.assertEqual(r.state['strategy_fill_baseline'],7)
+                self.assertEqual(r.state['strategy_ledger_baseline'],11)
+                self.assertEqual(r.state['research_deadline_ms'],222222222)
+                with sqlite3.connect(Path(td)/'runtime.sqlite3') as db:
+                    after=list(db.execute('SELECT id,payload,previous_hash,hash FROM audit ORDER BY id'))
+                self.assertEqual(after[:len(before)],before)
+            finally:r.close()
+
     def test_interrupted_sqlite_exit_write_rolls_back_and_restart_preserves_prefix_then_recovers(self):
         from sim_broker import SimBroker,InstrumentSettings,ExecutionModel,RiskContract,Intent
         with tempfile.TemporaryDirectory() as td:
