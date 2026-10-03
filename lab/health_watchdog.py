@@ -218,6 +218,20 @@ def read_json(path):
     except (OSError, ValueError, UnicodeError):
         return None
 
+
+def load_monitor_config(path):
+    """Load operator-owned split-root configuration; paths must be explicit and absolute."""
+    data=json.loads(Path(path).read_text())
+    if not isinstance(data,dict) or data.get('schema_version')!=1:
+        raise ValueError('invalid health monitor config')
+    keys=('runtime_root','state_dir','status_path')
+    if any(not isinstance(data.get(k),str) or not data[k] for k in keys):
+        raise ValueError('health monitor config requires runtime_root/state_dir/status_path')
+    paths={k:Path(data[k]) for k in keys}
+    if not all(p.is_absolute() for p in paths.values()):
+        raise ValueError('health monitor paths must be absolute')
+    return paths
+
 def runtime_processes(runtime_root, state_dir=None, status_path=None):
     """Find only the explicitly configured PAPER v3 process, even when monitor/runtime roots differ."""
     found = []
