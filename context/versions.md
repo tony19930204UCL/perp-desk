@@ -363,3 +363,14 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - PR#15的手動管理／恢復契約接受並部署，但Issue#6 user-systemd／host boot autostart仍platform blocked，task仍blocked而非全部completed。沒有讓agent反覆修已知缺失平台，工程下一張#2來源timing。
 - Final發布：mirror404ff1cb0d32afc1095897bae212f638d7853332六個artifact bytes相符，operator文件與entrypoint正常export，私有startup配置不在tree；發布CI37147073621 success。PR#15 manual acceptance與Issue#6仍OPEN/platform blocked comments已GitHub讀回。證據cache/scratch/pr15-d19430b-acceptance。
 
+## PR-015-MANAGER-STOP-ROLLBACK／PR-016-TIMING-ACCEPTANCE（2026-10-03）
+
+- PR#16精確head254fa8ffed35e902dbf36f42d69b45dfbd9a1232，run37147855553 job111275394684 metadata/log確認38 exporter＋254 PAPER通過。CI engineering public probe實際3次HTTP451，wait/backoff另列，2s／4sbackoff已解析核對。451是實際HTTP失敗，不叫行情成功，不把約7s outer elapsed叫單次HTTP latency。原OS clock異常根因仍unknown。
+- 停止既有supervisor切換時，SIGTERM後15秒bounded wait仍有supervisor/runtime/dashboard，第二次readback三者sleeping。後來正常停止並emit stopped-by-operator，不是永遠停不掉，也未force kill。第一次stop驗收失敗發生在任何PR#16 source改動之前。未查明root cause或精確最終latency，不自行debug。
+- 回滾PR#15 process-management layer，改回獨立runtime/dashboard，原namespace/status/config/storage policy保持，舊health cron e7e8658af9c1已list/resume（需readback）。Supervisor inactive，不因先前start成功維持錯誤的stop承諾。Issue#17 BUG／ENGINEERING已建立/readback，Issue#6新增失敗及rollback comment已readback，仍open/platform blocked。
+- 八個timing artifact local base一致後備份精確套用，runtime worktree同步v2/perp_collector兩檔（v3 inherited入口不改），source SHA已記manifest。原account/fills/ledger/risk/deployment/research start/deadline保持，audit原114457行逐row prefix hash保留。不補停機交易、延長窗口或重置帳戶。
+- Standalone runtime persistent handle proc_a8ef1b741b39，實際Python PID54169；dashboard proc_af32c39a563d。Linux／Windows status/health/work200／observer available，最新runtime error=null。
+- 真實durable state source_timing_evidence=32 records，logical_fetch各<=12 internal events，含分離wait與actual HTTP200attempt、batch_peer_aging/source_validation。原clock domains、source timestamp及window baseline保持。Local public /time probe實際HTTP200，wait約250ms、attempt397.77860895264894ms、outer647.9599920511246ms，是host工程觀察非策略樣本，也不解釋歷史clock discrepancy。
+- GitHub API曾連續timeout，首次Issue建立結果未知且未宣稱發布/建立成功。有界重查及IPv4公開network probe後連線恢復，確認無同名Issue才成功建立#17/readback，不duplicate。不把此暫態timeout推論工程root cause。
+- Issue#2尚待mirror exact bytes／新docs/probe export及發布CI確認才結案。Evidence cache/scratch/pr16-254fa8f-acceptance包含CI、actual public error、live bounded timing、audit/account acceptance、manager stop／rollback與Issue body。
+
