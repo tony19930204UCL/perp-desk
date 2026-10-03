@@ -161,6 +161,28 @@ class ObserverUiTests(unittest.TestCase):
         self.assertIn('UTC',html)
 
 class ObserverHttpTests(unittest.TestCase):
+    def test_observer_ledger_mismatch_does_not_hide_valid_account_snapshot(self):
+        """Synthetic compatibility repro for the deployed 200-to-503 acceptance gap."""
+        import dashboard
+        s=paper_fixture()
+        s.update(trades_fixture(),positions=[],fills_count=4,unrealized_pnl_usdt='0',
+                 cash_usdt='103.95',equity_usdt='103.95',total_pnl_usdt='3.95',
+                 realized_pnl_usdt='3.95',gross_realized_pnl_usdt='4',
+                 fees_usdt='.04',funding_pnl_usdt='-.01')
+        # Top-level account arithmetic is valid, but detailed observer evidence is
+        # deliberately contradictory. Base funds/positions remain readable while
+        # performance analytics must fail closed.
+        s['gross_realized_pnl_usdt']='999'
+        dashboard.validate_snapshot(s)
+        from observer_analytics import analyze
+        observer=analyze(s,now_ms=7000)
+        self.assertFalse(observer['available'])
+        self.assertIn('account/ledger mismatch',observer['error'])
+        # Genuine account arithmetic corruption remains a hard snapshot failure.
+        s['cash_usdt']='999'
+        with self.assertRaisesRegex(ValueError,'paper currency invariant'):
+            dashboard.validate_snapshot(s)
+
     def test_api_adds_read_only_analytics_without_mutating_snapshot(self):
         import tempfile,threading
         from http.client import HTTPConnection
