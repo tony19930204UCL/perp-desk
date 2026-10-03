@@ -8,7 +8,9 @@ import os
 import tempfile
 from dashboard import validate_snapshot
 
-ROOT_VERSION = 'H1-PAPER-002'
+ROOT_VERSION = 'H1-PAPER-003'
+ROOT_IMPLEMENTATION = 'paper-engine-v3'
+INCIDENT_PREFIX = 'paper-v3'
 MAX_AGE = 60
 
 def age(stamp, now):
@@ -17,14 +19,14 @@ def age(stamp, now):
         raise ValueError('timestamp lacks timezone')
     return (now-dt).total_seconds()
 
-def evaluate(snapshot, work, now, process_present=None, storage=None):
+def evaluate(snapshot, work, now, process_present=None, storage=None, process_count=None):
     faults = {}; evidence = {}
     try:
         validate_snapshot(snapshot)
         if (snapshot['mode'] != 'paper' or snapshot.get('candidate_not_deployed') is not False
                 or snapshot['engine']['version_id'] != ROOT_VERSION
-                or snapshot['engine'].get('candidate_implementation') != 'paper-engine-v2'):
-            raise ValueError('expected deployed PAPER v2 identity')
+                or snapshot['engine'].get('candidate_implementation') != ROOT_IMPLEMENTATION):
+            raise ValueError('expected deployed PAPER v3 identity')
         heartbeat = age(snapshot['updated_at'], now)
         success = age(snapshot['feed']['last_success_at'], now)
         evidence = {k: snapshot.get(k) for k in ('updated_at','latest_error','blockers')}
@@ -59,8 +61,13 @@ def evaluate(snapshot, work, now, process_present=None, storage=None):
         faults['snapshot-unavailable'] = 'Live PAPER snapshot unavailable, malformed or wrong runtime identity'
         if isinstance(snapshot, dict):
             evidence['latest_error'] = snapshot.get('latest_error')
-    if process_present is not True:
-        faults['runtime-absent'] = 'Exact live runtime process absent or unverified'
+    if process_count is not None:
+        if process_count == 0:
+            faults['runtime-absent'] = 'Exact PAPER v3 runtime process absent'
+        elif process_count != 1:
+            faults['runtime-duplicate'] = 'Multiple exact PAPER v3 runtime processes detected'
+    elif process_present is not True:
+        faults['runtime-absent'] = 'Exact PAPER v3 runtime process absent or unverified'
     pending = []
     try:
         if not isinstance(work, dict) or not isinstance(work.get('tasks'), list):
@@ -180,7 +187,7 @@ def record(state_path, output_path, report, now):
         incidents = state['incidents']
         for key, message in report['faults'].items():
             if key not in incidents:
-                incidents[key] = dict(id='paper-v2:'+key, kind=key, first_seen=stamp, status='open',
+                incidents[key] = dict(id=INCIDENT_PREFIX+':'+key, kind=key, first_seen=stamp, status='open',
                                       linked_task_id=None, last_error=None, recovery_observations=0)
             i = incidents[key]
             i.update(status='open', last_observed=stamp, recovery_observations=0, message=message,
@@ -224,7 +231,7 @@ def runtime_processes(root):
             script_index=1
             while script_index<len(args) and args[script_index] in ('-u','-B','-E','-s','-S','-I','-O','-OO'):
                 script_index+=1
-            if script_index>=len(args) or (root/args[script_index]).resolve()!=root/'paper_runtime_v2.py': continue
+            if script_index>=len(args) or (root/args[script_index]).resolve()!=root/'paper_runtime_v3.py': continue
             def option(key):
                 n=args.index(key); return (root/args[n+1]).resolve()
             if option('--state-dir')!=root/'data/paper-v2' or option('--status')!=root/'shared/paper_v2_live.json': continue
@@ -249,10 +256,11 @@ def once(root, now=None, process_present=None):
     try: work = load_status(root/'shared/work_status.json', now)
     except (OSError, ValueError, UnicodeError, TypeError, KeyError, OverflowError): work = None
     pids = runtime_processes(root) if process_present is None else []
-    if process_present is None: process_present = len(pids)==1
+    process_count = len(pids) if process_present is None else None
+    if process_present is None: process_present = process_count==1
     try: storage = storage_status(root)
     except OSError: storage = {}
-    report = evaluate(snapshot, work, now, process_present, storage)
+    report = evaluate(snapshot, work, now, process_present, storage, process_count=process_count)
     report['runtime_pids'] = pids
     state = root/'data/health/incident_state.json'; output=root/'shared/health_status.json'
     try:
@@ -280,10 +288,9 @@ def delivery(report):
                                            last_error=i.get('last_error')) for i in report['incidents']]),
                       sort_keys=True, ensure_ascii=False)
 
-def engineering_gate(root, now=None):
-    """At most one wake per unowned critical incident/evidence generation, never a task claim."""
+def issue_handoff(root, now=None):
+    """Read-only GitHub-Issue handoff signal. Never wakes an agent or starts repair."""
     from work_status import load_status
-    import hashlib
     root=Path(root);now=now or datetime.now(timezone.utc)
     report=read_json(root/'shared/health_status.json') or {}
     try: tasks=load_status(root/'shared/work_status.json',now)['tasks']
@@ -291,35 +298,29 @@ def engineering_gate(root, now=None):
     active={t['id'] for t in tasks if t['state'] in ('running','testing','verifying') and not t['activity_unconfirmed']}
     owners={'runtime-error':'batch-time-recurrence','error-growth':'batch-time-recurrence',
             'feed-disconnected':'batch-time-recurrence','source-freshness':'batch-time-recurrence',
-            'runtime-absent':'restart-autostart','storage-capacity':'storage-capacity',
-            'snapshot-unavailable':'reliability-watchdog','counter-reset':'reliability-watchdog',
-            'watchdog-state-unavailable':'reliability-watchdog'}
+            'runtime-absent':'restart-autostart','runtime-duplicate':'restart-autostart',
+            'storage-capacity':'storage-capacity','snapshot-unavailable':'reliability-watchdog',
+            'counter-reset':'reliability-watchdog','watchdog-state-unavailable':'reliability-watchdog'}
     candidates=list(report.get('incidents',[]))
     if report.get('available') is False and 'watchdog-state-unavailable' in report.get('faults',{}):
-        candidates.append(dict(id='paper-v2:watchdog-state-unavailable',kind='watchdog-state-unavailable',
+        candidates.append(dict(id=INCIDENT_PREFIX+':watchdog-state-unavailable',kind='watchdog-state-unavailable',
                                status='open',first_seen=report.get('first_seen'),linked_task_id=None,
                                message=report['faults']['watchdog-state-unavailable']))
-    eligible=[]
+    incident_ids=[]
     for i in candidates:
-        if i['status']!='open' or i.get('kind') not in owners: continue
-        if (i.get('linked_task_id') in active or owners[i['kind']] in active):continue
-        eligible.append(i)
-    state_path=root/'data/health/engineering_gate.json'
-    with state_lock(state_path):
-        state=read_json(state_path)
-        if state is None and state_path.exists():raise ValueError('engineering gate state invalid; do not erase dispatch evidence')
-        state=state or {'seen':[]}
-        fresh=[]
-        for i in eligible:
-            token=hashlib.sha256(json.dumps([i['id'],i['first_seen'],i.get('recovered_at'),i.get('last_error'),i.get('message')],sort_keys=True).encode()).hexdigest()
-            if token not in state['seen']:
-                state['seen'].append(token);fresh.append(i['id'])
-        # Fixed incident kinds, bounded retained generation tokens. No timestamps in delivery signature.
-        state['seen']=state['seen'][-512:]
-        state['checked_at']=now.isoformat();atomic_json(state_path,state)
-    return dict(wakeAgent=bool(fresh),incident_ids=fresh,
-                context=dict(incident_ids=fresh,health_path=str(root/'shared/health_status.json'),
-                             work_path=str(root/'shared/work_status.json'),note='Wake is not execution proof; recheck active owners and actual handles before staged investigation'))
+        if i.get('status')!='open' or i.get('kind') not in owners: continue
+        if i.get('linked_task_id') in active or owners[i['kind']] in active: continue
+        incident_ids.append(i['id'])
+    return dict(handoff_required=bool(incident_ids),incident_ids=sorted(incident_ids),
+                action='operator should create or update a GitHub Issue; monitor never starts repair',
+                health_path='shared/health_status.json',work_path='shared/work_status.json')
+
+
+def engineering_gate(root, now=None):
+    """Compatibility wrapper: explicitly never dispatches an engineering agent."""
+    handoff=issue_handoff(root,now)
+    return dict(wakeAgent=False,incident_ids=handoff['incident_ids'],handoff_required=handoff['handoff_required'],
+                context=dict(note=handoff['action'],health_path=handoff['health_path'],work_path=handoff['work_path']))
 
 def main(argv=None):
     import argparse
