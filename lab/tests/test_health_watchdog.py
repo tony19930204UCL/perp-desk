@@ -45,27 +45,62 @@ class HealthTests(unittest.TestCase):
             self.assertIn("ROOT=Path('/home/chihcheng/.hermes/profiles/perp-desk/lab')",source)
             self.assertNotIn('subprocess',source)
             self.assertNotIn('work_status.update',source)
-        self.assertIn('issue_handoff', (scripts/'paper_health_engineering_gate.py').read_text())
-        self.assertNotIn('wakeAgent', (scripts/'paper_health_engineering_gate.py').read_text())
-        self.assertIn('main', (scripts/'paper_health_monitor.py').read_text())
+        gate=(scripts/'paper_health_engineering_gate.py').read_text()
+        monitor=(scripts/'paper_health_monitor.py').read_text()
+        self.assertIn('issue_handoff',gate);self.assertNotIn('wakeAgent',gate)
+        for source in (gate,monitor):
+            self.assertIn('health_monitor_config.json',source)
+            self.assertIn('load_monitor_config',source)
 
-    def test_exact_process_identity_handles_actual_python_unbuffered_flag(self):
+    def test_split_root_real_subprocess_exact_identity_and_namespace(self):
         import subprocess, sys
         mod=module()
         with tempfile.TemporaryDirectory() as td:
-            root=Path(td);(root/'paper_runtime_v3.py').write_text('import time; time.sleep(30)')
-            proc=subprocess.Popen([sys.executable,'-u','paper_runtime_v3.py','--state-dir','data/paper-v2','--status','shared/paper_v2_live.json'],cwd=root)
+            base=Path(td);monitor=base/'monitor';runtime=base/'runtime';shared=base/'shared-namespace'
+            for p in (monitor/'shared',monitor/'data/health',runtime,shared/'data/paper-v2',shared/'shared'):p.mkdir(parents=True,exist_ok=True)
+            (runtime/'paper_runtime_v3.py').write_text('import time; time.sleep(30)')
+            status=shared/'shared/paper_v2_live.json';state=shared/'data/paper-v2'
+            status.write_text(json.dumps(snapshot()))
+            (monitor/'shared/work_status.json').write_text(json.dumps({'schema_version':1,'tasks':[]}))
+            proc=subprocess.Popen([sys.executable,'-u','paper_runtime_v3.py','--state-dir',str(state),'--status',str(status)],cwd=runtime)
             try:
-                self.assertEqual(mod.runtime_processes(root),[proc.pid])
-                second=subprocess.Popen([sys.executable,'-B','-u','paper_runtime_v3.py','--state-dir','data/paper-v2','--status','shared/paper_v2_live.json'],cwd=root)
+                self.assertNotEqual(monitor.resolve(),runtime.resolve(),'fixture must reproduce split monitor/runtime roots')
+                self.assertEqual(mod.runtime_processes(runtime,state,status),[proc.pid])
+                report=mod.once(monitor,NOW,runtime_root=runtime,state_dir=state,status_path=status)
+                self.assertEqual(report['runtime_pids'],[proc.pid])
+                self.assertNotIn('runtime-absent',report['faults'])
+                self.assertNotIn('runtime-duplicate',report['faults'])
+                self.assertEqual(report['runtime_identity']['runtime_root'],str(runtime.resolve()))
+                # Exactness: monitor root, wrong namespace/status and wrong script cannot match.
+                self.assertEqual(mod.runtime_processes(monitor,state,status),[])
+                self.assertEqual(mod.runtime_processes(runtime,base/'wrong-state',status),[])
+                self.assertEqual(mod.runtime_processes(runtime,state,base/'wrong-status.json'),[])
+                wrong=runtime/'not_runtime.py';wrong.write_text('import time; time.sleep(30)')
+                wrongp=subprocess.Popen([sys.executable,'-u','not_runtime.py','--state-dir',str(state),'--status',str(status)],cwd=runtime)
+                try:self.assertEqual(mod.runtime_processes(runtime,state,status),[proc.pid])
+                finally:wrongp.terminate();wrongp.wait(timeout=5)
+                second=subprocess.Popen([sys.executable,'-B','-u','paper_runtime_v3.py','--state-dir',str(state),'--status',str(status)],cwd=runtime)
                 try:
-                    self.assertEqual(sorted(mod.runtime_processes(root)),sorted([proc.pid,second.pid]))
-                    report=mod.evaluate(snapshot(),{'tasks':[]},NOW,False,process_count=2)
-                    self.assertIn('runtime-duplicate',report['faults'])
+                    pids=sorted(mod.runtime_processes(runtime,state,status))
+                    self.assertEqual(pids,sorted([proc.pid,second.pid]))
+                    duplicate=mod.once(monitor,NOW,runtime_root=runtime,state_dir=state,status_path=status)
+                    self.assertIn('runtime-duplicate',duplicate['faults'])
                 finally:second.terminate();second.wait(timeout=5)
-                self.assertEqual(mod.runtime_processes(root),[proc.pid],'restart/duplicate recovery must reflect actual processes')
-                self.assertEqual(mod.runtime_processes(root/'different-cwd'),[])
+                self.assertEqual(mod.runtime_processes(runtime,state,status),[proc.pid])
             finally:proc.terminate();proc.wait(timeout=5)
+
+    def test_operator_monitor_config_requires_complete_absolute_paths(self):
+        mod=module()
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);cfg=root/'health.json'
+            good={'schema_version':1,'runtime_root':str((root/'runtime').resolve()),
+                  'state_dir':str((root/'state').resolve()),'status_path':str((root/'status.json').resolve())}
+            cfg.write_text(json.dumps(good));loaded=mod.load_monitor_config(cfg)
+            self.assertEqual(loaded['runtime_root'],Path(good['runtime_root']))
+            for bad in ({},dict(good,runtime_root='relative/runtime'),dict(good,schema_version=2)):
+                cfg.write_text(json.dumps(bad))
+                with self.assertRaises(ValueError):mod.load_monitor_config(cfg)
+
 
     def test_issue_handoff_never_wakes_agent_and_suppresses_active_owner(self):
         import work_status
