@@ -346,7 +346,8 @@ def issue_handoff(root, now=None):
     owners={'runtime-error':'batch-time-recurrence','error-growth':'batch-time-recurrence',
             'feed-disconnected':'batch-time-recurrence','source-freshness':'batch-time-recurrence',
             'runtime-absent':'restart-autostart','runtime-duplicate':'restart-autostart',
-            'storage-capacity':'storage-capacity','snapshot-unavailable':'reliability-watchdog',
+            'storage-capacity':'storage-capacity','storage-new-risk-inhibited':'storage-capacity',
+            'storage-capacity-halt':'storage-capacity','snapshot-unavailable':'reliability-watchdog',
             'counter-reset':'reliability-watchdog','watchdog-state-unavailable':'reliability-watchdog'}
     candidates=list(report.get('incidents',[]))
     if report.get('available') is False and 'watchdog-state-unavailable' in report.get('faults',{}):
