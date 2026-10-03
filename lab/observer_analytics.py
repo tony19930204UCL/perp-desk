@@ -40,7 +40,7 @@ def reconcile_account(snapshot):
     # records the realized row immediately before its fee row. Replaying the
     # ledger with arbitrary extra precision changes representation semantics and
     # can create a false mismatch in the final digits.
-    if 'realized_pnl_usdt' in snapshot:
+    if 'realized_pnl_usdt' in snapshot and 'initial_equity_usdt' in snapshot:
         initial=money(snapshot['initial_equity_usdt'])
         with localcontext(Context(prec=40,rounding=ROUND_HALF_EVEN)):
             replay_cash=initial
@@ -59,6 +59,13 @@ def reconcile_account(snapshot):
             replay_net=replay_cash-initial
         if money(snapshot['realized_pnl_usdt'])!=replay_net:
             raise ValueError('account/ledger mismatch: realized_pnl_usdt')
+    elif 'realized_pnl_usdt' in snapshot:
+        # Legacy/unit observer payloads without account capital cannot replay
+        # broker cash semantics, so retain strict component reconciliation.
+        with localcontext() as ctx:
+            ctx.prec=max(60,max(n.adjusted() for n in numbers)-min(n.as_tuple().exponent for n in numbers)+len(str(len(numbers)))+3)
+            if money(snapshot['realized_pnl_usdt'])!=gross-fees+funding:
+                raise ValueError('account/ledger mismatch: realized_pnl_usdt')
 
 
 def analyze(snapshot, *, now_ms):
