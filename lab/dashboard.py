@@ -163,7 +163,37 @@ def make_server(port, status_path, html_path):
                     or self.headers.get('Sec-Fetch-Site') == 'cross-site'):
                 self.send(403, b'Forbidden', 'text/plain; charset=utf-8')
                 return
-            if self.path == '/api/work':
+            if self.path == '/api/health':
+                try:
+                    data = json.loads((status_path.parent / 'health_status.json').read_text(encoding='utf-8'))
+                    if (not isinstance(data, dict) or data.get('schema_version') != 1
+                            or data.get('available') is not True or data.get('mode') != 'paper'
+                            or type(data.get('operational_healthy')) is not bool
+                            or type(data.get('engineering_resolved')) is not bool
+                            or not isinstance(data.get('incidents'), list)
+                            or not isinstance(data.get('faults'), dict)
+                            or not isinstance(data.get('pending_work'), list)):
+                        raise ValueError('invalid health report')
+                    now = datetime.now(timezone.utc)
+                    health_age = age_seconds(data.get('checked_at'), now)
+                    if health_age is None or health_age < 0:
+                        raise ValueError('invalid or future health timestamp')
+                    for incident in data['incidents']:
+                        if (not isinstance(incident,dict)
+                                or incident.get('status') not in ('open','recovered_monitoring','resolved')
+                                or not isinstance(incident.get('id'),str)):
+                            raise ValueError('invalid incident')
+                    data['health_age_seconds'] = health_age
+                    data['health_stale'] = health_age > 180
+                    if data['health_stale']:
+                        data['operational_healthy'] = False
+                except (OSError, ValueError, UnicodeError, TypeError, KeyError, OverflowError):
+                    self.send(503, json.dumps({'available': False, 'operational_healthy': False,
+                                              'error': 'Health report unavailable or invalid'}).encode(),
+                              'application/json; charset=utf-8')
+                    return
+                self.send(200, json.dumps(data).encode(), 'application/json; charset=utf-8')
+            elif self.path == '/api/work':
                 from work_status import load_status
                 try:
                     data = load_status(status_path.parent / 'work_status.json')
