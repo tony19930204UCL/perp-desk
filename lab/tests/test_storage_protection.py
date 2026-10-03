@@ -92,6 +92,43 @@ class StorageProtectionTests(unittest.TestCase):
         r.save()
         return r
 
+    def test_pending_entry_is_canceled_before_protected_market_delivery(self):
+        from paper_runtime_v3 import PaperRuntime
+        from sim_broker import Intent
+        with tempfile.TemporaryDirectory() as td:
+            probe=MutableProbe(used=50,free=1000)
+            r=PaperRuntime(td,LAB/'paper_config_v3.json',clock_ms=lambda:100000000,
+                           fixture=True,storage_policy=self.policy(),storage_probe=probe)
+            try:
+                spec=dict(symbol='ETHUSDT',maker_fee='0.0002',taker_fee='0.0005',
+                          qty_step='0.001',tick_size='0.01',min_notional='20',
+                          max_qty='2000',min_qty='0.001',category='crypto')
+                r.ensure_broker(spec);b=r.broker;s=b.instruments['ETHUSDT']
+                b.on_event(dict(type='mark',event_id='m0',symbol='ETHUSDT',ts=100000000,price='2700'))
+                b.on_event(dict(type='funding_status',event_id='f0',symbol='ETHUSDT',ts=100000000,
+                                complete=True,valid_until_ts=200000000))
+                order=b.submit(Intent('pending','ETHUSDT','BUY',D('.01'),D('2600'),100000000,
+                                      s.quantity_step,s.tick,s.min_notional,s.max_quantity,'TAKER',False))
+                self.assertEqual(order['status'],'PENDING')
+                probe.used=210
+                r._storage_preflight()
+                self.assertEqual(b.orders['order:pending']['status'],'CANCELED')
+                self.assertEqual(b.fills,[])
+            finally:r.close()
+
+    def test_auto_stop_market_delivery_is_blocked_before_unaudited_exit_when_reserve_exhausted(self):
+        from storage_protection import StorageProtectionHalt
+        with tempfile.TemporaryDirectory() as td:
+            probe=MutableProbe(used=50,free=1000);r=self._runtime_with_position(td,probe)
+            try:
+                before=(list(r.broker.fills),list(r.broker.ledger),dict(r.broker.positions),dict(r.broker.orders))
+                probe.used=285
+                with self.assertRaisesRegex(StorageProtectionHalt,'broker market delivery blocked'):
+                    r.emit(dict(type='mark',symbol='ETHUSDT',ts=100004000,source_ts=100004000,
+                                price='2500',event_id='synthetic-stop-mark'))
+                self.assertEqual((r.broker.fills,r.broker.ledger,r.broker.positions,r.broker.orders),before)
+            finally:r.close()
+
     def test_protection_inhibits_new_risk_but_keeps_durable_reduce_only_exit(self):
         from sim_broker import Intent
         with tempfile.TemporaryDirectory() as td:
