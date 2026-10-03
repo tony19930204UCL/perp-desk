@@ -10,19 +10,46 @@ The old staged dashboard copy is **not** deployed wholesale. Health is integrate
 
 ## Current deployment identity
 
-The supported trading process is exactly:
+The supported deployment may use **different monitor and runtime working directories**. Process identity is configured explicitly by three paths:
 
-```
-python [supported interpreter flags] paper_runtime_v3.py --state-dir data/paper-v2 --status shared/paper_v2_live.json
+- `runtime_root`: the runtime process cwd containing `paper_runtime_v3.py`;
+- `state_dir`: the persisted trading namespace passed to `--state-dir`;
+- `status_path`: the live snapshot passed to `--status`.
+
+The runtime must still be exactly equivalent to:
+
+```sh
+cd "$RUNTIME_ROOT"
+python [supported interpreter flags] paper_runtime_v3.py \
+  --state-dir "$STATE_DIR" \
+  --status "$STATUS_PATH"
 ```
 
-The monitor requires:
+The monitor root is allowed to be different from `$RUNTIME_ROOT`. The monitor requires:
 - deployed `H1-PAPER-003`;
 - `candidate_not_deployed=false`;
 - `candidate_implementation=paper-engine-v3`;
 - exactly one matching process with the expected cwd, script, state directory and status path.
 
-Zero matching processes is `runtime-absent`. More than one is `runtime-duplicate`. Interpreter flags such as `-u` are recognized before script matching.
+Zero matching processes is `runtime-absent`. More than one is `runtime-duplicate`. Interpreter flags such as `-u` and `-B -u` are recognized before script matching. Wrong cwd, wrong script, wrong state namespace or wrong status path do not match.
+
+### One-shot operator acceptance
+
+Set local paths without committing them:
+
+```sh
+MONITOR_ROOT=/path/to/observer-profile/lab
+RUNTIME_ROOT=/path/to/runtime-worktree/lab
+STATE_DIR=/path/to/shared/data/paper-v2
+STATUS_PATH=/path/to/shared/shared/paper_v2_live.json
+
+python "$MONITOR_ROOT/health_watchdog.py" --once \
+  --runtime-root "$RUNTIME_ROOT" \
+  --state-dir "$STATE_DIR" \
+  --status "$STATUS_PATH"
+```
+
+Then inspect `"$MONITOR_ROOT/shared/health_status.json"`. A supported split-root deployment must show exactly one `runtime_pids` entry. Do not move or restart the trading engine to satisfy the monitor.
 
 ## Health semantics
 
@@ -67,12 +94,31 @@ No schedule is created by this PR.
 After accepting exact source hashes and CI:
 
 1. Apply the accepted files locally without changing trading state.
-2. Run one isolated `health_watchdog.py --once` and inspect `shared/health_status.json`.
-3. Verify exact v3 PID/cwd/argv identity and that stale/fault fixtures cannot report healthy.
-4. Restart only the dashboard if the dashboard files are accepted; do not restart trading for presentation changes.
-5. Read back `/api/status`, `/api/health`, and `/api/work`; verify observer research metrics are unchanged and health remains independent.
-6. If persistent monitoring is desired, the operator may schedule only `scripts/paper_health_monitor.py` at a cadence comfortably below the 180-second dashboard stale threshold (the staged design used 2 minutes). Read back the scheduler entry and manually exercise it.
-7. Do **not** schedule autonomous engineering repair. New unresolved incidents are handed off through the normal GitHub Issue workflow.
-8. Roll back only health/dashboard integration files if acceptance fails. Do not roll back or mutate trading/account state.
+2. Define the three explicit split-root paths and run the one-shot command above.
+3. Verify exactly one v3 PID, exact cwd/script/state/status identity, and that stale/fault evidence cannot report healthy.
+4. Create the operator-local scheduler configuration at `$MONITOR_ROOT/shared/health_monitor_config.json`:
+
+```json
+{
+  "schema_version": 1,
+  "runtime_root": "/path/to/runtime-worktree/lab",
+  "state_dir": "/path/to/shared/data/paper-v2",
+  "status_path": "/path/to/shared/shared/paper_v2_live.json"
+}
+```
+
+All three values must be absolute paths. This file is local runtime configuration under `shared/` and is excluded from mirror export.
+
+5. Exercise `python /path/to/profile/scripts/paper_health_monitor.py` manually and confirm the same nonempty exact PID evidence before scheduling it.
+6. Restart only the dashboard if the dashboard files are accepted; do not restart trading for presentation changes.
+7. Read back `/api/status`, `/api/health`, and `/api/work`; verify observer research metrics are unchanged and health remains independent.
+8. If persistent monitoring is desired, schedule only `scripts/paper_health_monitor.py` at a cadence comfortably below the 180-second dashboard stale threshold (the staged design used 2 minutes). Read back the scheduler entry and manually exercise it.
+9. Do **not** schedule autonomous engineering repair. New unresolved incidents are handed off through the normal GitHub Issue workflow.
+10. Roll back only health/dashboard integration files if acceptance fails. Do not roll back or mutate trading/account state.
 
 The monitor writes only its separate health namespace (`shared/health_status.json`, `data/health/*`) and never trading databases.
+
+
+## Mirror-export contract
+
+This document is an explicitly allowlisted operator document in `automation/review_sync.py`. Exporter regression coverage requires `docs/HEALTH_V3_OPERATOR.md` to survive a normal mirror collection. The local `shared/health_monitor_config.json` remains excluded.
