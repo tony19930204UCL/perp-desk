@@ -1,5 +1,6 @@
 """ARTIFICIAL observer analytics, not performance."""
-import unittest,importlib.util,json,copy\nfrom decimal import Decimal as D
+import unittest,importlib.util,json,copy
+from decimal import Decimal as D
 from pathlib import Path
 from test_paper_presentation import render_html,dom_text,paper_fixture
 LAB=Path(__file__).resolve().parents[1]
