@@ -83,7 +83,7 @@ class StorageProtectionTests(unittest.TestCase):
         b.on_event(dict(type='mark',event_id='m0',symbol='ETHUSDT',ts=100000000,price='2700'))
         b.on_event(dict(type='funding_status',event_id='f0',symbol='ETHUSDT',ts=100000000,
                         complete=True,valid_until_ts=200000000))
-        b.submit(Intent('existing','ETHUSDT','BUY',D('.01'),D('2600'),100000000,
+        b.submit(Intent('existing','ETHUSDT','BUY',D('.008'),D('2600'),100000000,
                         s.quantity_step,s.tick,s.min_notional,s.max_quantity,'TAKER',False))
         b.on_event(dict(type='book',event_id='b0',symbol='ETHUSDT',ts=100003000,
                         bids=[['2699.99','1']],asks=[['2700.01','1']]))
@@ -107,7 +107,7 @@ class StorageProtectionTests(unittest.TestCase):
                 b.on_event(dict(type='mark',event_id='m0',symbol='ETHUSDT',ts=100000000,price='2700'))
                 b.on_event(dict(type='funding_status',event_id='f0',symbol='ETHUSDT',ts=100000000,
                                 complete=True,valid_until_ts=200000000))
-                order=b.submit(Intent('pending','ETHUSDT','BUY',D('.01'),D('2600'),100000000,
+                order=b.submit(Intent('pending','ETHUSDT','BUY',D('.008'),D('2600'),100000000,
                                       s.quantity_step,s.tick,s.min_notional,s.max_quantity,'TAKER',False))
                 self.assertEqual(order['status'],'PENDING')
                 probe.used=210
