@@ -549,7 +549,8 @@ class ReviewSyncTests(unittest.TestCase):
                          'repo_sync/docs/.github/workflows/ci.yml','repo_sync/docs/docs/HEALTH_V3_OPERATOR.md',
                          'repo_sync/docs/docs/STORAGE_PROTECTION_V3.md',
                          'repo_sync/docs/docs/STARTUP_RECOVERY_V3.md',
-                         'scripts/paper_startup_supervisor.py',
+                         'repo_sync/docs/docs/SOURCE_TIMING_EVIDENCE.md',
+                         'scripts/paper_startup_supervisor.py','scripts/public_source_timing_probe.py',
                          'repo_sync/evidence/green1.txt','repo_sync/status.json'):
                 p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('pass\n' if p.suffix=='.py' else '{}')
             files=m.collect(root)
@@ -560,6 +561,8 @@ class ReviewSyncTests(unittest.TestCase):
             self.assertIn('docs/STORAGE_PROTECTION_V3.md',files,'storage protection contract must survive normal mirror export')
             self.assertIn('docs/STARTUP_RECOVERY_V3.md',files,'startup recovery contract must survive normal mirror export')
             self.assertIn('scripts/paper_startup_supervisor.py',files,'startup supervisor entrypoint must survive normal mirror export')
+            self.assertIn('docs/SOURCE_TIMING_EVIDENCE.md',files,'timing evidence contract must survive normal mirror export')
+            self.assertIn('scripts/public_source_timing_probe.py',files,'public timing probe must survive normal mirror export')
             self.assertIn('evidence/sync/green1.txt',files)
             self.assertNotIn('automation/status.json',files)
 
