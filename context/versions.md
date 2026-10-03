@@ -343,3 +343,12 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - SQLite runtime audit原101215行逐row比對exact prefix保持，SHA256 721ec3aa2f8b951603892235999dd945337880dc6c7a98b8d1d69b837377c466。Snapshot fills／cost ledger前綴、initial equity／risk／deployment、research start／deadline讀回保持，source v3 hash等於accepted head。已snapshot／operational驗收，不宣稱live觸發了protect/halt或實際故障恢復（該部分為agent隔離CI證據）。
 - Final：private mirror 38d7a15eba6301f8de6688b582a6b518b6341b18全部八artifact bytes與accepted head匹配，新operator docs已export，local storage policy不在tree。發布CI37137829793 success，PR#14 acceptance comment與Issue#5 CLOSED從GitHub讀回。證據cache/scratch/pr14-becba34-acceptance。
 
+## PR-015-ACTIVATION-BLOCKED（2026-10-03）
+
+- 精確head6090b297fac30bf62b542695b8b7d1f2f896d6f0、run37140145833 job111252700560 metadata／實際log確認38 exporter＋246 PAPER通過。六個artifact local base匹配，試套用後使用operator-local配置跑真實read-only --check。
+- 真實preflight輸出already-running，辨識既有唯一runtime PID4079131，H1-PAPER-003、forward start1790889414853、strategy start1790959245744、deadline1791132045744、fills3／ledger10／broker audit7／open0／pending0保持。該preflight不接管既有程序，也未啟動第二個引擎。
+- 目前user-systemd bus不存在且systemctl --user無法連線，供應的user-unit activation路徑不能實際驗收。無service install／enable／host reboot／gateway修改，不假稱WSL自啟已完成。
+- 同時目前health僅work-overdue導致operational_healthy=false，queued工程逾期不等於交易引擎停機；supervisor冷啟readiness對此情境尚未實際驗證，不冒稱已發生supervisor啟動失敗。要求agent補獨立隔離證據與supported activation／明確platform prerequisite。
+- 未啟動supervisor或service、未停止或重啟runtime/dashboard、未停用既有2分鐘health schedule。六個候選source恢復精確base bytes，local試驗startup配置僅保存在private驗收evidence，inactive。原storage policy／帳戶／risk／window與API observer available保持。
+- PR#15／Issue#6 blocked comments已GitHub讀回，Issue#6仍OPEN，restart-autostart task blocked。證據cache/scratch/pr15-6090b29-acceptance（CI／metadata／manifest／preflight_readback／service_manager_preflight／health_readiness_boundary／rollback），無operator coding／testing／review／debug。
+
