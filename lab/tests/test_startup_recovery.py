@@ -126,6 +126,66 @@ class StartupRecoveryTests(unittest.TestCase):
         def wait(self,timeout=None):return 0
         def kill(self):self.terminated=True;self.returncode=-9
 
+    def test_work_overdue_only_is_startup_advisory_with_current_runtime_market_evidence(self):
+        m=self.module()
+        report=dict(
+            operational_healthy=False,
+            faults={'work-overdue':'synthetic queued external engineering task is stale'},
+            warnings={},
+            evidence=dict(heartbeat_age_seconds=1,last_success_age_seconds=1,
+                          market_ages=[dict(symbol='ETHUSDT',receipt_age_seconds=1,
+                                            source_age_seconds={'bookTicker':1,'depth5':1,'premiumIndex':1})]),
+            pending_work=[dict(id='external-task',state='queued',update_age_seconds=7200,
+                               activity_unconfirmed=False)])
+        readiness=m.startup_readiness(report)
+        self.assertTrue(readiness['ready'])
+        self.assertEqual(readiness['blocking_faults'],{})
+        self.assertEqual(set(readiness['advisory_faults']),{'work-overdue'})
+        with tempfile.TemporaryDirectory() as td:
+            fx=self.make_fixture(td);cfg=m.load_config(fx['startup'])
+            children=[]
+            def popen(cmd,**kwargs):
+                child=self.Child([None]);children.append(child);return child
+            result=m.run_supervisor(cfg,popen=popen,sleep=lambda _:None,
+                                    health=lambda *a,**k:report,max_monitor_cycles=1)
+            self.assertEqual(result['state'],'test-complete')
+            self.assertEqual(len(children),2)
+            self.assertTrue(all(c.terminated for c in children))
+
+    def test_startup_readiness_keeps_runtime_source_account_and_storage_faults_fail_closed(self):
+        m=self.module()
+        for fault in ('runtime-absent','runtime-duplicate','source-freshness',
+                      'feed-disconnected','snapshot-unavailable','runtime-error',
+                      'storage-capacity-halt','storage-new-risk-inhibited','storage-capacity'):
+            with self.subTest(fault=fault):
+                readiness=m.startup_readiness(dict(
+                    operational_healthy=False,faults={fault:'synthetic'},warnings={},evidence={}))
+                self.assertFalse(readiness['ready'])
+                self.assertIn(fault,readiness['blocking_faults'])
+                self.assertEqual(readiness['advisory_faults'],{})
+
+    def test_activation_probe_reports_user_bus_prerequisite_without_installing_or_starting(self):
+        m=self.module()
+        class Result:
+            def __init__(self,code,stdout='',stderr=''):
+                self.returncode=code;self.stdout=stdout;self.stderr=stderr
+        calls=[]
+        def unavailable(cmd,**kwargs):
+            calls.append(cmd);return Result(1,stderr='Failed to connect to bus: No medium found')
+        status=m.activation_platform_status(run=unavailable,env={'WSL_DISTRO_NAME':'Synthetic'})
+        self.assertFalse(status['user_systemd_bus'])
+        self.assertFalse(status['autostart_supported'])
+        self.assertTrue(status['manual_supervisor_supported'])
+        self.assertIn('Failed to connect to bus',status['reason'])
+        self.assertEqual(calls,[['systemctl','--user','show-environment']])
+        calls.clear()
+        def available(cmd,**kwargs):
+            calls.append(cmd);return Result(0,stdout='XDG_RUNTIME_DIR=/run/user/1000\n')
+        status=m.activation_platform_status(run=available,env={'WSL_DISTRO_NAME':'Synthetic'})
+        self.assertTrue(status['user_systemd_bus'])
+        self.assertTrue(status['autostart_supported'])
+        self.assertEqual(calls,[['systemctl','--user','show-environment']])
+
     def test_unavailable_or_stale_source_is_bounded_and_waits_for_operator(self):
         m=self.module()
         for fault in ('source-unavailable','source-stale'):
