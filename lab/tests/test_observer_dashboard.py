@@ -37,12 +37,15 @@ class ObserverAnalyticsTests(unittest.TestCase):
         s.update(fees_usdt='.05',realized_pnl_usdt='3.94')
         a=self.view(s);self.assertTrue(a['available']);self.assertEqual(a['closed_trades'][0]['net_pnl_usdt'],'3.95')
 
-    def test_account_validation_rejects_contradictory_cost_ledger(self):
+    def test_contradictory_cost_ledger_suppresses_observer_not_account_snapshot(self):
         import dashboard
         s=paper_fixture();s.update(trades_fixture(),positions=[],fills_count=4,unrealized_pnl_usdt='0',cash_usdt='103.95',equity_usdt='103.95',total_pnl_usdt='3.95',realized_pnl_usdt='3.95',gross_realized_pnl_usdt='4',fees_usdt='.04',funding_pnl_usdt='-.01')
         dashboard.validate_snapshot(s)
         s['gross_realized_pnl_usdt']='999'
-        with self.assertRaises(ValueError):dashboard.validate_snapshot(s)
+        dashboard.validate_snapshot(s)
+        a=self.view(s)
+        self.assertFalse(a['available'])
+        self.assertIn('account/ledger mismatch',a['error'])
 
     def test_missing_research_window_cannot_be_labelled_window_performance(self):
         s=trades_fixture();s.pop('research')
