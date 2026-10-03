@@ -107,6 +107,6 @@ function renderHealth(data){
  text('opsLimit','監控檢查 '+(data.checked_at??'未確認')+' · 待處理工程：'+pending+'。'+(data.service_restart_limitation??'')+'。監控只回報，不啟動修復。');
 }
 let healthBusy=false;async function refreshHealth(){if(healthBusy)return;healthBusy=true;const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const r=await fetch('/api/health',{cache:'no-store',signal:ctl.signal});if(!r.ok)throw Error('HTTP '+r.status);renderHealth(await r.json());}catch(e){text('opsHealth','健康不可用／未確認：'+e.message);$('opsHealth').className='status bad';$('opsIssues').replaceChildren();}finally{clearTimeout(timer);healthBusy=false;}}
-refresh();setInterval(refresh,5000);refreshHealth();setInterval(refreshHealth,5000);
-if(typeof window!=='undefined'){refreshWork();setInterval(refreshWork,5000);setInterval(updateCountdown,1000);}
+refresh();setInterval(refresh,5000);
+if(typeof window!=='undefined'){refreshHealth();setInterval(refreshHealth,5000);refreshWork();setInterval(refreshWork,5000);setInterval(updateCountdown,1000);}
 </script></body></html>
