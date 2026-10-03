@@ -136,7 +136,7 @@ class BatchRefreshTests(unittest.TestCase):
 class BriefFallbackTests(unittest.TestCase):
     def run_brief(self, change, *, age=0):
         import brief_learning_v3 as brief
-        with tempfile.TemporaryDirectory(dir='/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch') as t:
+        with tempfile.TemporaryDirectory(dir=tempfile.gettempdir()) as t:
             r=PaperRuntime(Path(t)/'account',LAB/'paper_config_v3.json',clock_ms=lambda:BASE,fixture=True)
             s=r.snapshot();r.close();s['fixture']=False
             s['markets']=[dict(symbol='ETHUSDT',category='crypto',bid='99',ask='100',mark_price='100',source_timestamps_ms={'bookTicker':BASE,'depth5':BASE,'premiumIndex':BASE})]
@@ -181,7 +181,7 @@ class BriefFallbackTests(unittest.TestCase):
 
     def test_stale_source_cli_keeps_verified_last_known_metrics(self):
         import brief_learning_v3 as brief
-        with tempfile.TemporaryDirectory(dir='/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch') as t:
+        with tempfile.TemporaryDirectory(dir=tempfile.gettempdir()) as t:
             r=PaperRuntime(Path(t)/'account',LAB/'paper_config_v3.json',clock_ms=lambda:BASE,fixture=True)
             s=r.snapshot();r.close();s['fixture']=False
             s['markets']=[dict(symbol='ETHUSDT',category='crypto',bid='99',ask='100',mark_price='100',source_timestamps_ms={'bookTicker':BASE-16000})]

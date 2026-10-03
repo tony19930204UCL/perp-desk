@@ -1,0 +1,17 @@
+[
+  {
+    "fixture": "sanitized-relative-timing-only",
+    "provenance": "Derived from the documented +61ms batch-time failure; absolute account/runtime data intentionally omitted.",
+    "receipt": {
+      "endpoint": "synthetic/public-time-source",
+      "source_timestamp_ms": 1000061
+    },
+    "type": "public_receipt"
+  },
+  {
+    "fixture": "sanitized-relative-timing-only",
+    "at_ms": 1000000,
+    "error": "ValueError: future source ahead_ms=61",
+    "type": "poll_error"
+  }
+]

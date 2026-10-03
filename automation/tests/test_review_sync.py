@@ -68,8 +68,8 @@ class ReviewSyncTests(unittest.TestCase):
                 self.assertEqual(m.main(base+['--visibility','public','--authorize-public-repo','owner/repo']),1)
             self.assertEqual(json.loads((root/'repo_sync/status.json').read_text())['state'],'blocked')
         wrapper=(Path(__file__).resolve().parents[2]/'scripts/paper_review_sync.py').read_text()
-        self.assertIn("'--visibility','public'",wrapper)
-        self.assertIn("'--authorize-public-repo','tony19930204UCL/perp-desk'",wrapper)
+        self.assertIn("'--visibility','private'",wrapper)
+        self.assertNotIn("'--authorize-public-repo'",wrapper)
 
     def test_public_fetches_all_remote_refs_before_security_scan(self):
         import review_sync as m

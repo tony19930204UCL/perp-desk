@@ -178,7 +178,7 @@ class BatchTimeTests(unittest.TestCase):
             self.assertIn(label+' source',event['error'])
 
     def test_measured_future_becomes_valid_only_after_actual_clock_reaches_source(self):
-        record=json.loads((LAB/'evidence/batch_time_actual_failure.json').read_text())
+        record=json.loads((LAB/'tests/fixtures/batch_time_measured_offset_sanitized.json').read_text())
         source=record[-2]['receipt']['source_timestamp_ms'];validation_upper=record[-1]['at_ms']
         delta=source-validation_upper
         self.assertEqual(delta,61)
