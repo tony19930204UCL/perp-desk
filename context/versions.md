@@ -352,3 +352,13 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 未啟動supervisor或service、未停止或重啟runtime/dashboard、未停用既有2分鐘health schedule。六個候選source恢復精確base bytes，local試驗startup配置僅保存在private驗收evidence，inactive。原storage policy／帳戶／risk／window與API observer available保持。
 - PR#15／Issue#6 blocked comments已GitHub讀回，Issue#6仍OPEN，restart-autostart task blocked。證據cache/scratch/pr15-6090b29-acceptance（CI／metadata／manifest／preflight_readback／service_manager_preflight／health_readiness_boundary／rollback），無operator coding／testing／review／debug。
 
+## PR-015-UPDATED-MANUAL-SUPERVISOR-ACCEPTED（2026-10-03）
+
+- 更新精確head d19430b472b61a37210c6556138643a2c86a5e88，GitHub run37145395026 job111268152346 metadata／實際log確認38 exporter＋249 PAPER通過。保留6090b29 activation blocked歷史；新版明確把work-overdue／work-unavailable列startup advisory，其餘已知及未知fault仍blocking，health原report不改。
+- 六個artifact local base完全匹配後備份套用。operator config從先前已驗證paths保留，runtime Python由實際/proc/exe解出，不猜interpreter。配置只存shared/startup_supervisor_config.json，不export。
+- 真實read-only --check辨識唯一既有PID4079131／原durable基準，--check-activation回報autostart_supported=false／manual_supervisor_supported=true／user bus unavailable。選擇文檔Path B手動foreground管理，沒有install/enable user unit、host/WSL reboot／linger／gateway修改，也未宣稱Windows會啟動WSL。
+- 切換前空倉／無pending，精確驗證舊runtime與dashboard cmd/cwd後停止，保存同namespace audit prefix及snapshot。重新preflight ready-to-start、runtime_pids=[]後啟動手動supervisor，persistent terminal handle proc_588d7526e482。實際supervisor PID4163606直接擁有runtime4163608及dashboard4163607，單一engine、原state/status/config/storage policy保持。
+- 真實startup在health僅work-overdue時成功且仍持續，advisory保持顯示，沒有把health改成全healthy。Linux／Windows status／health／work200／observer available，initial equity、risk、deployment、fills／ledger歷史前綴、research start／deadline保持。停止前原audit逐row hash前綴完整保留。
+- Supervisor health output驗證後才list／pause精確舊monitor cron e7e8658af9c1，readback disabled/paused。pause後health checked_at由supervisor推進，sole periodic health owner驗收通過。daily brief／mirror sync不變。回滾時須停supervisor owned children並resume原monitor，不能還原舊account副本。
+- PR#15的手動管理／恢復契約接受並部署，但Issue#6 user-systemd／host boot autostart仍platform blocked，task仍blocked而非全部completed。沒有讓agent反覆修已知缺失平台，工程下一張#2來源timing。Mirror exact bytes／文件export／配置排除及CI另final讀回。證據cache/scratch/pr15-d19430b-acceptance。
+
