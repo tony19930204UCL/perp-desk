@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from decimal import Decimal as D
 LAB=Path(__file__).resolve().parents[1]
-SCRATCH=Path('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch')
+SCRATCH=Path(tempfile.gettempdir())
 class LearningSpeedTests(unittest.TestCase):
     def test_frozen_config_preserves_risk_cost_exit(self):
         p=LAB/'paper_config_v3.json'
