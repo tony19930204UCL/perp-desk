@@ -312,4 +312,5 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - Scope只含automation/review_sync.py及automation/tests/test_review_sync.py，local映射repo_sync下兩檔。原base bytes與remote完全一致，UTC2026-10-03T11:53:11.272065Z備份後原子套用精確已CI通過artifact，保留原權限與回滾版本。無remote merge，不自行code review／unit test／debug。
 - 未修改或重啟交易runtime／看板，不改broker、帳戶、風控、策略及研究窗口。既有同步入口已使用新module，先回報正常settling，發布完成與remote byte readback另作operational驗收，不能把settling當推送成功。
 - 有界hosted證據不是永久無故障保證。新的不安全檔案／permission／symlink／provenance／scanner違規仍應fail-closed，不忽略Git entry或放寬安全policy。
+- 發布驗收完成：正常private mirror推送70e8e3ff12338944dcb32e88aea58f7d09b52985，remote兩個artifact bytes與精確head相符，版本紀錄已發布；其CI run37121212981 success。PR#11驗收comment及Issue#10 CLOSED均從GitHub讀回。交易source manifest、帳戶fill／ledger歷史前綴與研究起點／deadline維持，HTTP200且observer.available=true。
 
