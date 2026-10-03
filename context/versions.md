@@ -372,5 +372,5 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - Standalone runtime persistent handle proc_a8ef1b741b39，實際Python PID54169；dashboard proc_af32c39a563d。Linux／Windows status/health/work200／observer available，最新runtime error=null。
 - 真實durable state source_timing_evidence=32 records，logical_fetch各<=12 internal events，含分離wait與actual HTTP200attempt、batch_peer_aging/source_validation。原clock domains、source timestamp及window baseline保持。Local public /time probe實際HTTP200，wait約250ms、attempt397.77860895264894ms、outer647.9599920511246ms，是host工程觀察非策略樣本，也不解釋歷史clock discrepancy。
 - GitHub API曾連續timeout，首次Issue建立結果未知且未宣稱發布/建立成功。有界重查及IPv4公開network probe後連線恢復，確認無同名Issue才成功建立#17/readback，不duplicate。不把此暫態timeout推論工程root cause。
-- Issue#2尚待mirror exact bytes／新docs/probe export及發布CI確認才結案。Evidence cache/scratch/pr16-254fa8f-acceptance包含CI、actual public error、live bounded timing、audit/account acceptance、manager stop／rollback與Issue body。
+- Final：mirror0325e8c1c79c7e7390b33571b3fb90a2995645fc八個artifact bytes與head一致，新docs/probe正常export。發布CI37156782395 direct API確認completed/success（gh run watch曾timeout，未當成CI失敗或掩蓋）。PR#16 acceptance comment5973931090及Issue#2 CLOSED讀回，task completed。旧health cron resume後readback enabled／scheduled／last_status=ok。Issue#17已建立讀回，外部agent下一優先修stop budget；Issue#6仍blocked，supervisor inactive。Evidence cache/scratch/pr16-254fa8f-acceptance。
 
