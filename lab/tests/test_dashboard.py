@@ -134,7 +134,9 @@ class DashboardTests(unittest.TestCase):
         asset = LAB / 'dashboard.html'
         self.assertTrue(asset.exists(), 'working UI asset is missing')
         html = asset.read_text(encoding='utf-8')
-        self.assertIn('100 USDT', html)
+        # Observer dashboard: capital belongs to the ledger, not a UI constant.
+        self.assertIn('s.initial_equity_usdt', html)
+        self.assertNotIn('100 USDT', html)
         self.assertIn('PAPER', html)
         self.assertIn('/api/status', html)
         self.assertIn('textContent', html)
