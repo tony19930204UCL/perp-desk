@@ -323,3 +323,13 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - storage observation為namespace超過配置budget，不是disk full，已補safe evidence於Issue#5。其餘error-growth／work-overdue屬獨立觀察，不以本次false absent推論真實交易中斷或擅自resolve。
 - 證據位於cache/scratch/pr12-06443d2-acceptance，包括metadata、ci.log、manifest、deployment、health_failed、process_evidence及rollback。
 
+## PR-012-UPDATED-ACCEPTED（2026-10-03）
+
+- 精確head b7ac63cab26b7243c4d71a84ddcaf16c75f5ed99、GitHub run37129738079 job111222299413 metadata及log確認38 exporter＋229 PAPER通過，含real split-root subprocess。保留06443d2真實失敗／回滾歷史，不將先前綠CI說成成功部署。
+- 所有11個artifact local base完全匹配才備份並套用。Scope新增exporter operator文件allowlist與兩個scheduler wrappers，均屬#13成果所需而非交易規則改動。新增operator配置只存於排除export的shared/health_monitor_config.json。
+- 真實one-shot與正式wrapper均辨識唯一既有v3 PID3826480，runtime-absent／duplicate不在目前faults。runtime cwd保持原worktree，交易引擎不重啟。只停止舊dashboard PID3892838並以原port18767/status重啟，persistent handle proc_8ac4b881e1e6。
+- Linux及Windows status／health／work三個API HTTP200。真實browser執行確認health區和原1/30研究進度、平倉清單、拒單與cost統計仍可見。交易source manifest、deployment、fills／ledger歷史前綴與research起點deadline讀回保持。
+- 已list後create／readback唯讀no_agent監控job e7e8658af9c1，每2分鐘，local輸出，沒有coding-agent喚醒／自主修復。正式wrapper已手動執行驗證，排程真實tick結果另核對後紀錄。WSL／gateway停機不保證持續覆蓋，自啟仍#6。
+- operational_healthy=false是已知storage-capacity／work-overdue等真實觀察的呈現，不是本次integration失敗，不能宣稱全部系統健康。歷史incident保留，recovered_monitoring不是root-cause resolved。既有source timing／storage／startup／dashboard剩餘工作仍分別#2/#5/#6/#3，不因本次交付結案。
+- 新operator docs及精確artifact遠端發布、mirror CI與Issue#4/#13結案讀回另列final驗收。證據cache/scratch/pr12-b7ac63c-acceptance。
+
