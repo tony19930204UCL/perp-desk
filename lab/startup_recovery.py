@@ -187,6 +187,43 @@ def inspect_durable_state(cfg):
         pending_orders=sum(o.get('status') in ('PENDING','RESTING') for o in saved.get('orders',{}).values()))
 
 
+STARTUP_ADVISORY_FAULTS=frozenset({'work-overdue','work-unavailable'})
+
+
+def startup_readiness(report):
+    """Separate trading/runtime readiness from external engineering-history advisories."""
+    if not isinstance(report,dict) or not isinstance(report.get('faults'),dict):
+        return dict(ready=False,blocking_faults={'health-report-invalid':'Health report unavailable or malformed'},
+                    advisory_faults={})
+    faults=report['faults']
+    advisory={k:v for k,v in faults.items() if k in STARTUP_ADVISORY_FAULTS}
+    blocking={k:v for k,v in faults.items() if k not in STARTUP_ADVISORY_FAULTS}
+    return dict(ready=not blocking,blocking_faults=blocking,advisory_faults=advisory)
+
+
+def activation_platform_status(*,run=subprocess.run,env=None):
+    """Read-only activation capability probe. Never installs/enables/starts anything."""
+    env=dict(os.environ if env is None else env)
+    if not env.get('WSL_INTEROP') and not env.get('WSL_DISTRO_NAME'):
+        platform='non-wsl'
+    else:
+        platform='wsl'
+    try:
+        result=run(['systemctl','--user','show-environment'],capture_output=True,text=True,timeout=5,env=env)
+    except (OSError,subprocess.SubprocessError) as exc:
+        return dict(schema_version=1,platform=platform,user_systemd_bus=False,
+                    autostart_supported=False,manual_supervisor_supported=True,
+                    reason='user-systemd probe unavailable: '+type(exc).__name__)
+    if result.returncode!=0:
+        detail=(result.stderr or result.stdout or 'user-systemd bus unavailable').strip().splitlines()[0][:300]
+        return dict(schema_version=1,platform=platform,user_systemd_bus=False,
+                    autostart_supported=False,manual_supervisor_supported=True,
+                    reason=detail)
+    return dict(schema_version=1,platform=platform,user_systemd_bus=True,
+                autostart_supported=True,manual_supervisor_supported=True,
+                reason='user-systemd user bus reachable; service installation still operator-owned')
+
+
 def runtime_command(cfg):
     return [str(cfg.runtime_python),'-u',str(cfg.runtime_root/'paper_runtime_v3.py'),
             '--state-dir',str(cfg.state_dir),'--status',str(cfg.status_path),
@@ -247,7 +284,8 @@ def run_supervisor(cfg,*,popen=subprocess.Popen,sleep=time.sleep,health=health_o
                 raise StartupBlocked('runtime failed during cold recovery; operator action required')
             report=health(cfg.monitor_root,runtime_root=cfg.runtime_root,
                           state_dir=cfg.state_dir,status_path=cfg.status_path)
-            if report.get('operational_healthy') is True:
+            readiness=startup_readiness(report)
+            if readiness['ready']:
                 break
         else:
             raise StartupBlocked('startup health did not become current within bounded attempts')
@@ -284,10 +322,16 @@ def main(argv=None):
     import argparse
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config',type=Path,required=True)
-    parser.add_argument('--check',action='store_true',help='read-only preflight only')
+    parser.add_argument('--check',action='store_true',help='read-only durable/process preflight only')
+    parser.add_argument('--check-activation',action='store_true',
+                        help='read-only user-systemd/autostart platform capability probe')
     args=parser.parse_args(argv)
     try:
         cfg=load_config(args.config)
+        if args.check_activation:
+            result=activation_platform_status()
+            print(json.dumps(result,sort_keys=True))
+            return 0 if result['autostart_supported'] else 2
         if args.check:
             print(json.dumps(preflight(cfg),sort_keys=True))
             return 0
