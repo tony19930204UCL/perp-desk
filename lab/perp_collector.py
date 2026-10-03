@@ -35,6 +35,9 @@ class PublicClient:
         self.monotonic = monotonic
         self.wall_ms = wall_ms or (lambda:int(time.time()*1000))
 
+    def get_timed(self, endpoint, params=None, *, timing):
+        return self.get(endpoint,params,timing=timing)
+
     def get(self, endpoint, params=None, *, timing=None):
         params = params or {}
         timing = timing or (lambda event: None)
