@@ -204,6 +204,44 @@ class ReviewSyncTests(unittest.TestCase):
                     with self.assertRaises(m.Blocked):m.mirror({'lab/a.py':b'print(2)\n'} if action=='read' else {},repo)
                 self.assertEqual(victim.read_bytes(),b'private')
 
+    def test_transient_git_lock_disappearance_restarts_complete_inspection(self):
+        import review_sync as m
+        import os
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);repo,remote,pub=self.local_fixture(root)
+            lock=repo/'.git/maintenance.lock';lock.write_text('transient')
+            real_stat=os.stat;events=[]
+            def disappearing(path,*args,**kwargs):
+                if path=='maintenance.lock' and kwargs.get('dir_fd') is not None and not events:
+                    events.append('removed');lock.unlink()
+                    raise FileNotFoundError(2,'synthetic transient disappearance','maintenance.lock')
+                return real_stat(path,*args,**kwargs)
+            with patch.object(os,'stat',disappearing):
+                m.check_private_tree(repo/'.git')
+            self.assertEqual(events,['removed'])
+            # A full retry must still enforce security, not bless the tree after ENOENT.
+            unsafe=repo/'.git/index';unsafe.chmod(unsafe.stat().st_mode|0o020)
+            try:
+                with self.assertRaisesRegex(m.Blocked,'permissions'):m.check_private_tree(repo/'.git')
+            finally:unsafe.chmod(0o600)
+
+    def test_persistent_git_tree_churn_is_bounded_and_blocked(self):
+        import review_sync as m
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            repo,remote,pub=self.local_fixture(Path(td));calls=[]
+            real=m._check_private_tree_once
+            def changing(path):
+                calls.append(Path(path).name)
+                raise m._TransientGitTreeChange('maintenance.lock')
+            with patch.object(m,'_check_private_tree_once',changing):
+                with self.assertRaisesRegex(m.Blocked,'changed during inspection'):
+                    m.check_private_tree(repo/'.git')
+            self.assertEqual(len(calls),3,'transient handling must remain strictly bounded')
+            # Control: implementation still delegates to the real strict pass afterwards.
+            m._check_private_tree_once=real
+
     def test_group_writable_git_entries_fail_before_scanner_or_hooks(self):
         import review_sync as m
         from unittest.mock import Mock
@@ -239,10 +277,16 @@ class ReviewSyncTests(unittest.TestCase):
             log=root/'scanner-log';scanner=root/'scanner'
             scanner.write_text('#!/usr/bin/env python3\nimport sys,json,os,pathlib\na=sys.argv[1:]\nr={"args":a,"cwd":os.getcwd(),"env":{k:v for k,v in os.environ.items() if k.startswith("GITLEAKS")}}\nif "--config" in a:r["config"]=pathlib.Path(a[a.index("--config")+1]).read_text()\nwith open('+repr(str(log))+',"a") as f:f.write(json.dumps(r)+"\\n")\n');scanner.chmod(0o755)
             args=['--profile',str(root),'--repository',str(repo),'--remote',str(remote),'--owner-repo','owner/repo','--gh',str(gh),'--gitleaks',str(scanner),'--force']
-            original=m.publish
+            original=m.publish;real_tree=m._check_private_tree_once;transient=[]
             def local(*a,**kw):return original(*a,**kw,_test_remote=remote)
-            with patch.object(m,'publish',local),patch.dict(os.environ,{'GITLEAKS_CONFIG':'/evil','GITLEAKS_CONFIG_TOML':'[allowlist]\npaths=[".*"]'}):
+            def once(path):
+                if not transient:
+                    transient.append('maintenance.lock')
+                    raise m._TransientGitTreeChange('maintenance.lock')
+                return real_tree(path)
+            with patch.object(m,'publish',local),patch.object(m,'_check_private_tree_once',once),patch.dict(os.environ,{'GITLEAKS_CONFIG':'/evil','GITLEAKS_CONFIG_TOML':'[allowlist]\npaths=[".*"]'}):
                 self.assertEqual(m.main(args),0)
+            self.assertEqual(transient,['maintenance.lock'])
             records=[json.loads(line) for line in log.read_text().splitlines()]
             self.assertTrue(records)
             history=[record for record in records if record['args'][0]=='git']
