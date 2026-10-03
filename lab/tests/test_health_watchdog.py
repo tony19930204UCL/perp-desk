@@ -21,6 +21,13 @@ def snapshot():
     d['updated_at'] = NOW.isoformat()
     d['feed'].update(connected=True, last_success_at=NOW.isoformat(), errors_count=0)
     d['latest_error'] = None; d['blockers'] = []; d['engine']['status'] = 'running'
+    d['engine']['version_id']='H1-PAPER-003'; d['engine']['candidate_implementation']='paper-engine-v3'
+    d['engine']['deployment']['version_id']='H1-PAPER-003'
+    d['versions']=[dict(created_at=NOW.isoformat(),status='observing',version_id='H1-PAPER-003')]
+    d['research']=dict(strategy_start_ms=int(NOW.timestamp()*1000)-3600000,
+                       deadline_ms=int(NOW.timestamp()*1000)+3600000,
+                       target_complete_round_trips=30,target_not_guarantee=True,status='unproven',
+                       complete_round_trips=0,signals_count=0,blocked_signals_count=0,rejection_categories={})
     for m in d['markets']:
         m['last_received_at'] = NOW.isoformat()
         m['source_timestamps_ms'] = dict.fromkeys(('bookTicker','depth5','premiumIndex'), int(NOW.timestamp()*1000))
@@ -38,41 +45,88 @@ class HealthTests(unittest.TestCase):
             self.assertIn("ROOT=Path('/home/chihcheng/.hermes/profiles/perp-desk/lab')",source)
             self.assertNotIn('subprocess',source)
             self.assertNotIn('work_status.update',source)
-        self.assertIn('engineering_gate', (scripts/'paper_health_engineering_gate.py').read_text())
-        self.assertIn('main', (scripts/'paper_health_monitor.py').read_text())
+        gate=(scripts/'paper_health_engineering_gate.py').read_text()
+        monitor=(scripts/'paper_health_monitor.py').read_text()
+        self.assertIn('issue_handoff',gate);self.assertNotIn('wakeAgent',gate)
+        for source in (gate,monitor):
+            self.assertIn('health_monitor_config.json',source)
+            self.assertIn('load_monitor_config',source)
 
-    def test_exact_process_identity_handles_actual_python_unbuffered_flag(self):
+    def test_split_root_real_subprocess_exact_identity_and_namespace(self):
         import subprocess, sys
         mod=module()
         with tempfile.TemporaryDirectory() as td:
-            root=Path(td);(root/'paper_runtime_v2.py').write_text('import time; time.sleep(30)')
-            proc=subprocess.Popen([sys.executable,'-u','paper_runtime_v2.py','--state-dir','data/paper-v2','--status','shared/paper_v2_live.json'],cwd=root)
+            base=Path(td);monitor=base/'monitor';runtime=base/'runtime';shared=base/'shared-namespace'
+            for p in (monitor/'shared',monitor/'data/health',runtime,shared/'data/paper-v2',shared/'shared'):p.mkdir(parents=True,exist_ok=True)
+            (runtime/'paper_runtime_v3.py').write_text('import time; time.sleep(30)')
+            status=shared/'shared/paper_v2_live.json';state=shared/'data/paper-v2'
+            status.write_text(json.dumps(snapshot()))
+            trading_db=state/'runtime.sqlite3';trading_db.write_bytes(b'synthetic trading state must remain untouched')
+            (monitor/'shared/work_status.json').write_text(json.dumps({'schema_version':1,'tasks':[]}))
+            status_before=status.read_bytes();db_before=trading_db.read_bytes()
+            proc=subprocess.Popen([sys.executable,'-u','paper_runtime_v3.py','--state-dir',str(state),'--status',str(status)],cwd=runtime)
             try:
-                self.assertEqual(mod.runtime_processes(root),[proc.pid])
-                self.assertEqual(mod.runtime_processes(root/'different-cwd'),[])
+                self.assertNotEqual(monitor.resolve(),runtime.resolve(),'fixture must reproduce split monitor/runtime roots')
+                self.assertEqual(mod.runtime_processes(runtime,state,status),[proc.pid])
+                report=mod.once(monitor,NOW,runtime_root=runtime,state_dir=state,status_path=status)
+                self.assertEqual(status.read_bytes(),status_before)
+                self.assertEqual(trading_db.read_bytes(),db_before)
+                self.assertEqual(report['runtime_pids'],[proc.pid])
+                self.assertNotIn('runtime-absent',report['faults'])
+                self.assertNotIn('runtime-duplicate',report['faults'])
+                self.assertEqual(report['runtime_identity']['runtime_root'],str(runtime.resolve()))
+                # Exactness: monitor root, wrong namespace/status and wrong script cannot match.
+                self.assertEqual(mod.runtime_processes(monitor,state,status),[])
+                self.assertEqual(mod.runtime_processes(runtime,base/'wrong-state',status),[])
+                self.assertEqual(mod.runtime_processes(runtime,state,base/'wrong-status.json'),[])
+                wrong=runtime/'not_runtime.py';wrong.write_text('import time; time.sleep(30)')
+                wrongp=subprocess.Popen([sys.executable,'-u','not_runtime.py','--state-dir',str(state),'--status',str(status)],cwd=runtime)
+                try:self.assertEqual(mod.runtime_processes(runtime,state,status),[proc.pid])
+                finally:wrongp.terminate();wrongp.wait(timeout=5)
+                second=subprocess.Popen([sys.executable,'-B','-u','paper_runtime_v3.py','--state-dir',str(state),'--status',str(status)],cwd=runtime)
+                try:
+                    pids=sorted(mod.runtime_processes(runtime,state,status))
+                    self.assertEqual(pids,sorted([proc.pid,second.pid]))
+                    duplicate=mod.once(monitor,NOW,runtime_root=runtime,state_dir=state,status_path=status)
+                    self.assertIn('runtime-duplicate',duplicate['faults'])
+                finally:second.terminate();second.wait(timeout=5)
+                self.assertEqual(mod.runtime_processes(runtime,state,status),[proc.pid])
             finally:proc.terminate();proc.wait(timeout=5)
 
-    def test_engineering_gate_bounded_wake_no_duplicate_active_repair(self):
+    def test_operator_monitor_config_requires_complete_absolute_paths(self):
+        mod=module()
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);cfg=root/'health.json'
+            good={'schema_version':1,'runtime_root':str((root/'runtime').resolve()),
+                  'state_dir':str((root/'state').resolve()),'status_path':str((root/'status.json').resolve())}
+            cfg.write_text(json.dumps(good));loaded=mod.load_monitor_config(cfg)
+            self.assertEqual(loaded['runtime_root'],Path(good['runtime_root']))
+            for bad in ({},dict(good,runtime_root='relative/runtime'),dict(good,schema_version=2)):
+                cfg.write_text(json.dumps(bad))
+                with self.assertRaises(ValueError):mod.load_monitor_config(cfg)
+
+
+    def test_issue_handoff_never_wakes_agent_and_suppresses_active_owner(self):
         import work_status
-        mod=module();self.assertTrue(hasattr(mod,'engineering_gate'),'bounded engineering wake gate missing')
+        mod=module();self.assertTrue(hasattr(mod,'issue_handoff'),'read-only issue handoff missing')
         with tempfile.TemporaryDirectory() as td:
             root=Path(td);(root/'shared').mkdir();(root/'data/paper-v2').mkdir(parents=True)
             d=snapshot();d['latest_error']='batch error';(root/'shared/paper_v2_live.json').write_text(json.dumps(d))
             work=root/'shared/work_status.json';work_status.update(work,'history','old','completed','done','monitor')
             mod.once(root,NOW,True)
             gate=mod.engineering_gate(root,NOW)
-            self.assertTrue(gate['wakeAgent']);self.assertEqual(gate['incident_ids'],['paper-v2:runtime-error'])
-            self.assertFalse(mod.engineering_gate(root,NOW)['wakeAgent'])
+            self.assertFalse(gate['wakeAgent']);self.assertTrue(gate['handoff_required'])
+            self.assertEqual(gate['incident_ids'],['paper-v3:runtime-error'])
             work_status.update(work,'batch-time-recurrence','repair','running','actual investigation','test')
             # Changed failure is new evidence, but an existing owner prevents duplicate repair.
             d['latest_error']='new batch error';(root/'shared/paper_v2_live.json').write_text(json.dumps(d));mod.once(root,NOW,True)
-            self.assertFalse(mod.engineering_gate(root,datetime.now(timezone.utc))['wakeAgent'])
+            self.assertFalse(mod.engineering_gate(root,datetime.now(timezone.utc))['handoff_required'])
             (root/'data/health/incident_state.json').write_text('{corrupt')
             mod.once(root,datetime.now(timezone.utc),True)
             broken=mod.engineering_gate(root,datetime.now(timezone.utc))
-            self.assertTrue(broken['wakeAgent'],'broken monitor must wake engineering once')
-            self.assertIn('paper-v2:watchdog-state-unavailable',broken['incident_ids'])
-            self.assertFalse(mod.engineering_gate(root,datetime.now(timezone.utc))['wakeAgent'])
+            self.assertFalse(broken['wakeAgent'],'monitor must never dispatch engineering')
+            self.assertTrue(broken['handoff_required'])
+            self.assertIn('paper-v3:watchdog-state-unavailable',broken['incident_ids'])
 
     def test_explicit_tested_resolution_and_new_error_delivery(self):
         mod=module();self.assertTrue(hasattr(mod,'resolve_incident'),'explicit tested resolution missing')
@@ -104,7 +158,7 @@ class HealthTests(unittest.TestCase):
             history=json.loads(work.read_text())['tasks'][0]
             state=root/'data/health/incident_state.json'
             mod.once(root,NOW,True)
-            mod.link_incident(state,'paper-v2:runtime-error','repair')
+            mod.link_incident(state,'paper-v3:runtime-error','repair')
             def run(n):
                 if n%2:
                     return subprocess.run([sys.executable,'work_status.py','--path',str(work),'--id','task-'+str(n),'--title','task','--state','queued','--current','planned','--next','test'],capture_output=True,text=True).returncode
@@ -118,7 +172,7 @@ class HealthTests(unittest.TestCase):
 
     def test_ui_executes_fault_overview_even_when_all_jobs_completed(self):
         import subprocess
-        html=(ROOT/'staging/health/dashboard.html').read_text()
+        html=(ROOT/'dashboard.html').read_text()
         self.assertIn('現在健康／未解問題', html)
         self.assertLess(html.index('現在健康／未解問題'),html.index('背景工作 / 下一步'))
         self.assertNotIn('innerHTML', html)
@@ -129,7 +183,7 @@ class E {constructor(){this.textContent='';this.children=[];this.style={};this.c
 const nodes={}; const document={getElementById(id){return nodes[id]??=(new E());},createElement(){return new E();},createElementNS(){return new E();}};
 const ctx={document,console,AbortController,setTimeout(){return 1;},clearTimeout(){},setInterval(){},fetch:async()=>({ok:false,status:503})};
 vm.createContext(ctx);vm.runInContext(SCRIPT,ctx);
-vm.runInContext(`renderWork({available:true,tasks:[{title:'old repair',state:'completed',activity_unconfirmed:false,current_step:'done',next_step:'monitor',updated_at:'old',update_age_seconds:5,evidence:[]}]});renderHealth({available:true,health_stale:false,operational_healthy:false,engineering_resolved:false,checked_at:'now',faults:{'runtime-error':'ValueError: batch source age exceeded'},incidents:[{id:'paper-v2:runtime-error',status:'open',first_seen:'first',last_observed:'last',last_error:'<img src=x onerror=alert(1)>',linked_task_id:null,message:'ValueError: batch source age exceeded'}],pending_work:[],service_restart_limitation:'startup not verified'});`,ctx);
+vm.runInContext(`renderWork({available:true,tasks:[{title:'old repair',state:'completed',activity_unconfirmed:false,current_step:'done',next_step:'monitor',updated_at:'old',update_age_seconds:5,evidence:[]}]});renderHealth({available:true,health_stale:false,operational_healthy:false,engineering_resolved:false,checked_at:'now',faults:{'runtime-error':'ValueError: batch source age exceeded'},incidents:[{id:'paper-v3:runtime-error',status:'open',first_seen:'first',last_observed:'last',last_error:'<img src=x onerror=alert(1)>',linked_task_id:null,message:'ValueError: batch source age exceeded'}],pending_work:[],service_restart_limitation:'startup not verified'});`,ctx);
 assert(nodes.opsHealth.textContent.includes('故障'));assert(nodes.opsIssues.children[0].textContent.includes('<img'));
 assert(nodes.opsIssues.children[0].textContent.includes('尚未連結'));
 vm.runInContext(`renderHealth({available:true,health_stale:false,operational_healthy:true,engineering_resolved:false,checked_at:'now',faults:{},incidents:[{id:'i',status:'recovered_monitoring',first_seen:'first',last_observed:'last',last_error:'batch error',linked_task_id:null}],pending_work:[]});`,ctx);
@@ -144,7 +198,7 @@ assert(nodes.opsHealth.textContent.includes('未確認'));console.log('UI fault,
     def test_health_api_independent_freshness_security_and_invalid_data(self):
         import threading
         from http.client import HTTPConnection
-        path=ROOT/'staging/health/dashboard.py'
+        path=ROOT/'dashboard.py'
         self.assertTrue(path.exists(), 'staged health API missing')
         spec=importlib.util.spec_from_file_location('staged_health_dashboard',path)
         dash=importlib.util.module_from_spec(spec);spec.loader.exec_module(dash)
@@ -156,7 +210,7 @@ assert(nodes.opsHealth.textContent.includes('未確認'));console.log('UI fault,
                 m['last_received_at']=now.isoformat(); m['source_timestamps_ms']=dict.fromkeys(('bookTicker','depth5','premiumIndex'),int(now.timestamp()*1000))
             report=mod.record(root/'state.json',root/'health_status.json',mod.evaluate(d,{'tasks':[]},now,True),now)
             (root/'work_status.json').write_text(json.dumps({'schema_version':1,'tasks':[]}))
-            server=dash.make_server(0,root/'missing-market.json',ROOT/'staging/health/dashboard.html')
+            server=dash.make_server(0,root/'missing-market.json',ROOT/'dashboard.html')
             thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
             def get(route='/api/health',headers=None,method='GET'):
                 c=HTTPConnection('127.0.0.1',server.server_port,timeout=3);c.request(method,route,headers=headers or {});r=c.getresponse();body=r.read();c.close();return r.status,body

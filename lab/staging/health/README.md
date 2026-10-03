@@ -1,4 +1,7 @@
-# PAPER operational health watchdog (candidate, parent deployment required)
+# PAPER operational health watchdog (historical v2 candidate)
+
+> Historical evidence only. This document describes the pre-v3 staged design and must not be used as the current deployment/scheduling contract. In particular, do **not** schedule the historical autonomous engineering-gate proposal below. Current PAPER v3 integration and operator-only Issue handoff rules are in `docs/HEALTH_V3_OPERATOR.md`.
+
 
 No live runtime, strategy, risk configuration, trading SQLite, existing served dashboard or cron configuration was changed. The only live writes are the separate health report/incident namespace and genuine reliability-watchdog checkpoints through work_status.py. This is not yet persistent scheduled coverage.
 
