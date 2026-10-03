@@ -273,3 +273,17 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - entry-risk-sizing的舊testing狀態過時：原部署H1-PAPER-003父驗收199 IDs包含全部新增21個entry-risk tests，現存broker源碼與原entry-risk候選相同，test檔相同。視為先前已整合，不重派已完成工作。
 - 共七個Issue，全部已讀回body／label／branch-PR限制。external agent尚未收到人工轉交，工作狀態應queued或blocked，而不是假稱running。
 
+## PR-008-ACCEPTED（2026-10-03，私有同步與CI可攜性修補已套用）
+
+- 使用者要求依#8→#9驗收。PR#8精確head7739a4dfaefd4a0eecd81c969625910d0ea5b023，CI run37110442664 success，實際log為36個exporter與212個PAPER tests全部OK。助手只核對CI、成果及部署，未自行跑unit tests、review或debug。
+- 比對七個remote檔案與對應local base bytes，確認scope與source artifact。automation映射至repo_sync，lab相關候選另同步至實際learning-speed-v3 runtime來源。未改broker／策略／風控／設定／研究窗口。
+- UTC2026-10-03T08:53:55.194980Z先確認flat且無pending，備份原碼與SQLite，停止精確runtime後套用已CI通過bytes並恢复原namespace。operational acceptance與source manifest通過。broker初始／cash／fills／ledger／positions／day baselines，以及策略／窗口起點／deadline／baseline均讀回不變。
+- 只由正常鏡像發布，不merge遠端main，不刪依賴分支。部署後若異常回滾原碼並交Issue，不自行除錯。
+
+## PR-009-ACCEPTANCE-BLOCKED（2026-10-03，CI通過但完整成果未通過）
+
+- PR#9精確headd4354f945102417c6667c17c9585c87cc330d756，base等於#8已驗收head。remote compare只有五個observer／dashboard檔變更，CI run37110617954 success（36個exporter＋227個PAPER tests OK）。沒有親跑tests或source review。
+- 在獨立localhost preview執行精確候選，實際HTTP200但observer.available=false，error為account/ledger mismatch: realized_pnl_usdt，statistics=null且已平倉清單不可用。真實瀏覽器显示樣本未確認／30及勝率／平均淨損益／手續費比例不可用。
+- 判斷：全站503退化被隔離是部分進展，不等於完整研究觀察成果已恢復。底層帳務契約／表示相容性原因未確定，不自行推論root cause、不放寬精確對帳。不部署#9，production維持已知可用舊看板。preview不改交易帳戶／策略／風險／窗口。
+- 在PR#9回報public-safe驗收症狀並要求外部agent補獨立證據／契約修正與更新head CI。若需超出原Issue scope，先回報成果與scope，不自行修改交易核心。Issue#7及#3仍未結案。
+
