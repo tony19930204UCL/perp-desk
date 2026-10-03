@@ -45,7 +45,8 @@ class HealthTests(unittest.TestCase):
             self.assertIn("ROOT=Path('/home/chihcheng/.hermes/profiles/perp-desk/lab')",source)
             self.assertNotIn('subprocess',source)
             self.assertNotIn('work_status.update',source)
-        self.assertIn('engineering_gate', (scripts/'paper_health_engineering_gate.py').read_text())
+        self.assertIn('issue_handoff', (scripts/'paper_health_engineering_gate.py').read_text())
+        self.assertNotIn('wakeAgent', (scripts/'paper_health_engineering_gate.py').read_text())
         self.assertIn('main', (scripts/'paper_health_monitor.py').read_text())
 
     def test_exact_process_identity_handles_actual_python_unbuffered_flag(self):
@@ -56,6 +57,13 @@ class HealthTests(unittest.TestCase):
             proc=subprocess.Popen([sys.executable,'-u','paper_runtime_v3.py','--state-dir','data/paper-v2','--status','shared/paper_v2_live.json'],cwd=root)
             try:
                 self.assertEqual(mod.runtime_processes(root),[proc.pid])
+                second=subprocess.Popen([sys.executable,'-B','-u','paper_runtime_v3.py','--state-dir','data/paper-v2','--status','shared/paper_v2_live.json'],cwd=root)
+                try:
+                    self.assertEqual(sorted(mod.runtime_processes(root)),sorted([proc.pid,second.pid]))
+                    report=mod.evaluate(snapshot(),{'tasks':[]},NOW,False,process_count=2)
+                    self.assertIn('runtime-duplicate',report['faults'])
+                finally:second.terminate();second.wait(timeout=5)
+                self.assertEqual(mod.runtime_processes(root),[proc.pid],'restart/duplicate recovery must reflect actual processes')
                 self.assertEqual(mod.runtime_processes(root/'different-cwd'),[])
             finally:proc.terminate();proc.wait(timeout=5)
 
@@ -125,7 +133,7 @@ class HealthTests(unittest.TestCase):
 
     def test_ui_executes_fault_overview_even_when_all_jobs_completed(self):
         import subprocess
-        html=(ROOT/'staging/health/dashboard.html').read_text()
+        html=(ROOT/'dashboard.html').read_text()
         self.assertIn('現在健康／未解問題', html)
         self.assertLess(html.index('現在健康／未解問題'),html.index('背景工作 / 下一步'))
         self.assertNotIn('innerHTML', html)
@@ -151,7 +159,7 @@ assert(nodes.opsHealth.textContent.includes('未確認'));console.log('UI fault,
     def test_health_api_independent_freshness_security_and_invalid_data(self):
         import threading
         from http.client import HTTPConnection
-        path=ROOT/'staging/health/dashboard.py'
+        path=ROOT/'dashboard.py'
         self.assertTrue(path.exists(), 'staged health API missing')
         spec=importlib.util.spec_from_file_location('staged_health_dashboard',path)
         dash=importlib.util.module_from_spec(spec);spec.loader.exec_module(dash)
@@ -163,7 +171,7 @@ assert(nodes.opsHealth.textContent.includes('未確認'));console.log('UI fault,
                 m['last_received_at']=now.isoformat(); m['source_timestamps_ms']=dict.fromkeys(('bookTicker','depth5','premiumIndex'),int(now.timestamp()*1000))
             report=mod.record(root/'state.json',root/'health_status.json',mod.evaluate(d,{'tasks':[]},now,True),now)
             (root/'work_status.json').write_text(json.dumps({'schema_version':1,'tasks':[]}))
-            server=dash.make_server(0,root/'missing-market.json',ROOT/'staging/health/dashboard.html')
+            server=dash.make_server(0,root/'missing-market.json',ROOT/'dashboard.html')
             thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
             def get(route='/api/health',headers=None,method='GET'):
                 c=HTTPConnection('127.0.0.1',server.server_port,timeout=3);c.request(method,route,headers=headers or {});r=c.getresponse();body=r.read();c.close();return r.status,body
