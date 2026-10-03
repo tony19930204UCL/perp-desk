@@ -109,7 +109,11 @@ class PaperRuntime:
         error_type=None
         validation=None
         try:
-            receipt=self.client.get(endpoint,params,timing=lambda event: events.append(event) if len(events)<TIMING_EVENT_LIMIT else None)
+            if hasattr(self.client,'get_timed'):
+                receipt=self.client.get_timed(endpoint,params,timing=lambda event: events.append(event) if len(events)<TIMING_EVENT_LIMIT else None)
+            else:
+                receipt=self.client.get(endpoint,params)
+                events.append({'kind':'instrumentation_unavailable','reason':'client_fixture_has_no_get_timed'})
             received=receipt_ms(receipt)
             age=self.clock()-received
             if not 0<=age<=15000:
