@@ -51,7 +51,10 @@ class ObserverAnalyticsTests(unittest.TestCase):
         # Exact unlimited-precision component arithmetic would be below 3.95,
         # while the broker's canonical 40-digit cash update rounds the tiny debit
         # away at this account magnitude. The runtime summary is therefore valid.
-        exact=D(s['gross_realized_pnl_usdt'])-D(s['fees_usdt'])+D(s['funding_pnl_usdt'])
+        from decimal import localcontext
+        with localcontext() as ctx:
+            ctx.prec=60
+            exact=D(s['gross_realized_pnl_usdt'])-D(s['fees_usdt'])+D(s['funding_pnl_usdt'])
         self.assertNotEqual(exact,D(s['realized_pnl_usdt']))
         a=self.view(s)
         self.assertTrue(a['available'])
