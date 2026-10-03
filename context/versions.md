@@ -305,3 +305,11 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - #9精確head的36+228 CI與真實帳戶／Windows／Linux／browser成果驗收仍成立。此發布CI問題不等同runtime／帳戶故障，沒有重置帳戶或回退已確認可用的研究指標。Issue#7以已驗證的observer回歸修復結案；發布CI可靠性獨立標queued。
 - 同一mirror head的run37118382554 attempt2重跑success，已從GitHub讀回。這只證明本次重跑通過，不證明先前maintenance.lock與scanner assertion缺陷已修復，Issue#10仍open／queued。
 
+## PR-011-ACCEPTED（2026-10-03，同步工具暫態檔案檢查修補）
+
+- 驗收精確heada19052eede0447d6c762b75cbf625c46e5c80a5d。GitHub run37119343446的原始及兩次有界追加jobs111192259083／111192464086／111192662080均success，實際log每次38個exporter＋228個PAPER tests OK。首個post-fix job已綠燈，不拿retry-only green作修復證據。
+- Agent交付maintenance.lock在list/stat間消失的確定性合成證據、完整安全檢查最多三次且持續churn明確blocked的回歸，以及scanner-policy real CLI路徑與原安全條件。歷史scanner assertion的原始特定trigger未留完整trace，不宣稱必然與原lock事件同根因，接受其明示未知與獨立trigger證據。
+- Scope只含automation/review_sync.py及automation/tests/test_review_sync.py，local映射repo_sync下兩檔。原base bytes與remote完全一致，UTC2026-10-03T11:53:11.272065Z備份後原子套用精確已CI通過artifact，保留原權限與回滾版本。無remote merge，不自行code review／unit test／debug。
+- 未修改或重啟交易runtime／看板，不改broker、帳戶、風控、策略及研究窗口。既有同步入口已使用新module，先回報正常settling，發布完成與remote byte readback另作operational驗收，不能把settling當推送成功。
+- 有界hosted證據不是永久無故障保證。新的不安全檔案／permission／symlink／provenance／scanner違規仍應fail-closed，不忽略Git entry或放寬安全policy。
+
