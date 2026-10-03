@@ -218,50 +218,63 @@ def read_json(path):
     except (OSError, ValueError, UnicodeError):
         return None
 
-def runtime_processes(root):
-    """Only exact cwd, executable script and live namespace count, not substring matches."""
+def runtime_processes(runtime_root, state_dir=None, status_path=None):
+    """Find only the explicitly configured PAPER v3 process, even when monitor/runtime roots differ."""
     found = []
-    root = Path(root).resolve()
+    runtime_root = Path(runtime_root).resolve()
+    state_dir = Path(state_dir if state_dir is not None else runtime_root/'data/paper-v2').resolve()
+    status_path = Path(status_path if status_path is not None else runtime_root/'shared/paper_v2_live.json').resolve()
     for proc in Path('/proc').iterdir():
         if not proc.name.isdigit(): continue
         try:
             args = (proc/'cmdline').read_bytes().decode().strip('\0').split('\0')
-            if (proc/'cwd').resolve() != root: continue
+            if (proc/'cwd').resolve() != runtime_root: continue
             if len(args)<2 or not Path(args[0]).name.startswith('python'): continue
             script_index=1
             while script_index<len(args) and args[script_index] in ('-u','-B','-E','-s','-S','-I','-O','-OO'):
                 script_index+=1
-            if script_index>=len(args) or (root/args[script_index]).resolve()!=root/'paper_runtime_v3.py': continue
+            if script_index>=len(args): continue
+            script = Path(args[script_index])
+            if not script.is_absolute(): script = runtime_root/script
+            if script.resolve()!=runtime_root/'paper_runtime_v3.py': continue
             def option(key):
-                n=args.index(key); return (root/args[n+1]).resolve()
-            if option('--state-dir')!=root/'data/paper-v2' or option('--status')!=root/'shared/paper_v2_live.json': continue
+                n=args.index(key)
+                value=Path(args[n+1])
+                if not value.is_absolute(): value=runtime_root/value
+                return value.resolve()
+            if option('--state-dir')!=state_dir or option('--status')!=status_path: continue
             found.append(int(proc.name))
         except (OSError, ValueError, IndexError, UnicodeError):
             continue
     return found
 
-def storage_status(root):
-    """Only stat files; never opens, truncates or prunes trading databases."""
+def storage_status(state_dir):
+    """Only stat the explicitly configured trading namespace; never opens, truncates or prunes it."""
     import shutil
-    root = Path(root)
-    sizes = {str(p.relative_to(root)):p.stat().st_size for p in (root/'data/paper-v2').glob('*') if p.is_file()}
-    disk = shutil.disk_usage(root)
+    state_dir = Path(state_dir).resolve()
+    sizes = {p.name:p.stat().st_size for p in state_dir.glob('*') if p.is_file()}
+    disk = shutil.disk_usage(state_dir)
     return dict(used_bytes=sum(sizes.values()), budget_bytes=512*1024*1024,
                 free_bytes=disk.free, min_free_bytes=1024*1024*1024, files=sizes)
 
-def once(root, now=None, process_present=None):
+def once(root, now=None, process_present=None, runtime_root=None, state_dir=None, status_path=None):
     from work_status import load_status
     root = Path(root).resolve(); now = now or datetime.now(timezone.utc)
-    snapshot = read_json(root/'shared/paper_v2_live.json')
+    runtime_root = Path(runtime_root if runtime_root is not None else root).resolve()
+    state_dir = Path(state_dir if state_dir is not None else root/'data/paper-v2').resolve()
+    status_path = Path(status_path if status_path is not None else root/'shared/paper_v2_live.json').resolve()
+    snapshot = read_json(status_path)
     try: work = load_status(root/'shared/work_status.json', now)
     except (OSError, ValueError, UnicodeError, TypeError, KeyError, OverflowError): work = None
-    pids = runtime_processes(root) if process_present is None else []
+    pids = runtime_processes(runtime_root,state_dir,status_path) if process_present is None else []
     process_count = len(pids) if process_present is None else None
     if process_present is None: process_present = process_count==1
-    try: storage = storage_status(root)
+    try: storage = storage_status(state_dir)
     except OSError: storage = {}
     report = evaluate(snapshot, work, now, process_present, storage, process_count=process_count)
     report['runtime_pids'] = pids
+    report['runtime_identity'] = dict(script='paper_runtime_v3.py',
+                                      runtime_root=str(runtime_root),state_dir=str(state_dir),status_path=str(status_path))
     state = root/'data/health/incident_state.json'; output=root/'shared/health_status.json'
     try:
         return record(state,output,report,now)
@@ -329,14 +342,22 @@ def main(argv=None):
     group.add_argument('--once',action='store_true')
     group.add_argument('--link',metavar='INCIDENT_ID')
     parser.add_argument('--task',metavar='WORK_TASK_ID')
+    parser.add_argument('--runtime-root',type=Path)
+    parser.add_argument('--state-dir',type=Path)
+    parser.add_argument('--status',type=Path)
     args=parser.parse_args(argv); root=Path(__file__).resolve().parent
+    configured=[args.runtime_root,args.state_dir,args.status]
+    if any(x is not None for x in configured) and not all(x is not None for x in configured):
+        parser.error('--runtime-root, --state-dir and --status must be supplied together')
+    if all(x is not None for x in configured) and not all(x.is_absolute() for x in configured):
+        parser.error('runtime/state/status configuration must use absolute paths')
     if args.link:
         from work_status import load_status
         work=load_status(root/'shared/work_status.json')
         if not any(t['id']==args.task and t['state'] not in ('completed','cancelled') for t in work['tasks']):
             parser.error('link requires existing noncompleted task; watcher never creates or claims work')
         link_incident(root/'data/health/incident_state.json',args.link,args.task)
-    report=once(root)
+    report=once(root,runtime_root=args.runtime_root,state_dir=args.state_dir,status_path=args.status)
     message=delivery(report)
     if message: print(message)
     return 0  # Successful collection can report operational faults; unexpected infrastructure errors still raise.
