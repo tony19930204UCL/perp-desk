@@ -21,6 +21,13 @@ def snapshot():
     d['updated_at'] = NOW.isoformat()
     d['feed'].update(connected=True, last_success_at=NOW.isoformat(), errors_count=0)
     d['latest_error'] = None; d['blockers'] = []; d['engine']['status'] = 'running'
+    d['engine']['version_id']='H1-PAPER-003'; d['engine']['candidate_implementation']='paper-engine-v3'
+    d['engine']['deployment']['version_id']='H1-PAPER-003'
+    d['versions']=[dict(created_at=NOW.isoformat(),status='observing',version_id='H1-PAPER-003')]
+    d['research']=dict(strategy_start_ms=int(NOW.timestamp()*1000)-3600000,
+                       deadline_ms=int(NOW.timestamp()*1000)+3600000,
+                       target_complete_round_trips=30,target_not_guarantee=True,status='unproven',
+                       complete_round_trips=0,signals_count=0,blocked_signals_count=0,rejection_categories={})
     for m in d['markets']:
         m['last_received_at'] = NOW.isoformat()
         m['source_timestamps_ms'] = dict.fromkeys(('bookTicker','depth5','premiumIndex'), int(NOW.timestamp()*1000))
@@ -45,34 +52,34 @@ class HealthTests(unittest.TestCase):
         import subprocess, sys
         mod=module()
         with tempfile.TemporaryDirectory() as td:
-            root=Path(td);(root/'paper_runtime_v2.py').write_text('import time; time.sleep(30)')
-            proc=subprocess.Popen([sys.executable,'-u','paper_runtime_v2.py','--state-dir','data/paper-v2','--status','shared/paper_v2_live.json'],cwd=root)
+            root=Path(td);(root/'paper_runtime_v3.py').write_text('import time; time.sleep(30)')
+            proc=subprocess.Popen([sys.executable,'-u','paper_runtime_v3.py','--state-dir','data/paper-v2','--status','shared/paper_v2_live.json'],cwd=root)
             try:
                 self.assertEqual(mod.runtime_processes(root),[proc.pid])
                 self.assertEqual(mod.runtime_processes(root/'different-cwd'),[])
             finally:proc.terminate();proc.wait(timeout=5)
 
-    def test_engineering_gate_bounded_wake_no_duplicate_active_repair(self):
+    def test_issue_handoff_never_wakes_agent_and_suppresses_active_owner(self):
         import work_status
-        mod=module();self.assertTrue(hasattr(mod,'engineering_gate'),'bounded engineering wake gate missing')
+        mod=module();self.assertTrue(hasattr(mod,'issue_handoff'),'read-only issue handoff missing')
         with tempfile.TemporaryDirectory() as td:
             root=Path(td);(root/'shared').mkdir();(root/'data/paper-v2').mkdir(parents=True)
             d=snapshot();d['latest_error']='batch error';(root/'shared/paper_v2_live.json').write_text(json.dumps(d))
             work=root/'shared/work_status.json';work_status.update(work,'history','old','completed','done','monitor')
             mod.once(root,NOW,True)
             gate=mod.engineering_gate(root,NOW)
-            self.assertTrue(gate['wakeAgent']);self.assertEqual(gate['incident_ids'],['paper-v2:runtime-error'])
-            self.assertFalse(mod.engineering_gate(root,NOW)['wakeAgent'])
+            self.assertFalse(gate['wakeAgent']);self.assertTrue(gate['handoff_required'])
+            self.assertEqual(gate['incident_ids'],['paper-v3:runtime-error'])
             work_status.update(work,'batch-time-recurrence','repair','running','actual investigation','test')
             # Changed failure is new evidence, but an existing owner prevents duplicate repair.
             d['latest_error']='new batch error';(root/'shared/paper_v2_live.json').write_text(json.dumps(d));mod.once(root,NOW,True)
-            self.assertFalse(mod.engineering_gate(root,datetime.now(timezone.utc))['wakeAgent'])
+            self.assertFalse(mod.engineering_gate(root,datetime.now(timezone.utc))['handoff_required'])
             (root/'data/health/incident_state.json').write_text('{corrupt')
             mod.once(root,datetime.now(timezone.utc),True)
             broken=mod.engineering_gate(root,datetime.now(timezone.utc))
-            self.assertTrue(broken['wakeAgent'],'broken monitor must wake engineering once')
-            self.assertIn('paper-v2:watchdog-state-unavailable',broken['incident_ids'])
-            self.assertFalse(mod.engineering_gate(root,datetime.now(timezone.utc))['wakeAgent'])
+            self.assertFalse(broken['wakeAgent'],'monitor must never dispatch engineering')
+            self.assertTrue(broken['handoff_required'])
+            self.assertIn('paper-v3:watchdog-state-unavailable',broken['incident_ids'])
 
     def test_explicit_tested_resolution_and_new_error_delivery(self):
         mod=module();self.assertTrue(hasattr(mod,'resolve_incident'),'explicit tested resolution missing')
@@ -104,7 +111,7 @@ class HealthTests(unittest.TestCase):
             history=json.loads(work.read_text())['tasks'][0]
             state=root/'data/health/incident_state.json'
             mod.once(root,NOW,True)
-            mod.link_incident(state,'paper-v2:runtime-error','repair')
+            mod.link_incident(state,'paper-v3:runtime-error','repair')
             def run(n):
                 if n%2:
                     return subprocess.run([sys.executable,'work_status.py','--path',str(work),'--id','task-'+str(n),'--title','task','--state','queued','--current','planned','--next','test'],capture_output=True,text=True).returncode
@@ -129,7 +136,7 @@ class E {constructor(){this.textContent='';this.children=[];this.style={};this.c
 const nodes={}; const document={getElementById(id){return nodes[id]??=(new E());},createElement(){return new E();},createElementNS(){return new E();}};
 const ctx={document,console,AbortController,setTimeout(){return 1;},clearTimeout(){},setInterval(){},fetch:async()=>({ok:false,status:503})};
 vm.createContext(ctx);vm.runInContext(SCRIPT,ctx);
-vm.runInContext(`renderWork({available:true,tasks:[{title:'old repair',state:'completed',activity_unconfirmed:false,current_step:'done',next_step:'monitor',updated_at:'old',update_age_seconds:5,evidence:[]}]});renderHealth({available:true,health_stale:false,operational_healthy:false,engineering_resolved:false,checked_at:'now',faults:{'runtime-error':'ValueError: batch source age exceeded'},incidents:[{id:'paper-v2:runtime-error',status:'open',first_seen:'first',last_observed:'last',last_error:'<img src=x onerror=alert(1)>',linked_task_id:null,message:'ValueError: batch source age exceeded'}],pending_work:[],service_restart_limitation:'startup not verified'});`,ctx);
+vm.runInContext(`renderWork({available:true,tasks:[{title:'old repair',state:'completed',activity_unconfirmed:false,current_step:'done',next_step:'monitor',updated_at:'old',update_age_seconds:5,evidence:[]}]});renderHealth({available:true,health_stale:false,operational_healthy:false,engineering_resolved:false,checked_at:'now',faults:{'runtime-error':'ValueError: batch source age exceeded'},incidents:[{id:'paper-v3:runtime-error',status:'open',first_seen:'first',last_observed:'last',last_error:'<img src=x onerror=alert(1)>',linked_task_id:null,message:'ValueError: batch source age exceeded'}],pending_work:[],service_restart_limitation:'startup not verified'});`,ctx);
 assert(nodes.opsHealth.textContent.includes('故障'));assert(nodes.opsIssues.children[0].textContent.includes('<img'));
 assert(nodes.opsIssues.children[0].textContent.includes('尚未連結'));
 vm.runInContext(`renderHealth({available:true,health_stale:false,operational_healthy:true,engineering_resolved:false,checked_at:'now',faults:{},incidents:[{id:'i',status:'recovered_monitoring',first_seen:'first',last_observed:'last',last_error:'batch error',linked_task_id:null}],pending_work:[]});`,ctx);
