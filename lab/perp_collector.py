@@ -36,7 +36,14 @@ class PublicClient:
         self.wall_ms = wall_ms or (lambda:int(time.time()*1000))
 
     def get_timed(self, endpoint, params=None, *, timing):
-        return self.get(endpoint,params,timing=timing)
+        # A fixture/subclass may intentionally override get() to inject exact source
+        # evidence. Never bypass that override merely to manufacture transport timing.
+        method=self.get
+        if getattr(method,'__func__',None) is not PublicClient.get:
+            timing({'kind':'instrumentation_unavailable',
+                    'reason':'client_get_override_has_no_real_transport_attempt'})
+            return method(endpoint,params)
+        return method(endpoint,params,timing=timing)
 
     def get(self, endpoint, params=None, *, timing=None):
         params = params or {}
