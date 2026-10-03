@@ -81,9 +81,20 @@ class PaperRuntime(BaseRuntime):
         if not state['exit_accounting_cycle_allowed']:
             raise StorageProtectionHalt(
                 'pending entry cannot be durably canceled before further market delivery')
-        for order in pending:
-            self.broker.cancel(order['order_id'],ts=max(self.clock(),self.broker.last_ts))
+        before=state['used_bytes']
+        try:
+            for order in pending:
+                self.broker.cancel(order['order_id'],ts=max(self.clock(),self.broker.last_ts))
+        except Exception as exc:
+            raise StorageProtectionHalt(
+                'pending entry cancellation could not be durably recorded: '
+                +type(exc).__name__+': '+str(exc)) from exc
         state=self.storage_guard.observe()
+        growth=state['used_bytes']-before
+        state['protective_cancel_growth_bytes']=growth
+        if growth>state['max_exit_cycle_bytes']:
+            raise StorageProtectionHalt(
+                'pending entry cancellation exceeded configured durable-write cycle bound')
         self._storage_status=state
         return state
 
@@ -147,7 +158,12 @@ class PaperRuntime(BaseRuntime):
         self._storage_cycle_start_bytes=None
         pre=self._storage_preflight()
         if self._storage_stop_after_publish:
-            snapshot=self.snapshot()
+            try:
+                snapshot=self.snapshot()
+            except Exception as exc:
+                raise StorageProtectionHalt(
+                    'final protected snapshot could not be durably prepared: '
+                    +type(exc).__name__+': '+str(exc)) from exc
             snapshot['storage_protection']['stop_after_publish']=True
             return snapshot
         try:
