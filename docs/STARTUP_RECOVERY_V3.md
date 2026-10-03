@@ -19,11 +19,53 @@ It preserves the existing split-root topology:
 
 It does not change strategy, trading risk, execution assumptions, account baseline, forward start, research deadline or storage thresholds.
 
-## Important limitation
+## Supported platform prerequisite and limitation
 
-"Autostart" here means **when the supported WSL user systemd environment is itself started**.
+There are two supported activation modes. They are intentionally not equivalent.
 
-This contract does not make Windows start WSL after a host reboot, does not restart the host, and does not install a Windows Scheduled Task. If Windows is down, WSL is not started, the user systemd manager is unavailable, or the Hermes/gateway/Telegram path is offline, PAPER monitoring and Telegram delivery are **not guaranteed**.
+### A. user-systemd autostart
+
+User-systemd autostart is supported **only if the existing environment already has a reachable user systemd bus**.
+
+The read-only prerequisite check is:
+
+```sh
+python scripts/paper_startup_supervisor.py \
+  --config /path/to/startup.json \
+  --check-activation
+```
+
+Internally this performs only:
+
+```sh
+systemctl --user show-environment
+```
+
+It does not install, enable, start or modify a service.
+
+`autostart_supported=true` requires that command to return successfully. If it cannot connect to the user bus, user-systemd activation is **blocked** and must not be claimed as accepted.
+
+A reachable user bus still does not prove Windows will start WSL after a host reboot. "Autostart" means only that the unit can be started by the existing WSL user-systemd environment when that environment itself is running.
+
+### B. manual foreground supervisor
+
+When the user bus is unavailable, the supported fallback is to run the same supervisor manually in a foreground/persistent operator session:
+
+```sh
+python scripts/paper_startup_supervisor.py --config /path/to/startup.json
+```
+
+This uses the same:
+- read-only durable preflight;
+- single-engine checks;
+- bounded startup health attempts;
+- `StorageProtectionHalt` operator hold;
+- no in-process restart loop;
+- clean SIGTERM/SIGINT stop semantics.
+
+This mode is **not host/WSL autostart**. It stops if its owning session/environment stops and must not be represented as boot recovery.
+
+This contract does not make Windows start WSL after a host reboot, does not restart the host, does not install a Windows Scheduled Task, does not repair the user bus and does not alter the Hermes gateway. If Windows is down, WSL is not started, the supervisor session is absent, or the Hermes/gateway/Telegram path is offline, PAPER monitoring and Telegram delivery are **not guaranteed**.
 
 The durable PAPER namespace remains the source of recovery truth across such outages.
 
@@ -106,6 +148,30 @@ It does not create a new account namespace.
 During bounded startup acceptance it runs the same health monitor against the explicit split-root identity. PAPER is considered recovered only after health reports current operational evidence.
 
 If data is unavailable/stale, the existing runtime source/gap rules remain authoritative. The supervisor does not backfill missed trades, retimestamp old data, synthesize confirmation fills, force a close or extend the research window. If health does not become current within the configured bounded attempts, the supervisor stops its owned children and waits for operator action.
+
+## Startup readiness versus engineering-history health
+
+The health monitor intentionally reports all unresolved evidence, including external engineering-work freshness. Supervisor startup uses a narrower **trading/runtime readiness** classification without changing the health report itself.
+
+The following health faults are advisory for startup readiness only:
+
+- `work-overdue`
+- `work-unavailable`
+
+They remain visible in health output and incidents. They do not prove that PAPER runtime/data/account recovery failed.
+
+A startup may therefore become ready when the exact runtime is present and market/source/account/storage evidence is current even if a queued external engineering task is overdue.
+
+All other health faults remain startup blockers, including:
+
+- `runtime-absent`
+- `runtime-duplicate`
+- heartbeat/source/feed freshness failures
+- `snapshot-unavailable`
+- `runtime-error`
+- storage protection / capacity faults
+
+This is not a general "ignore health failures" rule. Unknown new fault keys are blocking by default.
 
 ## Runtime exit policy: no restart loop
 
@@ -193,30 +259,62 @@ Do not set `Restart=always` or `Restart=on-failure`; intentional storage/config 
 
 ## Operator deployment
 
+Common acceptance steps:
+
 1. Confirm exact PR head and green CI.
 2. Apply accepted files through the normal local workflow; do not change the trading namespace.
 3. Create the operator-local startup JSON using the **already deployed** runtime root, state/status namespace, storage policy and health config.
-4. Run `--check`. Do not continue if it reports missing/corrupt state, identity mismatch or an already-running runtime.
-5. Stop the currently manually managed runtime/dashboard using the existing operator procedure. Verify the exact runtime PID count is zero. Do not kill a process based only on a substring match.
-6. Run the supervisor manually once. Verify:
+4. Run `--check`. An existing exact runtime returning `already-running` is a successful read-only identity result, not permission to launch a second owner.
+5. Run `--check-activation` and record the result before choosing an activation path.
+
+### Path A: user bus available
+
+6. Stop the currently managed runtime/dashboard using the existing operator procedure. Verify the exact runtime PID count is zero. Do not kill a process based only on a substring match.
+7. Run the supervisor manually once and verify:
    - exactly one runtime;
    - dashboard responds locally;
    - health shows the same exact runtime/state/status identity;
+   - startup readiness has no blocking faults;
+   - any `work-overdue` advisory remains visible but is not misreported as a runtime outage;
    - forward start/research deadline/account baselines match preflight;
    - no reset/backfill occurred.
-7. Stop the manual supervisor cleanly and repeat `--check`; durable prefixes/baselines must be unchanged except legitimate runtime events already recorded before stop.
-8. If replacing an existing standalone health scheduler, disable it only now, after supervisor health has been verified.
-9. Create the user-systemd unit from the template and run a manual `systemctl --user start` / status readback. **Do not reboot the host for acceptance.**
-10. Verify `/api/status`, `/api/health`, `/api/work` and exact process count.
-11. Enable the unit only after those readbacks pass.
+8. Stop the manual supervisor cleanly and repeat `--check`; durable prefixes/baselines must be preserved except legitimate runtime events already committed before stop.
+9. If replacing an existing standalone health scheduler, disable it only now, after supervisor health has been verified.
+10. Create the user-systemd unit from the template and run a manual `systemctl --user start` / status readback. **Do not reboot the host for acceptance.**
+11. Verify `/api/status`, `/api/health`, `/api/work` and exact process count.
+12. Enable the unit only after those readbacks pass.
+
+### Path B: user bus unavailable
+
+If `--check-activation` reports `autostart_supported=false`:
+
+6. **Do not install/enable a user-systemd unit and do not claim autostart acceptance.**
+7. The operator may use the manual foreground supervisor command as a bounded process-management replacement after the same exact-PID-zero cutover.
+8. Verify the same runtime/dashboard/health/account/research invariants listed in Path A.
+9. Keep the existing standalone health schedule until the manual supervisor health loop has been verified, then ensure only one periodic health owner remains.
+10. Roll back by SIGTERM/SIGINT of the foreground supervisor and restore the previous process procedure against the same namespace/config.
+11. Host/WSL boot recovery remains **blocked by platform prerequisite** until a reachable user systemd bus (or another separately reviewed activation platform) exists.
+
+No code in this PR repairs the user bus or installs an alternative host scheduler.
 
 ## Rollback
+
+For user-systemd activation:
 
 1. `systemctl --user stop` the supervisor unit.
 2. Disable/remove only the new supervisor unit/configuration.
 3. Verify no supervisor-owned runtime remains.
+
+For manual foreground activation:
+
+1. Send SIGTERM/SIGINT to the foreground supervisor.
+2. Wait for its owned runtime/dashboard children to stop.
+3. Verify exact runtime PID count is zero.
+
+For either path:
+
 4. Re-enable the previously accepted standalone health schedule if it was disabled.
-5. Resume the previous manual runtime/dashboard procedure only after exact process count is zero and the same state/status/storage-policy configuration is used.
+5. Resume the previous manual runtime/dashboard procedure only with the same state/status/storage-policy configuration.
 6. Do not restore an older account copy, reset the namespace or move the research deadline.
 
 Rollback is process-management rollback, **not trading-state rollback**.
