@@ -315,6 +315,23 @@ assert(nodes.opsHealth.textContent.includes('未確認'));console.log('UI fault,
         before = json.dumps(work, sort_keys=True)
         r = mod.evaluate(d, work, NOW, True, dict(used_bytes=600000000, budget_bytes=536870912, free_bytes=100000000, min_free_bytes=1073741824))
         self.assertIn('work-overdue', r['faults']); self.assertIn('storage-capacity', r['faults'])
+        self.assertIn('storage-capacity-warning',r['warnings'])
+        warning_only=mod.evaluate(d, {'tasks':[]}, NOW, True,
+                                  dict(used_bytes=600000000,budget_bytes=536870912,
+                                       free_bytes=2000000000,min_free_bytes=1073741824))
+        self.assertTrue(warning_only['operational_healthy'])
+        self.assertIn('storage-capacity-warning',warning_only['warnings'])
+        self.assertNotIn('storage-capacity',warning_only['faults'])
+        protected=snapshot();protected['storage_protection']=dict(
+            schema_version=1,level='protect',new_risk_allowed=False,
+            exit_accounting_cycle_allowed=True,disk_full=False)
+        self.assertIn('storage-new-risk-inhibited',
+                      mod.evaluate(protected,{'tasks':[]},NOW,True)['faults'])
+        halted=snapshot();halted['storage_protection']=dict(
+            schema_version=1,level='halt',new_risk_allowed=False,
+            exit_accounting_cycle_allowed=False,disk_full=False)
+        self.assertIn('storage-capacity-halt',
+                      mod.evaluate(halted,{'tasks':[]},NOW,True)['faults'])
         self.assertEqual(r['pending_work'][0]['id'], 'repair')
         self.assertTrue(r['pending_work'][0]['activity_unconfirmed'])
         self.assertNotIn('executing', r['pending_work'][0])
