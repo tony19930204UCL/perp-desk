@@ -28,6 +28,9 @@ def canonical(value):
 def digest(value):
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
+TIMING_TRACE_LIMIT = 32
+TIMING_EVENT_LIMIT = 12
+
 class RuntimeClient(PublicMarketClient):
     ALLOWED = {**PublicMarketClient.ALLOWED, '/fapi/v1/fundingInfo': set()}
 
@@ -89,17 +92,65 @@ class PaperRuntime:
         previous=row[0] if row else '0'*64
         with self.db:
             self.db.execute('INSERT INTO audit(payload,previous_hash,hash) VALUES(?,?,?)', (payload, previous, hashlib.sha256((previous+payload).encode()).hexdigest()))
+    def _timing_record(self, item):
+        """Bounded rolling engineering evidence; never strategy performance."""
+        evidence=self.state.setdefault('source_timing_evidence',[])
+        evidence.append(item)
+        if len(evidence)>TIMING_TRACE_LIMIT:
+            del evidence[:-TIMING_TRACE_LIMIT]
+
     def fetch(self, endpoint, params=None):
-        start_ms=self.clock()
-        start_mono=self.monotonic()
-        receipt=self.client.get(endpoint, params)
-        returned_ms=self.clock()
-        returned_mono=self.monotonic()
-        self.audit(dict(type='public_receipt', receipt=receipt,request_start_ms=start_ms,request_start_monotonic_ms=start_mono*1000,request_return_ms=returned_ms,request_return_monotonic_ms=returned_mono*1000))
-        age=self.clock()-receipt_ms(receipt)
-        if not 0<=age<=15000:
-            raise ValueError('stale/future receipt')
-        return receipt
+        params=params or {}
+        outer_start_ms=self.clock()
+        outer_start_mono=self.monotonic()
+        events=[]
+        receipt=None
+        outcome='transport_error'
+        error_type=None
+        validation=None
+        try:
+            if hasattr(self.client,'get_timed'):
+                receipt=self.client.get_timed(endpoint,params,timing=lambda event: events.append(event) if len(events)<TIMING_EVENT_LIMIT else None)
+            else:
+                receipt=self.client.get(endpoint,params)
+                events.append({'kind':'instrumentation_unavailable','reason':'client_fixture_has_no_get_timed'})
+            returned_ms=self.clock()
+            returned_mono=self.monotonic()
+            self.audit(dict(type='public_receipt',receipt=receipt,
+                            request_start_ms=outer_start_ms,
+                            request_start_monotonic_ms=outer_start_mono*1000,
+                            request_return_ms=returned_ms,
+                            request_return_monotonic_ms=returned_mono*1000))
+            received=receipt_ms(receipt)
+            age=self.clock()-received
+            if not 0<=age<=15000:
+                validation='failed_stale_or_future_receipt'
+                raise ValueError('stale/future receipt')
+            validation='valid_receipt'
+            outcome='success'
+            return receipt
+        except Exception as exc:
+            error_type=type(exc).__name__
+            raise
+        finally:
+            outer_end_ms=self.clock()
+            outer_end_mono=self.monotonic()
+            self._timing_record(dict(
+                kind='logical_fetch',
+                classification='engineering_observation_not_strategy_performance',
+                endpoint=endpoint,params=params,
+                outer_start_wall_ms=outer_start_ms,outer_end_wall_ms=outer_end_ms,
+                outer_start_monotonic_ms=outer_start_mono*1000,
+                outer_end_monotonic_ms=outer_end_mono*1000,
+                outer_wall_elapsed_ms=outer_end_ms-outer_start_ms,
+                outer_monotonic_elapsed_ms=(outer_end_mono-outer_start_mono)*1000,
+                outer_wall_minus_monotonic_ms=(outer_end_ms-outer_start_ms)-(outer_end_mono-outer_start_mono)*1000,
+                outcome=outcome,error_type=error_type,validation=validation,
+                receipt_wall_ms=receipt_ms(receipt) if receipt is not None else None,
+                source_timestamp_ms=receipt.get('source_timestamp_ms') if receipt is not None else None,
+                events=events[:TIMING_EVENT_LIMIT]))
+
+
     def reference(self):
         cached=self.state.get('reference')
         if not cached or not 0<=self.clock()-receipt_ms(cached)<86400000:
@@ -287,14 +338,28 @@ class PaperRuntime:
             error=str(exc)
             raise
         finally:
-            self.audit(dict(type='source_clock_wait' if waited else 'source_validation',context=context,start_ms=start,validation_ms=now,end_ms=self.clock(),validation_monotonic_ms=self.monotonic()*1000,elapsed_monotonic_ms=(self.monotonic()-mono)*1000,wait_limit_ms=2000,outcome=outcome,error=error,sources=[dict(symbol=s,name=n,source_ms=t) for s,n,t in sources]))
+            end_ms=self.clock();end_mono=self.monotonic()
+            event=dict(type='source_clock_wait' if waited else 'source_validation',context=context,start_ms=start,validation_ms=now,end_ms=end_ms,validation_monotonic_ms=end_mono*1000,elapsed_monotonic_ms=(end_mono-mono)*1000,wait_limit_ms=2000,outcome=outcome,error=error,sources=[dict(symbol=s,name=n,source_ms=t) for s,n,t in sources])
+            self.audit(event)
+            self._timing_record(dict(
+                kind='source_validation',
+                classification='synthetic_or_runtime_gate_evidence_not_strategy_performance',
+                context=context,waited=waited,outcome=outcome,error=error,
+                start_wall_ms=start,end_wall_ms=end_ms,
+                start_monotonic_ms=mono*1000,end_monotonic_ms=end_mono*1000,
+                wall_elapsed_ms=end_ms-start,monotonic_elapsed_ms=(end_mono-mono)*1000,
+                wall_minus_monotonic_ms=(end_ms-start)-(end_mono-mono)*1000,
+                wait_limit_ms=2000,
+                sources=[dict(symbol=s,name=n,source_ms=t) for s,n,t in sources]))
 
     def collect_markets(self, ref, *, symbols=None, refresh_stale=True):
+        batch_start_ms=self.clock();batch_start_mono=self.monotonic()
+        requested=list(symbols if symbols is not None else [('ETHUSDT','crypto'),('XAUUSDT','TradFi')])
         markets=[]
         events=[]
         spec_eth=None
         age=self.config['execution_model']['max_source_age_ms']
-        for symbol, category in (symbols if symbols is not None else [('ETHUSDT','crypto'),('XAUUSDT','TradFi')]):
+        for symbol, category in requested:
             spec=instrument(ref,symbol,category,self.config['fee_assumptions'][category])
             ticker=self.fetch('/fapi/v1/ticker/bookTicker', {'symbol':symbol})
             depth=self.fetch('/fapi/v1/depth', {'symbol':symbol,'limit':20})
@@ -327,6 +392,14 @@ class PaperRuntime:
                   if m['symbol'] not in refreshed and any(type(ts) is int and now-ts>age for ts in m['source_timestamps_ms'].values())]
             if not aged:
                 break
+            self._timing_record(dict(
+                kind='peer_aging_before_refresh',
+                classification='engineering_observation_not_strategy_performance',
+                observed_wall_ms=now,
+                stale_symbols=[s for s,c in aged],
+                peers=[dict(symbol=m['symbol'],
+                            source_ages_ms={name:now-ts for name,ts in m['source_timestamps_ms'].items()})
+                       for m in markets]))
             self.audit(dict(type='batch_quote_refresh',at_ms=now,symbols=[s for s,c in aged],
                             sources_before=[dict(symbol=m['symbol'],sources=m['source_timestamps_ms']) for m in markets]))
             fresh, refreshed_spec=self.collect_markets(ref,symbols=aged,refresh_stale=False)
@@ -336,6 +409,21 @@ class PaperRuntime:
             if refreshed_spec is not None:
                 spec_eth=refreshed_spec
         # Validate every source, including untouched observations, at decision.
+        decision_ms=self.clock();decision_mono=self.monotonic()
+        self._timing_record(dict(
+            kind='batch_peer_aging',
+            classification='engineering_observation_not_strategy_performance',
+            requested_symbols=[s for s,c in requested],
+            refresh_stale=bool(refresh_stale),
+            start_wall_ms=batch_start_ms,end_wall_ms=decision_ms,
+            start_monotonic_ms=batch_start_mono*1000,end_monotonic_ms=decision_mono*1000,
+            wall_elapsed_ms=decision_ms-batch_start_ms,
+            monotonic_elapsed_ms=(decision_mono-batch_start_mono)*1000,
+            wall_minus_monotonic_ms=(decision_ms-batch_start_ms)-(decision_mono-batch_start_mono)*1000,
+            peers=[dict(symbol=m['symbol'],
+                        receipt_age_ms=decision_ms-int(datetime.fromisoformat(m['last_received_at'].replace('Z','+00:00')).timestamp()*1000),
+                        source_ages_ms={name:decision_ms-ts for name,ts in m['source_timestamps_ms'].items()})
+                   for m in markets]))
         self.validate_sources(markets, 'batch before decision', allow_wait=True)
         return markets, spec_eth
     def deliver_markets(self, markets, events, spec_eth):
@@ -496,6 +584,7 @@ class PaperRuntime:
             s['orders']=list(b.orders.values()) if b else []
             s['rejections'] += [dict(order_id=o['order_id'],signal_id=o['intent_id'],reason=o['reason'],status=o['status']) for o in s['orders'] if o['status']=='REJECTED']
             s['blocked_signals_count']=len({x['signal_id'] for x in s['rejections'] if x['signal_id'] in self.state.get('handled_signals',{})})
+            s['source_timing_evidence']=list(self.state.get('source_timing_evidence',[]))[-TIMING_TRACE_LIMIT:]
             s['candidate_not_deployed']=not bool(self.state.get('deployment'))
             s['engine']['candidate_implementation']='paper-engine-v2' if self.state.get('deployment') else 'paper-engine-v2-candidate'
             s['engine']['deployment']=self.state.get('deployment')

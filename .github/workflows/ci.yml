@@ -20,3 +20,5 @@ jobs:
       - name: PAPER isolated suite
         working-directory: lab
         run: python3 -m unittest discover -s tests -v
+      - name: Public timing observation (engineering evidence only)
+        run: python3 scripts/public_source_timing_probe.py
