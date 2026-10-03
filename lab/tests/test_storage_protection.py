@@ -74,7 +74,7 @@ class StorageProtectionTests(unittest.TestCase):
     def _runtime_with_position(self,td,probe):
         from paper_runtime_v3 import PaperRuntime
         from sim_broker import Intent
-        r=PaperRuntime(td,LAB/'paper_config_v3.json',clock_ms=lambda:100003000,
+        r=PaperRuntime(td,LAB/'paper_config_v3.json',clock_ms=lambda:100000000,
                        fixture=True,storage_policy=self.policy(),storage_probe=probe)
         spec=dict(symbol='ETHUSDT',maker_fee='0.0002',taker_fee='0.0005',
                   qty_step='0.001',tick_size='0.01',min_notional='20',
@@ -145,6 +145,8 @@ class StorageProtectionTests(unittest.TestCase):
             b.on_event(dict(type='book',event_id='book0',symbol='TEST',ts=111,
                             bids=[['99','10']],asks=[['100','10']]))
             b.submit(Intent('exit','TEST','SELL',D('1'),None,112,D('.1'),D('.1'),D('5'),D('100'),'TAKER',True))
+            # Normalize the comparison baseline through the durable SQLite representation.
+            b.close();b=open_broker()
             prefix_fills=list(b.fills);prefix_ledger=list(b.ledger);prefix_audit=list(b.audit)
             raw=b._db
             class InterruptingConnection:
