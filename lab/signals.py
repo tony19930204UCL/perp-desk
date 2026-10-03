@@ -174,7 +174,7 @@ class Detector:
 def self_check():
     """One handcrafted unit fixture, never a market-performance simulation."""
     import tempfile
-    scratch = Path('/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch')
+    scratch = Path(tempfile.gettempdir())
     start = datetime(2026, 10, 1, tzinfo=timezone.utc)
     epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
     base = (start - epoch).days * 86400000
