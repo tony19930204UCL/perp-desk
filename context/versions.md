@@ -360,5 +360,6 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 切換前空倉／無pending，精確驗證舊runtime與dashboard cmd/cwd後停止，保存同namespace audit prefix及snapshot。重新preflight ready-to-start、runtime_pids=[]後啟動手動supervisor，persistent terminal handle proc_588d7526e482。實際supervisor PID4163606直接擁有runtime4163608及dashboard4163607，單一engine、原state/status/config/storage policy保持。
 - 真實startup在health僅work-overdue時成功且仍持續，advisory保持顯示，沒有把health改成全healthy。Linux／Windows status／health／work200／observer available，initial equity、risk、deployment、fills／ledger歷史前綴、research start／deadline保持。停止前原audit逐row hash前綴完整保留。
 - Supervisor health output驗證後才list／pause精確舊monitor cron e7e8658af9c1，readback disabled/paused。pause後health checked_at由supervisor推進，sole periodic health owner驗收通過。daily brief／mirror sync不變。回滾時須停supervisor owned children並resume原monitor，不能還原舊account副本。
-- PR#15的手動管理／恢復契約接受並部署，但Issue#6 user-systemd／host boot autostart仍platform blocked，task仍blocked而非全部completed。沒有讓agent反覆修已知缺失平台，工程下一張#2來源timing。Mirror exact bytes／文件export／配置排除及CI另final讀回。證據cache/scratch/pr15-d19430b-acceptance。
+- PR#15的手動管理／恢復契約接受並部署，但Issue#6 user-systemd／host boot autostart仍platform blocked，task仍blocked而非全部completed。沒有讓agent反覆修已知缺失平台，工程下一張#2來源timing。
+- Final發布：mirror404ff1cb0d32afc1095897bae212f638d7853332六個artifact bytes相符，operator文件與entrypoint正常export，私有startup配置不在tree；發布CI37147073621 success。PR#15 manual acceptance與Issue#6仍OPEN/platform blocked comments已GitHub讀回。證據cache/scratch/pr15-d19430b-acceptance。
 
