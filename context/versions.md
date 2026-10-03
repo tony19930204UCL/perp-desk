@@ -297,3 +297,11 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - Issue#7可就已驗證的availability／representation相容回歸結案。Issue#3仍未完整交付跨帳本支援；有完整平倉資料時，長小數／比例值造成頁面橫向溢出，也列入該Issue的可讀性成果，不自行修碼。
 - 正常local鏡像發布，不merge遠端main；部署異常依既有備份回滾並交外部工程，不調交易設定或洗掉舊資料。
 
+## EXPORTER-CI-RELIABILITY-010（2026-10-03，發布CI間歇失敗另案追蹤）
+
+- 已發布mirror538fd0e5b2e99650f9ceb044d5efc08440078a5c，五個#9 source artifacts及versions.md均從GitHub讀回符合。先前mirror620f7a30f423fd78d17f7fd48c9414f16c0545c6的CI已通過，不把後續紅燈藏起來。
+- 新run37118382554 exporter36項有1error及1failure：test_unknown_descendant_history_is_never_published的maintenance.lock FileNotFoundError，以及test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment的1!=0 assertion。第二失敗是否同根因未確定，不自行debug。#9外部agent亦曾揭露先前Git lock檢查race，passing retry不是root cause修復。
+- 新開Issue#10（BUG／ENGINEERING），由外部agent修復CI可靠性，禁止弱化provenance、permission、scanner、divergence／unknown-history安全契約或刪測試。只要求一次unchanged-head GitHub failed-job rerun作有界驗證，保留原fail。無論重跑成功與否，Issue#10不以retry結案。
+- #9精確head的36+228 CI與真實帳戶／Windows／Linux／browser成果驗收仍成立。此發布CI問題不等同runtime／帳戶故障，沒有重置帳戶或回退已確認可用的研究指標。Issue#7以已驗證的observer回歸修復結案；發布CI可靠性獨立標queued。
+- 同一mirror head的run37118382554 attempt2重跑success，已從GitHub讀回。這只證明本次重跑通過，不證明先前maintenance.lock與scanner assertion缺陷已修復，Issue#10仍open／queued。
+
