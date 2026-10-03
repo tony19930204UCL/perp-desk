@@ -4,7 +4,7 @@ Never writes account state. Closed statistics exclude open episodes and legacy
 entries before this research window. Unsupported reversals or ambiguous cost
 attribution are unavailable, never guessed.
 """
-from decimal import Decimal as D, localcontext
+from decimal import Decimal as D, localcontext, Context, ROUND_HALF_EVEN
 
 
 def money(value):
@@ -23,15 +23,42 @@ def reconcile_account(snapshot):
         if not isinstance(row,dict) or row.get('type') not in ('realized','fee','funding'):
             raise ValueError('invalid cost ledger row')
         amounts.append((row['type'],money(row['amount'])))
-    numbers=[n for _,n in amounts]+[money(snapshot[k]) for k in ('gross_realized_pnl_usdt','fees_usdt','funding_pnl_usdt','realized_pnl_usdt') if k in snapshot]+[D(0)]
+    numbers=[n for _,n in amounts]+[money(snapshot[k]) for k in ('gross_realized_pnl_usdt','fees_usdt','funding_pnl_usdt','realized_pnl_usdt','initial_equity_usdt') if k in snapshot]+[D(0)]
     with localcontext() as ctx:
         ctx.prec=max(60,max(n.adjusted() for n in numbers)-min(n.as_tuple().exponent for n in numbers)+len(str(len(numbers)))+3)
         gross=sum((n for kind,n in amounts if kind=='realized'),D(0))
         fees=-sum((n for kind,n in amounts if kind=='fee'),D(0))
         funding=sum((n for kind,n in amounts if kind=='funding'),D(0))
-        for key,expected in [('gross_realized_pnl_usdt',gross),('fees_usdt',fees),('funding_pnl_usdt',funding),('realized_pnl_usdt',gross-fees+funding)]:
+        components=[('gross_realized_pnl_usdt',gross),('fees_usdt',fees),('funding_pnl_usdt',funding)]
+        for key,expected in components:
             if key in snapshot and money(snapshot[key])!=expected:
                 raise ValueError('account/ledger mismatch: '+key)
+
+    # Broker cash is canonical account state. It is accumulated under the
+    # simulator's fixed 40-digit ROUND_HALF_EVEN context, and close fills debit
+    # their fee before crediting realized PnL even though the durable ledger
+    # records the realized row immediately before its fee row. Replaying the
+    # ledger with arbitrary extra precision changes representation semantics and
+    # can create a false mismatch in the final digits.
+    if 'realized_pnl_usdt' in snapshot:
+        initial=money(snapshot['initial_equity_usdt'])
+        with localcontext(Context(prec=40,rounding=ROUND_HALF_EVEN)):
+            replay_cash=initial
+            index=0
+            while index<len(ledger):
+                item=ledger[index]
+                if item['type']=='realized' and index+1<len(ledger) and ledger[index+1].get('type')=='fee':
+                    replay_cash+=money(ledger[index+1]['amount'])
+                    replay_cash+=money(item['amount'])
+                    index+=2
+                else:
+                    replay_cash+=money(item['amount'])
+                    index+=1
+        with localcontext() as ctx:
+            ctx.prec=max(60,len(replay_cash.as_tuple().digits)+len(initial.as_tuple().digits)+3)
+            replay_net=replay_cash-initial
+        if money(snapshot['realized_pnl_usdt'])!=replay_net:
+            raise ValueError('account/ledger mismatch: realized_pnl_usdt')
 
 
 def analyze(snapshot, *, now_ms):
