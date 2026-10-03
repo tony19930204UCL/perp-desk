@@ -156,7 +156,8 @@ class StartupRecoveryTests(unittest.TestCase):
         m=self.module()
         for fault in ('runtime-absent','runtime-duplicate','source-freshness',
                       'feed-disconnected','snapshot-unavailable','runtime-error',
-                      'storage-capacity-halt','storage-new-risk-inhibited','storage-capacity'):
+                      'storage-capacity-halt','storage-new-risk-inhibited','storage-capacity',
+                      'future-unknown-operational-fault'):
             with self.subTest(fault=fault):
                 readiness=m.startup_readiness(dict(
                     operational_healthy=False,faults={fault:'synthetic'},warnings={},evidence={}))
