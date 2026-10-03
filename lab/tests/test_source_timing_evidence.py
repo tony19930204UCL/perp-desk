@@ -41,6 +41,7 @@ class TransportTimingTests(unittest.TestCase):
             sleep=clock.sleep,clock=clock.iso,monotonic=clock.monotonic,wall_ms=clock.wall_ms)
         r=object.__new__(PaperRuntime)
         r.state={};r.client=client;r.clock=clock.wall_ms;r.monotonic=clock.monotonic
+        r.audit=lambda event: None
         receipt=r.fetch('/fapi/v1/time')
         trace=r.state['source_timing_evidence'][-1]
         self.assertEqual(receipt['endpoint'],'/fapi/v1/time')
