@@ -385,6 +385,14 @@ class PaperRuntime:
                   if m['symbol'] not in refreshed and any(type(ts) is int and now-ts>age for ts in m['source_timestamps_ms'].values())]
             if not aged:
                 break
+            self._timing_record(dict(
+                kind='peer_aging_before_refresh',
+                classification='engineering_observation_not_strategy_performance',
+                observed_wall_ms=now,
+                stale_symbols=[s for s,c in aged],
+                peers=[dict(symbol=m['symbol'],
+                            source_ages_ms={name:now-ts for name,ts in m['source_timestamps_ms'].items()})
+                       for m in markets]))
             self.audit(dict(type='batch_quote_refresh',at_ms=now,symbols=[s for s,c in aged],
                             sources_before=[dict(symbol=m['symbol'],sources=m['source_timestamps_ms']) for m in markets]))
             fresh, refreshed_spec=self.collect_markets(ref,symbols=aged,refresh_stale=False)
