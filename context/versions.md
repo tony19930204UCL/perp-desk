@@ -331,5 +331,5 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - Linux及Windows status／health／work三個API HTTP200。真實browser執行確認health區和原1/30研究進度、平倉清單、拒單與cost統計仍可見。交易source manifest、deployment、fills／ledger歷史前綴與research起點deadline讀回保持。
 - 已list後create／readback唯讀no_agent監控job e7e8658af9c1，每2分鐘，local輸出，沒有coding-agent喚醒／自主修復。正式wrapper已手動執行驗證，排程真實tick結果另核對後紀錄。WSL／gateway停機不保證持續覆蓋，自啟仍#6。
 - operational_healthy=false是已知storage-capacity／work-overdue等真實觀察的呈現，不是本次integration失敗，不能宣稱全部系統健康。歷史incident保留，recovered_monitoring不是root-cause resolved。既有source timing／storage／startup／dashboard剩餘工作仍分別#2/#5/#6/#3，不因本次交付結案。
-- 新operator docs及精確artifact遠端發布、mirror CI與Issue#4/#13結案讀回另列final驗收。證據cache/scratch/pr12-b7ac63c-acceptance。
+- Final驗收：private mirror 2fd779e52488599d2c4d30cdc7f598b6e88e8316的11個artifact bytes全部等於精確head，包括operator docs；tree確認私有health config未export。Mirror CI37131842412 success。排程job e7e8658af9c1實際scheduled tick於2026-10-03T15:02:07.315759Z、last_status=ok已讀回。Issue#4/#13 CLOSED及PR acceptance comment已GitHub讀回。證據cache/scratch/pr12-b7ac63c-acceptance。
 
