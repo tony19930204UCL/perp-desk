@@ -144,6 +144,23 @@ class StartupRecoveryTests(unittest.TestCase):
                 self.assertEqual(len(calls),cfg.startup_health_attempts)
                 self.assertTrue(all(c.terminated for c in children))
 
+    def test_nonstorage_runtime_recovery_failure_never_restarts(self):
+        m=self.module()
+        with tempfile.TemporaryDirectory() as td:
+            fx=self.make_fixture(td);cfg=m.load_config(fx['startup'])
+            children=[]
+            def popen(cmd,**kwargs):
+                child=self.Child([None] if not children else [1])
+                children.append(child);return child
+            health_calls=[]
+            with self.assertRaisesRegex(m.StartupBlocked,'runtime failed during cold recovery'):
+                m.run_supervisor(cfg,popen=popen,sleep=lambda _:None,
+                                 health=lambda *a,**k:(health_calls.append(1) or {'operational_healthy':False}))
+            self.assertEqual(len(children),2,'dashboard + exactly one runtime attempt')
+            self.assertEqual(health_calls,[],'failed runtime must not be disguised by a health tick')
+            self.assertTrue(children[0].terminated)
+            self.assertEqual(children[1].returncode,1)
+
     def test_intentional_storage_stop_is_operator_hold_with_one_final_health_tick_and_no_restart(self):
         m=self.module()
         with tempfile.TemporaryDirectory() as td:
