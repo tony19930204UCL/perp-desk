@@ -1,5 +1,5 @@
 """ARTIFICIAL observer analytics, not performance."""
-import unittest,importlib.util,json,copy
+import unittest,importlib.util,json,copy\nfrom decimal import Decimal as D
 from pathlib import Path
 from test_paper_presentation import render_html,dom_text,paper_fixture
 LAB=Path(__file__).resolve().parents[1]
@@ -36,6 +36,32 @@ class ObserverAnalyticsTests(unittest.TestCase):
         s['cost_ledger'].append(dict(type='fee',fill_id='open',amount='-.01',ts=6500))
         s.update(fees_usdt='.05',realized_pnl_usdt='3.94')
         a=self.view(s);self.assertTrue(a['available']);self.assertEqual(a['closed_trades'][0]['net_pnl_usdt'],'3.95')
+
+    def test_runtime_precision_representation_is_compatible_but_real_mismatch_fails(self):
+        """Synthetic proof: canonical 40-digit cash replay differs from exact ledger sum."""
+        s=trades_fixture()
+        tiny='0.0000000000000000000000000000000000000001'
+        s['fills'].append(dict(fill_id='open-tiny',order_id='open-tiny-order',symbol='BTCUSDT',
+                              side='BUY',qty='1',price='105',fee=tiny,ts=6500))
+        s['cost_ledger'].append(dict(type='fee',fill_id='open-tiny',amount='-'+tiny,ts=6500))
+        s.update(initial_equity_usdt='100',gross_realized_pnl_usdt='4',
+                 fees_usdt='0.0400000000000000000000000000000000000001',
+                 funding_pnl_usdt='-.01',realized_pnl_usdt='3.95')
+        # Exact unlimited-precision component arithmetic would be below 3.95,
+        # while the broker's canonical 40-digit cash update rounds the tiny debit
+        # away at this account magnitude. The runtime summary is therefore valid.
+        exact=D(s['gross_realized_pnl_usdt'])-D(s['fees_usdt'])+D(s['funding_pnl_usdt'])
+        self.assertNotEqual(exact,D(s['realized_pnl_usdt']))
+        a=self.view(s)
+        self.assertTrue(a['available'])
+        self.assertEqual(a['statistics']['samples'],1)
+        self.assertEqual(len(a['closed_trades']),1)
+        # A material summary corruption is still rejected; precision compatibility
+        # is not a tolerance or blanket relaxation.
+        bad=copy.deepcopy(s);bad['realized_pnl_usdt']='3.94'
+        a=self.view(bad)
+        self.assertFalse(a['available'])
+        self.assertEqual(a['error'],'account/ledger mismatch: realized_pnl_usdt')
 
     def test_contradictory_cost_ledger_suppresses_observer_not_account_snapshot(self):
         import dashboard
