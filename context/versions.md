@@ -333,3 +333,13 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - operational_healthy=false是已知storage-capacity／work-overdue等真實觀察的呈現，不是本次integration失敗，不能宣稱全部系統健康。歷史incident保留，recovered_monitoring不是root-cause resolved。既有source timing／storage／startup／dashboard剩餘工作仍分別#2/#5/#6/#3，不因本次交付結案。
 - Final驗收：private mirror 2fd779e52488599d2c4d30cdc7f598b6e88e8316的11個artifact bytes全部等於精確head，包括operator docs；tree確認私有health config未export。Mirror CI37131842412 success。排程job e7e8658af9c1實際scheduled tick於2026-10-03T15:02:07.315759Z、last_status=ok已讀回。Issue#4/#13 CLOSED及PR acceptance comment已GitHub讀回。證據cache/scratch/pr12-b7ac63c-acceptance。
 
+## PR-014-STORAGE-ACCEPTED（2026-10-03）
+
+- PR#14精確head becba34721dab6bc48a8f9f7f6deed830b8608eb／run37136107271 job111240853088 metadata及真實CI log確認38 exporter＋238 PAPER通過。外部agent覆蓋warning／new risk inhibition／durable protective cancellation與reduce-only exit／reserve exhausted before market delivery／SQLite interruption rollback及同namespace restart前綴，不由operator重跑code tests或review。
+- 運行策略／帳戶risk／研究窗口不改。部署前空倉、所有orders已terminal，精確驗證舊PID3826480 cwd／argv才停止。停止後SQLite各namespace原生backup，再套用八個accepted source artifacts，runtime worktree同步v3入口與storage_protection新dependency，hash皆符合head，保留source回滾備份。
+- Operator獨立容量判斷：namespace約598319853bytes，2.5164h觀察增長約15916195bytes/h，原窗口剩約24.0581h，線性估計到期981233075bytes。這只是短歷史推估，不是保證。原warning536870912bytes不變，新risk limit1073741824bytes，exit reserve268435456bytes，hard namespace1342177280bytes，disk free reserve2147483648bytes，declared max cycle67108864bytes。Cycle是保守宣告估計，不是已量出所有未來最壞寫入上限，超界會halt。保留警告並新增可執行限制，不以抬高觀察budget抹掉警告。
+- Policy只存local shared/storage_policy_v3.json，原namespace原status啟動附--storage-policy，persistent handle proc_ae63aa351fb2，實際Python PID4079131。不reset、遷移、刪除、truncate／compact證據，不補離線單或延長窗口。看板不重啟。
+- 真實post snapshot storage_protection=warning／disk_full=false／new_risk_allowed=true，原512MiB警告仍可見且尚未達新增禁止風險門檻。health匹配新唯一runtime PID；API observer available，Linux／Windows status／health／work各200。歷史incident保留，當前work-overdue不冒稱全健康。
+- SQLite runtime audit原101215行逐row比對exact prefix保持，SHA256 721ec3aa2f8b951603892235999dd945337880dc6c7a98b8d1d69b837377c466。Snapshot fills／cost ledger前綴、initial equity／risk／deployment、research start／deadline讀回保持，source v3 hash等於accepted head。已snapshot／operational驗收，不宣稱live觸發了protect/halt或實際故障恢復（該部分為agent隔離CI證據）。
+- Private mirror bytes／新operator doc及policy排除／發布CI、Issue#5結案另作final readback。證據cache/scratch/pr14-becba34-acceptance。
+
