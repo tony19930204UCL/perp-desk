@@ -110,17 +110,48 @@ def run(args,cwd=None,check=True):
     return result
 
 
-def check_private_tree(path):
-    """Locking assumes same-uid processes cooperate; refuse other writable owners."""
+class _TransientGitTreeChange(RuntimeError):
+    """A Git-generated path disappeared while the private tree was being inspected."""
+
+
+def _check_private_tree_once(path):
+    """Require one complete permission/type pass over a stable directory snapshot."""
     with directory(path) as fd:
-        info=os.fstat(fd)
-        if info.st_uid!=os.getuid() or info.st_mode&0o022:raise Blocked('unsafe Git directory ownership/permissions')
-        for name in os.listdir(fd):
-            entry=os.stat(name,dir_fd=fd,follow_symlinks=False)
-            if entry.st_uid!=os.getuid() or entry.st_mode&0o022:raise Blocked('unsafe Git entry permissions')
-            if stat.S_ISDIR(entry.st_mode):check_private_tree(Path(path)/name)
-            elif not stat.S_ISREG(entry.st_mode) or entry.st_nlink!=1:raise Blocked('unsafe Git entry')
-        if read_bytes(Path(path)/'objects/info/alternates',missing=True):raise Blocked('Git alternate object directories rejected')
+        before=os.fstat(fd)
+        if before.st_uid!=os.getuid() or before.st_mode&0o022:
+            raise Blocked('unsafe Git directory ownership/permissions')
+        names=os.listdir(fd)
+        for name in names:
+            try:
+                entry=os.stat(name,dir_fd=fd,follow_symlinks=False)
+            except FileNotFoundError as error:
+                raise _TransientGitTreeChange(name) from error
+            if entry.st_uid!=os.getuid() or entry.st_mode&0o022:
+                raise Blocked('unsafe Git entry permissions')
+            if stat.S_ISDIR(entry.st_mode):
+                try:_check_private_tree_once(Path(path)/name)
+                except FileNotFoundError as error:raise _TransientGitTreeChange(name) from error
+            elif not stat.S_ISREG(entry.st_mode) or entry.st_nlink!=1:
+                raise Blocked('unsafe Git entry')
+        after=os.fstat(fd)
+        if (before.st_ino,before.st_mtime_ns,before.st_ctime_ns)!=(after.st_ino,after.st_mtime_ns,after.st_ctime_ns):
+            raise _TransientGitTreeChange(Path(path).name)
+        if read_bytes(Path(path)/'objects/info/alternates',missing=True):
+            raise Blocked('Git alternate object directories rejected')
+
+
+def check_private_tree(path):
+    """Fail closed on unsafe entries; tolerate only a bounded transient Git-tree race."""
+    # Git may create and remove maintenance.lock or other internal lock files between
+    # listdir() and stat(). Never ignore the missing entry: restart the entire
+    # inspection and require a stable pass. Persistent churn is an explicit block.
+    for attempt in range(3):
+        try:
+            _check_private_tree_once(path)
+            return
+        except _TransientGitTreeChange:
+            if attempt==2:
+                raise Blocked('Git directory changed during inspection') from None
 
 
 def git(repository,*args,check=True):
