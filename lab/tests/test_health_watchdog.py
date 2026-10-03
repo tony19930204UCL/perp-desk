@@ -61,12 +61,16 @@ class HealthTests(unittest.TestCase):
             (runtime/'paper_runtime_v3.py').write_text('import time; time.sleep(30)')
             status=shared/'shared/paper_v2_live.json';state=shared/'data/paper-v2'
             status.write_text(json.dumps(snapshot()))
+            trading_db=state/'runtime.sqlite3';trading_db.write_bytes(b'synthetic trading state must remain untouched')
             (monitor/'shared/work_status.json').write_text(json.dumps({'schema_version':1,'tasks':[]}))
+            status_before=status.read_bytes();db_before=trading_db.read_bytes()
             proc=subprocess.Popen([sys.executable,'-u','paper_runtime_v3.py','--state-dir',str(state),'--status',str(status)],cwd=runtime)
             try:
                 self.assertNotEqual(monitor.resolve(),runtime.resolve(),'fixture must reproduce split monitor/runtime roots')
                 self.assertEqual(mod.runtime_processes(runtime,state,status),[proc.pid])
                 report=mod.once(monitor,NOW,runtime_root=runtime,state_dir=state,status_path=status)
+                self.assertEqual(status.read_bytes(),status_before)
+                self.assertEqual(trading_db.read_bytes(),db_before)
                 self.assertEqual(report['runtime_pids'],[proc.pid])
                 self.assertNotIn('runtime-absent',report['faults'])
                 self.assertNotIn('runtime-duplicate',report['faults'])
