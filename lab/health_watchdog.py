@@ -20,7 +20,7 @@ def age(stamp, now):
     return (now-dt).total_seconds()
 
 def evaluate(snapshot, work, now, process_present=None, storage=None, process_count=None):
-    faults = {}; evidence = {}
+    faults = {}; warnings = {}; evidence = {}
     try:
         validate_snapshot(snapshot)
         if (snapshot['mode'] != 'paper' or snapshot.get('candidate_not_deployed') is not False
@@ -82,13 +82,33 @@ def evaluate(snapshot, work, now, process_present=None, storage=None, process_co
                     faults['work-overdue'] = 'Pending work update overdue or future; observation is not execution proof'
     except (ValueError, TypeError, KeyError, AttributeError):
         faults['work-unavailable'] = 'Engineering work status unavailable or malformed'
-    if storage is not None:
+    protection=snapshot.get('storage_protection') if isinstance(snapshot,dict) else None
+    if protection is not None:
         try:
-            if storage['used_bytes'] >= storage['budget_bytes'] or storage['free_bytes'] <= storage['min_free_bytes']:
-                faults['storage-capacity'] = 'Storage budget or minimum free-space threshold exceeded'
+            if (protection.get('schema_version')!=1
+                    or protection.get('level') not in ('normal','warning','protect','halt')
+                    or type(protection.get('new_risk_allowed')) is not bool
+                    or type(protection.get('exit_accounting_cycle_allowed')) is not bool
+                    or type(protection.get('disk_full')) is not bool):
+                raise ValueError('invalid storage protection')
+            if protection['level']=='warning':
+                warnings['storage-capacity-warning']='Namespace crossed configured warning threshold; this is not disk full'
+            elif protection['level']=='protect':
+                faults['storage-new-risk-inhibited']='Configured storage limit inhibits new risk while exit accounting reserve remains available'
+            elif protection['level']=='halt':
+                faults['storage-capacity-halt']='Durable exit/accounting headroom unavailable under configured storage policy'
+            evidence['storage_protection']=protection
+        except (KeyError,TypeError,ValueError):
+            faults['storage-capacity']='Storage protection state malformed or unverified'
+    elif storage is not None:
+        try:
+            if storage['used_bytes'] >= storage['budget_bytes']:
+                warnings['storage-capacity-warning']='Observed namespace exceeds legacy observation budget; not evidence of disk full'
+            if storage['free_bytes'] <= storage['min_free_bytes']:
+                faults['storage-capacity']='Observed free space below monitor minimum; storage policy not yet verified'
         except (KeyError, TypeError):
             faults['storage-capacity'] = 'Storage capacity unverified'
-    return dict(operational_healthy=not faults, faults=faults, evidence=evidence, pending_work=pending,
+    return dict(operational_healthy=not faults, faults=faults, warnings=warnings, evidence=evidence, pending_work=pending,
                 storage=storage, service_restart_limitation='Windows/WSL startup recovery not verified; watcher never restarts trading')
 
 @contextmanager
