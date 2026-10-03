@@ -287,3 +287,13 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 判斷：全站503退化被隔離是部分進展，不等於完整研究觀察成果已恢復。底層帳務契約／表示相容性原因未確定，不自行推論root cause、不放寬精確對帳。不部署#9，production維持已知可用舊看板。preview不改交易帳戶／策略／風險／窗口。
 - 在PR#9回報public-safe驗收症狀並要求外部agent補獨立證據／契約修正與更新head CI。若需超出原Issue scope，先回報成果與scope，不自行修改交易核心。Issue#7及#3仍未結案。
 
+## PR-009-UPDATED-ACCEPTED（2026-10-03，對帳相容修補與研究看板已部署）
+
+- 更新head728df2e918a736938433064ed5239cdbc1f7d357，base仍為已驗收#8 head7739a4dfaefd4a0eecd81c969625910d0ea5b023。CI run37117685201成功retry job111187754439，實際log36個exporter＋228個PAPER tests全OK。保留前次驗收失敗與外部agent揭露的前序syntax／fixture／exporter race失敗，不改寫舊紀錄。
+- 外部agent交付precision40／ROUND_HALF_EVEN canonical cash replay與ledger storage order相容性證據，明示非epsilon容忍、component summaries仍精確核對，真正不一致仍fail-closed。助手未做code review、unit tests或debug，只核對CI證據與實際成果。
+- 獨立preview對真實快照HTTP200、observer.available=true、error=null，closed-trade數／statistics sample與research count相符。之前realized_pnl_usdt mismatch不再出現，真實浏览器顯示1/30、平倉列及統計。
+- UTC2026-10-03T10:57:52.305238Z備份並套用精確五個observer／dashboard artifacts，只重啟看板，交易runtime未重啟。部署hash等於CI head，帳戶ledger／fills歷史前綴、engine deployment／forward start與research起點／deadline讀回保持。
+- Linux及Windows localhost18767實際HTTP200、observer.available=true，/api/work獨立200；真實瀏覽器進度／已平倉／拒單與成本統計可讀到實際資料。只算一筆完整往返，100%勝率不能當優勢證據。
+- Issue#7可就已驗證的availability／representation相容回歸結案。Issue#3仍未完整交付跨帳本支援；有完整平倉資料時，長小數／比例值造成頁面橫向溢出，也列入該Issue的可讀性成果，不自行修碼。
+- 正常local鏡像發布，不merge遠端main；部署異常依既有備份回滾並交外部工程，不調交易設定或洗掉舊資料。
+
