@@ -3,13 +3,14 @@
 This file describes reviewed scope, not a continuously live telemetry feed. Use latest local health/status for current operation.
 
 ## Deployed baseline at export preparation
-- H1-PAPER-002, `lab/paper_runtime_v2.py --state-dir data/paper-v2 --status shared/paper_v2_live.json`.
-- Dashboard loopback 18767 reads that snapshot.
-- ENG-008 freshness patch accepted. See append-only `context/versions.md` for exact acceptance hashes and evidence references.
+- H1-PAPER-003, `lab/paper_runtime_v3.py --state-dir data/paper-v2 --status shared/paper_v2_live.json`.
+- Current observer dashboard reads that snapshot and presents the research window/closed-trade analytics.
+- Account/state namespace continuity remains `data/paper-v2`; the v3 strategy migration did not reset the account.
 
 ## Candidate, not deployment
 - `lab/staging/batch_time/`: bounded real local wait for small future timestamps. Tested candidate is not an OS clock fix or live acceptance.
-- `lab/staging/health/`: health endpoint/UI. Watchdog files and scheduler wrappers alone do not prove a deployed schedule.
+- `lab/staging/health/`: historical v2 health candidate retained as evidence; do not apply its old dashboard wholesale.
+- Issue #4 integrates the reused watchdog with current v3 identity/current observer dashboard. A PR/CI pass still does not prove operator deployment or persistent scheduling.
 - `lab/staging/freshness/`: retains candidate development history. Latest version log distinguishes the accepted ENG-008 patch.
 
 ## Must remain visible

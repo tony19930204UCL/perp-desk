@@ -3,6 +3,9 @@ from pathlib import Path
 import sys
 ROOT=Path('/home/chihcheng/.hermes/profiles/perp-desk/lab')
 sys.path.insert(0,str(ROOT))
-from health_watchdog import main
+from health_watchdog import once, delivery, load_monitor_config
 if __name__=='__main__':
-    raise SystemExit(main(['--once']))
+    cfg=load_monitor_config(ROOT/'shared/health_monitor_config.json')
+    report=once(ROOT,runtime_root=cfg['runtime_root'],state_dir=cfg['state_dir'],status_path=cfg['status_path'])
+    message=delivery(report)
+    if message: print(message)

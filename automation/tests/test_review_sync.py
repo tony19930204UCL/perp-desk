@@ -545,12 +545,15 @@ class ReviewSyncTests(unittest.TestCase):
         import review_sync as m
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)
-            for name in ('repo_sync/review_sync.py','repo_sync/tests/test_sync.py','repo_sync/docs/README.md','repo_sync/docs/.github/workflows/ci.yml','repo_sync/evidence/green1.txt','repo_sync/status.json'):
+            for name in ('repo_sync/review_sync.py','repo_sync/tests/test_sync.py','repo_sync/docs/README.md',
+                         'repo_sync/docs/.github/workflows/ci.yml','repo_sync/docs/docs/HEALTH_V3_OPERATOR.md',
+                         'repo_sync/evidence/green1.txt','repo_sync/status.json'):
                 p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('pass\n' if p.suffix=='.py' else '{}')
             files=m.collect(root)
             self.assertIn('automation/review_sync.py',files)
             self.assertIn('README.md',files)
             self.assertIn('.github/workflows/ci.yml',files)
+            self.assertIn('docs/HEALTH_V3_OPERATOR.md',files,'operator health contract must survive normal mirror export')
             self.assertIn('evidence/sync/green1.txt',files)
             self.assertNotIn('automation/status.json',files)
 
