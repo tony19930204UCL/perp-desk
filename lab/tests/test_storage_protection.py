@@ -24,6 +24,21 @@ class StorageProtectionTests(unittest.TestCase):
                              exit_reserve_bytes=100,min_free_bytes=50,
                              max_exit_cycle_bytes=20)
 
+    def test_operator_policy_file_is_explicit_and_validated(self):
+        from storage_protection import load_policy
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)/'storage-policy.json'
+            good=dict(schema_version=1,warning_bytes=100,new_risk_limit_bytes=200,
+                      exit_reserve_bytes=100,min_free_bytes=50,max_exit_cycle_bytes=20)
+            p.write_text(json.dumps(good));loaded=load_policy(p)
+            self.assertEqual(loaded.hard_limit_bytes,300)
+            for bad in (dict(good,schema_version=2),
+                        dict(good,warning_bytes=200),
+                        dict(good,max_exit_cycle_bytes=101),
+                        dict(good,min_free_bytes=0)):
+                p.write_text(json.dumps(bad))
+                with self.assertRaises(ValueError):load_policy(p)
+
     def test_warning_new_risk_limit_exit_reserve_and_low_space_are_distinct(self):
         from storage_protection import StorageGuard
         with tempfile.TemporaryDirectory() as td:
