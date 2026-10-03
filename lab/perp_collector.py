@@ -28,28 +28,69 @@ class PublicClient:
                '/fapi/v1/premiumIndex': {'symbol'}, '/fapi/v1/depth': {'symbol', 'limit'},
                '/fapi/v1/klines': {'symbol', 'interval', 'limit', 'startTime', 'endTime'}}
 
-    def __init__(self, opener=urlopen, sleep=time.sleep, clock=utc_now, on_error=None):
+    def __init__(self, opener=urlopen, sleep=time.sleep, clock=utc_now, on_error=None,
+                 monotonic=time.monotonic, wall_ms=None):
         self.opener, self.sleep, self.clock = opener, sleep, clock
         self.on_error = on_error or (lambda event: None)
+        self.monotonic = monotonic
+        self.wall_ms = wall_ms or (lambda:int(time.time()*1000))
 
-    def get(self, endpoint, params=None):
+    def get(self, endpoint, params=None, *, timing=None):
         params = params or {}
+        timing = timing or (lambda event: None)
         if endpoint not in self.ALLOWED or not set(params).issubset(self.ALLOWED[endpoint]):
             raise ValueError('only allowlisted public market-data GETs permitted')
         if 'symbol' in params and params['symbol'] not in {'ETHUSDT', 'XAUUSDT'}:
             raise ValueError('unsupported observation symbol')
         url = self.BASE + endpoint + ('?' + urlencode(params) if params else '')
         request = Request(url, headers={'User-Agent': 'ShadowPublicObserver/1.0', 'Cache-Control': 'no-cache'}, method='GET')
+
+        def measured_wait(seconds, reason, attempt):
+            wall0=self.wall_ms(); mono0=self.monotonic()
+            self.sleep(seconds)
+            wall1=self.wall_ms(); mono1=self.monotonic()
+            timing({'kind':'wait','reason':reason,'attempt':attempt,
+                    'requested_ms':int(seconds*1000),
+                    'start_wall_ms':wall0,'end_wall_ms':wall1,
+                    'start_monotonic_ms':mono0*1000,'end_monotonic_ms':mono1*1000,
+                    'wall_elapsed_ms':wall1-wall0,
+                    'monotonic_elapsed_ms':(mono1-mono0)*1000,
+                    'wall_minus_monotonic_ms':(wall1-wall0)-(mono1-mono0)*1000})
+
         for attempt in range(3):
-            self.sleep(0.25)
+            measured_wait(0.25,'pre_attempt_throttle',attempt+1)
+            wall0=self.wall_ms(); mono0=self.monotonic()
+            status=None; size=None
             try:
                 with self.opener(request, timeout=10) as response:
-                    payload = json.loads(response.read(), parse_float=str)
+                    status=getattr(response,'status',None)
+                    if status is None and hasattr(response,'getcode'): status=response.getcode()
+                    raw=response.read()
+                    size=len(raw)
+                    payload=json.loads(raw, parse_float=str)
+                wall1=self.wall_ms(); mono1=self.monotonic()
+                timing({'kind':'http_attempt','attempt':attempt+1,'outcome':'success',
+                        'http_status':status,'response_bytes':size,
+                        'start_wall_ms':wall0,'end_wall_ms':wall1,
+                        'start_monotonic_ms':mono0*1000,'end_monotonic_ms':mono1*1000,
+                        'wall_elapsed_ms':wall1-wall0,
+                        'monotonic_elapsed_ms':(mono1-mono0)*1000,
+                        'wall_minus_monotonic_ms':(wall1-wall0)-(mono1-mono0)*1000})
                 received = self.clock()
                 source = payload.get('time', payload.get('E', payload.get('serverTime'))) if isinstance(payload, dict) else None
                 return {'endpoint': endpoint, 'params': params, 'source_timestamp_ms': source,
                         'received_at': received, 'payload': payload}
             except (URLError, TimeoutError, OSError, ValueError) as exc:
+                wall1=self.wall_ms(); mono1=self.monotonic()
+                code=exc.code if isinstance(exc,HTTPError) else status
+                timing({'kind':'http_attempt','attempt':attempt+1,'outcome':'error',
+                        'error_type':type(exc).__name__,'http_status':code,
+                        'response_bytes':size,
+                        'start_wall_ms':wall0,'end_wall_ms':wall1,
+                        'start_monotonic_ms':mono0*1000,'end_monotonic_ms':mono1*1000,
+                        'wall_elapsed_ms':wall1-wall0,
+                        'monotonic_elapsed_ms':(mono1-mono0)*1000,
+                        'wall_minus_monotonic_ms':(wall1-wall0)-(mono1-mono0)*1000})
                 self.on_error({'event': 'request_error', 'endpoint': endpoint, 'attempt': attempt + 1,
                                'received_at': self.clock(), 'error': str(exc)})
                 if attempt == 2 or (isinstance(exc, HTTPError) and exc.code == 418):
@@ -60,7 +101,8 @@ class PublicClient:
                         delay = min(60, max(delay, int(exc.headers.get('Retry-After', '10'))))
                     except ValueError:
                         delay = 10
-                self.sleep(delay)
+                measured_wait(delay,'retry_backoff',attempt+1)
+
 
 
 class Store:
