@@ -366,7 +366,7 @@ def safe_read(path, profile):
 
 DOC_FILES={'README.md','AGENTS.md','.gitignore','.github/workflows/ci.yml',
            'docs/DEPLOYMENT_AND_GAPS.md','docs/AUTO_SYNC.md','docs/ARCHITECTURE.md',
-           'docs/AI_REVIEW_GUIDE.md','docs/VERIFICATION.md'}
+           'docs/AI_REVIEW_GUIDE.md','docs/VERIFICATION.md','docs/HEALTH_V3_OPERATOR.md'}
 
 SKIP_DIRS={'.git','__pycache__','data','shared','evidence','probe-data','probe-shared','cache','logs','sessions','node_modules'}
 
