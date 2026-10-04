@@ -560,6 +560,31 @@ class MigrationTests(unittest.TestCase):
                     migrate(root,LAB/'paper_config_v4.json',acceptance,now_ms=now)
                 self.assertEqual((root/'runtime.sqlite3').read_bytes(),before)
 
+    def test_migration_rejects_missing_corrupt_audit_and_config_identity_without_runtime_write(self):
+        from paper_migrate_v4 import migrate
+        cases=('missing-signals','corrupt-runtime','bad-audit','wrong-config')
+        for case in cases:
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as td:
+                root,acceptance,now=self.make_v3(td)
+                config=LAB/'paper_config_v4.json'
+                if case=='missing-signals':
+                    (root/'signals.sqlite3').unlink()
+                elif case=='corrupt-runtime':
+                    # Preserve a byte baseline and make the DB structurally invalid.
+                    (root/'runtime.sqlite3').write_bytes(b'not sqlite')
+                elif case=='bad-audit':
+                    with sqlite3.connect(root/'runtime.sqlite3') as db:
+                        db.execute("UPDATE audit SET hash='0' WHERE id=(SELECT max(id) FROM audit)")
+                elif case=='wrong-config':
+                    bad=Path(td)/'bad-v4.json'
+                    data=json.loads(config.read_text());data['strategy']['downside_sigma']='1.4'
+                    bad.write_text(json.dumps(data,sort_keys=True))
+                    config=bad
+                before=(root/'runtime.sqlite3').read_bytes()
+                with self.assertRaises((ValueError,RuntimeError,sqlite3.DatabaseError)):
+                    migrate(root,config,acceptance,now_ms=now)
+                self.assertEqual((root/'runtime.sqlite3').read_bytes(),before)
+
     def test_running_runtime_lock_blocks_migration(self):
         from paper_migrate_v4 import migrate
         with tempfile.TemporaryDirectory() as td:
