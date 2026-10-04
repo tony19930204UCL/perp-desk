@@ -65,6 +65,34 @@ class TargetContractTests(unittest.TestCase):
         # Whether it passes or fails, target is the causal value and is never moved.
         self.assertEqual(diag['frozen_target'],str(causal_vwma_target(prior,signal_open)['value']))
 
+    def test_detector_persists_frozen_target_without_signal_bar_or_later_revision(self):
+        from signals_v4 import Detector
+        with tempfile.TemporaryDirectory() as td:
+            start=datetime(2026,10,4,tzinfo=timezone.utc)
+            base=int(start.timestamp()*1000)
+            d=Detector(Path(td)/'signals.sqlite3','H1-PAPER-004',start,{'ETHUSDT':'crypto'})
+            result=None
+            for i in range(62):
+                price='90' if i==61 else '100'
+                volume='13' if i==61 else '10'
+                b=bar(base+i*60000,price,volume)
+                result=d.process(b,now=datetime.fromtimestamp((b['close_time_ms']+1000)/1000,timezone.utc))
+            self.assertEqual(result['diagnostic'],'research_intent')
+            intent=result['intent']
+            self.assertEqual(intent['reversion_target'],'100')
+            self.assertEqual(intent['features']['target_bars'],'15')
+            source_opens=[int(x) for x in intent['features']['target_source_open_times_ms']]
+            self.assertEqual(source_opens,[base+i*60000 for i in range(46,61)])
+            self.assertNotIn(base+61*60000,source_opens)
+            sid=intent['signal_id']
+            with sqlite3.connect(Path(td)/'signals.sqlite3') as db:
+                before=db.execute('SELECT intent FROM h1_signals WHERE signal_id=?',(sid,)).fetchone()[0]
+            later=bar(base+62*60000,'95','10')
+            d.process(later,now=datetime.fromtimestamp((later['close_time_ms']+1000)/1000,timezone.utc))
+            with sqlite3.connect(Path(td)/'signals.sqlite3') as db:
+                after=db.execute('SELECT intent FROM h1_signals WHERE signal_id=?',(sid,)).fetchone()[0]
+            self.assertEqual(after,before)
+
     def test_unchanged_two_times_full_cost_gate_matches_existing_sizer(self):
         from paper_runtime_v4 import cost_diagnostic
         from paper_sizing import size_long
