@@ -444,3 +444,9 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 原作者Bailey等The Probability of Backtest Overfitting PDF實際下載/read_file讀取作方法背景，沒有計算PBO或統計確認。web_extract backend無法extract及本機pdftotext缺失均保留，改原作者PDF直取+read_file完成，不編文獻結果。
 - 沒有修改交易source/config/SQLite帳戶/ledger/audit、沒有部署、補交易、延長窗口或下單。證據cache/scratch/rejected-opportunity-study-oct04。此研究完成不代表H1-PAPER-003正式closeout或004 migration/activation已完成。
 
+## OPERATOR-EVENT-GATE-DECISION（2026-10-04，工程尚未部署）
+
+- 使用者指出靠降低Sol喚醒頻率省量會拉長重要事件反應，改採120s既有supervisor健康single writer保持、60s無LLM只讀event gate、重要fault/timer/ready backlog才喚醒operator。需要durable event/claim/lease/有界recovery，不能signature不變就遺失pending。Routine紀錄local/agent自己讀，只有observer实际動作或不可自行解除故障才通知。官網已核對no_agent/monitor支援，不把本機尚未交付說成已完成。此分層不靠free模型處理私人資料或交易安全gate，也未改main model/provider。
+- Issue#22 ENGINEERING/OBSERVABILITY已create/fullbody OPEN讀回，event-gated-operator task queued/API讀回，外部agent待人工轉交。新非main branch/PR，禁止mainpush/merge/live scheduler變更及部署；接收成果後operator才安裝並替換unconditional LLM cron，不增duplicate health writer。完整可轉交prompt在cache/scratch/event-gated-operator/高頻巡查設計與派工.md。現有每小時operator仍是過渡版本，120s health本次checked_at/runtime PID實際讀回，不宣稱60s喚醒已上線或量出省tokens。
+- 另唯讀核對原public depth在source1790966417238、receipt1790966417311、dispatch1790966418144：asks第一檔2653.08/qty0.009，第二檔2653.10/qty0.521。0.062ETH買單同一book時刻跨兩檔取0.009+0.053，原2tick adverse slippage後fills2653.10/2653.12。不是隨機拆單或兩次等待partial成交。原稱3筆部分成交不精確，實際2entry depth-level fills+1exit fill，單一flat-to-flat episode。仍sim_only，未向交易所下單/消耗真深度，不證明私人queue或REST快照之後真可成交。未修改simulation source/帳戶。
+
