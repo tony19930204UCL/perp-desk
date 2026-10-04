@@ -26,6 +26,7 @@ class StartupBlocked(RuntimeError):
 class StartupConfig:
     runtime_python: Path
     runtime_root: Path
+    runtime_script: str
     runtime_config: Path
     state_dir: Path
     status_path: Path
@@ -57,6 +58,7 @@ def load_config(path):
     cfg=StartupConfig(
         runtime_python=_absolute(data,'runtime_python'),
         runtime_root=_absolute(data,'runtime_root'),
+        runtime_script=data.get('runtime_script','paper_runtime_v3.py'),
         runtime_config=_absolute(data,'runtime_config'),
         state_dir=_absolute(data,'state_dir'),
         status_path=_absolute(data,'status_path'),
@@ -69,6 +71,8 @@ def load_config(path):
         health_interval_seconds=data.get('health_interval_seconds'),
         startup_health_attempts=data.get('startup_health_attempts'),
         startup_health_interval_seconds=data.get('startup_health_interval_seconds'))
+    if cfg.runtime_script not in ('paper_runtime_v3.py','paper_runtime_v4.py'):
+        raise ValueError('unsupported explicit runtime_script')
     if type(cfg.dashboard_port) is not int or not 1<=cfg.dashboard_port<=65535:
         raise ValueError('dashboard_port must be an integer TCP port')
     if type(cfg.health_interval_seconds) is not int or not 30<=cfg.health_interval_seconds<=300:
@@ -108,7 +112,7 @@ def inspect_durable_state(cfg):
         raise StartupBlocked('missing or unsafe monitor root')
     if not cfg.runtime_python.is_file():
         raise StartupBlocked('configured Python interpreter unavailable')
-    for path,label in ((cfg.runtime_root/'paper_runtime_v3.py','runtime script'),
+    for path,label in ((cfg.runtime_root/cfg.runtime_script,'runtime script'),
                        (cfg.runtime_config,'runtime config'),
                        (cfg.storage_policy,'storage policy'),
                        (cfg.dashboard_html,'dashboard asset'),
@@ -126,8 +130,8 @@ def inspect_durable_state(cfg):
             raise StartupBlocked('dashboard ledger configuration invalid') from exc
     health=load_monitor_config(cfg.health_config)
     expected={'runtime_root':cfg.runtime_root,'state_dir':cfg.state_dir,'status_path':cfg.status_path}
-    if any(health[k].resolve()!=v for k,v in expected.items()):
-        raise StartupBlocked('health config does not match startup runtime/state/status identity')
+    if any(health[k].resolve()!=v for k,v in expected.items()) or health['runtime_script']!=cfg.runtime_script:
+        raise StartupBlocked('health config does not match startup runtime/state/status/script identity')
 
     runtime_db=cfg.state_dir/'runtime.sqlite3'
     try:
@@ -151,9 +155,17 @@ def inspect_durable_state(cfg):
     config_hash=hashlib.sha256(cfg.runtime_config.read_bytes()).hexdigest()
     if state.get('config_hash')!=config_hash:
         raise StartupBlocked('runtime config hash differs from durable namespace')
+    try:
+        configured=json.loads(cfg.runtime_config.read_text())
+    except (OSError,UnicodeError,json.JSONDecodeError) as exc:
+        raise StartupBlocked('runtime config unreadable') from exc
+    version=configured.get('version_id')
+    expected_script={'H1-PAPER-003':'paper_runtime_v3.py','H1-PAPER-004':'paper_runtime_v4.py'}.get(version)
+    if expected_script is None or cfg.runtime_script!=expected_script:
+        raise StartupBlocked('runtime config/version/script identity unsupported')
     deployment=state.get('deployment')
-    if not isinstance(deployment,dict) or deployment.get('version_id')!='H1-PAPER-003':
-        raise StartupBlocked('durable namespace is not accepted H1-PAPER-003 deployment')
+    if not isinstance(deployment,dict) or deployment.get('version_id')!=version:
+        raise StartupBlocked('durable namespace is not accepted configured PAPER deployment')
     for key in ('forward_start_ms','strategy_start_ms','research_deadline_ms',
                 'strategy_fill_baseline','strategy_ledger_baseline'):
         if type(state.get(key)) is not int:
@@ -235,7 +247,7 @@ def activation_platform_status(*,run=subprocess.run,env=None):
 
 
 def runtime_command(cfg):
-    return [str(cfg.runtime_python),'-u',str(cfg.runtime_root/'paper_runtime_v3.py'),
+    return [str(cfg.runtime_python),'-u',str(cfg.runtime_root/cfg.runtime_script),
             '--state-dir',str(cfg.state_dir),'--status',str(cfg.status_path),
             '--config',str(cfg.runtime_config),'--storage-policy',str(cfg.storage_policy)]
 
@@ -251,9 +263,9 @@ def dashboard_command(cfg):
 
 def preflight(cfg):
     durable=inspect_durable_state(cfg)
-    pids=runtime_processes(cfg.runtime_root,cfg.state_dir,cfg.status_path)
+    pids=runtime_processes(cfg.runtime_root,cfg.state_dir,cfg.status_path,cfg.runtime_script)
     if len(pids)>1:
-        raise StartupBlocked('duplicate exact PAPER v3 runtimes already present')
+        raise StartupBlocked('duplicate exact configured PAPER runtimes already present')
     if len(pids)==1:
         return dict(state='already-running',runtime_pids=pids,durable=durable)
     return dict(state='ready-to-start',runtime_pids=[],durable=durable)
@@ -324,13 +336,15 @@ def run_supervisor(cfg,*,popen=subprocess.Popen,sleep=time.sleep,health=health_o
             if rc is not None:
                 if rc==2:
                     try:health(cfg.monitor_root,runtime_root=cfg.runtime_root,
-                               state_dir=cfg.state_dir,status_path=cfg.status_path)
+                               state_dir=cfg.state_dir,status_path=cfg.status_path,
+                               runtime_script=cfg.runtime_script)
                     except Exception:pass
                     return dict(state='operator-hold',reason='intentional-storage-stop',runtime_exit=rc,
                                 durable=check['durable'])
                 raise StartupBlocked('runtime failed during cold recovery; operator action required')
             report=health(cfg.monitor_root,runtime_root=cfg.runtime_root,
-                          state_dir=cfg.state_dir,status_path=cfg.status_path)
+                          state_dir=cfg.state_dir,status_path=cfg.status_path,
+                          runtime_script=cfg.runtime_script)
             readiness=startup_readiness(report)
             if readiness['ready']:
                 break
@@ -344,7 +358,8 @@ def run_supervisor(cfg,*,popen=subprocess.Popen,sleep=time.sleep,health=health_o
                 if rc==2:
                     # One final read-only observation only; no restart loop.
                     try:health(cfg.monitor_root,runtime_root=cfg.runtime_root,
-                               state_dir=cfg.state_dir,status_path=cfg.status_path)
+                               state_dir=cfg.state_dir,status_path=cfg.status_path,
+                               runtime_script=cfg.runtime_script)
                     except Exception:pass
                     return dict(state='operator-hold',reason='intentional-storage-stop',
                                 runtime_exit=rc,durable=check['durable'])
@@ -354,7 +369,8 @@ def run_supervisor(cfg,*,popen=subprocess.Popen,sleep=time.sleep,health=health_o
                 return dict(state='operator-hold',reason='dashboard-exited-no-auto-restart',
                             dashboard_exit=dashboard.returncode,durable=check['durable'])
             health(cfg.monitor_root,runtime_root=cfg.runtime_root,
-                   state_dir=cfg.state_dir,status_path=cfg.status_path)
+                   state_dir=cfg.state_dir,status_path=cfg.status_path,
+                   runtime_script=cfg.runtime_script)
             cycles+=1
             if max_monitor_cycles is not None and cycles>=max_monitor_cycles:
                 return dict(state='test-complete',durable=check['durable'])
