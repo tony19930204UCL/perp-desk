@@ -23,6 +23,7 @@ class TargetContractTests(unittest.TestCase):
         old=json.loads((LAB/'paper_config_v3.json').read_text())
         new=json.loads((LAB/'paper_config_v4.json').read_text())
         self.assertEqual(new['version_id'],'H1-PAPER-004')
+        self.assertEqual(new['fee_assumptions'],old['fee_assumptions'])
         for key in ('initial_equity_usdt','max_loss_per_trade_usdt','max_daily_loss_usdt',
                     'max_effective_exposure_x','max_positions','total_loss_limit_usdt',
                     'stop_required','paper_leverage','risk_version','execution_model'):
