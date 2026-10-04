@@ -31,7 +31,10 @@ function compactDecimal(value,max=16){
  if(raw.length<=max)return raw;
  const m=raw.match(/^([+-]?)(\d+)(?:\.(\d*))?([eE][+-]?\d+)?$/);if(!m)return raw.slice(0,max-1)+'…';
  if(m[4])return raw.slice(0,max-1)+'…';
- const sign=m[1],ints=m[2],frac=m[3]??'',unsigned=ints+(frac?'.'+frac:'');
+ const sign=m[1],ints=m[2],frac=m[3]??'',trimmedFrac=frac.replace(/0+$/,'');
+ const trimmed=sign+ints+(trimmedFrac?'.'+trimmedFrac:'');
+ if(trimmed.length<=max)return trimmed;
+ const unsigned=ints+(frac?'.'+frac:'');
  const [iPart,fPart='']=unsigned.split('.');
  if(iPart.replace(/^0+/,'').length>0){
    const sig=iPart.replace(/^0+/,'')+fPart,exp=iPart.replace(/^0+/,'').length-1;
