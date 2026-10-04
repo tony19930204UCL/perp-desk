@@ -374,3 +374,15 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - GitHub API曾連續timeout，首次Issue建立結果未知且未宣稱發布/建立成功。有界重查及IPv4公開network probe後連線恢復，確認無同名Issue才成功建立#17/readback，不duplicate。不把此暫態timeout推論工程root cause。
 - Final：mirror0325e8c1c79c7e7390b33571b3fb90a2995645fc八個artifact bytes與head一致，新docs/probe正常export。發布CI37156782395 direct API確認completed/success（gh run watch曾timeout，未當成CI失敗或掩蓋）。PR#16 acceptance comment5973931090及Issue#2 CLOSED讀回，task completed。旧health cron resume後readback enabled／scheduled／last_status=ok。Issue#17已建立讀回，外部agent下一優先修stop budget；Issue#6仍blocked，supervisor inactive。Evidence cache/scratch/pr16-254fa8f-acceptance。
 
+## PR-018-SUPERVISOR-STOP-ACCEPTANCE（2026-10-04）
+
+- 精確head52d55d56f64174f506af168ba9bfeb9d77532f22，run37187102113確認head/status/conclusion與CI log 38 exporter＋257 PAPER通過。三個真實isolated subprocess驗收的SIGTERM／SIGINT、120秒periodic wait、startup wait／重複signal與duplicate ownership結果已核對。先前candidate422777376be7ba47986e67f035a4377fa8540831的run37186926120 failure保留，不抹除。
+- 只套用三個精確artifact（startup_recovery、新增signal regression、operator docs）。local舊bytes等於PR base，先備份，manager inactive時套用。未改runtime交易source、策略／風控、storage policy、source timing gates或帳戶／研究配置。外部agent負責實作測試與review，operator只驗收成果及部署。
+- 切換前空倉無pending，精確核對standalone PID54169/54173及cmd/cwd後SIGTERM正常退出。原namespace及148572行runtime audit前綴逐row SHA保存。read-only preflight ready-to-start、runtime_pids=[]後啟動手動foreground supervisor proc_62c8cd7fb088/PID417135，owned dashboard417322/runtime417323，health/API observer確認。
+- 原2分鐘health cron e7e8658af9c1先list後pause/readback，改由manager唯一health loop。120秒health cadence保持，health檔案1.5秒穩定後於ordinary periodic wait送SIGTERM。實測0.020212193951010704秒，supervisor＋兩個owned PID不存在、18767 socket關閉，operator沒有送SIGKILL。這是一次live SIGTERM驗收，SIGINT／startup／duplicate情境是CI isolated真實程序證據，兩者分開。
+- 原risk、initial baseline、fills、orders及既有cost ledger前綴、strategy start/deadline/target保持。audit148572行原前綴SHA完整。沒有account restoration/reset、强制平倉、offline補交易或窗口延長。
+- bounded stop通過後決定恢復manual manager layer（避免先前120秒不可中斷等待再次阻擋安全操作）。常駐handle proc_7ab4b50dbe32/PID418795，direct owned dashboard418846/runtime418847。health checked_at在cron pause後由manager推進，Linux及Windows status/health/work均200，observer available。work-overdue仍真實可見，不把startup advisory當all healthy。
+- 第一次Windows HTTP命令被shell展開PowerShell變數而解析失敗，未視為HTTP驗收。正確引號後原生Windows三API200。
+- user-systemd／host boot仍未啟用，Issue#6維持OPEN/platform prerequisite。無unit install/enable、host/WSL/gateway修改。若manager運作異常，停止owned children後回獨立runtime/dashboard並resume原cron，絕不還原舊帳戶副本。
+- Evidence cache/scratch/pr18-52d55d5-acceptance。精確remote bytes與publication CI尚待本輪確認，確認後才Issue#17結案。
+
