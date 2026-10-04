@@ -44,13 +44,15 @@ def render_html(snapshot, unavailable=False):
 const vm = require('node:vm'), fs = require('node:fs');
 const input = JSON.parse(fs.readFileSync(0,'utf8'));
 class Element {
- constructor(){this.children=[]; this.textContent=''; this.className=''; this.attributes={}; this.classList={remove(){},add(){}};}
- appendChild(e){this.children.push(e);}
- replaceChildren(){this.children=[]; this.textContent='';}
+ constructor(){this.children=[]; this.textContent=''; this.className=''; this.attributes={}; this.dataset={}; this.classList={remove(){},add(){}};}
+ appendChild(e){this.children.push(e);return e;}
+ append(...items){for(const e of items){if(typeof e==='string')this.textContent+=e;else this.children.push(e);}}
+ replaceChildren(...items){this.children=[]; this.textContent='';this.append(...items);}
  setAttribute(k,v){this.attributes[k]=v;}
 }
 const elements={};
-const document={getElementById(id){return elements[id]??=(new Element());},createElement(){return new Element();},createElementNS(){return new Element();}};
+const documentElement=new Element();documentElement.scrollWidth=1000;documentElement.clientWidth=1000;
+const document={documentElement,getElementById(id){return elements[id]??=(new Element());},createElement(){return new Element();},createElementNS(){return new Element();},createTextNode(text){const e=new Element();e.textContent=String(text);return e;}};
 const context={document, console}; vm.createContext(context);
 try {vm.runInContext(input.script,context); context.s=input.snapshot;
  vm.runInContext('render(s);'+(input.unavailable?'unavailable("synthetic invalid");':''),context);

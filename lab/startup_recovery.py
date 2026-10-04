@@ -33,6 +33,7 @@ class StartupConfig:
     monitor_root: Path
     health_config: Path
     dashboard_html: Path
+    dashboard_ledgers: Path | None
     dashboard_port: int
     health_interval_seconds: int
     startup_health_attempts: int
@@ -63,6 +64,7 @@ def load_config(path):
         monitor_root=_absolute(data,'monitor_root'),
         health_config=_absolute(data,'health_config'),
         dashboard_html=_absolute(data,'dashboard_html'),
+        dashboard_ledgers=(_absolute(data,'dashboard_ledgers') if data.get('dashboard_ledgers') is not None else None),
         dashboard_port=data.get('dashboard_port'),
         health_interval_seconds=data.get('health_interval_seconds'),
         startup_health_attempts=data.get('startup_health_attempts'),
@@ -110,11 +112,18 @@ def inspect_durable_state(cfg):
                        (cfg.runtime_config,'runtime config'),
                        (cfg.storage_policy,'storage policy'),
                        (cfg.dashboard_html,'dashboard asset'),
+                       *(([(cfg.dashboard_ledgers,'dashboard ledger config')] if cfg.dashboard_ledgers is not None else [])),
                        (cfg.monitor_root/'health_watchdog.py','health watchdog'),
                        (cfg.monitor_root/'dashboard.py','dashboard server'),
                        (cfg.health_config,'health config')):
         if not path.is_file() or path.is_symlink():
             raise StartupBlocked('missing or unsafe '+label)
+    if cfg.dashboard_ledgers is not None:
+        from dashboard import load_ledger_config
+        try:
+            load_ledger_config(cfg.dashboard_ledgers,cfg.status_path)
+        except (OSError,ValueError,UnicodeError,json.JSONDecodeError) as exc:
+            raise StartupBlocked('dashboard ledger configuration invalid') from exc
     health=load_monitor_config(cfg.health_config)
     expected={'runtime_root':cfg.runtime_root,'state_dir':cfg.state_dir,'status_path':cfg.status_path}
     if any(health[k].resolve()!=v for k,v in expected.items()):
@@ -232,9 +241,12 @@ def runtime_command(cfg):
 
 
 def dashboard_command(cfg):
-    return [str(cfg.runtime_python),str(cfg.monitor_root/'dashboard.py'),
-            '--port',str(cfg.dashboard_port),'--status',str(cfg.status_path),
-            '--html',str(cfg.dashboard_html)]
+    command=[str(cfg.runtime_python),str(cfg.monitor_root/'dashboard.py'),
+             '--port',str(cfg.dashboard_port),'--status',str(cfg.status_path),
+             '--html',str(cfg.dashboard_html)]
+    if cfg.dashboard_ledgers is not None:
+        command += ['--ledgers',str(cfg.dashboard_ledgers)]
+    return command
 
 
 def preflight(cfg):

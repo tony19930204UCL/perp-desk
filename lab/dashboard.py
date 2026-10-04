@@ -5,6 +5,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from decimal import Decimal, localcontext
 import re
+from urllib.parse import urlsplit, parse_qs
 
 
 def decimal_value(value, positive=False):
@@ -131,8 +132,70 @@ def age_seconds(stamp, now):
         return None
 
 
-def make_server(port, status_path, html_path):
-    status_path, html_path = Path(status_path), Path(html_path)
+LEDGER_ID_RE = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,31}')
+
+
+def load_ledger_config(path, default_status):
+    """Resolve an operator allowlist once; never accept a client filesystem path."""
+    default_status=Path(default_status).resolve()
+    if path is None:
+        return dict(default='default',ledgers={
+            'default':dict(id='default',label='PAPER',status_path=default_status)})
+    path=Path(path)
+    if not path.is_absolute() or path.is_symlink():
+        raise ValueError('ledger config must be an absolute regular path')
+    data=json.loads(path.read_text(encoding='utf-8'))
+    if not isinstance(data,dict) or data.get('schema_version')!=1:
+        raise ValueError('invalid ledger config schema')
+    root_raw=data.get('root')
+    if not isinstance(root_raw,str) or not Path(root_raw).is_absolute():
+        raise ValueError('ledger root must be absolute')
+    root_path=Path(root_raw)
+    if root_path.is_symlink():
+        raise ValueError('ledger root symlink rejected')
+    root=root_path.resolve()
+    if not root.is_dir():
+        raise ValueError('ledger root unavailable or unsafe')
+    default=data.get('default')
+    entries=data.get('ledgers')
+    if not isinstance(default,str) or not isinstance(entries,list) or not entries:
+        raise ValueError('ledger config requires default and ledgers')
+    ledgers={}
+    for item in entries:
+        if not isinstance(item,dict):
+            raise ValueError('invalid ledger entry')
+        ledger_id=item.get('id');label=item.get('label');rel=item.get('status')
+        if not isinstance(ledger_id,str) or LEDGER_ID_RE.fullmatch(ledger_id) is None:
+            raise ValueError('invalid ledger id')
+        if ledger_id in ledgers:
+            raise ValueError('duplicate ledger id')
+        if not isinstance(label,str) or not label.strip() or len(label)>80:
+            raise ValueError('invalid ledger label')
+        if not isinstance(rel,str):
+            raise ValueError('invalid ledger status path')
+        rel_path=Path(rel)
+        if rel_path.is_absolute() or not rel_path.parts or '..' in rel_path.parts or '.' in rel_path.parts:
+            raise ValueError('ledger status must be a safe relative path')
+        candidate=root/rel_path
+        resolved=candidate.resolve(strict=False)
+        if not resolved.is_relative_to(root):
+            raise ValueError('ledger status escapes configured root')
+        cursor=root
+        for part in rel_path.parts:
+            cursor=cursor/part
+            if cursor.exists() and cursor.is_symlink():
+                raise ValueError('ledger status symlink rejected')
+        ledgers[ledger_id]=dict(id=ledger_id,label=label.strip(),status_path=resolved)
+    if default not in ledgers:
+        raise ValueError('configured default ledger missing')
+    if ledgers[default]['status_path']!=default_status:
+        raise ValueError('configured default must equal --status for backwards-compatible identity')
+    return dict(default=default,ledgers=ledgers)
+
+
+def make_server(port, status_path, html_path, ledger_config_path=None):
+    status_path, html_path = Path(status_path).resolve(), Path(html_path)
+    ledger_config=load_ledger_config(ledger_config_path,status_path)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -163,7 +226,9 @@ def make_server(port, status_path, html_path):
                     or self.headers.get('Sec-Fetch-Site') == 'cross-site'):
                 self.send(403, b'Forbidden', 'text/plain; charset=utf-8')
                 return
-            if self.path == '/api/health':
+            parsed=urlsplit(self.path)
+            query=parse_qs(parsed.query,keep_blank_values=True)
+            if parsed.path == '/api/health' and not query:
                 try:
                     data = json.loads((status_path.parent / 'health_status.json').read_text(encoding='utf-8'))
                     if (not isinstance(data, dict) or data.get('schema_version') != 1
@@ -193,7 +258,7 @@ def make_server(port, status_path, html_path):
                               'application/json; charset=utf-8')
                     return
                 self.send(200, json.dumps(data).encode(), 'application/json; charset=utf-8')
-            elif self.path == '/api/work':
+            elif parsed.path == '/api/work' and not query:
                 from work_status import load_status
                 try:
                     data = load_status(status_path.parent / 'work_status.json')
@@ -201,9 +266,26 @@ def make_server(port, status_path, html_path):
                     self.send(503, json.dumps({'available': False, 'error': 'Work status unavailable or invalid'}).encode(), 'application/json; charset=utf-8')
                     return
                 self.send(200, json.dumps(data).encode(), 'application/json; charset=utf-8')
-            elif self.path == '/api/status':
+            elif parsed.path == '/api/ledgers' and not query:
+                public=[dict(id=item['id'],label=item['label'],default=(ledger_id==ledger_config['default']))
+                        for ledger_id,item in ledger_config['ledgers'].items()]
+                self.send(200,json.dumps(dict(schema_version=1,default=ledger_config['default'],ledgers=public)).encode(),
+                          'application/json; charset=utf-8')
+            elif parsed.path == '/api/status':
+                selected_values=query.get('ledger',[])
+                if len(query)>1 or any(key!='ledger' for key in query) or len(selected_values)>1:
+                    self.send(400,json.dumps({'available':False,'error':'Invalid ledger selection'}).encode(),
+                              'application/json; charset=utf-8')
+                    return
+                selected=selected_values[0] if selected_values else ledger_config['default']
+                if LEDGER_ID_RE.fullmatch(selected or '') is None or selected not in ledger_config['ledgers']:
+                    self.send(404,json.dumps({'available':False,'error':'Unknown configured ledger'}).encode(),
+                              'application/json; charset=utf-8')
+                    return
+                selected_entry=ledger_config['ledgers'][selected]
+                selected_path=selected_entry['status_path']
                 try:
-                    data = json.loads(status_path.read_text(encoding='utf-8'))
+                    data = json.loads(selected_path.read_text(encoding='utf-8'))
                     validate_snapshot(data)
                 except (OSError, ValueError, UnicodeError, ArithmeticError, TypeError, AttributeError, KeyError):
                     self.send(503, json.dumps({'available': False, 'error': 'Snapshot unavailable or invalid'}).encode(), 'application/json; charset=utf-8')
@@ -211,6 +293,8 @@ def make_server(port, status_path, html_path):
                 now = datetime.now(timezone.utc)
                 snapshot_age = age_seconds(data.get('updated_at'), now)
                 feed_age = age_seconds(data.get('feed', {}).get('last_success_at'), now)
+                data['ledger_view']=dict(id=selected,label=selected_entry['label'],
+                                             default=(selected==ledger_config['default']))
                 data['snapshot_age_seconds'] = snapshot_age
                 data['feed_age_seconds'] = feed_age
                 data['feed_stale'] = not data.get('feed', {}).get('connected') or any(
@@ -227,7 +311,11 @@ def make_server(port, status_path, html_path):
                 from observer_analytics import analyze
                 data['observer'] = analyze(data, now_ms=int(now.timestamp()*1000))
                 self.send(200, json.dumps(data).encode(), 'application/json; charset=utf-8')
-            elif self.path == '/':
+            elif parsed.path == '/' and all(key=='ledger' for key in query) and len(query.get('ledger',[]))<=1:
+                requested=query.get('ledger',[ledger_config['default']])[0]
+                if LEDGER_ID_RE.fullmatch(requested or '') is None or requested not in ledger_config['ledgers']:
+                    self.send(404,b'Unknown configured ledger','text/plain; charset=utf-8')
+                    return
                 self.send(200, html_path.read_bytes(), 'text/html; charset=utf-8')
             else:
                 self.send(404, b'Not found', 'text/plain')
@@ -242,8 +330,14 @@ def main(argv=None):
     parser.add_argument('--port', type=int, default=8767)
     parser.add_argument('--status', type=Path, default=root / 'shared/status.json')
     parser.add_argument('--html', type=Path, default=root / 'dashboard.html')
+    parser.add_argument('--ledgers', type=Path,
+                        help='absolute operator-owned ledger allowlist JSON; omitted keeps single-ledger behavior')
     args = parser.parse_args(argv)
-    with make_server(args.port, args.status, args.html) as server:
+    try:
+        server=make_server(args.port,args.status,args.html,args.ledgers)
+    except (OSError,ValueError,UnicodeError,json.JSONDecodeError) as exc:
+        parser.error('invalid ledger configuration: '+str(exc))
+    with server:
         print(f'Read-only PAPER dashboard http://127.0.0.1:{server.server_port}', flush=True)
         try:
             server.serve_forever()
