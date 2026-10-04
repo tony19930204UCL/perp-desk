@@ -149,11 +149,18 @@ class RealSupervisorSignalTests(unittest.TestCase):
         self.assertTrue(wait_until(lambda:port_open(fx['port']),5),'dashboard listener never opened')
         health=fx['monitor']/'shared/health_status.json'
         self.assertTrue(wait_until(health.exists,8),'startup health never completed')
-        # No second tick for >1s demonstrates we are inside the documented 120s cadence,
-        # not a test-only shortened timer.
-        stamp=health.stat().st_mtime_ns
-        time.sleep(1.2)
-        self.assertEqual(health.stat().st_mtime_ns,stamp)
+        # Startup readiness is followed immediately by the first monitor-loop health
+        # tick. Require the output to become stable for >1s before signaling; this
+        # proves that tick finished and the real supervisor is inside the configured
+        # 120s periodic wait rather than between startup/loop observations.
+        stable=False
+        deadline=time.monotonic()+8
+        while time.monotonic()<deadline:
+            stamp=health.stat().st_mtime_ns
+            time.sleep(1.2)
+            if health.exists() and health.stat().st_mtime_ns==stamp:
+                stable=True;break
+        self.assertTrue(stable,'health output never became stable inside periodic wait')
         self.assertIsNone(proc.poll())
         return children
 
