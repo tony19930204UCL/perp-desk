@@ -30,11 +30,18 @@ def ledger_snapshot(*,capital,symbol,window_start,deadline,high_precision=False,
         fill['symbol']=symbol
     for row in s['cost_ledger']:
         if row.get('symbol')=='BTCUSDT':row['symbol']=symbol
+    gross='4'
+    realized='3.95'
     if high_precision:
         s['fills'][0]['price']='100.123456789012345678901234567890'
         s['fills'][1]['price']='102.987654321098765432109876543210'
         s['fills'][2]['price']='102.333333333333333333333333333333'
         s['fills'][3]['price']='104.777777777777777777777777777777'
+        # Make fee/gross a repeating ratio (4/3 %) so browser acceptance covers
+        # long derived ratios without changing any reconciliation rule.
+        realized_row=[row for row in s['cost_ledger'] if row['type']=='realized'][-1]
+        realized_row['amount']='2'
+        gross='3';realized='2.95'
     if partial:
         # First two fills are entry partials, already part of the normal fixture.
         self_note='partial entry fixture'
@@ -46,12 +53,11 @@ def ledger_snapshot(*,capital,symbol,window_start,deadline,high_precision=False,
         s.pop('research')
     # Full account ledger is +4 gross - .04 fees - .01 funding = 3.95.
     initial=str(capital)
-    realized='3.95'
     with localcontext() as ctx:
         ctx.prec=80
         cash=str(Decimal(initial)+Decimal(realized))
     s.update(cash_usdt=cash,equity_usdt=cash,total_pnl_usdt=realized,realized_pnl_usdt=realized,
-             gross_realized_pnl_usdt='4.000000000000000000000000000000',
+             gross_realized_pnl_usdt=gross+'.000000000000000000000000000000',
              fees_usdt='0.040000000000000000000000000000',
              funding_pnl_usdt='-0.010000000000000000000000000000')
     if mismatch:
