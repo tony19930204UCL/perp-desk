@@ -155,8 +155,10 @@ class ObserverUiTests(unittest.TestCase):
         nodes=render_html(s)
         self.assertEqual(dom_text(nodes['equity']),'100')
         self.assertEqual(dom_text(nodes['total']),'0')
-        self.assertEqual(dom_text(nodes['cash']),'12345678901234567890.12345')
-        self.assertEqual(nodes['cash']['attributes']['title'],s['cash_usdt'])
+        self.assertEqual(dom_text(nodes['cash']),'1.23456789e19')
+        exact=nodes['cash']['children'][0]
+        self.assertEqual(exact['dataset']['exact'],s['cash_usdt'])
+        self.assertIn(s['cash_usdt'],exact['attributes']['aria-label'])
 
     def test_curve_has_real_time_axes_dynamic_baseline_and_stale_segment_break(self):
         s=paper_fixture();s.update(feed_stale=True,feed_age_seconds=1,initial_equity_usdt='250')

@@ -85,6 +85,7 @@ Create an operator-owned JSON file outside mirror-owned source files:
   "monitor_root": "/absolute/path/to/observer-profile/lab",
   "health_config": "/absolute/path/to/observer-profile/lab/shared/health_monitor_config.json",
   "dashboard_html": "/absolute/path/to/observer-profile/lab/dashboard.html",
+  "dashboard_ledgers": "/optional/absolute/path/to/ledger-config.json",
   "dashboard_port": 18767,
   "health_interval_seconds": 120,
   "startup_health_attempts": 3,
@@ -97,6 +98,8 @@ The values above are path placeholders. They are not live machine paths or recom
 All path fields must be absolute. Startup health attempts are bounded to 1..5. The supervisor never loops indefinitely waiting for recovery.
 
 The existing health configuration must name the **same** runtime root, state directory and status path. A mismatch blocks startup.
+
+`dashboard_ledgers` is optional. Omitting it preserves the existing single-ledger dashboard command. When supplied, it is passed only to the read-only dashboard as `--ledgers`; it does not change runtime/state/status identity, storage policy or health configuration. See `docs/MULTI_LEDGER_DASHBOARD.md`.
 
 ## Read-only preflight
 

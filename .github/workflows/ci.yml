@@ -20,5 +20,14 @@ jobs:
       - name: PAPER isolated suite
         working-directory: lab
         run: python3 -m unittest discover -s tests -v
+      - name: Issue 3 real browser acceptance
+        run: python3 lab/browser_issue3_acceptance.py --output artifacts/issue-3-browser
+      - name: Upload Issue 3 synthetic browser evidence
+        if: ${{ always() && hashFiles('artifacts/issue-3-browser/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-3-browser-evidence
+          path: artifacts/issue-3-browser
+          if-no-files-found: error
       - name: Public timing observation (engineering evidence only)
         run: python3 scripts/public_source_timing_probe.py
