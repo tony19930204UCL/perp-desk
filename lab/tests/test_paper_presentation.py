@@ -44,9 +44,10 @@ def render_html(snapshot, unavailable=False):
 const vm = require('node:vm'), fs = require('node:fs');
 const input = JSON.parse(fs.readFileSync(0,'utf8'));
 class Element {
- constructor(){this.children=[]; this.textContent=''; this.className=''; this.attributes={}; this.classList={remove(){},add(){}};}
- appendChild(e){this.children.push(e);}
- replaceChildren(){this.children=[]; this.textContent='';}
+ constructor(){this.children=[]; this.textContent=''; this.className=''; this.attributes={}; this.dataset={}; this.classList={remove(){},add(){}};}
+ appendChild(e){this.children.push(e);return e;}
+ append(...items){for(const e of items){if(typeof e==='string')this.textContent+=e;else this.children.push(e);}}
+ replaceChildren(...items){this.children=[]; this.textContent='';this.append(...items);}
  setAttribute(k,v){this.attributes[k]=v;}
 }
 const elements={};
