@@ -10,6 +10,7 @@ import tempfile
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.request import urlopen
 
 LAB=Path(__file__).resolve().parent
 TESTS=LAB/'tests'
@@ -62,17 +63,23 @@ def chrome_shot(chrome,url,width,height,path):
         raise RuntimeError('Chrome screenshot missing or empty')
 
 
-def assert_view(dom,*,ledger_label,symbol,exact_value):
+def assert_view(dom,*,ledger_label,symbol,exact_values):
     if 'data-layout-overflow="false"' not in dom:
         raise AssertionError('root viewport overflow detected or layout evidence missing')
     if ledger_label+' · 唯讀帳本' not in dom:
         raise AssertionError('selected ledger label not rendered')
     if symbol not in dom:
         raise AssertionError('selected ledger trade/symbol not rendered')
-    if f'data-exact="{exact_value}"' not in dom:
-        raise AssertionError('exact high-precision value is not accessible in DOM')
+    for exact_value in exact_values:
+        if f'data-exact="{exact_value}"' not in dom:
+            raise AssertionError('exact high-precision value is not accessible in DOM: '+exact_value)
     if 'id="ledgerSelect"' not in dom:
         raise AssertionError('configured ledger selector missing')
+
+
+def http_json(url):
+    with urlopen(url,timeout=5) as response:
+        return response.status,json.loads(response.read())
 
 
 def main(argv=None):
@@ -102,15 +109,30 @@ def main(argv=None):
         try:
             base=f'http://127.0.0.1:{server.server_port}/'
             exact=beta['initial_equity_usdt']
+            # Real HTTP sequence independently proves configured switching and values.
+            status_a,a1=http_json(base+'api/status?ledger=alpha')
+            status_b,b=http_json(base+'api/status?ledger=beta')
+            status_a2,a2=http_json(base+'api/status?ledger=alpha')
+            if [status_a,status_b,status_a2]!=[200,200,200]:
+                raise AssertionError('configured HTTP selection did not remain available')
+            if [a1['ledger_view']['id'],b['ledger_view']['id'],a2['ledger_view']['id']]!=['alpha','beta','alpha']:
+                raise AssertionError('HTTP ledger switch sequence mismatch')
+            if a1['initial_equity_usdt']!='250' or a2['initial_equity_usdt']!='250':
+                raise AssertionError('alpha capital changed across switch')
+            if b['initial_equity_usdt']!=exact or b['observer']['closed_trades'][0]['symbol']!='SOLUSDT':
+                raise AssertionError('beta ledger evidence mixed or missing')
+            ratio=b['observer']['statistics']['fee_to_gross_percent']
+            if ratio is None or len(ratio)<16:
+                raise AssertionError('synthetic beta ratio did not exercise high precision')
             # Real browser navigation alpha -> beta -> alpha demonstrates configured selection paths.
             alpha_dom_1=chrome_dom(chrome,base+'?ledger=alpha',1366,768)
             beta_desktop=chrome_dom(chrome,base+'?ledger=beta',1366,768)
             beta_mobile=chrome_dom(chrome,base+'?ledger=beta',390,844)
             alpha_dom_2=chrome_dom(chrome,base+'?ledger=alpha',1366,768)
-            assert_view(alpha_dom_1,ledger_label='Alpha 250',symbol='BTCUSDT',exact_value='250')
-            assert_view(beta_desktop,ledger_label='Beta high precision',symbol='SOLUSDT',exact_value=exact)
-            assert_view(beta_mobile,ledger_label='Beta high precision',symbol='SOLUSDT',exact_value=exact)
-            assert_view(alpha_dom_2,ledger_label='Alpha 250',symbol='BTCUSDT',exact_value='250')
+            assert_view(alpha_dom_1,ledger_label='Alpha 250',symbol='BTCUSDT',exact_values=['250'])
+            assert_view(beta_desktop,ledger_label='Beta high precision',symbol='SOLUSDT',exact_values=[exact,ratio+'%'])
+            assert_view(beta_mobile,ledger_label='Beta high precision',symbol='SOLUSDT',exact_values=[exact,ratio+'%'])
+            assert_view(alpha_dom_2,ledger_label='Alpha 250',symbol='BTCUSDT',exact_values=['250'])
             desktop=args.output/'desktop-beta.png';mobile=args.output/'mobile-beta.png'
             chrome_shot(chrome,base+'?ledger=beta',1366,768,desktop)
             chrome_shot(chrome,base+'?ledger=beta',390,844,mobile)
@@ -124,7 +146,13 @@ def main(argv=None):
                 mobile=dict(viewport=[390,844],png=list(png_size(mobile)),
                             sha256=hashlib.sha256(mobile.read_bytes()).hexdigest(),
                             layout_overflow=False,ledger='beta'),
-                exact_value_accessible=True,source='synthetic configured ledgers only')
+                exact_value_accessible=True,
+                http_switch=dict(sequence=['alpha','beta','alpha'],
+                                 alpha_capital=a1['initial_equity_usdt'],
+                                 beta_capital=b['initial_equity_usdt'],
+                                 beta_symbol=b['observer']['closed_trades'][0]['symbol'],
+                                 beta_fee_to_gross_percent=ratio),
+                source='synthetic configured ledgers only')
             (args.output/'evidence.json').write_text(json.dumps(evidence,sort_keys=True,indent=2)+'\n')
             print('ISSUE3_BROWSER_EVIDENCE '+json.dumps(evidence,sort_keys=True,separators=(',',':')))
         finally:
