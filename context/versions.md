@@ -457,3 +457,8 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - XAUUSDT quote已讀回，live strategy仍ETH，TradFi disabled_until_verified_session_calendar。這輪不啟用XAU，venue/index/mark/session/weekend/funding等未完成核查不當作已驗證。沒有交易或新增研究帳戶。
 - Issue#23 RESEARCH INFRASTRUCTURE/ENGINEERING已create且full-body OPEN讀回；task parallel-eth-discovery queued/API讀回，待人工轉交新non-main branch/PR，未coding/deploy/activate。詳細定義與完整relay prompt在cache/scratch/parallel-discovery-oct04/平行探索決策與派工.md。原#22監控工程分開，不改其分支。研究決策/工程完成/市場證據分開。
 
+## FEE-SCREENSHOT-EVIDENCE-UPDATE（2026-10-04）
+
+- 使用者提供普通用戶費率頁兩張截圖，直接讀圖確認USDT crypto maker0.0200%/taker0.0500%、TradFi maker0.0000%/taker0.0400%，與現有配置一致。截圖也列BNB九折，但不擅自啟用折扣；USDC欄與USDT分開。不再將普通用戶牌告基準本身當作只有口頭說明的缺證據阻擋。
+- 截圖未含優惠到期日期或私人帳戶VIP/BNB抵扣狀態，不宣稱永久優惠或私人帳戶成交對帳已驗證。費率證據與TradFi場次/index/funding、maker實際feed/成交前提分開。研究設定與所有帳戶/窗口保持，未deploy。詳cache/scratch/parallel-discovery-oct04/fee-screenshot-evidence.md。保留此前查證失敗歷史。
+
