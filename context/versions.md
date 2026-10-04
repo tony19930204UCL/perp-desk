@@ -402,3 +402,15 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 未套用source、未部署或重啟live。PR#19 comment5979098874與Issue#3 comment5979099098 readback，observer-dashboard blocked readback，原observer仍available。交外部agent補真正390px CSS viewport的三輪mobile證據，不刪assert／重標485為390或retry掩蓋。
 - Evidence cache/scratch/pr19-a539ddc-acceptance（metadata、ci.log、browser-evidence、mobile-evidence-gap.md、mobile_gap_readback.json）。
 
+## PR-019-UPDATED-ACCEPTANCE（2026-10-04）
+
+- 精確head62ce4719a72abdc6ae97981f7514aa9971469878。fresh PR checks兩個SUCCESS（run37197999571／37197996905），提供run metadata與log核對38 exporter＋267 PAPER、3固定desktop／true mobile390px Chrome驗收、artifact與public timing observation步驟。Agent comment宣稱僅一run與actual兩checks不一致，採GitHub實際值，不影響兩者皆green的驗收。
+- Artifact11302225020已下載，逐3輪alpha-before/beta/alpha-after確認innerWidth=clientWidth=scrollWidth=390、innerHeight844、DPR1、overflowfalse、readytrue與exactSeen通過；beta screenshot390x844且scale1。先前485px mismatch與失敗run保留，不以刪失敗或重新標籤冒充修正。
+- 14個完整PR artifact（包含先前未部署的production dashboard/optional supervisor支援）逐一local舊bytes等於PR base後備份。automation映射repo_sync，docs/.github映射repo_sync/docs。主live以前兩候選皆未套用，本輪不能只套用最後harness增量。
+- 先在18768獨立preview用captured真實快照確認observer/account可用、default單ledgerAPI、desktop與真正390px DOM無root overflow、exact values可存取。Preview health沿用captured report，曾含已發生的DNS transient，fresh live status隨後error=null/feed_stale=false，不歸因UI改版。
+- 正式dashboard為manager owned child，為保持ownership一致，空倉無pending時精確SIGTERM manager418795及ownedchildren418846/418847，0.14117460197303444秒全退出，無operator forcekill。未為單獨UI更新強制殺child讓supervisor誤報runtime failure。保存原158344行audit逐rowSHA前綴、snapshot及config hashes後套用14精確artifact，read-only preflight ready-to-start且runtime_pids=[]。
+- 新manager persistent handleproc_6db969e82f55/PID542266，owneddashboard542298/runtime542299。原startup、storage、health與runtime config hashes全保持；risk、本金、deployment、fills/orders、ledger原前綴、原research start/deadline/target及158344行audit前綴全核對保持。不初始化新帳戶、不補離線交易或延長窗口。
+- Linux與Windows status/health/work/ledgers200；default ledger observeravailable，unknown及traversal ID failclosed。正式livebrowser桌面1366px client/scroll1351，mobileinner/client/scroll390px，27個exact-value DOM nodes，無root水平overflow並保存截圖。重啟後source故障須如實呈現，不稱all健康。
+- Production目前仍只有原default帳本，沒有添加合成或其他真實帳戶。多ledger switch/no-fallback/isolation接受真實Chrome synthetic CI證據，不冒稱已接入第二個live帳戶。user-systemd/hostboot仍#6獨立platformblocked，原health cron保持paused，supervisor是唯一health writer。
+- 待本輪mirror exact14bytes、新docs export與publicationCI確認後才Issue#3結案。Evidence cache/scratch/pr19-62ce471-acceptance。
+
