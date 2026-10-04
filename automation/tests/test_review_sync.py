@@ -551,6 +551,7 @@ class ReviewSyncTests(unittest.TestCase):
                          'repo_sync/docs/docs/STARTUP_RECOVERY_V3.md',
                          'repo_sync/docs/docs/SOURCE_TIMING_EVIDENCE.md',
                          'repo_sync/docs/docs/MULTI_LEDGER_DASHBOARD.md',
+                         'repo_sync/docs/docs/H1_PAPER_004.md',
                          'scripts/paper_startup_supervisor.py','scripts/public_source_timing_probe.py',
                          'repo_sync/evidence/green1.txt','repo_sync/status.json'):
                 p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('pass\n' if p.suffix=='.py' else '{}')
@@ -564,6 +565,7 @@ class ReviewSyncTests(unittest.TestCase):
             self.assertIn('scripts/paper_startup_supervisor.py',files,'startup supervisor entrypoint must survive normal mirror export')
             self.assertIn('docs/SOURCE_TIMING_EVIDENCE.md',files,'timing evidence contract must survive normal mirror export')
             self.assertIn('docs/MULTI_LEDGER_DASHBOARD.md',files,'multi-ledger dashboard contract must survive normal mirror export')
+            self.assertIn('docs/H1_PAPER_004.md',files,'H1-PAPER-004 contract must survive normal mirror export')
             self.assertIn('scripts/public_source_timing_probe.py',files,'public timing probe must survive normal mirror export')
             self.assertIn('evidence/sync/green1.txt',files)
             self.assertNotIn('automation/status.json',files)
