@@ -386,3 +386,11 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - user-systemd／host boot仍未啟用，Issue#6維持OPEN/platform prerequisite。無unit install/enable、host/WSL/gateway修改。若manager運作異常，停止owned children後回獨立runtime/dashboard並resume原cron，絕不還原舊帳戶副本。
 - Final publication：mirror d867e1cc668db7ff389247db6e57f65e2b89f4c6 三個artifact bytes與精確head相符，docs正常export，run37189482888 completed/success讀回。PR#18 acceptance comment5978181476與Issue#17 CLOSED/comment5978181630讀回。Evidence cache/scratch/pr18-52d55d5-acceptance（operational_acceptance.json、live_stop_acceptance.json、publication_readback.json、publication_ci.json）。下一工程為Issue#3配置多ledger與長decimal排版，comment5978168894已讀回，待人工轉交，非agent已開始。
 
+## PR-019-SAME-HEAD-BROWSER-ACCEPTANCE-BLOCKED（2026-10-04）
+
+- 精確head6b7ba21aefac5927cf1d12f763d9f83a16590d42。使用者提供run37191195093確為success，log38 exporter＋265 PAPER通過，real synthetic Chrome desktop/mobile與artifact upload成功。下載artifact11298743160，desktop/mobile PNG SHA與JSON及PR summary一致，成功證據保留。
+- fresh PR checks同時顯示同精確head run37191191029 failure（job111403541501）。Issue 3 real browser acceptance在beta desktop assert_view拋出AssertionError('root viewport overflow detected or layout evidence missing')。不是先前candidate失敗。此合併錯誤訊息不能判定實際overflow還是layout證據未準備好，operator不自行debug/root-cause推論。
+- 不以successful sibling run抵消failure，也未retry至綠。此輪驗收blocked，未套用任何PR#19 source、未重啟live、未改operator config或帳戶。manager418795及runtime418847仍在，live observer available、error=null、原deadline1791132045744保持。
+- PR#19 comment5978668477與Issue#3 comment5978668856 readback，Issue#3仍OPEN，observer-dashboard task blocked。外部agent需補根因修復、新精確head全部相關checks全綠、真實browser有界重複驗收及failure evidence。不刪測試、鬆overflow assertions或掩蓋不一致。不建重複Issue，不自行工程修碼。
+- Evidence cache/scratch/pr19-6b7ba21-acceptance（metadata、兩run/log、browser-evidence、blocked-comment、blocked_readback）。下一步人工轉交外部agent補修目前PR#19，尚未開始由本台代跑工程。
+
