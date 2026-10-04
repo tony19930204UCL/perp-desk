@@ -543,7 +543,8 @@ class MigrationTests(unittest.TestCase):
     def test_migration_fails_closed_before_deadline_closeout_mismatch_open_pending_lock_and_ledger_corruption(self):
         from paper_migrate_v4 import migrate
         from paper_runtime_v3 import PaperRuntime
-        cases=('before-deadline','bad-closeout','open','pending','ledger')
+        cases=('before-deadline','bad-closeout','open','pending','ledger',
+               'account-version-identity','forward-start-identity')
         for case in cases:
             with self.subTest(case=case),tempfile.TemporaryDirectory() as td:
                 deadline=4_000_000 if case=='before-deadline' else 2_000_000
@@ -551,12 +552,14 @@ class MigrationTests(unittest.TestCase):
                 if case=='bad-closeout':
                     data=json.loads(acceptance.read_text());data['research_deadline_ms']+=1
                     acceptance.write_text(json.dumps(data))
-                if case in ('open','pending','ledger'):
+                if case in ('open','pending','ledger','account-version-identity','forward-start-identity'):
                     with sqlite3.connect(root/'broker.sqlite3') as db:
                         saved=json.loads(db.execute('SELECT payload FROM sim_broker_state WHERE singleton=1').fetchone()[0])
                         if case=='open': saved['positions']={'ETHUSDT':{'qty':'0.001'}}
                         elif case=='pending': saved['orders']['pending']=dict(status='PENDING',intent=dict(reduce_only=False))
-                        else: saved['cash']='123'
+                        elif case=='ledger': saved['cash']='123'
+                        elif case=='account-version-identity': saved['meta']['version_id']='OTHER-ACCOUNT'
+                        else: saved['meta']['forward_start']=saved['meta']['forward_start']+1
                         db.execute('UPDATE sim_broker_state SET payload=? WHERE singleton=1',(json.dumps(saved,sort_keys=True),))
                 before=(root/'runtime.sqlite3').read_bytes()
                 with self.assertRaises((ValueError,RuntimeError)):
