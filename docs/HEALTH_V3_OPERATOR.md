@@ -25,7 +25,7 @@ python [supported interpreter flags] paper_runtime_v3.py \
   --status "$STATUS_PATH"
 ```
 
-The monitor root is allowed to be different from `$RUNTIME_ROOT`. The monitor requires:
+The monitor root is allowed to be different from `$RUNTIME_ROOT`. The operator-local config may explicitly set `runtime_script` to `paper_runtime_v3.py` (default) or the staged `paper_runtime_v4.py`; script/version/implementation must match exactly. The monitor requires:
 - deployed `H1-PAPER-003`;
 - `candidate_not_deployed=false`;
 - `candidate_implementation=paper-engine-v3`;
