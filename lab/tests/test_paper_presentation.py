@@ -51,7 +51,7 @@ class Element {
  setAttribute(k,v){this.attributes[k]=v;}
 }
 const elements={};
-const document={getElementById(id){return elements[id]??=(new Element());},createElement(){return new Element();},createElementNS(){return new Element();}};
+const document={getElementById(id){return elements[id]??=(new Element());},createElement(){return new Element();},createElementNS(){return new Element();},createTextNode(text){const e=new Element();e.textContent=String(text);return e;}};
 const context={document, console}; vm.createContext(context);
 try {vm.runInContext(input.script,context); context.s=input.snapshot;
  vm.runInContext('render(s);'+(input.unavailable?'unavailable("synthetic invalid");':''),context);
