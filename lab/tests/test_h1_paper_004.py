@@ -482,6 +482,7 @@ class MigrationTests(unittest.TestCase):
         r.broker.orders={'old-rejected':dict(order_id='old-rejected',status='REJECTED',reason='old',
                                              intent=dict(reduce_only=False))}
         r.broker._save()
+        r.state['account_version_id']=r.broker._meta['version_id']
         r.state['strategy_start_ms']=1_200_000
         r.state['research_deadline_ms']=deadline
         r.state['strategy_fill_baseline']=0;r.state['strategy_ledger_baseline']=0
@@ -568,7 +569,7 @@ class MigrationTests(unittest.TestCase):
 
     def test_migration_rejects_missing_corrupt_audit_and_config_identity_without_runtime_write(self):
         from paper_migrate_v4 import migrate
-        cases=('missing-signals','corrupt-runtime','bad-audit','wrong-config')
+        cases=('missing-signals','corrupt-runtime','bad-audit','wrong-config','missing-account-identity')
         for case in cases:
             with self.subTest(case=case),tempfile.TemporaryDirectory() as td:
                 root,acceptance,now=self.make_v3(td)
@@ -586,6 +587,12 @@ class MigrationTests(unittest.TestCase):
                     data=json.loads(config.read_text());data['strategy']['downside_sigma']='1.4'
                     bad.write_text(json.dumps(data,sort_keys=True))
                     config=bad
+                elif case=='missing-account-identity':
+                    with sqlite3.connect(root/'runtime.sqlite3') as db:
+                        state=json.loads(db.execute('SELECT payload FROM state WHERE id=1').fetchone()[0])
+                        state.pop('account_version_id',None)
+                        db.execute('UPDATE state SET payload=? WHERE id=1',
+                                   (json.dumps(state,sort_keys=True,separators=(',',':')),))
                 before=(root/'runtime.sqlite3').read_bytes()
                 with self.assertRaises((ValueError,RuntimeError,sqlite3.DatabaseError)):
                     migrate(root,config,acceptance,now_ms=now)
