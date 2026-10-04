@@ -388,7 +388,7 @@ def collect(profile,*,visibility='private'):
         if not p.is_file():continue
         allowed=p.suffix in ('.py','.md','.html','.patch','.diff')
         if p.suffix=='.json':
-            allowed=rel.as_posix() in ('paper_config.json','paper_config_v2.json','paper_config_v3.json') or 'fixtures' in rel.parts or (rel.parts[0]=='staging' and p.name in ('paper_config.json','paper_config_v2.json','paper_config_v3.json'))
+            allowed=rel.as_posix() in ('paper_config.json','paper_config_v2.json','paper_config_v3.json','paper_config_v4.json') or 'fixtures' in rel.parts or (rel.parts[0]=='staging' and p.name in ('paper_config.json','paper_config_v2.json','paper_config_v3.json','paper_config_v4.json'))
         if allowed:files['lab/'+rel.as_posix()]=safe_read(p,profile)
     for name in ('freshness_actual_failure.json','v2_timestamp_failure_actual.json'):
         p=profile/'lab/evidence'/name
