@@ -425,3 +425,13 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 最小新增cost/clock/coverage/funnel診斷為真實可解釋拒因；raw候選保留，不移gate掩蓋拒單。此新工程直接服務研究決策，不是#6平台阻擋的重複修碼。Issue#20 RESEARCH INFRASTRUCTURE／ENGINEERING已create/fullbody OPEN readback，外部agent實作/testing/debug/review、nonmain新branch/PR、不mainpush/merge/live部署/host操作。operator不自行工程。paper-throughput-diagnosis completed與cost-scaled-paper-candidate queued均API讀回。
 - 原live config仍H1-PAPER-003/previous_closed_bar_close，原deadline/risk/account保持。signals registry只有002/003，004尚未live註冊/實作/啟動；候選預登記只是研究決策，不宣稱工程或市場驗證已完成。Evidence cache/scratch/research-throughput-oct04（analysis、signal/error/outage evidence、完整diagnosis/preregistration及Issue body/readback）。
 
+## PR-021-STAGED-ENGINEERING-ACCEPTED-NOT-DEPLOYED（2026-10-04）
+
+- 使用者交付head 5c4b7c58f76f8907eb0f1241609421c0a8d24a8d／run37205294904。fresh PR checks與head runs核對兩個run37205294904/37205292439均completed/success且同精確head。主run log38 exporter＋291 PAPER全部OK，逐ID核對329 unique OK（其中兩個test有多行description，初次單行parser只識別327，改讀實際log多行後329，未修改/重跑工程測試）。助手不code review、寫碼或親跑unit tests。
+- 已讀Issue #20交付／PR body及operator文件H1_PAPER_004.md。工程證據涵蓋causal15-bar VWMA frozen target、成本2x不變、raw funnel/precise economics、late/occupied診斷、90%coverage/4機會checkpoint邊界、failed batch不能後來retrovalidate、restart/loss/storage保持及same-account migration fail-closed。Config差異只含已預登記策略身份、target/lookback、checkpoint與決策說明，其餘風控/成本/執行配置不變。
+- 下載14完整PR artifact至隔離cache，remote merge-base對應全部local來源byte匹配，尚未套用。automation→repo_sync，docs→repo_sync/docs。下載browser artifact11304168620，核對三輪true390CSS mobile alpha/beta/alpha，ready/exact/overflow均通過。Public timing step成功是診斷程序成功，實際三次HTTP451/outcomeerror，不能稱交易所行情取得成功或策略績效。
+- 保留prior candidate ef68976a1af34491f6be9c6b7640d635bb2d35ad 的run37205166149 failure及log（broker/runtime account identity mismatch）。Agent已明示success fixture缺persisted identity後補synthetic model及missing identity拒絕回歸，不放寬production gate。不是同final head的矛盾run，不把失敗刪掉或稱成功。
+- 決策：接受staged工程交付，但正式部署、帳戶migration/activation及新8h/48h窗口未驗收。原H1-PAPER-003 deadline仍2026-10-04T16:40:45.744Z，本次查核13:44UTC尚未截止，不提前結算/改版、不假造accepted-closeout。保持現有manual supervisor、source/config/account與窗口，Issue #20仍OPEN。先完成原窗口read-only closeout，再獨立接受cutoff帳務/樣本/資料品質，flat/no pending/stopped-lock capture後才可採已交付命令controlled migration。不能用online rehearsal副本還原live帳戶。
+- 本次未寫交易SQLite／套用live source／改operator config／重啟程序／啟動004／remote main merge。Live observer.available=true，config H1-PAPER-003，窗口130signals/129blocked/1完整往返/0open只是本次中途快照（90cost/36late/3position），非最終closeout。#6平台前提仍獨立blocked。
+- Evidence cache/scratch/pr21-5c4b7c5-acceptance（pr/ci_run/ci.log/head_runs、H1_PAPER_004.md、14head artifacts/source_manifest、ci_evidence329 IDs、browser-evidence、prior_failure、live_before）。下一步是operator原窗口結算與migration，不派重複coding工作。
+
