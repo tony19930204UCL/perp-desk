@@ -122,6 +122,15 @@ def _migrate(root,closeout_path,*,now_ms):
         raise ValueError('H1-PAPER-003 fixed window not closed')
     closeout,closeout_hash=_read_closeout(closeout_path,old,now_ms)
     broker=_broker_state(root/'broker.sqlite3')
+    broker_meta=broker.get('meta')
+    if not isinstance(broker_meta,dict):
+        raise ValueError('missing broker account identity')
+    account_version_id=old.get('account_version_id')
+    if (not isinstance(account_version_id,str) or not account_version_id
+            or broker_meta.get('version_id')!=account_version_id):
+        raise ValueError('broker/runtime account identity mismatch')
+    if broker_meta.get('forward_start')!=old.get('forward_start_ms'):
+        raise ValueError('broker/runtime forward_start identity mismatch')
 
     old_window=dict(
         version_id='H1-PAPER-003',
