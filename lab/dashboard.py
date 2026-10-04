@@ -150,8 +150,11 @@ def load_ledger_config(path, default_status):
     root_raw=data.get('root')
     if not isinstance(root_raw,str) or not Path(root_raw).is_absolute():
         raise ValueError('ledger root must be absolute')
-    root=Path(root_raw).resolve()
-    if not root.is_dir() or root.is_symlink():
+    root_path=Path(root_raw)
+    if root_path.is_symlink():
+        raise ValueError('ledger root symlink rejected')
+    root=root_path.resolve()
+    if not root.is_dir():
         raise ValueError('ledger root unavailable or unsafe')
     default=data.get('default')
     entries=data.get('ledgers')
