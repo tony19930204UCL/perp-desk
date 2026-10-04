@@ -394,3 +394,11 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - PR#19 comment5978668477與Issue#3 comment5978668856 readback，Issue#3仍OPEN，observer-dashboard task blocked。外部agent需補根因修復、新精確head全部相關checks全綠、真實browser有界重複驗收及failure evidence。不刪測試、鬆overflow assertions或掩蓋不一致。不建重複Issue，不自行工程修碼。
 - Evidence cache/scratch/pr19-6b7ba21-acceptance（metadata、兩run/log、browser-evidence、blocked-comment、blocked_readback）。下一步人工轉交外部agent補修目前PR#19，尚未開始由本台代跑工程。
 
+## PR-019-UPDATED-MOBILE-EVIDENCE-GAP（2026-10-04）
+
+- 使用者指出agent聊天逾時未發送收尾，不是使用者漏傳交付。operator直接從GitHub取得更新head a539ddc83d29a21e6c0fb736daa63fa2c9f458cc，不要求使用者轉傳operator已查到的同一份摘要。
+- 兩個latest head checks SUCCESS，run37193909450 log確認38 exporter＋267 PAPER與3固定真Chrome rounds zero failures，artifact11299549349已下載。先前失敗保留，新交付確實存在，不把聊天逾時當工程未完成。
+- 成果驗收另見mobile evidence宣稱viewport390x844，但每輪beta_mobile client_width／scroll_width均485，PNG390x844。視覺讀取mobile PNG可見卡片及selector，但不能由此建立DOM layout量測實際在390px CSS viewport完成。不斷言production overflow或根因，尚缺同session實際innerWidth/Height、client/scroll、devicePixelRatio與screenshot scale對應證據。
+- 未套用source、未部署或重啟live。PR#19 comment5979098874與Issue#3 comment5979099098 readback，observer-dashboard blocked readback，原observer仍available。交外部agent補真正390px CSS viewport的三輪mobile證據，不刪assert／重標485為390或retry掩蓋。
+- Evidence cache/scratch/pr19-a539ddc-acceptance（metadata、ci.log、browser-evidence、mobile-evidence-gap.md、mobile_gap_readback.json）。
+
