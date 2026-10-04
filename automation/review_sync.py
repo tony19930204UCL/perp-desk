@@ -368,7 +368,7 @@ DOC_FILES={'README.md','AGENTS.md','.gitignore','.github/workflows/ci.yml',
            'docs/DEPLOYMENT_AND_GAPS.md','docs/AUTO_SYNC.md','docs/ARCHITECTURE.md',
            'docs/AI_REVIEW_GUIDE.md','docs/VERIFICATION.md','docs/HEALTH_V3_OPERATOR.md',
            'docs/STORAGE_PROTECTION_V3.md','docs/STARTUP_RECOVERY_V3.md',
-           'docs/SOURCE_TIMING_EVIDENCE.md','docs/MULTI_LEDGER_DASHBOARD.md'}
+           'docs/SOURCE_TIMING_EVIDENCE.md','docs/MULTI_LEDGER_DASHBOARD.md','docs/H1_PAPER_004.md'}
 
 SKIP_DIRS={'.git','__pycache__','data','shared','evidence','probe-data','probe-shared','cache','logs','sessions','node_modules'}
 
@@ -388,7 +388,7 @@ def collect(profile,*,visibility='private'):
         if not p.is_file():continue
         allowed=p.suffix in ('.py','.md','.html','.patch','.diff')
         if p.suffix=='.json':
-            allowed=rel.as_posix() in ('paper_config.json','paper_config_v2.json','paper_config_v3.json') or 'fixtures' in rel.parts or (rel.parts[0]=='staging' and p.name in ('paper_config.json','paper_config_v2.json','paper_config_v3.json'))
+            allowed=rel.as_posix() in ('paper_config.json','paper_config_v2.json','paper_config_v3.json','paper_config_v4.json') or 'fixtures' in rel.parts or (rel.parts[0]=='staging' and p.name in ('paper_config.json','paper_config_v2.json','paper_config_v3.json','paper_config_v4.json'))
         if allowed:files['lab/'+rel.as_posix()]=safe_read(p,profile)
     for name in ('freshness_actual_failure.json','v2_timestamp_failure_actual.json'):
         p=profile/'lab/evidence'/name

@@ -551,6 +551,7 @@ class ReviewSyncTests(unittest.TestCase):
                          'repo_sync/docs/docs/STARTUP_RECOVERY_V3.md',
                          'repo_sync/docs/docs/SOURCE_TIMING_EVIDENCE.md',
                          'repo_sync/docs/docs/MULTI_LEDGER_DASHBOARD.md',
+                         'repo_sync/docs/docs/H1_PAPER_004.md',
                          'scripts/paper_startup_supervisor.py','scripts/public_source_timing_probe.py',
                          'repo_sync/evidence/green1.txt','repo_sync/status.json'):
                 p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('pass\n' if p.suffix=='.py' else '{}')
@@ -564,6 +565,7 @@ class ReviewSyncTests(unittest.TestCase):
             self.assertIn('scripts/paper_startup_supervisor.py',files,'startup supervisor entrypoint must survive normal mirror export')
             self.assertIn('docs/SOURCE_TIMING_EVIDENCE.md',files,'timing evidence contract must survive normal mirror export')
             self.assertIn('docs/MULTI_LEDGER_DASHBOARD.md',files,'multi-ledger dashboard contract must survive normal mirror export')
+            self.assertIn('docs/H1_PAPER_004.md',files,'H1-PAPER-004 contract must survive normal mirror export')
             self.assertIn('scripts/public_source_timing_probe.py',files,'public timing probe must survive normal mirror export')
             self.assertIn('evidence/sync/green1.txt',files)
             self.assertNotIn('automation/status.json',files)
@@ -653,10 +655,10 @@ class ReviewSyncTests(unittest.TestCase):
         self.assertIsNotNone(m,'review export implementation missing')
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)
-            for path,text in {'lab/a.py':'print(1)\n','lab/tests/test_a.py':'pass\n','lab/paper_config_v2.json':'{}','lab/paper_config_v3.json':'{}','AGENTS.md':'project rules','lab/shared/status.json':'private runtime','lab/data/broker.sqlite3':'database','config.yaml':'private gateway','lab/.env':'private credential','lab/staging/x/probe-data/raw.json':'raw','lab/staging/x/a.py':'pass\n'}.items():
+            for path,text in {'lab/a.py':'print(1)\n','lab/tests/test_a.py':'pass\n','lab/paper_config_v2.json':'{}','lab/paper_config_v3.json':'{}','lab/paper_config_v4.json':'{}','AGENTS.md':'project rules','lab/shared/status.json':'private runtime','lab/data/broker.sqlite3':'database','config.yaml':'private gateway','lab/.env':'private credential','lab/staging/x/probe-data/raw.json':'raw','lab/staging/x/a.py':'pass\n'}.items():
                 p=root/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
             files=m.collect(root)
-            self.assertEqual(set(files),{'lab/a.py','lab/tests/test_a.py','lab/paper_config_v2.json','lab/paper_config_v3.json','context/AGENTS.md','lab/staging/x/a.py'})
+            self.assertEqual(set(files),{'lab/a.py','lab/tests/test_a.py','lab/paper_config_v2.json','lab/paper_config_v3.json','lab/paper_config_v4.json','context/AGENTS.md','lab/staging/x/a.py'})
             self.assertEqual(files['lab/a.py'],b'print(1)\n')
 
 if __name__=='__main__':unittest.main()

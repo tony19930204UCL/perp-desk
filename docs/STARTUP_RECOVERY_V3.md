@@ -78,6 +78,7 @@ Create an operator-owned JSON file outside mirror-owned source files:
   "schema_version": 1,
   "runtime_python": "/absolute/path/to/python",
   "runtime_root": "/absolute/path/to/runtime-worktree/lab",
+  "runtime_script": "paper_runtime_v3.py",
   "runtime_config": "/absolute/path/to/runtime-worktree/lab/paper_config_v3.json",
   "state_dir": "/absolute/path/to/shared/data/paper-v2",
   "status_path": "/absolute/path/to/shared/shared/paper_v2_live.json",
@@ -96,6 +97,8 @@ Create an operator-owned JSON file outside mirror-owned source files:
 The values above are path placeholders. They are not live machine paths or recommended capacity values.
 
 All path fields must be absolute. Startup health attempts are bounded to 1..5. The supervisor never loops indefinitely waiting for recovery.
+
+`runtime_script` is optional for backwards compatibility and defaults to `paper_runtime_v3.py`. The only staged alternate currently supported is `paper_runtime_v4.py`, which must be paired with the matching H1-PAPER-004 runtime config, durable deployment marker and health-monitor `runtime_script`. The process matcher remains exact; this is not a wildcard script selector.
 
 The existing health configuration must name the **same** runtime root, state directory and status path. A mismatch blocks startup.
 
