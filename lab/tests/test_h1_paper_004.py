@@ -164,6 +164,75 @@ class CoverageDurabilityTests(unittest.TestCase):
                 r.close()
 
 
+class RestartAndBlockerTests(unittest.TestCase):
+    spec=dict(symbol='ETHUSDT',maker_fee='0.0002',taker_fee='0.0005',
+              qty_step='0.001',tick_size='0.01',min_notional='20',
+              max_qty='2000',min_qty='0.001',category='crypto')
+
+    def test_checkpoint_evidence_and_original_48h_deadline_survive_restart(self):
+        from paper_runtime_v4 import PaperRuntime,CHECKPOINT_MS
+        with tempfile.TemporaryDirectory() as td:
+            start=1_000_000
+            now=start+CHECKPOINT_MS
+            r=PaperRuntime(td,LAB/'paper_config_v4.json',clock_ms=lambda:now,fixture=True)
+            r.state['strategy_start_ms']=start
+            r.state['research_deadline_ms']=start+172800000
+            r.state['minute_coverage']={
+                str(start+(i+1)*60000):dict(timely=True,source_valid=True)
+                for i in range(432)}
+            r.state['candidate_diagnostics']=[
+                dict(signal_id='q'+str(i),routing_decision_ms=start+(i+1)*60000,
+                     timely=True,source_valid=True,cost_qualified=True,
+                     admission_status='rejected',admission_reason='single_position_or_pending')
+                for i in range(4)]
+            before_checkpoint=r.checkpoint()
+            self.assertEqual(before_checkpoint['status'],'passed')
+            self.assertEqual(before_checkpoint['deadline_ms'],start+172800000)
+            r.save();r.close()
+            r=PaperRuntime(td,LAB/'paper_config_v4.json',clock_ms=lambda:now+1000,fixture=True)
+            try:
+                self.assertEqual(r.state['strategy_start_ms'],start)
+                self.assertEqual(r.state['research_deadline_ms'],start+172800000)
+                self.assertEqual(len(r.state['minute_coverage']),432)
+                self.assertEqual(len(r.state['candidate_diagnostics']),4)
+                after=r.checkpoint()
+                self.assertEqual(after['status'],'passed')
+                self.assertFalse(after['stop_new_entries'])
+                self.assertEqual(after['deadline_ms'],start+172800000)
+            finally:r.close()
+
+    def test_checkpoint_pass_does_not_clear_existing_loss_or_storage_entry_blocks(self):
+        from paper_runtime_v4 import PaperRuntime,CHECKPOINT_MS
+        from storage_protection import StoragePolicy
+        with tempfile.TemporaryDirectory() as td:
+            start=1_000_000;now=start+CHECKPOINT_MS
+            probe=lambda root:dict(used_bytes=210,free_bytes=1000,total_bytes=2000,files={})
+            policy=StoragePolicy(warning_bytes=100,new_risk_limit_bytes=200,
+                                 exit_reserve_bytes=100,min_free_bytes=50,max_exit_cycle_bytes=20)
+            r=PaperRuntime(td,LAB/'paper_config_v4.json',clock_ms=lambda:now,fixture=True,
+                           storage_policy=policy,storage_probe=probe)
+            try:
+                r.ensure_broker(self.spec)
+                r.state['strategy_start_ms']=start
+                r.state['research_deadline_ms']=start+172800000
+                r.state['minute_coverage']={
+                    str(start+(i+1)*60000):dict(timely=True,source_valid=True)
+                    for i in range(432)}
+                r.state['candidate_diagnostics']=[
+                    dict(signal_id='q'+str(i),routing_decision_ms=start+(i+1)*60000,
+                         timely=True,source_valid=True,cost_qualified=True)
+                    for i in range(4)]
+                r.state['total_halted']=True
+                checkpoint=r.checkpoint()
+                self.assertEqual(checkpoint['status'],'passed')
+                blockers=r.risk_blockers()
+                self.assertIn('risk_total_loss',blockers)
+                self.assertIn('storage_new_risk_inhibited',blockers)
+                self.assertFalse(any(x.startswith('throughput_checkpoint_') for x in blockers))
+                self.assertEqual(r.state['research_deadline_ms'],start+172800000)
+            finally:r.close()
+
+
 class RoutingDiagnosticsTests(unittest.TestCase):
     def setUp(self):
         from paper_runtime_v4 import PaperRuntime
