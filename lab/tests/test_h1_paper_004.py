@@ -138,6 +138,32 @@ class ThroughputTests(unittest.TestCase):
         self.assertEqual(r['deadline_ms'],start+172800000)
 
 
+class CoverageDurabilityTests(unittest.TestCase):
+    def test_failed_batch_cannot_be_retrovalidated_by_later_success(self):
+        from paper_runtime_v4 import PaperRuntime
+        with tempfile.TemporaryDirectory() as td:
+            now=10_000_000
+            r=PaperRuntime(td,LAB/'paper_config_v4.json',clock_ms=lambda:now,fixture=True)
+            try:
+                r.state['strategy_start_ms']=now-120000
+                close_ms=now-1000
+                r._coverage_batch_keys=[]
+                r._record_minute_detection(dict(
+                    type='detector',
+                    bar=dict(close_time_ms=close_ms)))
+                key=str(close_ms)
+                self.assertIn(key,r._coverage_batch_keys)
+                self.assertFalse(r.state['minute_coverage'][key]['source_valid'])
+                # Simulate the collect failing before decision source validation.
+                r._coverage_batch_keys=[]
+                markets=[dict(symbol='ETHUSDT',source_timestamps_ms={
+                    'bookTicker':now,'depth5':now,'premiumIndex':now})]
+                r.validate_sources(markets,'decision after candle work')
+                self.assertFalse(r.state['minute_coverage'][key]['source_valid'])
+            finally:
+                r.close()
+
+
 class RoutingDiagnosticsTests(unittest.TestCase):
     def setUp(self):
         from paper_runtime_v4 import PaperRuntime
