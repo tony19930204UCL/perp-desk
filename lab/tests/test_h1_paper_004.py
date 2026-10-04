@@ -1,6 +1,8 @@
 """Synthetic/public-safe acceptance for operator-frozen H1-PAPER-004."""
 import hashlib
 import json
+import os
+import fcntl
 import sqlite3
 import tempfile
 import unittest
@@ -41,7 +43,9 @@ class TargetContractTests(unittest.TestCase):
         signal_open=16*60000
         prior=[bar(i*60000,str(100+i),str(i+1)) for i in range(1,16)]
         result=causal_vwma_target(prior,signal_open)
-        expected=sum((D(100+i)*D(i+1) for i in range(1,16)),D(0))/sum((D(i+1) for i in range(1,16)),D(0))
+        from decimal import Context, localcontext
+        with localcontext(Context(prec=50)):
+            expected=sum((D(100+i)*D(i+1) for i in range(1,16)),D(0))/sum((D(i+1) for i in range(1,16)),D(0))
         self.assertEqual(result['value'],expected)
         self.assertEqual(result['source_open_times_ms'],[i*60000 for i in range(1,16)])
         self.assertNotIn(signal_open,result['source_open_times_ms'])
@@ -305,14 +309,15 @@ class MigrationTests(unittest.TestCase):
 
     def test_running_runtime_lock_blocks_migration(self):
         from paper_migrate_v4 import migrate
-        from paper_runtime_v3 import PaperRuntime
         with tempfile.TemporaryDirectory() as td:
             root,acceptance,now=self.make_v3(td)
-            r=PaperRuntime(root,LAB/'paper_config_v3.json',clock_ms=lambda:now,fixture=True)
+            fd=os.open(root/'runtime.lock',os.O_RDONLY|os.O_NOFOLLOW)
             try:
+                fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
                 with self.assertRaisesRegex(RuntimeError,'locked'):
                     migrate(root,LAB/'paper_config_v4.json',acceptance,now_ms=now)
-            finally:r.close()
+            finally:
+                fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
 
 
 if __name__=='__main__':
