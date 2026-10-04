@@ -5,6 +5,7 @@ import tempfile
 import threading
 import unittest
 from datetime import datetime, timezone
+from decimal import Decimal, localcontext
 from http.client import HTTPConnection
 from pathlib import Path
 
@@ -46,7 +47,9 @@ def ledger_snapshot(*,capital,symbol,window_start,deadline,high_precision=False,
     # Full account ledger is +4 gross - .04 fees - .01 funding = 3.95.
     initial=str(capital)
     realized='3.95'
-    cash=str((__import__('decimal').Decimal(initial)+__import__('decimal').Decimal(realized)))
+    with localcontext() as ctx:
+        ctx.prec=80
+        cash=str(Decimal(initial)+Decimal(realized))
     s.update(cash_usdt=cash,equity_usdt=cash,total_pnl_usdt=realized,realized_pnl_usdt=realized,
              gross_realized_pnl_usdt='4.000000000000000000000000000000',
              fees_usdt='0.040000000000000000000000000000',
