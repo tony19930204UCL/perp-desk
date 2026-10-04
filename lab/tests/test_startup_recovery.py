@@ -254,6 +254,18 @@ class StartupRecoveryTests(unittest.TestCase):
             self.assertEqual(before,{p.name:p.read_bytes() for p in fx['state'].iterdir() if p.is_file()})
             self.assertTrue(all(c.terminated for c in children))
 
+    def test_optional_dashboard_ledgers_preserves_legacy_command_and_is_explicit_when_configured(self):
+        m=self.module()
+        with tempfile.TemporaryDirectory() as td:
+            fx=self.make_fixture(td);cfg=m.load_config(fx['startup'])
+            legacy=m.dashboard_command(cfg)
+            self.assertNotIn('--ledgers',legacy)
+            data=json.loads(fx['startup'].read_text())
+            ledger_cfg=fx['root']/'ledger-config.json';ledger_cfg.write_text('{"schema_version":1}')
+            data['dashboard_ledgers']=str(ledger_cfg.resolve());fx['startup'].write_text(json.dumps(data))
+            cfg=m.load_config(fx['startup']);command=m.dashboard_command(cfg)
+            self.assertEqual(command[-2:],['--ledgers',str(ledger_cfg.resolve())])
+
     def test_config_and_health_identity_mismatch_fail_closed(self):
         m=self.module()
         with tempfile.TemporaryDirectory() as td:
