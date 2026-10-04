@@ -10,6 +10,10 @@ from dashboard import validate_snapshot
 
 ROOT_VERSION = 'H1-PAPER-003'
 ROOT_IMPLEMENTATION = 'paper-engine-v3'
+SUPPORTED_IDENTITIES = {
+    'paper_runtime_v3.py': ('H1-PAPER-003','paper-engine-v3'),
+    'paper_runtime_v4.py': ('H1-PAPER-004','paper-engine-v4'),
+}
 INCIDENT_PREFIX = 'paper-v3'
 MAX_AGE = 60
 
@@ -19,14 +23,19 @@ def age(stamp, now):
         raise ValueError('timestamp lacks timezone')
     return (now-dt).total_seconds()
 
-def evaluate(snapshot, work, now, process_present=None, storage=None, process_count=None):
+def evaluate(snapshot, work, now, process_present=None, storage=None, process_count=None,
+             expected_version=None, expected_implementation=None):
     faults = {}; warnings = {}; evidence = {}
     try:
         validate_snapshot(snapshot)
+        version=snapshot['engine']['version_id']
+        implementation=snapshot['engine'].get('candidate_implementation')
+        allowed=set(SUPPORTED_IDENTITIES.values())
         if (snapshot['mode'] != 'paper' or snapshot.get('candidate_not_deployed') is not False
-                or snapshot['engine']['version_id'] != ROOT_VERSION
-                or snapshot['engine'].get('candidate_implementation') != ROOT_IMPLEMENTATION):
-            raise ValueError('expected deployed PAPER v3 identity')
+                or (version,implementation) not in allowed
+                or (expected_version is not None and version != expected_version)
+                or (expected_implementation is not None and implementation != expected_implementation)):
+            raise ValueError('expected configured deployed PAPER identity')
         heartbeat = age(snapshot['updated_at'], now)
         success = age(snapshot['feed']['last_success_at'], now)
         evidence = {k: snapshot.get(k) for k in ('updated_at','latest_error','blockers')}
@@ -63,11 +72,11 @@ def evaluate(snapshot, work, now, process_present=None, storage=None, process_co
             evidence['latest_error'] = snapshot.get('latest_error')
     if process_count is not None:
         if process_count == 0:
-            faults['runtime-absent'] = 'Exact PAPER v3 runtime process absent'
+            faults['runtime-absent'] = 'Exact configured PAPER runtime process absent'
         elif process_count != 1:
-            faults['runtime-duplicate'] = 'Multiple exact PAPER v3 runtime processes detected'
+            faults['runtime-duplicate'] = 'Multiple exact configured PAPER runtime processes detected'
     elif process_present is not True:
-        faults['runtime-absent'] = 'Exact PAPER v3 runtime process absent or unverified'
+        faults['runtime-absent'] = 'Exact configured PAPER runtime process absent or unverified'
     pending = []
     try:
         if not isinstance(work, dict) or not isinstance(work.get('tasks'), list):
@@ -250,12 +259,18 @@ def load_monitor_config(path):
     paths={k:Path(data[k]) for k in keys}
     if not all(p.is_absolute() for p in paths.values()):
         raise ValueError('health monitor paths must be absolute')
+    runtime_script=data.get('runtime_script','paper_runtime_v3.py')
+    if runtime_script not in SUPPORTED_IDENTITIES:
+        raise ValueError('unsupported explicit PAPER runtime script')
+    paths['runtime_script']=runtime_script
     return paths
 
-def runtime_processes(runtime_root, state_dir=None, status_path=None):
-    """Find only the explicitly configured PAPER v3 process, even when monitor/runtime roots differ."""
+def runtime_processes(runtime_root, state_dir=None, status_path=None, runtime_script='paper_runtime_v3.py'):
+    """Find only the explicitly configured PAPER process, even when monitor/runtime roots differ."""
     found = []
     runtime_root = Path(runtime_root).resolve()
+    if runtime_script not in SUPPORTED_IDENTITIES:
+        raise ValueError('unsupported explicit PAPER runtime script')
     state_dir = Path(state_dir if state_dir is not None else runtime_root/'data/paper-v2').resolve()
     status_path = Path(status_path if status_path is not None else runtime_root/'shared/paper_v2_live.json').resolve()
     for proc in Path('/proc').iterdir():
@@ -270,7 +285,7 @@ def runtime_processes(runtime_root, state_dir=None, status_path=None):
             if script_index>=len(args): continue
             script = Path(args[script_index])
             if not script.is_absolute(): script = runtime_root/script
-            if script.resolve()!=runtime_root/'paper_runtime_v3.py': continue
+            if script.resolve()!=runtime_root/runtime_script: continue
             def option(key):
                 n=args.index(key)
                 value=Path(args[n+1])
@@ -291,7 +306,8 @@ def storage_status(state_dir):
     return dict(used_bytes=sum(sizes.values()), budget_bytes=512*1024*1024,
                 free_bytes=disk.free, min_free_bytes=1024*1024*1024, files=sizes)
 
-def once(root, now=None, process_present=None, runtime_root=None, state_dir=None, status_path=None):
+def once(root, now=None, process_present=None, runtime_root=None, state_dir=None, status_path=None,
+         runtime_script='paper_runtime_v3.py'):
     from work_status import load_status
     root = Path(root).resolve(); now = now or datetime.now(timezone.utc)
     runtime_root = Path(runtime_root if runtime_root is not None else root).resolve()
@@ -300,14 +316,16 @@ def once(root, now=None, process_present=None, runtime_root=None, state_dir=None
     snapshot = read_json(status_path)
     try: work = load_status(root/'shared/work_status.json', now)
     except (OSError, ValueError, UnicodeError, TypeError, KeyError, OverflowError): work = None
-    pids = runtime_processes(runtime_root,state_dir,status_path) if process_present is None else []
+    pids = runtime_processes(runtime_root,state_dir,status_path,runtime_script) if process_present is None else []
     process_count = len(pids) if process_present is None else None
     if process_present is None: process_present = process_count==1
     try: storage = storage_status(state_dir)
     except OSError: storage = {}
-    report = evaluate(snapshot, work, now, process_present, storage, process_count=process_count)
+    expected_version,expected_implementation=SUPPORTED_IDENTITIES[runtime_script]
+    report = evaluate(snapshot, work, now, process_present, storage, process_count=process_count,
+                      expected_version=expected_version,expected_implementation=expected_implementation)
     report['runtime_pids'] = pids
-    report['runtime_identity'] = dict(script='paper_runtime_v3.py',
+    report['runtime_identity'] = dict(script=runtime_script,
                                       runtime_root=str(runtime_root),state_dir=str(state_dir),status_path=str(status_path))
     state = root/'data/health/incident_state.json'; output=root/'shared/health_status.json'
     try:
