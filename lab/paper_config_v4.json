@@ -39,7 +39,7 @@
     "funding_refresh_seconds": 30
   },
   "fee_assumptions": {
-    "source": "Existing accepted PAPER-RISK-001 account assumptions; unchanged by H1-PAPER-004.",
+    "source": "User supplied AGENTS.md rates, not independently account/VIP verified",
     "crypto": {
       "maker": "0.0002",
       "taker": "0.0005"
