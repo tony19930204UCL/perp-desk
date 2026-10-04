@@ -164,6 +164,40 @@ class CoverageDurabilityTests(unittest.TestCase):
                 r.close()
 
 
+class PollDiagnosticTests(unittest.TestCase):
+    def test_poll_errors_consecutive_period_and_recovery_are_distinct(self):
+        from test_paper_runtime import FixtureClient,BASE
+        from paper_runtime_v4 import PaperRuntime
+        with tempfile.TemporaryDirectory() as td:
+            client=FixtureClient()
+            client.now=BASE+10000
+            client.bars=[
+                [BASE+i*60000,'100','100','100','100','10',BASE+(i+1)*60000-1]
+                for i in range(-61,0)]
+            client.missing='/fapi/v1/exchangeInfo'
+            r=PaperRuntime(td,LAB/'paper_config_v4.json',client=client,
+                           clock_ms=lambda:client.now,fixture=True)
+            try:
+                first=r.poll()
+                self.assertIsNotNone(first['latest_error'])
+                d=r.state['poll_diagnostics']
+                self.assertEqual(d['poll_error_events'],1)
+                self.assertEqual(d['error_periods_started'],1)
+                self.assertEqual(d['consecutive_error_polls'],1)
+                self.assertIsNotNone(d['active_error_period'])
+                client.missing=None
+                second=r.poll()
+                self.assertIsNone(second['latest_error'])
+                d=r.state['poll_diagnostics']
+                self.assertEqual(d['poll_error_events'],1)
+                self.assertEqual(d['error_periods_started'],1)
+                self.assertEqual(d['recovery_observations'],1)
+                self.assertEqual(d['consecutive_error_polls'],0)
+                self.assertIsNone(d['active_error_period'])
+                self.assertEqual(len(d['error_periods']),1)
+            finally:r.close()
+
+
 class RestartAndBlockerTests(unittest.TestCase):
     spec=dict(symbol='ETHUSDT',maker_fee='0.0002',taker_fee='0.0005',
               qty_step='0.001',tick_size='0.01',min_notional='20',
@@ -292,6 +326,24 @@ class RoutingDiagnosticsTests(unittest.TestCase):
         self.assertFalse(d['cost_qualified'])
         self.assertEqual(d['admission_reason'],'insufficient_reward_after_costs')
         self.assertIsNotNone(d['economics']['gross_to_cost_ratio'])
+        self.assertEqual(self.r.broker.fills,[])
+
+    def test_late_candidate_keeps_timing_and_true_late_reason_even_if_economics_would_pass(self):
+        intent=self.insert_signal('late','110')
+        with sqlite3.connect(Path(self.tmp.name)/'signals.sqlite3') as db:
+            row=json.loads(db.execute('SELECT intent FROM h1_signals WHERE signal_id=?',('late',)).fetchone()[0])
+            row['features']['bar_close_ms']=str(self.now-16000)
+            db.execute('UPDATE h1_signals SET intent=? WHERE signal_id=?',(json.dumps(row,sort_keys=True),'late'))
+        self.r.route_signals(self.spec)
+        result=self.r.state['handled_signals']['late']
+        self.assertEqual(result['reason'],'late_closed_bar_signal')
+        d=self.r.state['candidate_diagnostics'][0]
+        self.assertFalse(d['timely'])
+        self.assertFalse(d['cost_qualified'])
+        self.assertTrue(d['economics']['cost_qualified'])
+        self.assertEqual(d['signal_bar_timestamp_domain'],'exchange_closed_bar_epoch_ms')
+        self.assertEqual(d['detection_timestamp_domain'],'runtime_utc_wall_input')
+        self.assertEqual(d['admission_reason'],'late_closed_bar_signal')
         self.assertEqual(self.r.broker.fills,[])
 
     def test_invalid_target_is_raw_candidate_with_null_economics_not_fake_order(self):
