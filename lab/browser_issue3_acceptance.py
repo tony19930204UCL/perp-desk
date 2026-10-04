@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import struct
 import subprocess
@@ -63,18 +64,34 @@ def chrome_shot(chrome,url,width,height,path):
         raise RuntimeError('Chrome screenshot missing or empty')
 
 
-def assert_view(dom,*,ledger_label,symbol,exact_values):
-    if 'data-layout-overflow="false"' not in dom:
-        raise AssertionError('root viewport overflow detected or layout evidence missing')
+def inspect_view(dom,*,ledger_label,symbol,exact_values):
+    """Return explicit readiness/layout diagnostics; never collapse missing into overflow."""
+    def attr(name):
+        match=re.search(r'\\b'+re.escape(name)+r'="([^"]*)"',dom)
+        return match.group(1) if match else None
+    ready=attr('data-render-ready')
+    overflow=attr('data-layout-overflow')
+    scroll=attr('data-layout-scroll-width')
+    client=attr('data-layout-client-width')
+    phase=attr('data-layout-phase')
+    failures=[]
+    if ready!='true':
+        failures.append('render-not-ready')
+    if overflow is None or scroll is None or client is None:
+        failures.append('layout-measurement-missing')
+    elif overflow!='false':
+        failures.append('root-layout-overflow')
     if ledger_label+' · 唯讀帳本' not in dom:
-        raise AssertionError('selected ledger label not rendered')
+        failures.append('selected-ledger-label-missing')
     if symbol not in dom:
-        raise AssertionError('selected ledger trade/symbol not rendered')
+        failures.append('selected-ledger-symbol-missing')
     for exact_value in exact_values:
         if f'data-exact="{exact_value}"' not in dom:
-            raise AssertionError('exact high-precision value is not accessible in DOM: '+exact_value)
+            failures.append('exact-value-missing:'+exact_value)
     if 'id="ledgerSelect"' not in dom:
-        raise AssertionError('configured ledger selector missing')
+        failures.append('ledger-selector-missing')
+    return dict(ready=ready,overflow=overflow,scroll_width=scroll,client_width=client,
+                phase=phase,failures=failures)
 
 
 def http_json(url):
@@ -85,8 +102,16 @@ def http_json(url):
 def main(argv=None):
     parser=argparse.ArgumentParser()
     parser.add_argument('--output',type=Path,required=True)
-    args=parser.parse_args(argv);args.output.mkdir(parents=True,exist_ok=True)
+    parser.add_argument('--rounds',type=int,default=3)
+    args=parser.parse_args(argv)
+    if not 2<=args.rounds<=5:
+        parser.error('--rounds must be 2..5 for bounded repeatability')
+    args.output.mkdir(parents=True,exist_ok=True)
     chrome=chrome_binary()
+    evidence=dict(schema_version=2,
+                  classification='SYNTHETIC_BROWSER_ACCEPTANCE_NOT_STRATEGY_PERFORMANCE',
+                  chrome=Path(chrome).name,rounds_requested=args.rounds,rounds=[],failures=[],
+                  source='synthetic configured ledgers only')
     with tempfile.TemporaryDirectory(prefix='issue3-browser-') as td:
         root=Path(td);nested=root/'nested';nested.mkdir()
         alpha=fresh(ledger_snapshot(capital='250',symbol='BTCUSDT',window_start=500,deadline=10000))
@@ -98,7 +123,6 @@ def main(argv=None):
         config.write_text(json.dumps(dict(schema_version=1,root=str(root.resolve()),default='alpha',
             ledgers=[dict(id='alpha',label='Alpha 250',status='alpha.json'),
                      dict(id='beta',label='Beta high precision',status='nested/beta.json')])))
-        # Keep unrelated observer panels deterministic and public-safe.
         (root/'work_status.json').write_text(json.dumps(dict(schema_version=1,tasks=[])))
         health=dict(schema_version=1,available=True,mode='paper',checked_at=datetime.now(timezone.utc).isoformat(),
                     operational_healthy=True,engineering_resolved=False,incidents=[],faults={},pending_work=[],
@@ -109,7 +133,6 @@ def main(argv=None):
         try:
             base=f'http://127.0.0.1:{server.server_port}/'
             exact=beta['initial_equity_usdt']
-            # Real HTTP sequence independently proves configured switching and values.
             status_a,a1=http_json(base+'api/status?ledger=alpha')
             status_b,b=http_json(base+'api/status?ledger=beta')
             status_a2,a2=http_json(base+'api/status?ledger=alpha')
@@ -124,39 +147,54 @@ def main(argv=None):
             ratio=b['observer']['statistics']['fee_to_gross_percent']
             if ratio is None or len(ratio)<16:
                 raise AssertionError('synthetic beta ratio did not exercise high precision')
-            # Real browser navigation alpha -> beta -> alpha demonstrates configured selection paths.
-            alpha_dom_1=chrome_dom(chrome,base+'?ledger=alpha',1366,768)
-            beta_desktop=chrome_dom(chrome,base+'?ledger=beta',1366,768)
-            beta_mobile=chrome_dom(chrome,base+'?ledger=beta',390,844)
-            alpha_dom_2=chrome_dom(chrome,base+'?ledger=alpha',1366,768)
-            assert_view(alpha_dom_1,ledger_label='Alpha 250',symbol='BTCUSDT',exact_values=['250'])
-            assert_view(beta_desktop,ledger_label='Beta high precision',symbol='SOLUSDT',exact_values=[exact,ratio+'%'])
-            assert_view(beta_mobile,ledger_label='Beta high precision',symbol='SOLUSDT',exact_values=[exact,ratio+'%'])
-            assert_view(alpha_dom_2,ledger_label='Alpha 250',symbol='BTCUSDT',exact_values=['250'])
-            desktop=args.output/'desktop-beta.png';mobile=args.output/'mobile-beta.png'
-            chrome_shot(chrome,base+'?ledger=beta',1366,768,desktop)
-            chrome_shot(chrome,base+'?ledger=beta',390,844,mobile)
-            evidence=dict(
-                schema_version=1,classification='SYNTHETIC_BROWSER_ACCEPTANCE_NOT_STRATEGY_PERFORMANCE',
-                chrome=Path(chrome).name,
-                sequence=['alpha','beta','alpha'],
-                desktop=dict(viewport=[1366,768],png=list(png_size(desktop)),
-                             sha256=hashlib.sha256(desktop.read_bytes()).hexdigest(),
-                             layout_overflow=False,ledger='beta'),
-                mobile=dict(viewport=[390,844],png=list(png_size(mobile)),
-                            sha256=hashlib.sha256(mobile.read_bytes()).hexdigest(),
-                            layout_overflow=False,ledger='beta'),
-                exact_value_accessible=True,
-                http_switch=dict(sequence=['alpha','beta','alpha'],
-                                 alpha_capital=a1['initial_equity_usdt'],
-                                 beta_capital=b['initial_equity_usdt'],
-                                 beta_symbol=b['observer']['closed_trades'][0]['symbol'],
-                                 beta_fee_to_gross_percent=ratio),
-                source='synthetic configured ledgers only')
+            evidence['http_switch']=dict(sequence=['alpha','beta','alpha'],
+                                         alpha_capital=a1['initial_equity_usdt'],
+                                         beta_capital=b['initial_equity_usdt'],
+                                         beta_symbol=b['observer']['closed_trades'][0]['symbol'],
+                                         beta_fee_to_gross_percent=ratio)
+            for round_no in range(1,args.rounds+1):
+                round_ev=dict(round=round_no,sequence=['alpha','beta','alpha'],views={})
+                alpha_dom_1=chrome_dom(chrome,base+'?ledger=alpha',1366,768)
+                beta_desktop=chrome_dom(chrome,base+'?ledger=beta',1366,768)
+                beta_mobile=chrome_dom(chrome,base+'?ledger=beta',390,844)
+                alpha_dom_2=chrome_dom(chrome,base+'?ledger=alpha',1366,768)
+                views=[
+                    ('alpha_before',alpha_dom_1,'Alpha 250','BTCUSDT',['250'],1366,768),
+                    ('beta_desktop',beta_desktop,'Beta high precision','SOLUSDT',[exact,ratio+'%'],1366,768),
+                    ('beta_mobile',beta_mobile,'Beta high precision','SOLUSDT',[exact,ratio+'%'],390,844),
+                    ('alpha_after',alpha_dom_2,'Alpha 250','BTCUSDT',['250'],1366,768)]
+                for name,dom,label,symbol,exact_values,width,height in views:
+                    diag=inspect_view(dom,ledger_label=label,symbol=symbol,exact_values=exact_values)
+                    diag['viewport']=[width,height]
+                    round_ev['views'][name]=diag
+                    if diag['failures']:
+                        evidence['failures'].append(dict(round=round_no,view=name,reasons=diag['failures'],
+                                                         ready=diag['ready'],overflow=diag['overflow'],
+                                                         scroll_width=diag['scroll_width'],
+                                                         client_width=diag['client_width'],phase=diag['phase']))
+                        (args.output/f'failure-round-{round_no}-{name}.html').write_text(dom,encoding='utf-8')
+                for name,url,width,height in [
+                    ('desktop',base+'?ledger=beta',1366,768),
+                    ('mobile',base+'?ledger=beta',390,844)]:
+                    shot=args.output/f'round-{round_no}-{name}-beta.png'
+                    chrome_shot(chrome,url,width,height,shot)
+                    round_ev[name]=dict(viewport=[width,height],png=list(png_size(shot)),
+                                        sha256=hashlib.sha256(shot.read_bytes()).hexdigest())
+                evidence['rounds'].append(round_ev)
+            evidence['exact_value_accessible']=not any(
+                any(reason.startswith('exact-value-missing:') for reason in failure['reasons'])
+                for failure in evidence['failures'])
+        except Exception as exc:
+            evidence['fatal_error']=type(exc).__name__+': '+str(exc)
+            raise
+        finally:
+            evidence['rounds_completed']=len(evidence['rounds'])
             (args.output/'evidence.json').write_text(json.dumps(evidence,sort_keys=True,indent=2)+'\n')
             print('ISSUE3_BROWSER_EVIDENCE '+json.dumps(evidence,sort_keys=True,separators=(',',':')))
-        finally:
             server.shutdown();server.server_close();thread.join()
+    if evidence['failures']:
+        first=evidence['failures'][0]
+        raise AssertionError('bounded browser acceptance failed: '+json.dumps(first,sort_keys=True))
     return 0
 
 
