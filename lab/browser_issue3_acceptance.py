@@ -91,7 +91,7 @@ def main(argv=None):
         root=Path(td);nested=root/'nested';nested.mkdir()
         alpha=fresh(ledger_snapshot(capital='250',symbol='BTCUSDT',window_start=500,deadline=10000))
         beta=fresh(ledger_snapshot(capital='1000.123456789012345678901234567890',
-                                   symbol='SOLUSDT',window_start=1500,deadline=22000,high_precision=True))
+                                   symbol='SOLUSDT',window_start=750,deadline=22000,high_precision=True))
         alpha_path=root/'alpha.json';beta_path=nested/'beta.json'
         alpha_path.write_text(json.dumps(alpha));beta_path.write_text(json.dumps(beta))
         config=root/'ledgers.json'
