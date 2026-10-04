@@ -435,3 +435,12 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 本次未寫交易SQLite／套用live source／改operator config／重啟程序／啟動004／remote main merge。Live observer.available=true，config H1-PAPER-003，窗口130signals/129blocked/1完整往返/0open只是本次中途快照（90cost/36late/3position），非最終closeout。#6平台前提仍獨立blocked。
 - Evidence cache/scratch/pr21-5c4b7c5-acceptance（pr/ci_run/ci.log/head_runs、H1_PAPER_004.md、14head artifacts/source_manifest、ci_evidence329 IDs、browser-evidence、prior_failure、live_before）。下一步是operator原窗口結算與migration，不派重複coding工作。
 
+## REJECTED-OPPORTUNITY-EXPLORATORY-OHLC-NOT-PROFIT（2026-10-04）
+
+- 使用者要求從錯過/拒絕訊號學習，而非只報拒因。只讀runtime/signals，audit上界165799固定。003意圖141，其中bar-close位於原start/deadline的138包含8個research_window_closed routing，另3個bar-close在deadline後。不能把raw bar-close window、routing decision window與snapshot截止拒單混同。v3缺完整每candidate decision時序，未把此探索分析當正式closeout。
+- 90個insufficient_reward_after_costs逐ID原intent/routing連結，研究後續30根已記錄1m detector bars。73有完整路徑、17缺資料。以signal close為entry代理及0.5% stop代理、原target判首次touch，51先target、1先stop、21兩者未touch、17unknown。51不是獲利成交/勝率；其中49的close-to-target proxy不足10bp，2介於10/20bp。90全體87不足10bp、3介於10/20bp、0達20bp。既有roundtrip fee配置約10bp，尚未算spread/slippage/funding，但proxy不是真成交報價，不能把87都定為實際虧損，也不能把51都叫錯失獲利。
+- 下午（12:00UTC至deadline）240poll errors，237DNS events，DNS首尾13:55:03.197Z至16:40:29.818Z。支持資料取得受影響，不是237次獨立斷網或私人網路根因證明，不算少賺多少。完全未觀察的raw signal須另以歷史context探索重建，不能用已保存拒單數當全部missed opportunities。
+- 完成唯讀探索結果summary/candidate_path_proxies及繁中報告「拒單如何轉成研究證據.md」。True counterfactual profitable count為null，缺book/arrival/depth/退出/funding證據者不造淨損益；OHLC同bar雙touch需unknown，事件估計不能當單持倉帳戶加總獲利。新研究進化以完整funnel+固定退出全成本結果+coverage/尾端風險比較，探索只生假說，另用新forward資料確認。004已在本研究之前預登記，本次不調參、不證明有效，也未部署。
+- 原作者Bailey等The Probability of Backtest Overfitting PDF實際下載/read_file讀取作方法背景，沒有計算PBO或統計確認。web_extract backend無法extract及本機pdftotext缺失均保留，改原作者PDF直取+read_file完成，不編文獻結果。
+- 沒有修改交易source/config/SQLite帳戶/ledger/audit、沒有部署、補交易、延長窗口或下單。證據cache/scratch/rejected-opportunity-study-oct04。此研究完成不代表H1-PAPER-003正式closeout或004 migration/activation已完成。
+
