@@ -73,7 +73,7 @@ class MultiLedgerHttpTests(unittest.TestCase):
         self.beta_path.parent.mkdir()
         self.alpha=ledger_snapshot(capital='250',symbol='BTCUSDT',window_start=500,deadline=10000)
         self.beta=ledger_snapshot(capital='1000.123456789012345678901234567890',
-                                  symbol='SOLUSDT',window_start=1500,deadline=22000,high_precision=True)
+                                  symbol='SOLUSDT',window_start=750,deadline=22000,high_precision=True)
         self.default_path.write_text(json.dumps(self.alpha))
         self.beta_path.write_text(json.dumps(self.beta))
         self.config=root/'ledgers.json'
@@ -103,7 +103,7 @@ class MultiLedgerHttpTests(unittest.TestCase):
         code,b=self.get('/api/status?ledger=beta')
         self.assertEqual(code,200);self.assertEqual(b['ledger_view']['id'],'beta')
         self.assertEqual(b['initial_equity_usdt'],'1000.123456789012345678901234567890')
-        self.assertEqual(b['research']['strategy_start_ms'],1500)
+        self.assertEqual(b['research']['strategy_start_ms'],750)
         self.assertEqual(b['research']['deadline_ms'],22000)
         self.assertEqual(b['observer']['closed_trades'][0]['symbol'],'SOLUSDT')
         self.assertEqual(b['observer']['closed_trades'][0]['fees_usdt'],'0.04')
