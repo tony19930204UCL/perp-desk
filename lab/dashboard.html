@@ -27,20 +27,17 @@ const $=id=>document.getElementById(id);
 const labels={insufficient_reward_after_costs:'預期報酬不足以涵蓋成本',late_closed_bar_signal:'閉合K線訊號已過期',risk_per_trade:'單筆風險超限',risk_limits_not_set:'風險限額未設定，禁止 paper 開倉',sim_broker_not_implemented:'模擬券商尚未完成，沒有成交驗證',signals_not_implemented:'策略訊號尚未實作，沒有績效樣本'};
 function compactDecimal(value,max=16){
  const raw=String(value??'—');if(raw==='—')return raw;
- const m=raw.match(/^([+-]?)(\d+)(?:\.(\d*))?([eE][+-]?\d+)?$/);if(!m)return raw.length>max?raw.slice(0,max-1)+'…':raw;
- if(m[4])return raw.length<=max?raw:raw.slice(0,max-1)+'…';
- const sign=m[1],ints=m[2],frac=m[3]??'',trimFrac=frac.replace(/0+$/,'');
- const plain=sign+ints+(trimFrac?'.'+trimFrac:'');
- if(/^[-+]?0(?:\.0*)?$/.test(plain))return '0';
- if(plain.length<=max)return plain;
- const unsigned=plain.replace(/^[+-]/,'');
- const signPrefix=sign;
+ if(/^[+-]?0+(?:\.0+)?(?:[eE][+-]?\d+)?$/.test(raw))return '0';
+ if(raw.length<=max)return raw;
+ const m=raw.match(/^([+-]?)(\d+)(?:\.(\d*))?([eE][+-]?\d+)?$/);if(!m)return raw.slice(0,max-1)+'…';
+ if(m[4])return raw.slice(0,max-1)+'…';
+ const sign=m[1],ints=m[2],frac=m[3]??'',unsigned=ints+(frac?'.'+frac:'');
  const [iPart,fPart='']=unsigned.split('.');
  if(iPart.replace(/^0+/,'').length>0){
    const sig=iPart.replace(/^0+/,'')+fPart,exp=iPart.replace(/^0+/,'').length-1;
-   return signPrefix+sig[0]+(sig.slice(1,9)?'.'+sig.slice(1,9):'')+'e'+exp;
+   return sign+sig[0]+(sig.slice(1,9)?'.'+sig.slice(1,9):'')+'e'+exp;
  }
- const first=fPart.search(/[1-9]/);if(first>=0){const sig=fPart.slice(first);return signPrefix+sig[0]+(sig.slice(1,9)?'.'+sig.slice(1,9):'')+'e-'+(first+1);}
+ const first=fPart.search(/[1-9]/);if(first>=0){const sig=fPart.slice(first);return sign+sig[0]+(sig.slice(1,9)?'.'+sig.slice(1,9):'')+'e-'+(first+1);}
  return '0';
 }
 function exactNode(value,suffix=''){const exact=String(value??'—')+suffix,span=document.createElement('span');span.className='exact-number';span.tabIndex=0;span.dataset.exact=exact;span.title='精確值 '+exact;span.setAttribute('aria-label','顯示 '+compactDecimal(value)+suffix+'；精確值 '+exact);span.textContent=compactDecimal(value)+suffix;return span;}
@@ -98,7 +95,7 @@ function render(s){
  text('marketNote','資料來源：'+s.feed.transport+'（非 WebSocket） · Funding 顯示是預估值，不是已结算現金流');
  $('blockers').replaceChildren();for(const b of (s.blockers.length?s.blockers:['無開倉阻擋記錄（不代表交易授權）'])){const li=document.createElement('li');li.textContent=labels[b]??b;$('blockers').appendChild(li);}
  $('versions').replaceChildren();if(paper){const div=document.createElement('div');div.className='version';div.textContent=s.engine.version_id+' · '+s.engine.status+' · '+s.engine.implementation+'\n前瞻起點 '+s.engine.forward_start_at+'\n模型 '+s.engine.model_sha256+'\n風險 '+s.risk.risk_version+' · '+s.risk.risk_config_sha256;$('versions').appendChild(div);}for(const v of s.versions){const div=document.createElement('div');div.className='version';div.textContent=v.id+' · '+v.status+'\n前瞻起點 '+v.sample_start_at;$('versions').appendChild(div);}
- {const box=$('accounting');box.replaceChildren(document.createTextNode('淨已實現含全部費用與 funding；'));const parts=[['gross_realized_pnl_usdt','毛已實現'],['fees_usdt','費用'],['funding_pnl_usdt','funding']].filter(([key])=>s[key]!==undefined);parts.forEach(([key,label],i)=>{if(i)box.appendChild(document.createTextNode('；'));box.appendChild(document.createTextNode(label+' '),exactNode(s[key],' USDT'));});}
+ {const box=$('accounting');box.replaceChildren(document.createTextNode('淨已實現含全部費用與 funding；'));const parts=[['gross_realized_pnl_usdt','毛已實現'],['fees_usdt','費用'],['funding_pnl_usdt','funding']].filter(([key])=>s[key]!==undefined);parts.forEach(([key,label],i)=>{if(i)box.appendChild(document.createTextNode('；'));box.append(document.createTextNode(label+' '),exactNode(s[key],' USDT'));});}
  text('empty',s.positions.length?'以下為快照中記錄的 PAPER 持倉':'沒有持倉。'+(paper?traded:'未交易，零 PNL 不是策略成績。'));$('positionList').replaceChildren();for(const p of s.positions){const div=document.createElement('div');div.className='version';div.append(document.createTextNode(p.symbol+' · '+p.side+' · 數量 '),exactNode(p.qty),document.createTextNode(' · 入場 '),exactNode(p.entry_price),document.createTextNode(' · 標記 '),exactNode(p.mark_price),document.createTextNode(' · 止損 '),exactNode(p.stop_price),document.createTextNode(' · 未實現 '),exactNode(p.unrealized_pnl_usdt,' USDT'));$('positionList').appendChild(div);}
  renderResearch(s);
  drawChart(s);
