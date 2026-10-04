@@ -117,6 +117,7 @@ class PaperRuntime(BaseRuntime):
         super().__init__(*args,**kwargs)
         self.state.setdefault('candidate_diagnostics',[])
         self.state.setdefault('minute_coverage',{})
+        self._coverage_batch_keys=[]
         self.state.setdefault('poll_diagnostics',dict(
             poll_error_events=0,error_periods_started=0,recovery_observations=0,
             consecutive_error_polls=0,active_error_period=None,error_periods=[]))
@@ -141,6 +142,7 @@ class PaperRuntime(BaseRuntime):
                 detection_timestamp_domain='runtime_utc_wall',
                 timely=bool(0<=now-close_ms<=self.config['execution_model']['max_source_age_ms']),
                 source_valid=False)
+            self._coverage_batch_keys.append(key)
         # Exactly 480 one-minute slots can belong to the first checkpoint window.
         if len(coverage)>CHECKPOINT_MS//MINUTE_MS:
             raise ValueError('minute coverage bound exceeded')
@@ -150,13 +152,23 @@ class PaperRuntime(BaseRuntime):
             self._record_minute_detection(event)
         return super().audit(event)
 
+    def collect(self):
+        self._coverage_batch_keys=[]
+        try:
+            return super().collect()
+        finally:
+            # Never let a later successful poll validate a prior failed batch.
+            self._coverage_batch_keys=[]
+
     def validate_sources(self,markets,context,*,allow_wait=False):
         observed=super().validate_sources(markets,context,allow_wait=allow_wait)
         if context=='decision after candle work':
             # Only actual successful source validation can mark an evaluated minute
             # source-valid. Late replayed bars remain timely=false and never count.
-            for item in self.state.setdefault('minute_coverage',{}).values():
-                if item.get('source_valid') is False and item.get('detection_ms') is not None:
+            coverage=self.state.setdefault('minute_coverage',{})
+            for key in list(self._coverage_batch_keys):
+                item=coverage.get(key)
+                if item is not None and item.get('source_valid') is False:
                     item['source_valid']=True
                     item['source_validation_ms']=observed
                     item['source_validation_timestamp_domain']='runtime_utc_wall'
