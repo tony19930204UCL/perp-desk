@@ -118,6 +118,12 @@ def inspect_durable_state(cfg):
                        (cfg.health_config,'health config')):
         if not path.is_file() or path.is_symlink():
             raise StartupBlocked('missing or unsafe '+label)
+    if cfg.dashboard_ledgers is not None:
+        from dashboard import load_ledger_config
+        try:
+            load_ledger_config(cfg.dashboard_ledgers,cfg.status_path)
+        except (OSError,ValueError,UnicodeError,json.JSONDecodeError) as exc:
+            raise StartupBlocked('dashboard ledger configuration invalid') from exc
     health=load_monitor_config(cfg.health_config)
     expected={'runtime_root':cfg.runtime_root,'state_dir':cfg.state_dir,'status_path':cfg.status_path}
     if any(health[k].resolve()!=v for k,v in expected.items()):
