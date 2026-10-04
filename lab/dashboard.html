@@ -103,7 +103,19 @@ function render(s){
  renderResearch(s);
  drawChart(s);
  text('stamp','快照 '+s.updated_at+' · 行情年齡 '+Math.round(s.feed_age_seconds??0)+' 秒 · 累計錯誤 '+s.feed.errors_count+' · 缺口 '+s.feed.gaps_count+' · '+(s.latest_error??'無最近錯誤'));
- if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{document.documentElement.dataset.layoutOverflow=String(document.documentElement.scrollWidth>document.documentElement.clientWidth);});
+ measureLayout('sync');
+ if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>measureLayout('raf'));
+}
+function measureLayout(phase){
+ const root=document.documentElement;
+ // Reading these values forces a real layout calculation after render. Acceptance
+ // can distinguish a genuine overflow from a browser-readiness race.
+ const scrollWidth=root.scrollWidth,clientWidth=root.clientWidth;
+ root.dataset.layoutScrollWidth=String(scrollWidth);
+ root.dataset.layoutClientWidth=String(clientWidth);
+ root.dataset.layoutOverflow=String(scrollWidth>clientWidth);
+ root.dataset.layoutPhase=phase;
+ root.dataset.renderReady='true';
 }
 let busy=false,selectedLedger=(typeof location!=='undefined'?new URLSearchParams(location.search).get('ledger'):null);async function refresh(){if(busy)return;busy=true;const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const suffix=selectedLedger?'?ledger='+encodeURIComponent(selectedLedger):'';const r=await fetch('/api/status'+suffix,{cache:'no-store',signal:ctl.signal});if(!r.ok)throw Error('HTTP '+r.status);render(await r.json());}catch(e){unavailable(e.message);}finally{clearTimeout(timer);busy=false;}}
 async function loadLedgers(){const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const r=await fetch('/api/ledgers',{cache:'no-store',signal:ctl.signal});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();if(d.schema_version!==1||!Array.isArray(d.ledgers)||!d.ledgers.length)throw Error('ledger config invalid');const ids=new Set(d.ledgers.map(x=>x.id));if(selectedLedger&&!ids.has(selectedLedger))throw Error('unknown configured ledger');if(!selectedLedger)selectedLedger=d.default;const select=$('ledgerSelect');select.replaceChildren();for(const item of d.ledgers){const o=document.createElement('option');o.value=item.id;o.textContent=item.label+(item.default?' · 預設':'');o.selected=item.id===selectedLedger;select.appendChild(o);}select.disabled=d.ledgers.length<2;select.addEventListener('change',()=>{selectedLedger=select.value;const u=new URL(location.href);if(selectedLedger===d.default)u.searchParams.delete('ledger');else u.searchParams.set('ledger',selectedLedger);history.replaceState(null,'',u);refresh();});}catch(e){const select=$('ledgerSelect');select.replaceChildren();const o=document.createElement('option');o.textContent='帳本配置不可用';select.appendChild(o);select.disabled=true;unavailable('帳本配置不可用：'+e.message);}finally{clearTimeout(timer);}}
