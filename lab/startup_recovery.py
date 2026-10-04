@@ -159,10 +159,11 @@ def inspect_durable_state(cfg):
         configured=json.loads(cfg.runtime_config.read_text())
     except (OSError,UnicodeError,json.JSONDecodeError) as exc:
         raise StartupBlocked('runtime config unreadable') from exc
-    version=configured.get('version_id')
-    expected_script={'H1-PAPER-003':'paper_runtime_v3.py','H1-PAPER-004':'paper_runtime_v4.py'}.get(version)
-    if expected_script is None or cfg.runtime_script!=expected_script:
+    script_version={'paper_runtime_v3.py':'H1-PAPER-003','paper_runtime_v4.py':'H1-PAPER-004'}[cfg.runtime_script]
+    configured_version=configured.get('version_id')
+    if configured_version is not None and configured_version!=script_version:
         raise StartupBlocked('runtime config/version/script identity unsupported')
+    version=script_version
     deployment=state.get('deployment')
     if not isinstance(deployment,dict) or deployment.get('version_id')!=version:
         raise StartupBlocked('durable namespace is not accepted configured PAPER deployment')
