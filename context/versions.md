@@ -450,3 +450,10 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - Issue#22 ENGINEERING/OBSERVABILITY已create/fullbody OPEN讀回，event-gated-operator task queued/API讀回，外部agent待人工轉交。新非main branch/PR，禁止mainpush/merge/live scheduler變更及部署；接收成果後operator才安裝並替換unconditional LLM cron，不增duplicate health writer。完整可轉交prompt在cache/scratch/event-gated-operator/高頻巡查設計與派工.md。現有每小時operator仍是過渡版本，120s health本次checked_at/runtime PID實際讀回，不宣稱60s喚醒已上線或量出省tokens。
 - 另唯讀核對原public depth在source1790966417238、receipt1790966417311、dispatch1790966418144：asks第一檔2653.08/qty0.009，第二檔2653.10/qty0.521。0.062ETH買單同一book時刻跨兩檔取0.009+0.053，原2tick adverse slippage後fills2653.10/2653.12。不是隨機拆單或兩次等待partial成交。原稱3筆部分成交不精確，實際2entry depth-level fills+1exit fill，單一flat-to-flat episode。仍sim_only，未向交易所下單/消耗真深度，不證明私人queue或REST快照之後真可成交。未修改simulation source/帳戶。
 
+## PARALLEL-ETH-DISCOVERY-PREREGISTERED-NOT-ACTIVE（2026-10-04）
+
+- 採納小組平行探索，不把多臂變成多倍獨立統計證據。同一新48h source/window，A=004 long/taker控制、B=同long signal maker entry/profit exit（保護出口taker）、C=對稱long/short taker。每臂獨立人工100USDT資本與1/3/10USDT風險基準，不複製/reset原帳戶，不合併PNL，不改003窗口或004same-account activation。8h按預登記coverage/吞吐停止，不按盈虧挑停。新資料發現假說，另用新資料確認。
+- 實際observed-state讀回：正式broker_dispatch僅book/mark，沒有aggTrade；保守maker queue/through測試存在，但risk-limited執行與feed不等於已支援maker研究。須補isolated shared causal aggTrade feed/ledger/short sign/risk/cancel-race契約，禁止用觸價造fill。B queue1x為假設、2x stress為診斷，15s post-only entry expiry、保護出口taker實扣。user-supplied maker0.02%/taker0.05%不是獨立帳戶VIP驗證，TradFi maker0不是全成本0。
+- XAUUSDT quote已讀回，live strategy仍ETH，TradFi disabled_until_verified_session_calendar。這輪不啟用XAU，venue/index/mark/session/weekend/funding等未完成核查不當作已驗證。沒有交易或新增研究帳戶。
+- Issue#23 RESEARCH INFRASTRUCTURE/ENGINEERING已create且full-body OPEN讀回；task parallel-eth-discovery queued/API讀回，待人工轉交新non-main branch/PR，未coding/deploy/activate。詳細定義與完整relay prompt在cache/scratch/parallel-discovery-oct04/平行探索決策與派工.md。原#22監控工程分開，不改其分支。研究決策/工程完成/市場證據分開。
+
