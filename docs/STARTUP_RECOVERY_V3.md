@@ -202,6 +202,29 @@ The service template below therefore uses `Restart=no`.
 
 SIGTERM/SIGINT to the supervisor is the supported stop path.
 
+### Bounded stop contract
+
+The operator-observed PR #15 failure is preserved as an eventual clean stop that exceeded the documented 10-second service budget. No force kill was observed in that incident.
+
+Root cause in the accepted implementation is now identified at the supervisor control-flow level: the signal handler only set a Boolean flag while the main thread was inside the periodic `time.sleep(health_interval_seconds)`. Returning from the handler allowed the sleep to continue, so the flag was not necessarily observed until the 120-second cadence wake.
+
+The supervisor now uses a signal-aware event wait for:
+- dashboard startup settle;
+- startup-health wait;
+- periodic health interval.
+
+SIGTERM/SIGINT only sets the event. Process cleanup remains outside the signal handler.
+
+Owned-child cleanup uses one shared **10-second** budget:
+1. TERM is sent to all still-running direct children first;
+2. graceful waits share at most the first 8 seconds;
+3. only still-running owned children may receive KILL;
+4. final reap remains inside the same 10-second deadline.
+
+No unrelated PID is signaled.
+
+The real isolated acceptance keeps `health_interval_seconds=120`, enters that periodic wait, sends SIGTERM/SIGINT, and requires supervisor PID, both owned child PIDs and the owned dashboard listener to disappear within 10 seconds. Startup-wait signal, repeated signal and duplicate supervisor ownership are also covered.
+
 The supervisor terminates only the runtime/dashboard children it launched. It does not:
 
 - flatten positions;
@@ -308,8 +331,8 @@ For user-systemd activation:
 For manual foreground activation:
 
 1. Send SIGTERM/SIGINT to the foreground supervisor.
-2. Wait for its owned runtime/dashboard children to stop.
-3. Verify exact runtime PID count is zero.
+2. Require the supervisor and its owned runtime/dashboard children to disappear within 10 seconds.
+3. Verify exact runtime PID count is zero and the dashboard listener is closed.
 
 For either path:
 

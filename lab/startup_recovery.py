@@ -13,6 +13,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+import threading
 
 from health_watchdog import load_monitor_config, once as health_once, runtime_processes
 
@@ -246,33 +247,67 @@ def preflight(cfg):
     return dict(state='ready-to-start',runtime_pids=[],durable=durable)
 
 
-def _terminate(child,timeout=3):
-    if child is None or child.poll() is not None:
+STOP_BUDGET_SECONDS=10.0
+
+
+def _stop_owned(children,*,timeout=STOP_BUDGET_SECONDS,monotonic=time.monotonic):
+    """Stop only direct children launched by this supervisor under one shared deadline."""
+    owned=[child for child in children if child is not None and child.poll() is None]
+    if not owned:
         return
-    child.terminate()
-    try: child.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        child.kill();child.wait(timeout=timeout)
+    started=monotonic()
+    graceful_deadline=started+min(8.0,timeout)
+    final_deadline=started+timeout
+    for child in owned:
+        child.terminate()
+    survivors=[]
+    for child in owned:
+        remaining=max(0.0,graceful_deadline-monotonic())
+        try:
+            child.wait(timeout=remaining)
+        except subprocess.TimeoutExpired:
+            survivors.append(child)
+    for child in survivors:
+        if child.poll() is None:
+            child.kill()
+    for child in survivors:
+        remaining=max(0.0,final_deadline-monotonic())
+        try:
+            child.wait(timeout=remaining)
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError('owned child exceeded supervisor stop budget') from exc
 
 
 def run_supervisor(cfg,*,popen=subprocess.Popen,sleep=time.sleep,health=health_once,
-                   stop_requested=None,max_monitor_cycles=None):
+                   stop_requested=None,stop_event=None,max_monitor_cycles=None):
     """Own one runtime/dashboard process set. Never restarts a stopped runtime."""
     check=preflight(cfg)
     if check['state']=='already-running':
         raise StartupBlocked('runtime already active; refuse second supervisor ownership')
     dashboard=None;runtime=None
     stop_requested=stop_requested or (lambda:False)
+    def stopped():
+        return bool(stop_requested()) or bool(stop_event is not None and stop_event.is_set())
+    def wait_or_stop(seconds):
+        if stopped():
+            return True
+        if stop_event is not None:
+            stop_event.wait(seconds)
+        else:
+            sleep(seconds)
+        return stopped()
     try:
         dashboard=popen(dashboard_command(cfg),cwd=cfg.monitor_root)
-        sleep(0.05)
+        if wait_or_stop(0.05):
+            return dict(state='stopped-by-operator',durable=check['durable'])
         if dashboard.poll() is not None:
             raise StartupBlocked('dashboard failed during startup')
         runtime=popen(runtime_command(cfg),cwd=cfg.runtime_root)
         # The runtime lock is authoritative against a launch race; an immediate
         # nonzero exit is never retried here.
         for attempt in range(cfg.startup_health_attempts):
-            sleep(cfg.startup_health_interval_seconds)
+            if wait_or_stop(cfg.startup_health_interval_seconds):
+                return dict(state='stopped-by-operator',durable=check['durable'])
             rc=runtime.poll()
             if rc is not None:
                 if rc==2:
@@ -311,11 +346,11 @@ def run_supervisor(cfg,*,popen=subprocess.Popen,sleep=time.sleep,health=health_o
             cycles+=1
             if max_monitor_cycles is not None and cycles>=max_monitor_cycles:
                 return dict(state='test-complete',durable=check['durable'])
-            sleep(cfg.health_interval_seconds)
+            if wait_or_stop(cfg.health_interval_seconds):
+                break
         return dict(state='stopped-by-operator',durable=check['durable'])
     finally:
-        _terminate(runtime)
-        _terminate(dashboard)
+        _stop_owned((runtime,dashboard))
 
 
 def main(argv=None):
@@ -335,11 +370,14 @@ def main(argv=None):
         if args.check:
             print(json.dumps(preflight(cfg),sort_keys=True))
             return 0
-        stop={'value':False}
-        def request_stop(signum,frame): stop['value']=True
+        stop_event=threading.Event()
+        def request_stop(signum,frame):
+            # Signal handlers only wake the main loop. Child signaling/cleanup stays
+            # in normal control flow and is restricted to exactly owned processes.
+            stop_event.set()
         signal.signal(signal.SIGTERM,request_stop)
         signal.signal(signal.SIGINT,request_stop)
-        result=run_supervisor(cfg,stop_requested=lambda:stop['value'])
+        result=run_supervisor(cfg,stop_event=stop_event)
         print(json.dumps(result,sort_keys=True))
         return 0 if result['state']=='stopped-by-operator' else 2
     except (OSError,ValueError,StartupBlocked) as exc:
