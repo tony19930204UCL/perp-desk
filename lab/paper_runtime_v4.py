@@ -16,7 +16,7 @@ from signals_v4 import Detector
 from sim_broker import Intent
 from storage_protection import StorageProtectionHalt
 
-CONFIG_HASH='335b44e7208642b675db97306f2733069489df1e396bbb505fa3ce3aa9d4cf22'
+CONFIG_HASH='0b2ad56830c001fd90d702cbd87085743bde51d2960a0c3459da7bf243358f60'
 CHECKPOINT_MS=8*60*60*1000
 WINDOW_MS=48*60*60*1000
 MINUTE_MS=60000
