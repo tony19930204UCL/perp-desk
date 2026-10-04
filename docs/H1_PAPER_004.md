@@ -186,6 +186,7 @@ Migration is rejected unless all are true:
 - runtime audit hash chain is valid
 - durable config hash is the exact accepted H1-PAPER-003 hash
 - durable deployment marker is H1-PAPER-003
+- durable runtime account identity matches the broker's persisted account version identity and original forward start
 - current time is at/after the original H1-PAPER-003 deadline
 - account is flat with no pending/resting orders
 - broker ledger exactly reconciles to broker cash
