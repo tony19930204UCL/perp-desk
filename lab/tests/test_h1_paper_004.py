@@ -1,0 +1,319 @@
+"""Synthetic/public-safe acceptance for operator-frozen H1-PAPER-004."""
+import hashlib
+import json
+import sqlite3
+import tempfile
+import unittest
+from datetime import datetime, timezone
+from decimal import Decimal as D
+from pathlib import Path
+
+LAB=Path(__file__).resolve().parents[1]
+
+
+def bar(open_ms,close='100',volume='10'):
+    return dict(symbol='ETHUSDT',open_time_ms=open_ms,close_time_ms=open_ms+60000,
+                closed=True,open=D(close),high=D(close),low=D(close),close=D(close),volume=D(volume))
+
+
+class TargetContractTests(unittest.TestCase):
+    def test_config_changes_only_preregistered_strategy_identity_target_and_checkpoint(self):
+        old=json.loads((LAB/'paper_config_v3.json').read_text())
+        new=json.loads((LAB/'paper_config_v4.json').read_text())
+        self.assertEqual(new['version_id'],'H1-PAPER-004')
+        for key in ('initial_equity_usdt','max_loss_per_trade_usdt','max_daily_loss_usdt',
+                    'max_effective_exposure_x','max_positions','total_loss_limit_usdt',
+                    'stop_required','paper_leverage','risk_version','execution_model'):
+            self.assertEqual(new[key],old[key])
+        for key in ('symbol','category','interval_ms','prior_return_samples','downside_sigma',
+                    'volume_multiple','stop_distance_fraction','max_holding_ms',
+                    'minimum_gross_reward_to_estimated_cost','execution'):
+            self.assertEqual(new['strategy'][key],old['strategy'][key])
+        self.assertEqual(new['strategy']['take_profit_reference'],'prior_15_closed_1m_vwma_proxy')
+        self.assertEqual(new['strategy']['target_lookback_bars'],15)
+        self.assertEqual(new['research']['window_ms'],172800000)
+        self.assertEqual(new['research']['throughput_checkpoint_ms'],28800000)
+        self.assertEqual(new['research']['minimum_timely_minute_coverage'],'0.90')
+        self.assertEqual(new['research']['minimum_independent_cost_qualified_opportunities'],4)
+
+    def test_causal_vwma_uses_exact_prior_15_and_excludes_signal_bar(self):
+        from signals_v4 import causal_vwma_target
+        signal_open=16*60000
+        prior=[bar(i*60000,str(100+i),str(i+1)) for i in range(1,16)]
+        result=causal_vwma_target(prior,signal_open)
+        expected=sum((D(100+i)*D(i+1) for i in range(1,16)),D(0))/sum((D(i+1) for i in range(1,16)),D(0))
+        self.assertEqual(result['value'],expected)
+        self.assertEqual(result['source_open_times_ms'],[i*60000 for i in range(1,16)])
+        self.assertNotIn(signal_open,result['source_open_times_ms'])
+        self.assertEqual(result['decimal_precision'],'50')
+
+    def test_falling_vwma_is_not_stretched_to_pass_cost_gate(self):
+        from signals_v4 import causal_vwma_target
+        from paper_runtime_v4 import cost_diagnostic
+        cfg=json.loads((LAB/'paper_config_v4.json').read_text())
+        spec=dict(tick_size='0.01',taker_fee='0.0005')
+        signal_open=16*60000
+        prior=[bar(i*60000,str(110-i),'10') for i in range(1,16)]
+        frozen=causal_vwma_target(prior,signal_open)['value']
+        diag=cost_diagnostic(cfg,spec,bid='102.99',ask='103.00',target=str(frozen))
+        self.assertEqual(diag['frozen_target'],str(frozen))
+        self.assertEqual(diag['minimum_gross_reward_to_estimated_cost'],'2')
+        # Whether it passes or fails, target is the causal value and is never moved.
+        self.assertEqual(diag['frozen_target'],str(causal_vwma_target(prior,signal_open)['value']))
+
+    def test_zero_volume_missing_noncontiguous_and_invalid_bars_fail_closed(self):
+        from signals_v4 import causal_vwma_target
+        signal_open=16*60000
+        good=[bar(i*60000,'100','0') for i in range(1,16)]
+        with self.assertRaisesRegex(ValueError,'zero total volume'):
+            causal_vwma_target(good,signal_open)
+        with self.assertRaisesRegex(ValueError,'exactly 15'):
+            causal_vwma_target(good[:-1],signal_open)
+        broken=[bar(i*60000,'100','1') for i in range(1,16)]
+        broken[7]['open_time_ms']+=60000;broken[7]['close_time_ms']+=60000
+        with self.assertRaisesRegex(ValueError,'noncontiguous'):
+            causal_vwma_target(broken,signal_open)
+        invalid=[bar(i*60000,'100','1') for i in range(1,16)]
+        invalid[3]['close']=D('NaN')
+        with self.assertRaisesRegex(ValueError,'invalid'):
+            causal_vwma_target(invalid,signal_open)
+
+
+class ThroughputTests(unittest.TestCase):
+    def coverage(self,count,start=1_000_000):
+        return {str(start+(i+1)*60000):dict(timely=True,source_valid=True) for i in range(count)}
+
+    def candidate(self,i,start=1_000_000,**changes):
+        d=dict(signal_id='s'+str(i),routing_decision_ms=start+(i+1)*60000,
+               timely=True,source_valid=True,cost_qualified=True)
+        d.update(changes);return d
+
+    def test_checkpoint_90_percent_boundary_and_four_opportunity_boundary(self):
+        from paper_runtime_v4 import throughput_checkpoint,CHECKPOINT_MS
+        start=1_000_000;at=start+CHECKPOINT_MS
+        r=throughput_checkpoint(strategy_start_ms=start,now_ms=at,
+                                coverage=self.coverage(431,start),
+                                candidates=[self.candidate(i,start) for i in range(10)])
+        self.assertEqual(r['status'],'data_quality_inconclusive');self.assertTrue(r['stop_new_entries'])
+        r=throughput_checkpoint(strategy_start_ms=start,now_ms=at,
+                                coverage=self.coverage(432,start),
+                                candidates=[self.candidate(i,start) for i in range(3)])
+        self.assertEqual(r['status'],'throughput_infeasible');self.assertTrue(r['stop_new_entries'])
+        r=throughput_checkpoint(strategy_start_ms=start,now_ms=at,
+                                coverage=self.coverage(432,start),
+                                candidates=[self.candidate(i,start) for i in range(4)])
+        self.assertEqual(r['status'],'passed');self.assertFalse(r['stop_new_entries'])
+        self.assertEqual(r['deadline_ms'],start+172800000)
+
+    def test_duplicate_late_invalid_and_occupied_opportunity_semantics(self):
+        from paper_runtime_v4 import throughput_checkpoint,CHECKPOINT_MS
+        start=1_000_000;coverage=self.coverage(480,start)
+        candidates=[
+            self.candidate(1,start),
+            self.candidate(1,start), # duplicate signal id
+            self.candidate(2,start,timely=False),
+            self.candidate(3,start,source_valid=False),
+            self.candidate(4,start,cost_qualified=False),
+            self.candidate(5,start,admission_reason='single_position_or_pending'),
+            self.candidate(6,start,admission_reason='risk_daily_loss'),
+            self.candidate(7,start,admission_reason='storage_new_risk_inhibited')]
+        r=throughput_checkpoint(strategy_start_ms=start,now_ms=start+CHECKPOINT_MS,
+                                coverage=coverage,candidates=candidates)
+        # qualified opportunity count is independent from fill/admission outcome;
+        # occupied/risk/storage candidates can diagnose economics without orders.
+        self.assertEqual(r['independent_cost_qualified_opportunities'],4)
+        self.assertEqual(r['status'],'passed')
+        self.assertFalse(r['pnl_stopping_rule'])
+
+    def test_before_checkpoint_never_stops_or_moves_deadline(self):
+        from paper_runtime_v4 import throughput_checkpoint,CHECKPOINT_MS
+        start=1_000_000
+        r=throughput_checkpoint(strategy_start_ms=start,now_ms=start+CHECKPOINT_MS-1,
+                                coverage={},candidates=[])
+        self.assertEqual(r['status'],'pending');self.assertFalse(r['stop_new_entries'])
+        self.assertEqual(r['deadline_ms'],start+172800000)
+
+
+class RoutingDiagnosticsTests(unittest.TestCase):
+    def setUp(self):
+        from paper_runtime_v4 import PaperRuntime
+        self.tmp=tempfile.TemporaryDirectory()
+        self.now=10_000_000
+        self.r=PaperRuntime(self.tmp.name,LAB/'paper_config_v4.json',
+                            clock_ms=lambda:self.now,fixture=True)
+        self.spec=dict(symbol='ETHUSDT',maker_fee='0.0002',taker_fee='0.0005',
+                       qty_step='0.001',tick_size='0.01',min_notional='20',
+                       max_qty='2000',min_qty='0.001',category='crypto')
+        self.r.ensure_broker(self.spec)
+        self.r.state['markets']=[dict(symbol='ETHUSDT',bid='99.99',ask='100.00',
+                                      source_timestamps_ms={'bookTicker':self.now,'depth5':self.now,'premiumIndex':self.now})]
+        self.r.state['strategy_start_ms']=self.now-100000
+        self.r.state['research_deadline_ms']=self.now+172800000
+        self.r.save()
+
+    def tearDown(self):
+        self.r.close();self.tmp.cleanup()
+
+    def insert_signal(self,sid,target='110'):
+        intent=dict(signal_id=sid,version_id='H1-PAPER-004',symbol='ETHUSDT',side='long',
+                    entry_reference='100',reversion_target=target,
+                    features=dict(bar_close_ms=str(self.now-1000),detection_ms=str(self.now-900),
+                                  detection_timestamp_domain='runtime_utc_wall_input',
+                                  target_method='prior_15_closed_1m_volume_weighted_close_vwma_proxy',
+                                  target_eligible=target is not None,target_error=None if target is not None else 'synthetic',
+                                  target_excludes_signal_bar=True,target_frozen=True))
+        with sqlite3.connect(Path(self.tmp.name)/'signals.sqlite3') as db:
+            db.execute('INSERT INTO h1_signals VALUES(?,?,?)',(sid,'H1-PAPER-004',json.dumps(intent,sort_keys=True)))
+        return intent
+
+    def test_occupied_candidate_keeps_cost_diagnostic_but_submits_no_order(self):
+        self.insert_signal('occupied','110')
+        self.r.broker.orders['synthetic-pending']=dict(
+            order_id='synthetic-pending',status='PENDING',reason=None,
+            intent=dict(reduce_only=False))
+        before=set(self.r.broker.orders)
+        self.r.route_signals(self.spec)
+        self.assertEqual(set(self.r.broker.orders),before)
+        self.assertEqual(self.r.state['handled_signals']['occupied']['reason'],'single_position_or_pending')
+        d=self.r.state['candidate_diagnostics'][0]
+        self.assertTrue(d['raw_candidate']);self.assertTrue(d['cost_qualified'])
+        self.assertEqual(d['admission_reason'],'single_position_or_pending')
+        self.assertEqual(d['economics']['minimum_gross_reward_to_estimated_cost'],'2')
+        self.assertIsNotNone(d['economics']['entry_price_bound'])
+        self.assertIsNotNone(d['economics']['stop_price'])
+        self.assertEqual(d['routing_timestamp_domain'],'runtime_utc_wall')
+
+    def test_cost_rejection_keeps_precise_economics_and_true_reason(self):
+        self.insert_signal('cost-reject','100.05')
+        self.r.route_signals(self.spec)
+        result=self.r.state['handled_signals']['cost-reject']
+        self.assertEqual(result['status'],'rejected')
+        self.assertEqual(result['reason'],'insufficient_reward_after_costs')
+        d=self.r.state['candidate_diagnostics'][0]
+        self.assertFalse(d['cost_qualified'])
+        self.assertEqual(d['admission_reason'],'insufficient_reward_after_costs')
+        self.assertIsNotNone(d['economics']['gross_to_cost_ratio'])
+        self.assertEqual(self.r.broker.fills,[])
+
+    def test_invalid_target_is_raw_candidate_with_null_economics_not_fake_order(self):
+        self.insert_signal('bad-target',None)
+        self.r.route_signals(self.spec)
+        self.assertEqual(self.r.state['handled_signals']['bad-target']['reason'],'invalid_frozen_target')
+        d=self.r.state['candidate_diagnostics'][0]
+        self.assertFalse(d['cost_qualified']);self.assertFalse(d['economics']['computable'])
+        self.assertIsNone(d['frozen_target'])
+        self.assertNotIn('order:bad-target',self.r.broker.orders)
+
+
+class MigrationTests(unittest.TestCase):
+    spec=dict(symbol='ETHUSDT',maker_fee='0.0002',taker_fee='0.0005',
+              qty_step='0.001',tick_size='0.01',min_notional='20',
+              max_qty='2000',min_qty='0.001',category='crypto')
+
+    def make_v3(self,td,*,deadline=2_000_000,now=3_000_000):
+        from paper_runtime_v3 import PaperRuntime
+        root=Path(td)/'account'
+        r=PaperRuntime(root,LAB/'paper_config_v3.json',clock_ms=lambda:1_000_000,fixture=True)
+        r.ensure_broker(self.spec)
+        r.broker.cash=D('99.5')
+        r.broker.ledger=[dict(type='realized',amount='-0.4',ts=1_100_000),
+                         dict(type='fee',amount='-0.1',ts=1_100_001)]
+        r.broker.day_baselines={'0':'100','1':'99.5'}
+        r.broker.orders={'old-rejected':dict(order_id='old-rejected',status='REJECTED',reason='old',
+                                             intent=dict(reduce_only=False))}
+        r.broker._save()
+        r.state['strategy_start_ms']=1_200_000
+        r.state['research_deadline_ms']=deadline
+        r.state['strategy_fill_baseline']=0;r.state['strategy_ledger_baseline']=0
+        r.state['total_halted']=True
+        r.state['handled_signals']={'old-signal':dict(status='rejected',reason='late_closed_bar_signal')}
+        r.state['deployment']=dict(type='parent_deployment',at_ms=1_300_000,
+                                   version_id='H1-PAPER-003',config_hash=r.config_hash)
+        r.audit(dict(type='old-v3-proof',value='preserve'));r.save();r.close()
+        acceptance=Path(td)/'closeout.json'
+        with sqlite3.connect(root/'runtime.sqlite3') as db:
+            old=json.loads(db.execute('SELECT payload FROM state WHERE id=1').fetchone()[0])
+        acceptance.write_text(json.dumps(dict(
+            schema_version=1,version_id='H1-PAPER-003',operator_accepted=True,
+            account_forward_start_ms=old['forward_start_ms'],
+            strategy_start_ms=old['strategy_start_ms'],
+            research_deadline_ms=old['research_deadline_ms'],
+            accepted_at_ms=max(deadline,2_500_000)),sort_keys=True))
+        return root,acceptance,now
+
+    def audit_rows(self,path):
+        with sqlite3.connect(path) as db:
+            return list(db.execute('SELECT payload,previous_hash,hash FROM audit ORDER BY id'))
+
+    def test_same_account_migration_preserves_all_history_and_starts_new_window_only_after_closeout(self):
+        from paper_migrate_v4 import migrate
+        from paper_runtime_v4 import PaperRuntime
+        with tempfile.TemporaryDirectory() as td:
+            root,acceptance,now=self.make_v3(td)
+            broker_before=(root/'broker.sqlite3').read_bytes()
+            signals_before=(root/'signals.sqlite3').read_bytes()
+            audit_before=self.audit_rows(root/'runtime.sqlite3')
+            with sqlite3.connect(root/'broker.sqlite3') as db:
+                broker_before_payload=json.loads(db.execute('SELECT payload FROM sim_broker_state WHERE singleton=1').fetchone()[0])
+            report=migrate(root,LAB/'paper_config_v4.json',acceptance,now_ms=now)
+            self.assertEqual((root/'broker.sqlite3').read_bytes(),broker_before)
+            self.assertEqual((root/'signals.sqlite3').read_bytes(),signals_before)
+            audit_after=self.audit_rows(root/'runtime.sqlite3')
+            self.assertEqual(audit_after[:len(audit_before)],audit_before)
+            self.assertEqual(len(audit_after),len(audit_before)+1)
+            self.assertEqual(report['cash_usdt'],'99.5')
+            self.assertEqual(report['original_forward_start_ms'],1_000_000)
+            self.assertEqual(report['previous_deadline_ms'],2_000_000)
+            self.assertEqual(report['strategy_start_ms'],now)
+            self.assertEqual(report['deadline_ms'],now+172800000)
+            r=PaperRuntime(root,LAB/'paper_config_v4.json',clock_ms=lambda:now+1,fixture=True)
+            try:
+                self.assertEqual(r.broker.cash,D('99.5'))
+                self.assertEqual(r.broker.day_baselines,broker_before_payload['day_baselines'])
+                self.assertTrue(r.state['total_halted'])
+                self.assertIn('old-signal',r.state['handled_signals'])
+                self.assertEqual(r.state['forward_start_ms'],1_000_000)
+                self.assertEqual(r.state['research_deadline_ms'],now+172800000)
+                self.assertFalse(r.state.get('deployment'))
+                with sqlite3.connect(root/'signals.sqlite3') as db:
+                    versions={row[0] for row in db.execute('SELECT version_id FROM h1_versions')}
+                self.assertIn('H1-PAPER-003',versions);self.assertIn('H1-PAPER-004',versions)
+            finally:r.close()
+
+    def test_migration_fails_closed_before_deadline_closeout_mismatch_open_pending_lock_and_ledger_corruption(self):
+        from paper_migrate_v4 import migrate
+        from paper_runtime_v3 import PaperRuntime
+        cases=('before-deadline','bad-closeout','open','pending','ledger')
+        for case in cases:
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as td:
+                deadline=4_000_000 if case=='before-deadline' else 2_000_000
+                root,acceptance,now=self.make_v3(td,deadline=deadline,now=3_000_000)
+                if case=='bad-closeout':
+                    data=json.loads(acceptance.read_text());data['research_deadline_ms']+=1
+                    acceptance.write_text(json.dumps(data))
+                if case in ('open','pending','ledger'):
+                    with sqlite3.connect(root/'broker.sqlite3') as db:
+                        saved=json.loads(db.execute('SELECT payload FROM sim_broker_state WHERE singleton=1').fetchone()[0])
+                        if case=='open': saved['positions']={'ETHUSDT':{'qty':'0.001'}}
+                        elif case=='pending': saved['orders']['pending']=dict(status='PENDING',intent=dict(reduce_only=False))
+                        else: saved['cash']='123'
+                        db.execute('UPDATE sim_broker_state SET payload=? WHERE singleton=1',(json.dumps(saved,sort_keys=True),))
+                before=(root/'runtime.sqlite3').read_bytes()
+                with self.assertRaises((ValueError,RuntimeError)):
+                    migrate(root,LAB/'paper_config_v4.json',acceptance,now_ms=now)
+                self.assertEqual((root/'runtime.sqlite3').read_bytes(),before)
+
+    def test_running_runtime_lock_blocks_migration(self):
+        from paper_migrate_v4 import migrate
+        from paper_runtime_v3 import PaperRuntime
+        with tempfile.TemporaryDirectory() as td:
+            root,acceptance,now=self.make_v3(td)
+            r=PaperRuntime(root,LAB/'paper_config_v3.json',clock_ms=lambda:now,fixture=True)
+            try:
+                with self.assertRaisesRegex(RuntimeError,'locked'):
+                    migrate(root,LAB/'paper_config_v4.json',acceptance,now_ms=now)
+            finally:r.close()
+
+
+if __name__=='__main__':
+    unittest.main()
