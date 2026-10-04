@@ -462,3 +462,11 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 使用者提供普通用戶費率頁兩張截圖，直接讀圖確認USDT crypto maker0.0200%/taker0.0500%、TradFi maker0.0000%/taker0.0400%，與現有配置一致。截圖也列BNB九折，但不擅自啟用折扣；USDC欄與USDT分開。不再將普通用戶牌告基準本身當作只有口頭說明的缺證據阻擋。
 - 截圖未含優惠到期日期或私人帳戶VIP/BNB抵扣狀態，不宣稱永久優惠或私人帳戶成交對帳已驗證。費率證據與TradFi場次/index/funding、maker實際feed/成交前提分開。研究設定與所有帳戶/窗口保持，未deploy。詳cache/scratch/parallel-discovery-oct04/fee-screenshot-evidence.md。保留此前查證失敗歷史。
 
+## PR-024-CI-VERIFIED-OPERATIONAL-ACCEPTANCE-BLOCKED（2026-10-04）
+
+- 使用者交付head cdf9277cc67232680c2e989cfdcab98913f32100/run37233992453。fresh gh pr checks兩PASS，同head37233992453/37233989659均success/attempt1。主run38 exporter+286 PAPER=324 unique OK IDs，其中19 discovery IDs；兩個多行description另核對，不改/重跑工程tests或code review。
+- 11完整changed artifacts下載隔離cache，五個既有local來源與remote base66fbf59653b1985e324f8e92ce04a9e4f4adbef3 bytes一致，未套用。兩ZIP digest精確匹配GitHub，pipeline為明示synthetic三臂/B maker fill，不是public collector績效。Browser3輪9views真390CSS皆無overflow。Public timing step success，但actual三次HTTP451/outcomeerror，不稱行情成功。prior run37233173419/head0559d5228a8ae7dfa1c6ec040989aa3829542ac0 failure保留。
+- Config預登記欄位符合，active=false/TradFi false。但完整成果仍blocked：operator guide未交可操作public runner與exact啟停/report/warmup/timer流程；2x queue只存quantity未交sensitivity結果；bounded raw20,000/hash-only seen與後續因果重建/32MiB停止退出證據待明示。這不是因未來48h/8h或私人queue/VIP未知而卡住，基本普通用戶fee截圖支持不另卡費率。
+- PR operator comment5984848432 fullbody讀回、Issue#23保持OPEN；parallel-eth-discovery blocked/API讀回。完整續修指令cache/scratch/pr24-cdf9277-acceptance/驗收結果與續修指令.md，繼續同PR24 branch，不另duplicate。不改三臂假說/default/#22/PR21，operator不補寫glue code。
+- 原default snapshot003 halted、原deadline保持，status/health/work200。本次未寫交易SQLite、live source/config、重啟、deployment或activation。工程scope與結果不同，CI成功不宣稱已啟動。Evidence cache/scratch/pr24-cdf9277-acceptance（CI逐ID、manifest、artifacts/digests、source/docs/config、operator-findings、comment_readback）。
+
