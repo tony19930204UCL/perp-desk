@@ -255,12 +255,14 @@ def _stop_owned(children,*,timeout=STOP_BUDGET_SECONDS,monotonic=time.monotonic)
     owned=[child for child in children if child is not None and child.poll() is None]
     if not owned:
         return
-    deadline=monotonic()+timeout
+    started=monotonic()
+    graceful_deadline=started+min(8.0,timeout)
+    final_deadline=started+timeout
     for child in owned:
         child.terminate()
     survivors=[]
     for child in owned:
-        remaining=max(0.0,deadline-monotonic())
+        remaining=max(0.0,graceful_deadline-monotonic())
         try:
             child.wait(timeout=remaining)
         except subprocess.TimeoutExpired:
@@ -269,7 +271,7 @@ def _stop_owned(children,*,timeout=STOP_BUDGET_SECONDS,monotonic=time.monotonic)
         if child.poll() is None:
             child.kill()
     for child in survivors:
-        remaining=max(0.0,deadline-monotonic())
+        remaining=max(0.0,final_deadline-monotonic())
         try:
             child.wait(timeout=remaining)
         except subprocess.TimeoutExpired as exc:
