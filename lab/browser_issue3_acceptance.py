@@ -67,7 +67,7 @@ def chrome_shot(chrome,url,width,height,path):
 def inspect_view(dom,*,ledger_label,symbol,exact_values):
     """Return explicit readiness/layout diagnostics; never collapse missing into overflow."""
     def attr(name):
-        match=re.search(r'\\b'+re.escape(name)+r'="([^"]*)"',dom)
+        match=re.search(r'\b'+re.escape(name)+r'="([^"]*)"',dom)
         return match.group(1) if match else None
     ready=attr('data-render-ready')
     overflow=attr('data-layout-overflow')
