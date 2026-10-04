@@ -65,6 +65,22 @@ class TargetContractTests(unittest.TestCase):
         # Whether it passes or fails, target is the causal value and is never moved.
         self.assertEqual(diag['frozen_target'],str(causal_vwma_target(prior,signal_open)['value']))
 
+    def test_unchanged_two_times_full_cost_gate_matches_existing_sizer(self):
+        from paper_runtime_v4 import cost_diagnostic
+        from paper_sizing import size_long
+        cfg=json.loads((LAB/'paper_config_v4.json').read_text())
+        spec=dict(symbol='ETHUSDT',tick_size='0.01',qty_step='0.001',min_qty='0.001',
+                  max_qty='2000',min_notional='20',taker_fee='0.0005')
+        for target,expected in [('100.05','rejected'),('110','accepted')]:
+            with self.subTest(target=target):
+                diag=cost_diagnostic(cfg,spec,bid='99.99',ask='100.00',target=target)
+                sized=size_long(cfg,spec,equity='100',bid='99.99',ask='100.00',target=target)
+                self.assertEqual(diag['minimum_gross_reward_to_estimated_cost'],'2')
+                self.assertEqual(diag['cost_qualified'],sized['status']=='accepted')
+                self.assertEqual(sized['status'],expected)
+                if expected=='rejected':
+                    self.assertEqual(sized['reason'],'insufficient_reward_after_costs')
+
     def test_zero_volume_missing_noncontiguous_and_invalid_bars_fail_closed(self):
         from signals_v4 import causal_vwma_target
         signal_open=16*60000
