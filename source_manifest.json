@@ -11,7 +11,7 @@
     "context/SOUL.md": "9ce768eab674de124d940a2e4c4b7f81dbd99961fc2fdfa3450bae985a7f772a",
     "context/SPEC.md": "fcdf6c3728a5d7854e1c5553835db6e1a36e05d26a62e23e51da67892b2d423d",
     "context/open_questions.md": "7247519ae062622c0c33a645a3be2569e1e7132773a2e850186099adfd1f31b0",
-    "context/versions.md": "cdf0e294b80bc262cba688262ce2ecec9a8c52d496e3b2f7e20dabfdf69f7526",
+    "context/versions.md": "17117966d9cd27d35527829500e5a2f42955d6af27ea4e9ca17f341abd61a131",
     "docs/AI_REVIEW_GUIDE.md": "208dbc2c8fc70f34ffcba27034b0a7c4c531992c6800bf4f3f069183a7c8c47d",
     "docs/ARCHITECTURE.md": "fbc1ac897a7640545ce764975539e204f8288a478640dbc7de0b946d487df634",
     "docs/AUTO_SYNC.md": "d4a02a00f38bdebc349cab54bdd86fd03a0e96f7169981aed22375fe9551accd",
@@ -249,7 +249,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "861cef4b2372f802c1bee0211f3c7e5e076851154fb2d9ffac687988796d39c1",
+  "fingerprint": "8a07523be837f6278b50d025b0fa494f12993851d96643a1313144cff1bf22cc",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }

@@ -384,5 +384,5 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - bounded stop通過後決定恢復manual manager layer（避免先前120秒不可中斷等待再次阻擋安全操作）。常駐handle proc_7ab4b50dbe32/PID418795，direct owned dashboard418846/runtime418847。health checked_at在cron pause後由manager推進，Linux及Windows status/health/work均200，observer available。work-overdue仍真實可見，不把startup advisory當all healthy。
 - 第一次Windows HTTP命令被shell展開PowerShell變數而解析失敗，未視為HTTP驗收。正確引號後原生Windows三API200。
 - user-systemd／host boot仍未啟用，Issue#6維持OPEN/platform prerequisite。無unit install/enable、host/WSL/gateway修改。若manager運作異常，停止owned children後回獨立runtime/dashboard並resume原cron，絕不還原舊帳戶副本。
-- Evidence cache/scratch/pr18-52d55d5-acceptance。精確remote bytes與publication CI尚待本輪確認，確認後才Issue#17結案。
+- Final publication：mirror d867e1cc668db7ff389247db6e57f65e2b89f4c6 三個artifact bytes與精確head相符，docs正常export，run37189482888 completed/success讀回。PR#18 acceptance comment5978181476與Issue#17 CLOSED/comment5978181630讀回。Evidence cache/scratch/pr18-52d55d5-acceptance（operational_acceptance.json、live_stop_acceptance.json、publication_readback.json、publication_ci.json）。下一工程為Issue#3配置多ledger與長decimal排版，comment5978168894已讀回，待人工轉交，非agent已開始。
 
