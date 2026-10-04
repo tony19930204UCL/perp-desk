@@ -209,6 +209,68 @@ class RoutingDiagnosticsTests(unittest.TestCase):
         self.assertNotIn('order:bad-target',self.r.broker.orders)
 
 
+class OperationalIdentityTests(unittest.TestCase):
+    def test_health_accepts_only_exact_v4_script_version_implementation_pair(self):
+        from test_health_watchdog import module as health_module, snapshot as health_snapshot, NOW
+        mod=health_module();s=health_snapshot()
+        s['engine']['version_id']='H1-PAPER-004'
+        s['engine']['candidate_implementation']='paper-engine-v4'
+        s['engine']['deployment']['version_id']='H1-PAPER-004'
+        s['versions']=[dict(created_at=NOW.isoformat(),status='observing',version_id='H1-PAPER-004')]
+        report=mod.evaluate(s,{'tasks':[]},NOW,True,
+                            expected_version='H1-PAPER-004',
+                            expected_implementation='paper-engine-v4')
+        self.assertNotIn('snapshot-unavailable',report['faults'])
+        wrong=json.loads(json.dumps(s));wrong['engine']['candidate_implementation']='paper-engine-v3'
+        report=mod.evaluate(wrong,{'tasks':[]},NOW,True,
+                            expected_version='H1-PAPER-004',
+                            expected_implementation='paper-engine-v4')
+        self.assertIn('snapshot-unavailable',report['faults'])
+
+    def test_real_process_identity_distinguishes_v3_and_v4_scripts(self):
+        import subprocess,sys,time
+        from test_health_watchdog import module as health_module
+        mod=health_module()
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);state=root/'state';state.mkdir();status=root/'status.json'
+            (root/'paper_runtime_v4.py').write_text('import time;time.sleep(30)\n')
+            proc=subprocess.Popen([sys.executable,'-u','paper_runtime_v4.py',
+                                   '--state-dir',str(state),'--status',str(status)],cwd=root)
+            try:
+                deadline=time.time()+3
+                while time.time()<deadline and proc.pid not in mod.runtime_processes(
+                        root,state,status,'paper_runtime_v4.py'):
+                    time.sleep(.02)
+                self.assertEqual(mod.runtime_processes(root,state,status,'paper_runtime_v4.py'),[proc.pid])
+                self.assertEqual(mod.runtime_processes(root,state,status,'paper_runtime_v3.py'),[])
+            finally:
+                proc.terminate();proc.wait(timeout=5)
+
+    def test_supervisor_v4_identity_is_explicit_and_v3_default_remains_unchanged(self):
+        import test_startup_recovery as sr
+        import startup_recovery as m
+        with tempfile.TemporaryDirectory() as td:
+            case=sr.StartupRecoveryTests()
+            fx=case.make_fixture(td)
+            legacy=m.load_config(fx['startup'])
+            self.assertEqual(legacy.runtime_script,'paper_runtime_v3.py')
+            self.assertIn('paper_runtime_v3.py',m.runtime_command(legacy)[2])
+            # Convert only the synthetic identity fields to v4.
+            (fx['runtime']/'paper_runtime_v4.py').write_text('import time;time.sleep(30)\n')
+            data=json.loads(fx['startup'].read_text());data['runtime_script']='paper_runtime_v4.py'
+            fx['startup'].write_text(json.dumps(data))
+            health=json.loads(fx['health_cfg'].read_text());health['runtime_script']='paper_runtime_v4.py'
+            fx['health_cfg'].write_text(json.dumps(health))
+            with sqlite3.connect(fx['state']/'runtime.sqlite3') as db:
+                state=json.loads(db.execute('SELECT payload FROM state WHERE id=1').fetchone()[0])
+                state['deployment']['version_id']='H1-PAPER-004'
+                db.execute('UPDATE state SET payload=? WHERE id=1',(json.dumps(state,sort_keys=True,separators=(',',':')),))
+            cfg=m.load_config(fx['startup'])
+            self.assertEqual(cfg.runtime_script,'paper_runtime_v4.py')
+            self.assertIn('paper_runtime_v4.py',m.runtime_command(cfg)[2])
+            self.assertEqual(m.preflight(cfg)['state'],'ready-to-start')
+
+
 class MigrationTests(unittest.TestCase):
     spec=dict(symbol='ETHUSDT',maker_fee='0.0002',taker_fee='0.0005',
               qty_step='0.001',tick_size='0.01',min_notional='20',
