@@ -251,10 +251,11 @@ class RestartAndBlockerTests(unittest.TestCase):
     def test_checkpoint_evidence_and_original_48h_deadline_survive_restart(self):
         from paper_runtime_v4 import PaperRuntime,CHECKPOINT_MS
         with tempfile.TemporaryDirectory() as td:
-            start=1_000_000
+            clock=[1_000_000]
+            r=PaperRuntime(td,LAB/'paper_config_v4.json',clock_ms=lambda:clock[0],fixture=True)
+            start=r.state['strategy_start_ms']
             now=start+CHECKPOINT_MS
-            r=PaperRuntime(td,LAB/'paper_config_v4.json',clock_ms=lambda:now,fixture=True)
-            r.state['strategy_start_ms']=start
+            clock[0]=now
             r.state['research_deadline_ms']=start+172800000
             r.state['minute_coverage']={
                 str(start+(i+1)*60000):dict(timely=True,source_valid=True)
@@ -268,7 +269,8 @@ class RestartAndBlockerTests(unittest.TestCase):
             self.assertEqual(before_checkpoint['status'],'passed')
             self.assertEqual(before_checkpoint['deadline_ms'],start+172800000)
             r.save();r.close()
-            r=PaperRuntime(td,LAB/'paper_config_v4.json',clock_ms=lambda:now+1000,fixture=True)
+            clock[0]=now+1000
+            r=PaperRuntime(td,LAB/'paper_config_v4.json',clock_ms=lambda:clock[0],fixture=True)
             try:
                 self.assertEqual(r.state['strategy_start_ms'],start)
                 self.assertEqual(r.state['research_deadline_ms'],start+172800000)
