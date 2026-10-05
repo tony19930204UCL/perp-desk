@@ -151,6 +151,8 @@ class Gate:
         event_id=self._event_id(subject,transition,generation)
         record=dict(event_id=event_id,subject=subject,kind=kind,transition=transition,
                     generation=generation,status='queued',attempts=0,not_before_ms=self.now,
+                    observed_at_ms=self.now,queued_at_ms=self.now,
+                    lifecycle=[dict(state='observed',at_ms=self.now),dict(state='queued',at_ms=self.now)],
                     evidence_ref=evidence_ref,permitted_next_action=permitted_next_action,
                     details=details or {},claim=None,completion=None,blocked=None)
         state['records'][event_id]=record
@@ -286,7 +288,10 @@ class Gate:
                                  evidence_ref='work:'+tid,permitted_next_action='none')
                 for rec in state['records'].values():
                     if rec['subject']==subject and rec['status'] not in TERMINAL:
-                        rec['status']='completed';rec['completion']={'worker_handle':'external-work-status','evidence_ref':'work:'+tid}
+                        rec['status']='completed'
+                        rec['completion']={'worker_handle':'external-work-status','evidence_ref':'work:'+tid,'at_ms':self.now}
+                        rec.setdefault('lifecycle',[]).append(dict(state='completed',at_ms=self.now,
+                                                                 evidence_ref='work:'+tid))
                 continue
             if status in ('queued','failed'):
                 self._transition(state,subject,'ready',actionable=True,kind='work',
@@ -305,27 +310,43 @@ class Gate:
 
     def _timer_registration(self,item):
         data=read_json(item['_path'])
-        if not isinstance(data,dict): return None
+        if not isinstance(data,dict):
+            return 'fault',None,'missing_or_corrupt'
         kind=item['kind']
         if kind=='paper_status':
-            if data.get('mode')!='paper' or data.get('candidate_not_deployed') is not False:return None
+            if data.get('mode')!='paper' or data.get('candidate_not_deployed') is not False:
+                return 'inactive',None,None
             r=data.get('research')
-            if not isinstance(r,dict):return None
+            if not isinstance(r,dict):
+                return 'fault',None,'missing_research_registration'
             start=r.get('strategy_start_ms');deadline=r.get('deadline_ms');checkpoint=r.get('checkpoint_ms')
             reg=str(r.get('registration_id') or start)
         elif kind=='discovery_state':
-            if data.get('activated') is not True:return None
+            if data.get('activated') is not True:
+                return 'inactive',None,None
             start=data.get('start_ms');deadline=data.get('deadline_ms');checkpoint=data.get('checkpoint_ms');reg=str(data.get('version_id') or start)
         else:
-            if data.get('active') is not True or data.get('operator_accepted') is not True:return None
+            if data.get('active') is not True or data.get('operator_accepted') is not True:
+                return 'inactive',None,None
             start=data.get('start_ms');deadline=data.get('deadline_ms');checkpoint=data.get('checkpoint_ms');reg=str(data.get('registration_id') or start)
-        if type(start) is not int or type(deadline) is not int or deadline<=start:return None
-        if checkpoint is not None and (type(checkpoint) is not int or not start<checkpoint<=deadline):return None
-        return dict(registration_id=reg,start_ms=start,checkpoint_ms=checkpoint,deadline_ms=deadline)
+        if type(start) is not int or type(deadline) is not int or deadline<=start:
+            return 'fault',None,'invalid_window'
+        if checkpoint is not None and (type(checkpoint) is not int or not start<checkpoint<=deadline):
+            return 'fault',None,'invalid_checkpoint'
+        return 'active',dict(registration_id=reg,start_ms=start,checkpoint_ms=checkpoint,deadline_ms=deadline),None
 
     def _observe_timers(self,state):
         for item in self.cfg['timer_sources']:
-            reg=self._timer_registration(item)
+            source_state,reg,reason=self._timer_registration(item)
+            source_subject='timer-source:'+item['id']
+            prior=state['subjects'].get(source_subject,{}).get('transition')
+            source_transition='normal' if source_state=='active' else source_state
+            self._transition(state,source_subject,source_transition,
+                             actionable=(source_state=='fault' or
+                                         (source_state=='active' and prior=='fault')),
+                             kind='timer',evidence_ref='timer:'+item['id']+':source',
+                             permitted_next_action='inspect-authoritative-timer-source',
+                             details={'reason':reason} if reason else {})
             if reg is None: continue
             base='timer:'+item['id']+':'+reg['registration_id']
             if reg['checkpoint_ms'] is not None:
@@ -349,9 +370,13 @@ class Gate:
             if self.now<claim.get('lease_until_ms',0): continue
             if rec['attempts']>=self.cfg['max_attempts']:
                 rec['status']='blocked';rec['blocked']={'reason':'lease_expired_retry_budget_exhausted','at_ms':self.now}
+                rec.setdefault('lifecycle',[]).append(dict(state='blocked',at_ms=self.now,
+                                                           reason='lease_expired_retry_budget_exhausted'))
                 rec['claim']=None;changed=True;continue
             delay=backoff[min(max(rec['attempts']-1,0),len(backoff)-1)]*1000
             rec['status']='queued';rec['not_before_ms']=claim['lease_until_ms']+delay;rec['claim']=None
+            rec['queued_at_ms']=self.now
+            rec.setdefault('lifecycle',[]).append(dict(state='queued',at_ms=self.now,reason='lease_expired'))
             rec['last_failure']='lease_expired';changed=True
         return changed
 
@@ -366,6 +391,8 @@ class Gate:
         rec['status']='claimed'
         rec['claim']=dict(token=token,claimed_at_ms=self.now,lease_until_ms=self.now+self.cfg['lease_seconds']*1000,
                           worker_handle=None)
+        rec.setdefault('lifecycle',[]).append(dict(state='claimed',at_ms=self.now,
+                                                   lease_until_ms=rec['claim']['lease_until_ms']))
         state['model_wakes']+=1
         return rec
 
@@ -427,12 +454,24 @@ class Gate:
             if rec is None:raise GateError('claim missing, expired or already terminal')
             if rec['claim'].get('worker_handle')!=worker_handle:raise GateError('worker handle does not own claim')
             if self.now>=rec['claim']['lease_until_ms']:raise GateError('claim lease expired')
+            task_id=rec.get('details',{}).get('task_id')
+            if outcome=='completed' and rec.get('kind')=='work' and task_id:
+                work=read_json(self.cfg['_paths']['work_path'])
+                tasks=work.get('tasks',[]) if isinstance(work,dict) else []
+                task=next((x for x in tasks if isinstance(x,dict) and x.get('id')==task_id),None)
+                if not isinstance(task,dict) or task.get('state') not in ('completed','cancelled'):
+                    raise GateError('authoritative work is still unfinished; completion refused')
             rec['status']=outcome
             terminal=dict(worker_handle=worker_handle,evidence_ref=evidence_ref,at_ms=self.now)
-            if outcome=='completed':rec['completion']=terminal
+            if outcome=='completed':
+                rec['completion']=terminal
+                rec.setdefault('lifecycle',[]).append(dict(state='completed',at_ms=self.now,
+                                                           evidence_ref=evidence_ref))
             else:
                 if not isinstance(reason,str) or not reason:raise GateError('blocked reason required')
                 rec['blocked']=dict(terminal,reason=reason[:500])
+                rec.setdefault('lifecycle',[]).append(dict(state='blocked',at_ms=self.now,
+                                                           evidence_ref=evidence_ref,reason=reason[:500]))
             rec['claim']=None;atomic_json(self.state_path,state)
             return rec['event_id']
         finally:
@@ -447,9 +486,13 @@ class Gate:
             if rec is None:raise GateError('claim not active')
             if rec['attempts']>=self.cfg['max_attempts']:
                 rec['status']='blocked';rec['blocked']={'reason':kind+'_retry_budget_exhausted','at_ms':self.now}
+                rec.setdefault('lifecycle',[]).append(dict(state='blocked',at_ms=self.now,
+                                                           reason=kind+'_retry_budget_exhausted'))
             else:
                 backoff=self.cfg['retry_backoff_seconds'];delay=backoff[min(max(rec['attempts']-1,0),len(backoff)-1)]*1000
                 rec['status']='queued';rec['not_before_ms']=self.now+delay;rec['last_failure']=kind
+                rec['queued_at_ms']=self.now
+                rec.setdefault('lifecycle',[]).append(dict(state='queued',at_ms=self.now,reason=kind))
             rec['claim']=None;atomic_json(self.state_path,state)
             return rec['event_id']
         finally:
