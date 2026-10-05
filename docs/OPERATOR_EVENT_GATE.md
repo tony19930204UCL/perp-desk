@@ -10,15 +10,20 @@ model/provider configuration, or the existing dashboard.
 ## Verified Hermes scheduler capabilities
 
 The implementation is based on the current Hermes cron documentation:
-- the built-in scheduler ticks every 60 seconds;
-- a cron job may attach a pre-run script;
+- the built-in in-process scheduler ticks every 60 seconds;
+- a reasoning cron job may attach a pre-run `script`;
 - a pre-run script whose final JSON line is `{"wakeAgent": false}` skips the
   reasoning agent entirely for that tick;
-- script-only `no_agent` jobs use zero LLM calls;
-- Hermes persists cron execution history and distinct provider/run/delivery
-  failures, exposes `hermes cron runs`, `hermes cron incidents`, and
-  `hermes cron doctor`, and has bounded automatic retry for provider-unreachable
-  runs before any model call;
+- script-only `no_agent` jobs use zero LLM calls and do not enter the inference
+  layer; empty stdout is a silent tick;
+- current Hermes also exposes monitor/monitor-script change-gating semantics for
+  "wake only when this changes" cases, but simple change detection is not used as
+  this lab's durable work-completion contract;
+- Hermes persists cron attempt history before provider dispatch, distinguishes
+  execution and delivery failures, exposes `hermes cron runs`,
+  `hermes cron incidents`, and `hermes cron doctor`, and automatically
+  re-runs recurring jobs after 5/15/30 minutes only for transient network/DNS
+  failures that happened before any model call;
 - Hermes explicitly advises integrations not to query its internal `state.db`.
 
 References:
@@ -27,6 +32,25 @@ References:
 - https://hermes-agent.nousresearch.com/docs/reference/cli-commands
 
 No live Hermes cron table was changed by this PR.
+
+### Why this uses a pre-check, not a second no-agent/monitor job
+
+The existing operator-followthrough job still needs reasoning when an event is
+actionable, so the primary integration is the documented **agent job + pre-run
+script + `wakeAgent`** contract. A `no_agent` job is useful when script stdout
+is already the final message, but making it the primary Issue #22 worker would
+remove the required reasoning step. A pure `monitor` / `monitor_script`
+change gate is also insufficient by itself: an unfinished ready task must survive
+provider failure, lease expiry, and a previous wake even when the observable
+signature no longer changes.
+
+Therefore this PR does not install a second no-agent watchdog or monitor job.
+That avoids duplicate workers/deliveries. The deterministic script itself still
+runs with zero model invocation on quiet ticks; only its durable queue can emit
+`wakeAgent:true` for the existing reasoning job. If a future installed Hermes
+build exposes a monitor wrapper around the same pre-check, the operator may
+evaluate it separately, but it must preserve this claim/lease/backlog state and
+must not create a duplicate operator-followthrough job.
 
 ## Architecture
 
@@ -112,9 +136,17 @@ The gate derives start/checkpoint/deadline from that authoritative record. It
 does not hardcode H1-PAPER-003, H1-PAPER-004, or a strategy deadline, and it
 never edits or extends a window.
 
+A configured timer path that is missing/corrupt, or an active registration with
+invalid window fields, is an explicit once-per-transition `timer source fault`,
+not "no timer". A deliberately inactive/unaccepted registration remains
+non-actionable. Recovery to a valid active authority wakes once. This preserves
+the distinction between unavailable evidence and a staged-but-not-live PR #24
+registration.
+
 ## Durable queue / lease / evidence
 
-An actionable transition becomes a durable record:
+An actionable transition becomes a durable record with timestamped lifecycle
+evidence:
 `observed -> queued -> claimed -> completed|blocked`.
 
 A pre-check wake claims one event for a bounded lease. A second scheduler tick
@@ -124,7 +156,11 @@ pending state, perform only permitted operator work, and then explicitly finish
 with a durable evidence reference.
 
 Wake delivery is **not** completion. A `running` label is not completion.
-Completion requires the explicit terminal gate operation.
+Completion requires the explicit terminal gate operation. For a task-backed work
+event, `finish --outcome completed` is additionally rejected unless the
+authoritative configured work source now reports that task `completed` or
+`cancelled`. A successful agent response therefore cannot make a still-queued
+or still-running backlog disappear.
 
 If a worker/provider disappears, lease expiry requeues with bounded backoff.
 Defaults in the example are 5m / 15m / 30m and max 4 attempts; these are
@@ -228,10 +264,12 @@ trading/data gate.
 
 Hermes itself durably distinguishes agent/provider failure from delivery failure,
 records execution history/incidents, and exposes them via `cron runs`,
-`cron incidents`, and `cron doctor`. Provider-unreachable runs before a model
-call also have Hermes' bounded retry ladder. The gate independently retains its
-claim until explicit completion, so a successful wake is never enough to lose
-unfinished work.
+`cron incidents`, and `cron doctor`. Current documentation specifies the
+5/15/30 minute automatic re-run ladder only for recurring runs that fail with a
+transient network/DNS error **before any model call**; it is not treated here as
+a general work-completion retry contract. The gate independently retains its
+claim until explicit terminal evidence, so provider recovery or successful wake
+delivery is never enough to lose unfinished work.
 
 **Platform integration limitation:** current public Hermes documentation does not
 describe a post-delivery callback from the delivery router back into the pre-run
