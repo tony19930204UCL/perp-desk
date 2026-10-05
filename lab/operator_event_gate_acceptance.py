@@ -15,6 +15,8 @@ CASES=[
     'test_operator_confirmed_storage_hold_is_not_normal_and_never_autorestart_wake',
     'test_ready_backlog_survives_claim_interruption_lease_and_backoff',
     'test_provider_and_notification_failures_requeue_without_completion',
+    'test_work_completion_requires_authoritative_terminal_evidence_and_records_lifecycle',
+    'test_configured_timer_source_missing_or_corrupt_faults_once_then_recovers_once',
     'test_deadline_checkpoint_derive_only_from_configured_active_authority',
     'test_subprocess_scheduler_adapter_isolated_and_public_safe',
 ]
