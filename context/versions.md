@@ -488,5 +488,14 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - PR staged acceptance comment5993965032 fullbody讀回，Issue22保持OPEN。event-gated-operator queued已API讀回（工程完成，operator安裝未開始）。原job39023309f8f2仍每60m/unconditional，本回合未安裝/替換或宣稱60s已live。下一步是operator受控source/config/原job替換與scheduler skip/claim/adopt/finish/delivery/publication讀回，不另派已接受工程。安裝第一次有real fault/readybacklog可以合法wake，不能為要求兩次false而隱藏fault或假complete。
 - Readonly看板status/health/work皆200，但原runtime/storagehold與old snapshot仍在。cron status確認gateway在跑，不代表每輪provider或delivery成功；doctor指出原operator provider失敗與daily brief歷史delivery timeout，兩者明示而非抹去。未改交易engine/account/config/risk/storage/source/window、PR21/24 activation、model/provider/host/services或health writer。本輪不是deployment完成。Evidence cache/scratch/pr25-229a4a4-acceptance。
 
+## PR-025-SOURCE-INSTALLED-SCHEDULER-VERIFICATION-IN-PROGRESS（2026-10-05）
+
+- 使用者指出上一回合「剩下我負責」無法辨別是否真正開工。12:26UTC fresh readback仍queued／原job每60m，確實未安裝，不改寫先前進度。這回合才由主operator實際開始，work task先running再verifying，非先前背景工作。
+- 先pause精確operator39023309f8f2與正常mirror2d2db10436e9、備份完整cron與舊source。freshhead仍229a4a4295dba43710041bfd113001021aeafe61且全部local base吻合，套用9個完整accepted artifact（不是自行實作／測試／debug）。部署hash等於staged bytes。10個原trading namespace/config/status/health檔保存hash，部署與真實gate執行後全部不變。
+- 新local excluded config指向獨立lab/data/operator-event-gate與原split-root identity，原health/snapshot/work只讀；operator_hold.json確認既有storage_protection，不叫healthy。timer_sources暫無新active window，原003已截止，21/24未activation。第一次真實wrapper抓出舊observer-dashboard-remaining queued：依既有PR19正式接受證據完成該重複task，main-session actualclaim/adopt/authoritativefinish completed通過。平行新研究未activation的task改為blocked（主operator先接受原003正式closeout），其已queued gate事件依實際prerequisite adopt/finish blocked，未假complete。兩次無fixtureflag的後續quiet預檢exactfalse，gate_status operator_hold/completed1/blocked1/claimed0/queued0。
+- 原job已原位edit every1m/script＋self-contained adopt/read work/evidence/finish契約。當時保持paused，精確讀回單一同名job、model/provider/delivery/skills/workdir等原設定保持。新event-gate-live-handoff queued為真實已安裝scheduler交接驗收，不是造市場fault／合成績效。主task verifying，尚待正式cron event worker/run及quiet skippedtick/正常mirror發布與CI，所以這筆不是complete結案。
+- Work與sourcebackup/cron/readback在cache/scratch/pr25-229a4a4-acceptance/deployment。原交易仍刻意hold，不restart、不改帳戶/風控/storage/source/deadline、無新lab activation。後續排程resume及真實handle/readback另記，不能把本筆當已喚醒worker或CI發布成功。
+
+
 
 

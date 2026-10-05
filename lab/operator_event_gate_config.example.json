@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "enabled": false,
+  "namespace_dir": "/ABSOLUTE/PATH/TO/ISOLATED/operator-event-gate",
+  "health_path": "/ABSOLUTE/PATH/TO/READONLY/health_status.json",
+  "snapshot_path": "/ABSOLUTE/PATH/TO/READONLY/paper_status.json",
+  "work_path": "/ABSOLUTE/PATH/TO/READONLY/work_status.json",
+  "hold_path": "/ABSOLUTE/PATH/TO/READONLY/operator_hold.json",
+  "health_stale_seconds": 180,
+  "snapshot_stale_seconds": 180,
+  "active_work_overdue_seconds": 600,
+  "lease_seconds": 300,
+  "retry_backoff_seconds": [300, 900, 1800],
+  "max_attempts": 4,
+  "max_records": 512,
+  "runtime_identity": {
+    "runtime_root": "/ABSOLUTE/PATH/TO/RUNTIME/lab",
+    "state_dir": "/ABSOLUTE/PATH/TO/TRADING/state",
+    "status_path": "/ABSOLUTE/PATH/TO/READONLY/paper_status.json",
+    "script": "paper_runtime_v3.py"
+  },
+  "timer_sources": []
+}
