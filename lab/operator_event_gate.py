@@ -199,7 +199,8 @@ class Gate:
     def _observe_health(self,state,hold):
         data=read_json(self.cfg['_paths']['health_path'])
         if not isinstance(data,dict) or data.get('schema_version')!=1:
-            self._transition(state,'health-source','fault',actionable=hold is None,kind='health',
+            self._transition(state,'health-source','hold-fault' if hold is not None else 'fault',
+                             actionable=hold is None,kind='health',
                              evidence_ref='health:status',permitted_next_action='inspect-local-health-evidence',
                              details={'reason':'missing_or_corrupt'})
             return
@@ -218,8 +219,10 @@ class Gate:
             if status not in ('open','recovered_monitoring','resolved'): continue
             subject='incident:'+inc['id']
             prior=state['subjects'].get(subject,{}).get('transition')
-            actionable=status=='open' or (status in ('recovered_monitoring','resolved') and prior=='open')
-            self._transition(state,subject,status,actionable=actionable,kind='incident',
+            transition=('hold:'+status) if hold is not None else status
+            actionable=(hold is None and (status=='open' or
+                        (status in ('recovered_monitoring','resolved') and prior=='open')))
+            self._transition(state,subject,transition,actionable=actionable,kind='incident',
                              evidence_ref='health:incident:'+inc['id'],
                              permitted_next_action='inspect-local-health-and-work',
                              details={'incident_id':inc['id']})
