@@ -166,6 +166,44 @@ class OperatorEventGateTests(unittest.TestCase):
         rec=state['records'][first['context']['event_id']]
         self.assertNotEqual(rec['status'],'completed');self.assertEqual(rec['last_failure'],'notification')
 
+    def test_multiple_ready_events_allow_only_one_active_claim(self):
+        self.f.work.write_text(json.dumps({'schema_version':1,'tasks':[
+            {'id':'one','state':'queued','updated_at':iso(self.f.now),'started_at':iso(self.f.now),
+             'title':'one','current_step':'queued','next_step':'execute','evidence':[]},
+            {'id':'two','state':'queued','updated_at':iso(self.f.now),'started_at':iso(self.f.now),
+             'title':'two','current_step':'queued','next_step':'execute','evidence':[]}
+        ]}))
+        first=self.parse(self.tick());self.assertTrue(first['wakeAgent'])
+        self.assertEqual(self.tick(self.f.now+1_000),FALSE_BYTES,'second ready event must wait while one claim is active')
+        self.finish(first,self.f.now+2_000)
+        second=self.parse(self.tick(self.f.now+3_000));self.assertTrue(second['wakeAgent'])
+        self.assertNotEqual(second['context']['event_id'],first['context']['event_id'])
+
+    def test_retry_budget_exhaustion_blocks_without_endless_wake(self):
+        cfg=json.loads(self.f.config.read_text());cfg['max_attempts']=2;cfg['retry_backoff_seconds']=[60]
+        self.f.config.write_text(json.dumps(cfg))
+        self.f.work.write_text(json.dumps({'schema_version':1,'tasks':[{
+            'id':'bounded','state':'queued','updated_at':iso(self.f.now),'started_at':iso(self.f.now),
+            'title':'bounded','current_step':'queued','next_step':'execute','evidence':[]
+        }]}))
+        first=self.parse(self.tick());g=Gate(load_config(self.f.config),now_ms=self.f.now,process_count=1)
+        g.release_failure(first['context']['claim_token'],'provider')
+        second=self.parse(self.tick(self.f.now+61_000));self.assertTrue(second['wakeAgent'])
+        g=Gate(load_config(self.f.config),now_ms=self.f.now+61_000,process_count=1)
+        g.release_failure(second['context']['claim_token'],'notification')
+        state=json.loads((self.f.ns/'gate_state.json').read_text())
+        rec=state['records'][first['context']['event_id']]
+        self.assertEqual(rec['status'],'blocked')
+        self.assertEqual(rec['blocked']['reason'],'notification_retry_budget_exhausted')
+        self.assertEqual(self.tick(self.f.now+300_000),FALSE_BYTES)
+
+    def test_unsupported_snapshot_identity_faults_once(self):
+        self.f.snapshot.write_text(json.dumps({'mode':'paper','candidate_not_deployed':False,'updated_at':iso(self.f.now),
+                                               'engine':{'candidate_implementation':'paper-engine-v99'}}))
+        first=self.parse(self.tick());self.assertTrue(first['wakeAgent']);self.assertEqual(first['context']['kind'],'snapshot')
+        self.finish(first)
+        self.assertEqual(self.tick(self.f.now+60_000),FALSE_BYTES)
+
     def test_worker_handle_and_evidence_are_required_for_terminal_completion(self):
         self.f.work.write_text(json.dumps({'schema_version':1,'tasks':[{
             'id':'claim','state':'queued','updated_at':iso(self.f.now),'started_at':iso(self.f.now),
