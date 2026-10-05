@@ -31,6 +31,17 @@ jobs:
           name: issue-22-event-gate-evidence
           path: artifacts/issue-22-event-gate
           if-no-files-found: error
+      - name: Issue 26 owner-resumption acceptance
+        run: |
+          mkdir -p artifacts/issue-26-owner-handoff
+          python3 lab/operator_owner_handoff_acceptance.py > artifacts/issue-26-owner-handoff/acceptance.json
+      - name: Upload Issue 26 owner-resumption evidence
+        if: ${{ always() && hashFiles('artifacts/issue-26-owner-handoff/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-26-owner-handoff-evidence
+          path: artifacts/issue-26-owner-handoff
+          if-no-files-found: error
       - name: Issue 3 real browser acceptance
         run: python3 lab/browser_issue3_acceptance.py --output artifacts/issue-3-browser
       - name: Upload Issue 3 synthetic browser evidence
