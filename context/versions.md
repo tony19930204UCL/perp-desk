@@ -470,3 +470,12 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - PR operator comment5984848432 fullbody讀回、Issue#23保持OPEN；parallel-eth-discovery blocked/API讀回。完整續修指令cache/scratch/pr24-cdf9277-acceptance/驗收結果與續修指令.md，繼續同PR24 branch，不另duplicate。不改三臂假說/default/#22/PR21，operator不補寫glue code。
 - 原default snapshot003 halted、原deadline保持，status/health/work200。本次未寫交易SQLite、live source/config、重啟、deployment或activation。工程scope與結果不同，CI成功不宣稱已啟動。Evidence cache/scratch/pr24-cdf9277-acceptance（CI逐ID、manifest、artifacts/digests、source/docs/config、operator-findings、comment_readback）。
 
+## PR-024-UPDATED-STAGED-ACCEPTED／STORAGE-OPERATOR-HOLD（2026-10-05）
+
+- 使用者交新head85114d52f0270e617f85f80ad43ab4aecfbd5a5d/run37287593190。fresh checks與同head37287593190/37287587998皆completed/success/attempt1；主log38 exporter+290 PAPER=328 unique OK逐ID核對，23個discovery IDs。14完整artifact隔離staged，既有local/base bytes匹配、兩ZIP摘要與API digest精確一致。沒有operator code review或重跑工程tests。
+- 三個原成果缺口已補：exact prepare/explicit activate/shared run/report/orderly stop/restart CLI與causalwarmup；1x/2x同事件outcome診斷不進ledger/checkpoint；raw20000 rollover後append-only hash-chain因果證據與storage stop正常保護出口。Operational artifact四case0errors/failures，各test ID在主CI實際OK。Browser9views真390CSS/無overflow，public timing三次HTTP451/outcomeerror保留，非行情成功。staged工程接受comment5991974469 fullbody讀回、#23仍OPEN待部署紀錄。前headblocked與先前failure不改寫。
+- 09:31UTC再次核對API拒連、原manager/runtime/dashboard皆不存在。讀proc_6db969e82f55持久result得exit2，runtime明示StorageProtectionHalt/audit non-exit growth/new-risk namespace limit，manager final intentional-storage-stop/operator-hold。namespace current1073788689 bytes跨1073741824門檻，全機磁碟仍有大量free，不歸因斷網/整機diskfull。durable readonly checkready只代表帳戶/身份完整，不推翻已證實storagehold。原003 window已截止、flat/no pending、3fills/14ledger、原deadline/forward保持。決定不重啟舊engine、不增門檻、不刪歷史，不為正常保護停機開假bug。
+- 已單獨恢復原已接受唯讀dashboard handleproc_54fad6fb67d0/PID1291690。原manager不存在，不是替換ownedchild。Linux/Windows status/health/work三API200；真實browser明示舊快照/引擎停止/紙盤停用。只顯示2026-10-05T03:22:58.107Z last-known，非現在帳戶。一次已接受health_watchdog tick09:36:56UTC得到runtimepids空/operational_healthy=false，未恢复supervisor健康loop，不宣稱交易恢复。
+- parallel-eth-discovery由工程缺口blocked改為staged accepted但部署未開始blocked；storage-operator-hold-oct05有證據與readonly恢复但enginehold保持。未寫tradingSQLite/live source/config、未copy oldDB、未PR21 migration/004或新lab activation。原003正式closeout仍pending。下一工程為現有#22 deterministic事件喚醒而非再修#24，完整可轉交prompt與本次結果於cache/scratch/pr24-85114d5-acceptance/驗收與恢復結果及下一派工.md，外部尚未派工不稱running。
+
+
