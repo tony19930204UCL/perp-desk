@@ -552,6 +552,7 @@ class ReviewSyncTests(unittest.TestCase):
                          'repo_sync/docs/docs/SOURCE_TIMING_EVIDENCE.md',
                          'repo_sync/docs/docs/MULTI_LEDGER_DASHBOARD.md',
                          'repo_sync/docs/docs/OPERATOR_EVENT_GATE.md',
+                         'repo_sync/docs/docs/OWNER_RESUMPTION_HANDOFF.md',
                          'lab/operator_event_gate_config.example.json',
                          'scripts/paper_startup_supervisor.py','scripts/public_source_timing_probe.py',
                          'scripts/paper_operator_event_gate.py',
@@ -568,6 +569,7 @@ class ReviewSyncTests(unittest.TestCase):
             self.assertIn('docs/SOURCE_TIMING_EVIDENCE.md',files,'timing evidence contract must survive normal mirror export')
             self.assertIn('docs/MULTI_LEDGER_DASHBOARD.md',files,'multi-ledger dashboard contract must survive normal mirror export')
             self.assertIn('docs/OPERATOR_EVENT_GATE.md',files,'operator event-gate contract must survive normal mirror export')
+            self.assertIn('docs/OWNER_RESUMPTION_HANDOFF.md',files,'owner resumption contract must survive normal mirror export')
             self.assertIn('lab/operator_event_gate_config.example.json',files,'disabled event-gate config template must survive export')
             self.assertIn('scripts/paper_operator_event_gate.py',files,'Hermes event-gate precheck wrapper must survive export')
             self.assertIn('scripts/public_source_timing_probe.py',files,'public timing probe must survive normal mirror export')
