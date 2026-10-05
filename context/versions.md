@@ -530,6 +530,13 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 接受333unique/ZIP、精確source部署、兩builtin skip、normal mirror/sourceblob CI與真實拒絕/有界送達/explicit owner receipt-start及實際更正結果，保留所有限制與本operator失敗。PR deployment comment5998240822 fullbody讀回，Issue26於16:04:46UTC CLOSED/completed讀回；PR27仍OPEN/未merged，head保持a3a21295ba4ea209339abf05de7c3aa4ce493d67。沒有新的待轉交工程。
 - 下一個自主選擇的工作是已staged PR24的新研究部署前提。16:04:47UTC實際GET公開time、ETH depth5及aggTrades1全HTTP200，證據cache/scratch/pr24-deployment-preflight/public-source-preflight.json（不是成交／持續coverage／activation）。原交易/supervisor仍storagehold，PR21/24未source部署或啟動。後續資源/受控部署仍需單獨成果與真實handle。
 
+## PR-024-CURRENT-BASE-INTEGRATION-REQUIRED（2026-10-05）
+
+- 既有cron真實worker6eb4fa76517e46cd821deb8c6268ff87完成accepted14 artifact/resource唯讀小單元，後續status/finish batch遭unattended security scan拒絕。event gate-2b638d0e136cf421eb81正確policy_capability/awaiting_owner，scheduled delivery成功。主operator已owner-receive並讀回owner_received/execution=null，這則告警不是需要observer找agent修PR27或選策略。
+- 主operator後續實際核對PR24 head85114d52f0270e617f85f80ad43ab4aecfbd5a5d仍OPEN，舊候選三個shared CI/exporter/test artifacts都與已部署PR27不同。sim_broker現行bytes仍等於PR24 merge-base。不能整批覆蓋後來accepted監控，也不能operator自行手改未經CI的混合版本。新阻擋是combined source整合，不是原來源/資源小單元沒做。
+- refs/heads/main實際讀回8b2f51a659b7bba8f4fcc3e19638334ae720270f，PR24 cached baseRefOid仍66fbf59653b1985e324f8e92ce04a9e4f4adbef3。最初compatibility JSON誤將cached PRbase標current_main，另存integration_block.json更正語義，保留原查詢；hash差異本身有效。開始工程時必須再次fresh main/ancestry，不把本次checkpoint當永遠最新。
+- 選擇在既有Issue23/PR24接續最小最新基線整合，保留PR25/27與原三臂凍結設計，交新版exacthead完整CI/artifacts，不重做策略/不另duplicate項目。PR24 comment5998490971完整payload發布且fullbody讀回。工作API blocked、外部agent尚未開工、無source deployment/activation或背景owner execution。完整可直接轉交ChatGPT的指令：cache/scratch/pr24-deployment-preflight/PR24整合續接派工.md。
+
 
 
 
