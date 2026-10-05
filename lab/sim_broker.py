@@ -4,6 +4,7 @@ from decimal import Decimal, localcontext, InvalidOperation, Context, ROUND_HALF
 from functools import wraps
 from copy import deepcopy
 import json
+import hashlib
 import sqlite3
 import os
 import fcntl
@@ -67,9 +68,14 @@ class Intent:
     expires_ts: int | None = None
     risk_limited: bool = False
     risk_quantity_step: Decimal | None = None
+    maker_queue_from_arrival: bool = False
 
 class SimBroker:
-    def __init__(self, path, *, initial_cash, instruments, execution, risk, version_id, forward_start):
+    def __init__(self, path, *, initial_cash, instruments, execution, risk, version_id, forward_start,
+                 compact_seen_events=False):
+        if type(compact_seen_events) is not bool:
+            raise ValueError('compact_seen_events must be bool')
+        self._compact_seen_events=compact_seen_events
         if not isinstance(initial_cash, Decimal) or not initial_cash.is_finite() or initial_cash <= 0:
             raise ValueError('explicit finite positive initial cash required')
         if not isinstance(version_id, str) or not version_id.strip() or type(forward_start) is not int or forward_start < 0:
@@ -172,6 +178,7 @@ class SimBroker:
             prior_intent = dict(existing['intent'])
             prior_intent.setdefault('risk_limited', False)
             prior_intent.setdefault('risk_quantity_step', None)
+            prior_intent.setdefault('maker_queue_from_arrival', False)
             if json.dumps(prior_intent, default=str, sort_keys=True) != json.dumps(asdict(intent), default=str, sort_keys=True):
                 raise ValueError('conflicting intent ID')
             return deepcopy(existing)
@@ -208,11 +215,18 @@ class SimBroker:
             p = self.positions.get(intent.symbol)
             if p and (Decimal(p['qty']) > 0) != (intent.side == 'BUY'):
                 reason = 'opposite_open_requires_reduce_only'
+        if type(intent.maker_queue_from_arrival) is not bool:
+            reason = 'invalid_maker_queue_contract'
         if intent.kind == 'MAKER' and reason is None:
             if not finite(intent.limit_price) or intent.limit_price % s.tick != 0:
                 reason = 'invalid_limit'
+            elif intent.maker_queue_from_arrival:
+                if intent.queue_ahead_qty is not None:
+                    reason = 'invalid_maker_queue_contract'
             elif not isinstance(intent.queue_ahead_qty, Decimal) or not intent.queue_ahead_qty.is_finite() or intent.queue_ahead_qty < 0:
                 reason = 'unknown_queue'
+        elif intent.maker_queue_from_arrival and reason is None:
+            reason = 'invalid_maker_queue_contract'
         order = dict(order_id='order:' + intent.intent_id, intent_id=intent.intent_id,
                      status='PENDING' if reason is None else 'REJECTED',
                      reason=reason,
@@ -224,10 +238,13 @@ class SimBroker:
             self._save()
         return deepcopy(order)
 
-    def cancel(self, order_id, *, ts):
+    def cancel(self, order_id, *, ts, reason=None):
         order = self.orders[order_id]
+        if reason is not None and (not isinstance(reason,str) or not reason):
+            raise ValueError('cancel reason must be nonempty string')
         if order['status'] in ('PENDING', 'RESTING'):
             order.update(status='CANCELED', canceled_ts=ts)
+            if reason is not None:order['reason']=reason
             self.audit.append(deepcopy(order))
             self.last_ts = max(self.last_ts, ts)
             self._save()
@@ -304,8 +321,11 @@ class SimBroker:
                 event['source_ts'] = source_ts
         self._validate_event(event)
         event = json.loads(json.dumps(event, default=str, sort_keys=True))
+        event_digest=hashlib.sha256(json.dumps(event,sort_keys=True,separators=(',',':')).encode()).hexdigest()
         if event['event_id'] in self.seen_events:
-            if event != self.seen_events[event['event_id']]:
+            prior=self.seen_events[event['event_id']]
+            conflict=(prior!=event_digest) if isinstance(prior,str) else (event!=prior)
+            if conflict:
                 raise ValueError('conflicting event ID')
             return
         if event['type'] != 'funding' and event['ts'] < self.last_ts:
@@ -319,7 +339,7 @@ class SimBroker:
             if day not in self.day_baselines:
                 self.day_baselines[day] = str(self.equity) if self.equity is not None else None
             self._on_event(event)
-            self.seen_events[event['event_id']] = dict(event)
+            self.seen_events[event['event_id']] = event_digest if self._compact_seen_events else dict(event)
             self.last_ts = max(self.last_ts, event['ts'])
             self._save()
         except Exception:
@@ -400,6 +420,12 @@ class SimBroker:
                     i = order['intent']
                     if order['status'] != 'RESTING' or i['symbol'] != event['symbol'] or event['ts'] <= order['resting_ts']:
                         continue
+                    if i.get('maker_queue_from_arrival') and (
+                            type(event.get('source_ts')) is not int
+                            or event['source_ts'] <= order['resting_ts']):
+                        # Issue #23 opt-in maker fills require actual source-after-arrival
+                        # trade coverage. Legacy explicit-queue maker tests remain unchanged.
+                        continue
                     limit = Decimal(i['limit_price'])
                     through = (i['side'] == 'BUY' and event['aggressor'] == 'SELL' and Decimal(event['price']) < limit) or (i['side'] == 'SELL' and event['aggressor'] == 'BUY' and Decimal(event['price']) > limit)
                     if not through:
@@ -436,7 +462,17 @@ class SimBroker:
                     if reason:
                         order.update(status='REJECTED', reason=reason)
                     else:
-                        order.update(status='RESTING', resting_ts=event['ts'], queue_remaining=str(i['queue_ahead_qty']))
+                        queue=i['queue_ahead_qty']
+                        if i.get('maker_queue_from_arrival'):
+                            same_side=event['bids'] if i['side']=='BUY' else event['asks']
+                            match=next((Decimal(q) for p,q in same_side if Decimal(p)==limit),None)
+                            if match is None or match<=0:
+                                order.update(status='REJECTED', reason='unknown_queue_at_arrival')
+                                self.audit.append(deepcopy(order))
+                                continue
+                            queue=match
+                            order['queue_observed_at_arrival']=str(match)
+                        order.update(status='RESTING', resting_ts=event['ts'], queue_remaining=str(queue))
                     continue
                 levels = shared_levels['asks'] if i['side'] == 'BUY' else shared_levels['bids']
                 remaining = Decimal(order['remaining'])
