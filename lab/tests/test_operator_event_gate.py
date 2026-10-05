@@ -43,6 +43,16 @@ class GateFixture:
         self.timer.write_text(json.dumps({'schema_version':1,'active':False,'operator_accepted':False}))
         self.process_hint=process_hint
 
+    def refresh_observation_sources(self,now):
+        self.health.write_text(json.dumps({
+            'schema_version':1,'checked_at':iso(now),'available':True,
+            'incidents':[],'faults':{},'operational_healthy':True
+        }))
+        self.snapshot.write_text(json.dumps({
+            'mode':'paper','candidate_not_deployed':False,'updated_at':iso(now),
+            'engine':{'candidate_implementation':'paper-engine-v3'}
+        }))
+
     def write_config(self,**overrides):
         data={
             'schema_version':1,'enabled':True,
@@ -135,7 +145,15 @@ class OperatorEventGateTests(unittest.TestCase):
         wake=self.parse(self.tick(self.f.now+60_000,process=0))
         self.assertTrue(wake['wakeAgent']);self.assertEqual(wake['context']['kind'],'health')
         self.finish(wake,self.f.now+60_000)
-        self.assertEqual(self.tick(self.f.now+120_000,process=0),FALSE_BYTES)
+        # Snapshot/runtime faults were also intentionally present under the hold.
+        # Once the hold is removed they are each actionable once, not duplicates
+        # of the already-completed health event.
+        seen={wake['context']['event_id']}
+        for offset in (120_000,180_000):
+            nxt=self.parse(self.tick(self.f.now+offset,process=0))
+            self.assertTrue(nxt['wakeAgent']);self.assertNotIn(nxt['context']['event_id'],seen)
+            seen.add(nxt['context']['event_id']);self.finish(nxt,self.f.now+offset)
+        self.assertEqual(self.tick(self.f.now+240_000,process=0),FALSE_BYTES)
 
     def test_ready_backlog_survives_claim_interruption_lease_and_backoff(self):
         self.f.work.write_text(json.dumps({'schema_version':1,'tasks':[{
@@ -145,7 +163,9 @@ class OperatorEventGateTests(unittest.TestCase):
         first=self.parse(self.tick());self.assertTrue(first['wakeAgent'])
         token=first['context']['claim_token']
         self.assertEqual(self.tick(self.f.now+60_000),FALSE_BYTES,'active lease must prevent duplicate claim')
+        self.f.refresh_observation_sources(self.f.now+301_000)
         self.assertEqual(self.tick(self.f.now+301_000),FALSE_BYTES,'expired lease enters bounded backoff')
+        self.f.refresh_observation_sources(self.f.now+362_000)
         retry=self.parse(self.tick(self.f.now+362_000));self.assertTrue(retry['wakeAgent'])
         self.assertNotEqual(retry['context']['claim_token'],token)
         self.assertEqual(retry['context']['event_id'],first['context']['event_id'])
@@ -195,6 +215,7 @@ class OperatorEventGateTests(unittest.TestCase):
         rec=state['records'][first['context']['event_id']]
         self.assertEqual(rec['status'],'blocked')
         self.assertEqual(rec['blocked']['reason'],'notification_retry_budget_exhausted')
+        self.f.refresh_observation_sources(self.f.now+300_000)
         self.assertEqual(self.tick(self.f.now+300_000),FALSE_BYTES)
 
     def test_unsupported_snapshot_identity_faults_once(self):
