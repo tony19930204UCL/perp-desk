@@ -422,7 +422,7 @@ class Gate:
             if rec['status']!='claimed' or not isinstance(claim,dict): continue
             if self.now<claim.get('lease_until_ms',0): continue
             if rec['attempts']>=self.cfg['max_attempts']:
-                rec['status']='blocked';rec['blocked']={'reason':'lease_expired_retry_budget_exhausted','at_ms':self.now}
+                rec['status']='blocked';rec['blocked']={'reason':'lease_expired_retry_budget_exhausted','block_class':'worker_retry_exhausted','at_ms':self.now}
                 rec.setdefault('lifecycle',[]).append(dict(state='blocked',at_ms=self.now,
                                                            reason='lease_expired_retry_budget_exhausted'))
                 rec['claim']=None;changed=True;continue
@@ -727,7 +727,7 @@ class Gate:
             rec=next((r for r in state['records'].values() if r['status']=='claimed' and r.get('claim',{}).get('token')==token),None)
             if rec is None:raise GateError('claim not active')
             if rec['attempts']>=self.cfg['max_attempts']:
-                rec['status']='blocked';rec['blocked']={'reason':kind+'_retry_budget_exhausted','at_ms':self.now}
+                rec['status']='blocked';rec['blocked']={'reason':kind+'_retry_budget_exhausted','block_class':'worker_retry_exhausted','at_ms':self.now}
                 rec.setdefault('lifecycle',[]).append(dict(state='blocked',at_ms=self.now,
                                                            reason=kind+'_retry_budget_exhausted'))
             else:
