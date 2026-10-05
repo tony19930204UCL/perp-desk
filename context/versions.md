@@ -479,4 +479,14 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - parallel-eth-discovery由工程缺口blocked改為staged accepted但部署未開始blocked；storage-operator-hold-oct05有證據與readonly恢復但enginehold保持。未寫tradingSQLite/live source/config、未copy oldDB、未PR21 migration/004或新lab activation。原003正式closeout仍pending。下一工程為現有#22 deterministic事件喚醒而非再修#24，完整可轉交prompt與本次結果於cache/scratch/pr24-85114d5-acceptance/驗收與恢復結果及下一派工.md，外部尚未派工不稱running。
 - 09:50UTC final工作API讀回：parallel-eth-discovery已由前述blocked改為queued（工程接受，source部署尚未開始），event-gated-operator queued待人工轉交，storage-operator-hold-oct05 blocked維持原enginehold。新dashboard PID/cwd/cmdline再次確認，並未把staged接受或HTTP恢復當交易恢復。
 
+## PR-025-STAGED-ENGINEERING-ACCEPTED-NOT-DEPLOYED（2026-10-05）
+
+- 使用者交付Issue22 head229a4a4295dba43710041bfd113001021aeafe61/run37305212149。fresh checks兩個同head runs37305212149/37305209028皆completed/success。主run實際log逐ID核對exporter38+PAPER285=323unique OK，focused scheduler-adapter9/9明確為285的subset，不重複加總。未自行unit testing/code review/debug。
+- Artifact11343815069 ZIP摘要76dfe28274638062376d5a248749aa797838509c6f3e5d5ff011f24f1f8d7214與GitHub exact match，九case無errors/failures、normal_tick_model_calls0、無live cron/health/trading改動；對應test IDs在hosted CI實際OK（含isolated subprocess）。全部九個changed artifact隔離stage，既有local bytes等於merge-base8db5e8e7d1ea44579d314d3f9f6bd288a06ff227，新增target皆不存在，未套用live。
+- 接受穩定semantic event gate、isolated claims/leases/有界retry、authoritative work terminal completion、opt-in registered timers、confirmed storagehold不假healthy/不restart與namespace隔離契約。下載官方Hermes cron/script-only全文，installed CLI edit help具schedule/script/agent所需欄位。不把公開文件未交atomic post-delivery callback當已整合，explicit bounded notification-failure hook及Hermes incidents/runs/doctor仍為提供的authority，live delivery recovery待operator驗收。
+- Browser sibling artifact11342744912摘要核實，三round九view true390CSS/no failures。Public timing三次HTTP451是實際source error，不把CI step success叫行情成功。前run37296301408/head9a611d2614c3cdaf719279d9774c291100268345的failure與fixture修正說明保留。
+- PR staged acceptance comment5993965032 fullbody讀回，Issue22保持OPEN。event-gated-operator queued已API讀回（工程完成，operator安裝未開始）。原job39023309f8f2仍每60m/unconditional，本回合未安裝/替換或宣稱60s已live。下一步是operator受控source/config/原job替換與scheduler skip/claim/adopt/finish/delivery/publication讀回，不另派已接受工程。安裝第一次有real fault/readybacklog可以合法wake，不能為要求兩次false而隱藏fault或假complete。
+- Readonly看板status/health/work皆200，但原runtime/storagehold與old snapshot仍在。cron status確認gateway在跑，不代表每輪provider或delivery成功；doctor指出原operator provider失敗與daily brief歷史delivery timeout，兩者明示而非抹去。未改交易engine/account/config/risk/storage/source/window、PR21/24 activation、model/provider/host/services或health writer。本輪不是deployment完成。Evidence cache/scratch/pr25-229a4a4-acceptance。
+
+
 
