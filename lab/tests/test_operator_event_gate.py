@@ -117,6 +117,23 @@ class OperatorEventGateTests(unittest.TestCase):
         self.assertEqual(status['classification'],'operator_hold');self.assertTrue(status['operator_hold'])
         self.assertEqual(self.tick(self.f.now+60_000,process=0),FALSE_BYTES)
 
+    def test_hold_release_reexposes_persistent_fault_once_and_sources_remain_readonly(self):
+        old=self.f.now-600_000
+        self.f.health.write_text('{broken')
+        self.f.snapshot.write_text(json.dumps({'mode':'paper','candidate_not_deployed':False,'updated_at':iso(old),
+                                               'engine':{'candidate_implementation':'paper-engine-v3'}}))
+        self.f.hold.write_text(json.dumps({'active':True,'operator_confirmed':True,'reason':'storage_protection'}))
+        before_health=self.f.health.read_bytes();before_snapshot=self.f.snapshot.read_bytes();before_work=self.f.work.read_bytes()
+        self.assertEqual(self.tick(process=0),FALSE_BYTES)
+        self.assertEqual(self.f.health.read_bytes(),before_health)
+        self.assertEqual(self.f.snapshot.read_bytes(),before_snapshot)
+        self.assertEqual(self.f.work.read_bytes(),before_work)
+        self.f.hold.write_text(json.dumps({'active':False,'operator_confirmed':True,'reason':'storage_protection'}))
+        wake=self.parse(self.tick(self.f.now+60_000,process=0))
+        self.assertTrue(wake['wakeAgent']);self.assertEqual(wake['context']['kind'],'health')
+        self.finish(wake,self.f.now+60_000)
+        self.assertEqual(self.tick(self.f.now+120_000,process=0),FALSE_BYTES)
+
     def test_ready_backlog_survives_claim_interruption_lease_and_backoff(self):
         self.f.work.write_text(json.dumps({'schema_version':1,'tasks':[{
             'id':'task-ready','state':'queued','updated_at':iso(self.f.now),'started_at':iso(self.f.now),
