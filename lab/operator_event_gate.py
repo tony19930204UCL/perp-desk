@@ -104,6 +104,25 @@ def load_config(path):
         if p==namespace or namespace in p.parents:
             raise GateError('isolated namespace must not contain read-only timer source')
         item['_path']=p
+    raw.setdefault('owner_handoff',{'enabled':False})
+    handoff=raw['owner_handoff']
+    if not isinstance(handoff,dict) or type(handoff.get('enabled',False)) is not bool:
+        raise GateError('owner_handoff must be an object with boolean enabled')
+    handoff.setdefault('enabled',False)
+    handoff.setdefault('delivery_lease_seconds',120)
+    handoff.setdefault('owner_execution_lease_seconds',1800)
+    handoff.setdefault('retry_backoff_seconds',[300,900,1800])
+    handoff.setdefault('max_attempts',4)
+    if handoff['enabled']:
+        target=handoff.get('target')
+        if not safe_ref(target) or any(ch in target for ch in ('\n','\r')):
+            raise GateError('enabled owner_handoff requires public-safe target')
+    for key in ('delivery_lease_seconds','owner_execution_lease_seconds','max_attempts'):
+        if type(handoff[key]) is not int or handoff[key]<=0:
+            raise GateError('positive owner_handoff limits required')
+    if (not isinstance(handoff['retry_backoff_seconds'],list) or not handoff['retry_backoff_seconds']
+            or any(type(x) is not int or x<=0 for x in handoff['retry_backoff_seconds'])):
+        raise GateError('positive owner_handoff retry backoff required')
     raw.setdefault('health_stale_seconds',180)
     raw.setdefault('snapshot_stale_seconds',180)
     raw.setdefault('active_work_overdue_seconds',600)
@@ -308,21 +327,34 @@ class Gate:
                 self._transition(state,subject,'terminal',actionable=False,kind='work',
                                  evidence_ref='work:'+tid,permitted_next_action='none')
                 for rec in state['records'].values():
-                    if rec['subject']==subject and rec['status'] not in TERMINAL:
-                        rec['status']='completed'
-                        rec['completion']={'worker_handle':'external-work-status','evidence_ref':'work:'+tid,'at_ms':self.now}
-                        rec.setdefault('lifecycle',[]).append(dict(state='completed',at_ms=self.now,
-                                                                 evidence_ref='work:'+tid))
+                    if rec['subject']!=subject or rec['status'] in TERMINAL:continue
+                    if rec['status'] in ('awaiting_owner','owner_received','executing'):
+                        # Issue #26: authoritative task terminality makes an owner
+                        # result eligible, but does not replace owner execution/result evidence.
+                        if not rec.get('authoritative_terminal_seen_at_ms'):
+                            rec['authoritative_terminal_seen_at_ms']=self.now
+                            rec.setdefault('lifecycle',[]).append(dict(
+                                state='authoritative_work_terminal',at_ms=self.now,
+                                evidence_ref='work:'+tid))
+                        continue
+                    rec['status']='completed'
+                    rec['completion']={'worker_handle':'external-work-status','evidence_ref':'work:'+tid,'at_ms':self.now}
+                    rec.setdefault('lifecycle',[]).append(dict(state='completed',at_ms=self.now,
+                                                               evidence_ref='work:'+tid))
                 continue
+            owner_handoff_active=any(
+                rec.get('subject')==subject and rec.get('status') in ('awaiting_owner','owner_received','executing')
+                for rec in state['records'].values())
             if status in ('queued','failed'):
-                self._transition(state,subject,'ready',actionable=True,kind='work',
+                self._transition(state,subject,'ready',actionable=not owner_handoff_active,kind='work',
                                  evidence_ref='work:'+tid,permitted_next_action='continue-local-unfinished-work',
                                  details={'task_id':tid,'source_state':status})
             elif status in ('running','testing','verifying'):
                 try: overdue=self.now-epoch_ms(task.get('updated_at'))>self.cfg['active_work_overdue_seconds']*1000
                 except Exception: overdue=True
                 self._transition(state,subject,'overdue' if overdue else 'active',
-                                 actionable=overdue,kind='work',evidence_ref='work:'+tid,
+                                 actionable=(overdue and not owner_handoff_active),kind='work',
+                                 evidence_ref='work:'+tid,
                                  permitted_next_action='verify-worker-handle-and-continue-or-block',
                                  details={'task_id':tid,'source_state':status})
             elif status=='blocked':
@@ -390,7 +422,7 @@ class Gate:
             if rec['status']!='claimed' or not isinstance(claim,dict): continue
             if self.now<claim.get('lease_until_ms',0): continue
             if rec['attempts']>=self.cfg['max_attempts']:
-                rec['status']='blocked';rec['blocked']={'reason':'lease_expired_retry_budget_exhausted','at_ms':self.now}
+                rec['status']='blocked';rec['blocked']={'reason':'lease_expired_retry_budget_exhausted','block_class':'worker_retry_exhausted','at_ms':self.now}
                 rec.setdefault('lifecycle',[]).append(dict(state='blocked',at_ms=self.now,
                                                            reason='lease_expired_retry_budget_exhausted'))
                 rec['claim']=None;changed=True;continue
@@ -428,6 +460,7 @@ class Gate:
             self._observe_health(state,hold);self._observe_snapshot(state,hold);self._observe_process(state,hold)
             self._observe_work(state);self._observe_timers(state)
             self._recover_expired(state)
+            self._recover_owner_execution(state)
             rec=self._claim_next(state)
             persisted=dict(state)
             if rec is None:
@@ -435,6 +468,9 @@ class Gate:
             status=dict(schema_version=1,classification='operator_hold' if hold else 'observing',
                         operator_hold=bool(hold),queued=sum(r['status']=='queued' for r in state['records'].values()),
                         claimed=sum(r['status']=='claimed' for r in state['records'].values()),
+                        awaiting_owner=sum(r['status']=='awaiting_owner' for r in state['records'].values()),
+                        owner_received=sum(r['status']=='owner_received' for r in state['records'].values()),
+                        executing=sum(r['status']=='executing' for r in state['records'].values()),
                         completed=sum(r['status']=='completed' for r in state['records'].values()),
                         blocked=sum(r['status']=='blocked' for r in state['records'].values()),
                         capacity_blocked=bool(state.get('capacity_blocked')))
@@ -460,13 +496,29 @@ class Gate:
             if self.now>=rec['claim']['lease_until_ms']:raise GateError('claim lease expired')
             current=rec['claim'].get('worker_handle')
             if current not in (None,handle):raise GateError('claim already owned by different worker')
-            rec['claim']['worker_handle']=handle;atomic_json(self.state_path,state)
+            if current is None:
+                rec['claim']['worker_handle']=handle
+                rec.setdefault('lifecycle',[]).append(dict(state='worker_adopted',at_ms=self.now,
+                                                           worker_handle=handle))
+                atomic_json(self.state_path,state)
             return rec['event_id']
         finally:
             fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
 
-    def worker_finish(self,token,*,outcome,worker_handle,evidence_ref,reason=None):
+    def _authoritative_task_terminal(self,rec):
+        task_id=rec.get('details',{}).get('task_id')
+        if rec.get('kind')!='work' or not task_id:
+            return True
+        work=read_json(self.cfg['_paths']['work_path'])
+        tasks=work.get('tasks',[]) if isinstance(work,dict) else []
+        task=next((x for x in tasks if isinstance(x,dict) and x.get('id')==task_id),None)
+        return isinstance(task,dict) and task.get('state') in ('completed','cancelled')
+
+    def worker_finish(self,token,*,outcome,worker_handle,evidence_ref,reason=None,
+                      block_class='external_prerequisite'):
         if outcome not in ('completed','blocked'):raise GateError('terminal outcome required')
+        if block_class not in ('external_prerequisite','policy_capability'):
+            raise GateError('unsupported block class')
         if not safe_ref(worker_handle) or not safe_ref(evidence_ref):raise GateError('public-safe handle/evidence ref required')
         lock=self._lock()
         try:
@@ -475,26 +527,195 @@ class Gate:
             if rec is None:raise GateError('claim missing, expired or already terminal')
             if rec['claim'].get('worker_handle')!=worker_handle:raise GateError('worker handle does not own claim')
             if self.now>=rec['claim']['lease_until_ms']:raise GateError('claim lease expired')
-            task_id=rec.get('details',{}).get('task_id')
-            if outcome=='completed' and rec.get('kind')=='work' and task_id:
-                work=read_json(self.cfg['_paths']['work_path'])
-                tasks=work.get('tasks',[]) if isinstance(work,dict) else []
-                task=next((x for x in tasks if isinstance(x,dict) and x.get('id')==task_id),None)
-                if not isinstance(task,dict) or task.get('state') not in ('completed','cancelled'):
-                    raise GateError('authoritative work is still unfinished; completion refused')
-            rec['status']=outcome
+            if outcome=='completed' and not self._authoritative_task_terminal(rec):
+                raise GateError('authoritative work is still unfinished; completion refused')
             terminal=dict(worker_handle=worker_handle,evidence_ref=evidence_ref,at_ms=self.now)
             if outcome=='completed':
-                rec['completion']=terminal
+                rec['status']='completed';rec['completion']=terminal
                 rec.setdefault('lifecycle',[]).append(dict(state='completed',at_ms=self.now,
                                                            evidence_ref=evidence_ref))
             else:
                 if not isinstance(reason,str) or not reason:raise GateError('blocked reason required')
-                rec['blocked']=dict(terminal,reason=reason[:500])
+                rec['blocked']=dict(terminal,reason=reason[:500],block_class=block_class)
                 rec.setdefault('lifecycle',[]).append(dict(state='blocked',at_ms=self.now,
-                                                           evidence_ref=evidence_ref,reason=reason[:500]))
+                                                           evidence_ref=evidence_ref,
+                                                           block_class=block_class,reason=reason[:500]))
+                if block_class=='policy_capability':
+                    rec['status']='awaiting_owner'
+                    rec['handoff']=dict(state='pending',attempts=0,not_before_ms=self.now,
+                                        claim=None,delivery=None,owner_receipt=None,execution=None,
+                                        last_failure=None)
+                    rec['permitted_next_action']='owner-authorized-readonly-analysis'
+                    rec.setdefault('lifecycle',[]).append(dict(state='awaiting_owner',at_ms=self.now,
+                                                               reason='policy_capability'))
+                else:
+                    rec['status']='blocked'
             rec['claim']=None;atomic_json(self.state_path,state)
             return rec['event_id']
+        finally:
+            fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
+
+    def _recover_owner_execution(self,state):
+        for rec in state['records'].values():
+            if rec.get('status')!='executing':continue
+            handoff=rec.get('handoff')
+            execution=handoff.get('execution') if isinstance(handoff,dict) else None
+            if not isinstance(execution,dict):continue
+            if self.now<execution.get('lease_until_ms',0):continue
+            rec['status']='owner_received'
+            handoff['state']='owner_received'
+            handoff['execution']=None
+            rec.setdefault('lifecycle',[]).append(dict(state='owner_execution_interrupted',at_ms=self.now,
+                                                       reason='execution_lease_expired'))
+
+    def _recover_handoff_delivery(self,state):
+        cfg=self.cfg['owner_handoff'];backoff=cfg['retry_backoff_seconds']
+        for rec in state['records'].values():
+            if rec.get('status')!='awaiting_owner':continue
+            handoff=rec.get('handoff')
+            if not isinstance(handoff,dict) or handoff.get('state')!='delivery_claimed':continue
+            claim=handoff.get('claim')
+            if not isinstance(claim,dict) or self.now<claim.get('lease_until_ms',0):continue
+            if handoff['attempts']>=cfg['max_attempts']:
+                handoff['state']='delivery_blocked';handoff['claim']=None
+                handoff['last_failure']='delivery_claim_expired_retry_budget_exhausted'
+                rec.setdefault('lifecycle',[]).append(dict(state='owner_escalation_delivery_blocked',
+                                                           at_ms=self.now,
+                                                           reason=handoff['last_failure']))
+            else:
+                delay=backoff[min(max(handoff['attempts']-1,0),len(backoff)-1)]*1000
+                handoff['state']='pending';handoff['not_before_ms']=claim['lease_until_ms']+delay
+                handoff['claim']=None;handoff['last_failure']='delivery_claim_expired'
+                rec.setdefault('lifecycle',[]).append(dict(state='owner_escalation_requeued',
+                                                           at_ms=self.now,reason='delivery_claim_expired'))
+
+    def claim_owner_escalation(self):
+        if not self.cfg['owner_handoff']['enabled']:return None
+        lock=self._lock()
+        try:
+            state=self._load();before=canonical(state);self._recover_handoff_delivery(state)
+            due=[]
+            for rec in state['records'].values():
+                handoff=rec.get('handoff')
+                if (rec.get('status')=='awaiting_owner' and isinstance(handoff,dict)
+                        and handoff.get('state')=='pending'
+                        and handoff.get('not_before_ms',0)<=self.now):
+                    due.append(rec)
+            due.sort(key=lambda r:(r.get('observed_at_ms',0),r['event_id']))
+            if not due:
+                if canonical(state)!=before:atomic_json(self.state_path,state)
+                return None
+            rec=due[0];handoff=rec['handoff'];handoff['attempts']+=1
+            token=secrets.token_hex(16)
+            handoff['state']='delivery_claimed'
+            handoff['claim']=dict(token=token,claimed_at_ms=self.now,
+                                  lease_until_ms=self.now+self.cfg['owner_handoff']['delivery_lease_seconds']*1000)
+            rec.setdefault('lifecycle',[]).append(dict(state='owner_escalation_claimed',at_ms=self.now,
+                                                       attempt=handoff['attempts']))
+            atomic_json(self.state_path,state)
+            return dict(event_id=rec['event_id'],kind=rec['kind'],transition='policy_capability_blocked',
+                        evidence_ref=rec['evidence_ref'],
+                        permitted_next_action='owner-authorized-readonly-analysis',
+                        escalation_token=token,attempt=handoff['attempts'])
+        finally:
+            fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
+
+    def finish_owner_escalation(self,token,*,success,delivery_handle=None,failure_kind=None):
+        if type(success) is not bool:raise GateError('success boolean required')
+        if success and not safe_ref(delivery_handle):raise GateError('public-safe delivery handle required')
+        if not success and failure_kind not in ('transport','notification','interrupted'):
+            raise GateError('bounded escalation failure kind required')
+        lock=self._lock()
+        try:
+            state=self._load();cfg=self.cfg['owner_handoff']
+            rec=next((r for r in state['records'].values()
+                      if r.get('status')=='awaiting_owner'
+                      and isinstance(r.get('handoff'),dict)
+                      and r['handoff'].get('state')=='delivery_claimed'
+                      and r['handoff'].get('claim',{}).get('token')==token),None)
+            if rec is None:raise GateError('owner escalation claim missing or already resolved')
+            handoff=rec['handoff']
+            if success:
+                handoff['state']='delivered';handoff['claim']=None
+                handoff['delivery']=dict(handle=delivery_handle,at_ms=self.now)
+                handoff['last_failure']=None
+                rec.setdefault('lifecycle',[]).append(dict(state='owner_escalation_delivered',
+                                                           at_ms=self.now,
+                                                           delivery_handle=delivery_handle))
+            elif handoff['attempts']>=cfg['max_attempts']:
+                handoff['state']='delivery_blocked';handoff['claim']=None
+                handoff['last_failure']=failure_kind+'_retry_budget_exhausted'
+                rec.setdefault('lifecycle',[]).append(dict(state='owner_escalation_delivery_blocked',
+                                                           at_ms=self.now,
+                                                           reason=handoff['last_failure']))
+            else:
+                backoff=cfg['retry_backoff_seconds']
+                delay=backoff[min(max(handoff['attempts']-1,0),len(backoff)-1)]*1000
+                handoff['state']='pending';handoff['claim']=None
+                handoff['not_before_ms']=self.now+delay;handoff['last_failure']=failure_kind
+                rec.setdefault('lifecycle',[]).append(dict(state='owner_escalation_requeued',
+                                                           at_ms=self.now,reason=failure_kind))
+            atomic_json(self.state_path,state);return rec['event_id']
+        finally:
+            fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
+
+    def owner_receive(self,event_id,receipt_ref):
+        if not safe_ref(event_id) or not safe_ref(receipt_ref):raise GateError('public-safe owner receipt required')
+        lock=self._lock()
+        try:
+            state=self._load();rec=state['records'].get(event_id)
+            if not isinstance(rec,dict) or rec.get('status')!='awaiting_owner':
+                raise GateError('event is not awaiting owner')
+            handoff=rec.get('handoff')
+            if not isinstance(handoff,dict) or handoff.get('state')!='delivered':
+                raise GateError('owner escalation has no verified delivery')
+            rec['status']='owner_received';handoff['state']='owner_received'
+            handoff['owner_receipt']=dict(receipt_ref=receipt_ref,at_ms=self.now)
+            rec.setdefault('lifecycle',[]).append(dict(state='owner_received',at_ms=self.now,
+                                                       receipt_ref=receipt_ref))
+            atomic_json(self.state_path,state);return event_id
+        finally:
+            fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
+
+    def owner_start(self,event_id,owner_handle,evidence_ref):
+        if not safe_ref(event_id) or not safe_ref(owner_handle) or not safe_ref(evidence_ref):
+            raise GateError('public-safe owner execution evidence required')
+        lock=self._lock()
+        try:
+            state=self._load();rec=state['records'].get(event_id)
+            if not isinstance(rec,dict) or rec.get('status')!='owner_received':
+                raise GateError('owner receipt required before execution')
+            handoff=rec['handoff'];rec['status']='executing';handoff['state']='executing'
+            handoff['execution']=dict(owner_handle=owner_handle,evidence_ref=evidence_ref,
+                                      started_at_ms=self.now,
+                                      lease_until_ms=self.now+self.cfg['owner_handoff']['owner_execution_lease_seconds']*1000)
+            rec.setdefault('lifecycle',[]).append(dict(state='executing',at_ms=self.now,
+                                                       owner_handle=owner_handle,evidence_ref=evidence_ref))
+            atomic_json(self.state_path,state);return event_id
+        finally:
+            fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
+
+    def owner_complete(self,event_id,owner_handle,result_ref):
+        if not safe_ref(event_id) or not safe_ref(owner_handle) or not safe_ref(result_ref):
+            raise GateError('public-safe owner terminal evidence required')
+        lock=self._lock()
+        try:
+            state=self._load();rec=state['records'].get(event_id)
+            if not isinstance(rec,dict) or rec.get('status')!='executing':
+                raise GateError('verifiable owner execution is not active')
+            execution=rec.get('handoff',{}).get('execution')
+            if not isinstance(execution,dict) or execution.get('owner_handle')!=owner_handle:
+                raise GateError('owner handle does not own execution')
+            if self.now>=execution.get('lease_until_ms',0):
+                raise GateError('owner execution lease expired')
+            if not self._authoritative_task_terminal(rec):
+                raise GateError('authoritative work is still unfinished; owner completion refused')
+            rec['status']='completed';rec['completion']=dict(worker_handle=owner_handle,
+                                                             evidence_ref=result_ref,at_ms=self.now)
+            rec['handoff']['state']='completed';rec['handoff']['execution']=None
+            rec.setdefault('lifecycle',[]).append(dict(state='completed',at_ms=self.now,
+                                                       evidence_ref=result_ref,owner_handle=owner_handle))
+            atomic_json(self.state_path,state);return event_id
         finally:
             fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
 
@@ -506,7 +727,7 @@ class Gate:
             rec=next((r for r in state['records'].values() if r['status']=='claimed' and r.get('claim',{}).get('token')==token),None)
             if rec is None:raise GateError('claim not active')
             if rec['attempts']>=self.cfg['max_attempts']:
-                rec['status']='blocked';rec['blocked']={'reason':kind+'_retry_budget_exhausted','at_ms':self.now}
+                rec['status']='blocked';rec['blocked']={'reason':kind+'_retry_budget_exhausted','block_class':'worker_retry_exhausted','at_ms':self.now}
                 rec.setdefault('lifecycle',[]).append(dict(state='blocked',at_ms=self.now,
                                                            reason=kind+'_retry_budget_exhausted'))
             else:
@@ -520,12 +741,19 @@ class Gate:
             fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
 
     def pending(self):
-        state=self._load()
-        rows=[]
-        for r in sorted(state['records'].values(),key=lambda x:x['event_id']):
-            if r['status'] in ('queued','claimed','blocked'):
-                rows.append({k:r.get(k) for k in ('event_id','kind','transition','status','attempts','evidence_ref','permitted_next_action','claim','blocked')})
-        return rows
+        lock=self._lock()
+        try:
+            state=self._load();before=canonical(state)
+            self._recover_handoff_delivery(state);self._recover_owner_execution(state)
+            if canonical(state)!=before:atomic_json(self.state_path,state)
+            rows=[]
+            for r in sorted(state['records'].values(),key=lambda x:x['event_id']):
+                if r['status'] in ('queued','claimed','awaiting_owner','owner_received','executing','blocked'):
+                    rows.append({k:r.get(k) for k in ('event_id','kind','transition','status','attempts','evidence_ref',
+                                                      'permitted_next_action','claim','blocked','handoff')})
+            return rows
+        finally:
+            fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
 
 def scheduler_control(config_path,*,now_ms=None,process_count=None):
     gate=Gate(load_config(config_path),now_ms=now_ms,process_count=process_count)
@@ -543,7 +771,10 @@ def main(argv=None):
     sub.add_parser('scheduler')
     sub.add_parser('pending')
     adopt=sub.add_parser('adopt');adopt.add_argument('--claim-token',required=True);adopt.add_argument('--worker-handle',required=True)
-    finish=sub.add_parser('finish');finish.add_argument('--claim-token',required=True);finish.add_argument('--worker-handle',required=True);finish.add_argument('--evidence-ref',required=True);finish.add_argument('--outcome',choices=('completed','blocked'),required=True);finish.add_argument('--reason')
+    finish=sub.add_parser('finish');finish.add_argument('--claim-token',required=True);finish.add_argument('--worker-handle',required=True);finish.add_argument('--evidence-ref',required=True);finish.add_argument('--outcome',choices=('completed','blocked'),required=True);finish.add_argument('--reason');finish.add_argument('--block-class',choices=('external_prerequisite','policy_capability'),default='external_prerequisite')
+    receive=sub.add_parser('owner-receive');receive.add_argument('--event-id',required=True);receive.add_argument('--receipt-ref',required=True)
+    start_owner=sub.add_parser('owner-start');start_owner.add_argument('--event-id',required=True);start_owner.add_argument('--owner-handle',required=True);start_owner.add_argument('--evidence-ref',required=True)
+    complete_owner=sub.add_parser('owner-complete');complete_owner.add_argument('--event-id',required=True);complete_owner.add_argument('--owner-handle',required=True);complete_owner.add_argument('--result-ref',required=True)
     rel=sub.add_parser('release-failure');rel.add_argument('--claim-token',required=True);rel.add_argument('--kind',choices=('provider','notification','worker_interrupted'),required=True)
     a=p.parse_args(argv)
     if (a.now_ms is not None or a.process_count is not None) and not a.engineering_fixture:
@@ -556,7 +787,14 @@ def main(argv=None):
     if a.command=='adopt':
         print(gate.worker_adopt(a.claim_token,a.worker_handle));return 0
     if a.command=='finish':
-        print(gate.worker_finish(a.claim_token,outcome=a.outcome,worker_handle=a.worker_handle,evidence_ref=a.evidence_ref,reason=a.reason));return 0
+        print(gate.worker_finish(a.claim_token,outcome=a.outcome,worker_handle=a.worker_handle,
+                                 evidence_ref=a.evidence_ref,reason=a.reason,block_class=a.block_class));return 0
+    if a.command=='owner-receive':
+        print(gate.owner_receive(a.event_id,a.receipt_ref));return 0
+    if a.command=='owner-start':
+        print(gate.owner_start(a.event_id,a.owner_handle,a.evidence_ref));return 0
+    if a.command=='owner-complete':
+        print(gate.owner_complete(a.event_id,a.owner_handle,a.result_ref));return 0
     print(gate.release_failure(a.claim_token,a.kind));return 0
 
 if __name__=='__main__':
