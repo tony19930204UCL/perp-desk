@@ -10,7 +10,11 @@
   "snapshot_stale_seconds": 180,
   "active_work_overdue_seconds": 600,
   "lease_seconds": 300,
-  "retry_backoff_seconds": [300, 900, 1800],
+  "retry_backoff_seconds": [
+    300,
+    900,
+    1800
+  ],
   "max_attempts": 4,
   "max_records": 512,
   "runtime_identity": {
@@ -19,5 +23,17 @@
     "status_path": "/ABSOLUTE/PATH/TO/READONLY/paper_status.json",
     "script": "paper_runtime_v3.py"
   },
-  "timer_sources": []
+  "timer_sources": [],
+  "owner_handoff": {
+    "enabled": false,
+    "target": "OWNER_CONFIGURED_TARGET",
+    "delivery_lease_seconds": 120,
+    "owner_execution_lease_seconds": 1800,
+    "retry_backoff_seconds": [
+      300,
+      900,
+      1800
+    ],
+    "max_attempts": 4
+  }
 }
