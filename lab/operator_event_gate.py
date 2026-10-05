@@ -115,7 +115,10 @@ class Gate:
 
     def _load(self):
         if not self.state_path.exists(): return self._initial()
-        state=json.loads(self.state_path.read_text())
+        try:
+            state=json.loads(self.state_path.read_text())
+        except (OSError,ValueError,UnicodeError) as exc:
+            raise GateError('gate state corrupt; preserve file and investigate') from exc
         if (not isinstance(state,dict) or state.get('schema_version')!=SCHEMA
                 or not isinstance(state.get('subjects'),dict) or not isinstance(state.get('records'),dict)):
             raise GateError('gate state corrupt; preserve file and investigate')
@@ -345,7 +348,7 @@ class Gate:
                 rec['status']='blocked';rec['blocked']={'reason':'lease_expired_retry_budget_exhausted','at_ms':self.now}
                 rec['claim']=None;changed=True;continue
             delay=backoff[min(max(rec['attempts']-1,0),len(backoff)-1)]*1000
-            rec['status']='queued';rec['not_before_ms']=self.now+delay;rec['claim']=None
+            rec['status']='queued';rec['not_before_ms']=claim['lease_until_ms']+delay;rec['claim']=None
             rec['last_failure']='lease_expired';changed=True
         return changed
 
