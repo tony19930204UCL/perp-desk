@@ -327,21 +327,34 @@ class Gate:
                 self._transition(state,subject,'terminal',actionable=False,kind='work',
                                  evidence_ref='work:'+tid,permitted_next_action='none')
                 for rec in state['records'].values():
-                    if rec['subject']==subject and rec['status'] not in TERMINAL:
-                        rec['status']='completed'
-                        rec['completion']={'worker_handle':'external-work-status','evidence_ref':'work:'+tid,'at_ms':self.now}
-                        rec.setdefault('lifecycle',[]).append(dict(state='completed',at_ms=self.now,
-                                                                 evidence_ref='work:'+tid))
+                    if rec['subject']!=subject or rec['status'] in TERMINAL:continue
+                    if rec['status'] in ('awaiting_owner','owner_received','executing'):
+                        # Issue #26: authoritative task terminality makes an owner
+                        # result eligible, but does not replace owner execution/result evidence.
+                        if not rec.get('authoritative_terminal_seen_at_ms'):
+                            rec['authoritative_terminal_seen_at_ms']=self.now
+                            rec.setdefault('lifecycle',[]).append(dict(
+                                state='authoritative_work_terminal',at_ms=self.now,
+                                evidence_ref='work:'+tid))
+                        continue
+                    rec['status']='completed'
+                    rec['completion']={'worker_handle':'external-work-status','evidence_ref':'work:'+tid,'at_ms':self.now}
+                    rec.setdefault('lifecycle',[]).append(dict(state='completed',at_ms=self.now,
+                                                               evidence_ref='work:'+tid))
                 continue
+            owner_handoff_active=any(
+                rec.get('subject')==subject and rec.get('status') in ('awaiting_owner','owner_received','executing')
+                for rec in state['records'].values())
             if status in ('queued','failed'):
-                self._transition(state,subject,'ready',actionable=True,kind='work',
+                self._transition(state,subject,'ready',actionable=not owner_handoff_active,kind='work',
                                  evidence_ref='work:'+tid,permitted_next_action='continue-local-unfinished-work',
                                  details={'task_id':tid,'source_state':status})
             elif status in ('running','testing','verifying'):
                 try: overdue=self.now-epoch_ms(task.get('updated_at'))>self.cfg['active_work_overdue_seconds']*1000
                 except Exception: overdue=True
                 self._transition(state,subject,'overdue' if overdue else 'active',
-                                 actionable=overdue,kind='work',evidence_ref='work:'+tid,
+                                 actionable=(overdue and not owner_handoff_active),kind='work',
+                                 evidence_ref='work:'+tid,
                                  permitted_next_action='verify-worker-handle-and-continue-or-block',
                                  details={'task_id':tid,'source_state':status})
             elif status=='blocked':
@@ -586,7 +599,6 @@ class Gate:
                     due.append(rec)
             due.sort(key=lambda r:(r.get('observed_at_ms',0),r['event_id']))
             if not due:
-                atomic_json(self.state_path,state) if self.state_path.exists() else None
                 return None
             rec=due[0];handoff=rec['handoff'];handoff['attempts']+=1
             token=secrets.token_hex(16)
