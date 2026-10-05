@@ -130,6 +130,17 @@ class OwnerHandoffTests(unittest.TestCase):
         self.assertIsNone(rec['handoff']['execution'])
         self.assertIn('owner_execution_interrupted',[x['state'] for x in rec['lifecycle']])
 
+    def test_owner_handoff_suppresses_duplicate_cron_worker_when_source_goes_overdue(self):
+        event_id=self._policy_block();self._deliver(event_id)
+        g=Gate(load_config(self.f.config),now_ms=self.f.now+1_000,process_count=1)
+        g.owner_receive(event_id,'owner-receipt:fixture')
+        work=json.loads(self.f.work.read_text());work['tasks'][0]['state']='running'
+        work['tasks'][0]['updated_at']=iso(self.f.now-700_000);self.f.work.write_text(json.dumps(work))
+        self.f.refresh_observation_sources(self.f.now+2_000)
+        out=scheduler_control(self.f.config,now_ms=self.f.now+2_000,process_count=1)
+        self.assertEqual(out,FALSE_BYTES,'owner handoff must suppress duplicate overdue cron worker')
+        rec=self._record(event_id);self.assertEqual(rec['status'],'owner_received')
+
     def test_owner_terminal_result_requires_authoritative_work_completion(self):
         event_id=self._policy_block();self._deliver(event_id)
         g=Gate(load_config(self.f.config),now_ms=self.f.now+1_000,process_count=1)
@@ -139,6 +150,10 @@ class OwnerHandoffTests(unittest.TestCase):
             g.owner_complete(event_id,'owner:interactive','evidence:analysis-result')
         work=json.loads(self.f.work.read_text());work['tasks'][0]['state']='completed'
         work['tasks'][0]['updated_at']=iso(self.f.now+2_000);self.f.work.write_text(json.dumps(work))
+        self.f.refresh_observation_sources(self.f.now+2_000)
+        self.assertEqual(scheduler_control(self.f.config,now_ms=self.f.now+2_000,process_count=1),FALSE_BYTES)
+        self.assertEqual(self._record(event_id)['status'],'executing',
+                         'authoritative terminal source must not auto-complete owner handoff')
         g=Gate(load_config(self.f.config),now_ms=self.f.now+2_000,process_count=1)
         with self.assertRaises(GateError):
             g.owner_complete(event_id,'owner:wrong','evidence:analysis-result')
