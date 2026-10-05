@@ -240,6 +240,7 @@ class OperatorEventGateTests(unittest.TestCase):
         with self.assertRaises(GateError):g.worker_finish(token,outcome='completed',worker_handle='worker:x',evidence_ref='/private/path')
         g.worker_adopt(token,'worker:x')
         with self.assertRaises(GateError):g.worker_finish(token,outcome='completed',worker_handle='worker:y',evidence_ref='evidence:x')
+        work=json.loads(self.f.work.read_text());work['tasks'][0]['state']='completed';self.f.work.write_text(json.dumps(work))
         g.worker_finish(token,outcome='completed',worker_handle='worker:x',evidence_ref='evidence:x')
         state=json.loads((self.f.ns/'gate_state.json').read_text())
         self.assertEqual(state['records'][p['context']['event_id']]['status'],'completed')
