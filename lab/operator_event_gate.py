@@ -64,16 +64,34 @@ def load_config(path):
     required=('namespace_dir','health_path','snapshot_path','work_path')
     if any(not isinstance(raw.get(k),str) or not raw[k] for k in required):
         raise GateError('missing gate path config')
-    paths={k:Path(raw[k]) for k in required}
-    if not all(p.is_absolute() for p in paths.values()):
+    paths={k:Path(raw[k]).resolve() for k in required}
+    if not all(Path(raw[k]).is_absolute() for k in required):
         raise GateError('gate source/namespace paths must be absolute')
+    namespace=paths['namespace_dir']
+    for name in ('health_path','snapshot_path','work_path'):
+        source=paths[name]
+        if source==namespace or namespace in source.parents:
+            raise GateError('isolated namespace must not contain read-only source paths')
     raw['_paths']=paths
     raw.setdefault('hold_path',None)
     if raw['hold_path'] is not None:
         hp=Path(raw['hold_path'])
         if not hp.is_absolute(): raise GateError('hold_path must be absolute')
+        hp=hp.resolve()
+        if hp==namespace or namespace in hp.parents:
+            raise GateError('isolated namespace must not contain read-only hold path')
         raw['_hold_path']=hp
     else: raw['_hold_path']=None
+    runtime=raw.get('runtime_identity')
+    if runtime is not None:
+        if not isinstance(runtime,dict):
+            raise GateError('invalid runtime_identity config')
+        state_dir=runtime.get('state_dir')
+        if not isinstance(state_dir,str) or not state_dir or not Path(state_dir).is_absolute():
+            raise GateError('runtime_identity state_dir must be absolute')
+        state_dir=Path(state_dir).resolve()
+        if namespace==state_dir or state_dir in namespace.parents:
+            raise GateError('isolated namespace must not be inside trading runtime state_dir')
     raw.setdefault('timer_sources',[])
     if not isinstance(raw['timer_sources'],list) or len(raw['timer_sources'])>16:
         raise GateError('timer_sources must be bounded list')
@@ -82,6 +100,9 @@ def load_config(path):
             raise GateError('invalid timer source')
         p=Path(item.get('path',''))
         if not p.is_absolute(): raise GateError('timer source path must be absolute')
+        p=p.resolve()
+        if p==namespace or namespace in p.parents:
+            raise GateError('isolated namespace must not contain read-only timer source')
         item['_path']=p
     raw.setdefault('health_stale_seconds',180)
     raw.setdefault('snapshot_stale_seconds',180)
