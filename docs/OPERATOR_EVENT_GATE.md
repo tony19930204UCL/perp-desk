@@ -76,7 +76,11 @@ The gate writes only:
 - `gate_state.lock` — single-writer lock.
 
 These files live beneath the configured isolated `namespace_dir`, never in a
-trading, ledger, health, or research database.
+trading, ledger, health, or research database. Configuration now fails closed if
+the namespace contains any configured read-only health/snapshot/work/hold/timer
+source, or if the namespace is placed inside the configured trading runtime
+`state_dir`; documentation alone is not relied on to preserve read-only
+separation.
 
 ## Stable event semantics
 
