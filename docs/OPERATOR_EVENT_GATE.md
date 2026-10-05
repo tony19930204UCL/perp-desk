@@ -195,12 +195,23 @@ For a genuine blocker use `--outcome blocked --reason "..."`.
    operator-followthrough job by exact ID**:
    `hermes cron list`.
 6. Prefer editing that exact existing job in place rather than creating a second
-   reasoning job. Set schedule to `every 1m`, attach
-   `paper_operator_event_gate.py` as its pre-run script, and replace its prompt
-   with the worker contract above. Preserve its existing delivery destination
-   and model/provider settings; this PR does not change them. Use
-   `hermes cron edit <job_id> ...` / the equivalent `cronjob_manage update`.
-   Do not hand-edit `jobs.json`.
+   reasoning job. Preserve its existing delivery destination and model/provider
+   settings; this PR does not change them. With the accepted prompt stored in the
+   shell variable `$PROMPT`, the documented Hermes CLI shape is:
+
+   ```sh
+   hermes cron edit "$JOB_ID" --agent \
+     --schedule "every 1m" \
+     --script paper_operator_event_gate.py \
+     --prompt "$PROMPT"
+   ```
+
+   If the installed Hermes build exposes the same fields through
+   `cronjob_manage update`, that is equivalent. Do not hand-edit `jobs.json`
+   or Hermes' internal state database. If the installed CLI rejects any of these
+   documented flags, stop and treat scheduler installation as operator-blocked
+   until `hermes cron edit --help` is reconciled; do not create a duplicate job
+   as a workaround.
 7. Read back `hermes cron list`, manually trigger once with
    `hermes cron run <job_id>`, then inspect `hermes cron runs <job_id>` and
    `hermes cron doctor`. Confirm there is only one operator-followthrough
