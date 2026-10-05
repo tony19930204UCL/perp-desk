@@ -589,7 +589,7 @@ class Gate:
         if not self.cfg['owner_handoff']['enabled']:return None
         lock=self._lock()
         try:
-            state=self._load();self._recover_handoff_delivery(state)
+            state=self._load();before=canonical(state);self._recover_handoff_delivery(state)
             due=[]
             for rec in state['records'].values():
                 handoff=rec.get('handoff')
@@ -599,6 +599,7 @@ class Gate:
                     due.append(rec)
             due.sort(key=lambda r:(r.get('observed_at_ms',0),r['event_id']))
             if not due:
+                if canonical(state)!=before:atomic_json(self.state_path,state)
                 return None
             rec=due[0];handoff=rec['handoff'];handoff['attempts']+=1
             token=secrets.token_hex(16)
