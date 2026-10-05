@@ -496,6 +496,14 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 原job已原位edit every1m/script＋self-contained adopt/read work/evidence/finish契約。當時保持paused，精確讀回單一同名job、model/provider/delivery/skills/workdir等原設定保持。新event-gate-live-handoff queued為真實已安裝scheduler交接驗收，不是造市場fault／合成績效。主task verifying，尚待正式cron event worker/run及quiet skippedtick/正常mirror發布與CI，所以這筆不是complete結案。
 - Work與sourcebackup/cron/readback在cache/scratch/pr25-229a4a4-acceptance/deployment。原交易仍刻意hold，不restart、不改帳戶/風控/storage/source/deadline、無新lab activation。後續排程resume及真實handle/readback另記，不能把本筆當已喚醒worker或CI發布成功。
 
+## PR-025-LIVE-SCHEDULER-DEPLOYMENT-ACCEPTED（2026-10-05）
+
+- 同job39023309f8f2與正常mirror2d2db10436e9已resume並讀回。背景deleg_d102fe32在真實cron run eef2e170bbd748858cd1d4b0d0132e26完成，主operator收到通知後實際讀回worker文件、authority work與gate record，而非只採Resultok/APIcalls0。事件gate-626b06c03f1a7f4445d7由observed/queued/claimed到completed，真實worker_handle cron-worker:eef2e170bbd748858cd1d4b0d0132e26保持，claim=null。初次主readback與finish有時間競態，後續pending與state確認其已正常finish，未代worker捏造成功。
+- 真正builtin scheduled runs56b274a2ddfb421c848825e91b159185與61ab9f7d79a141b0b8a8d086a6fb86d4，cron保存輸出在2026-10-05T12:40:25Z/12:41:27Z明示Script gate returned wakeAgent=false — agent skipped。不是manual wrapper或synthetic fixture，也不從只看到statusok推論零模型。gate classification保持operator_hold，claimed0/queued0/completed2/blocked1，原平行研究prerequisite仍blocked，不把停止引擎當healthy。
+- 正常單向mirror55679486afaa872ba5c24ca53e226cf080e60798的九個remote artifact bytes等於accepted deployment SHA，發布CI37310714855 exacthead completed/success。recursive tree確認local operator_event_gate_config/operator_hold未export。十個protected original account/health/config檔在worker後仍exact hash一致，無restart/帳戶復原/reset、risk/storage/source/deadline或PR21/24 activation。
+- 12:43:49UTC final_acceptance.json保存installed scheduler/claim/quiet skip/publication/protected證據。12:44:29UTC主task event-gated-operator completed/API讀回。PR25 deployment接受comment5994699533 fullbody讀回，Issue22 CLOSED讀回，PR不remote merge/main由local mirror擁有。原staged未部署／未開工與安裝中歷史保留，不改成當時已完成。
+- 這次完成的是#22已安裝gate與scheduler integration，不保證永遠在線或測得整體token/費用省多少，notification post-delivery atomic callback仍未交付，Hermes incident authority與explicit bounded hook限制保留。原003正式closeout仍獨立blocked／未接受，交易停止。已有新readytask/重要事件才wake，不另造重複工程或宣稱未開始的研究在背景跑。Evidence cache/scratch/pr25-229a4a4-acceptance/deployment（final_acceptance/parent_handoff_readback/scheduled_skip_readback/publication_readback/publication_ci/closure_readback）。
+
 
 
 
