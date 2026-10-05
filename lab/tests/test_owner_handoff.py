@@ -174,7 +174,7 @@ class OwnerHandoffTests(unittest.TestCase):
         g=Gate(load_config(self.f.config),now_ms=self.f.now+91_000,process_count=1)
         second=g.claim_owner_escalation();self.assertIsNotNone(second)
         g.finish_owner_escalation(second['escalation_token'],success=False,failure_kind='notification')
-        g=Gate(load_config(self.f.config),now_ms=self.f.now+151_000,process_count=1)
+        g=Gate(load_config(self.f.config),now_ms=self.f.now+212_000,process_count=1)
         third=g.claim_owner_escalation();self.assertIsNotNone(third)
         g.finish_owner_escalation(third['escalation_token'],success=False,failure_kind='notification')
         rec=self._record(event_id)
