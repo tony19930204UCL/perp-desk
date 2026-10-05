@@ -30,6 +30,7 @@ References:
 - https://hermes-agent.nousresearch.com/docs/user-guide/features/cron
 - https://hermes-agent.nousresearch.com/docs/guides/cron-script-only
 - https://hermes-agent.nousresearch.com/docs/reference/cli-commands
+- https://hermes-agent.nousresearch.com/docs/plugins/hermes-cron
 
 No live Hermes cron table was changed by this PR.
 
