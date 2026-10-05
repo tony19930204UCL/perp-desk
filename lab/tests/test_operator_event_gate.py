@@ -93,6 +93,16 @@ class OperatorEventGateTests(unittest.TestCase):
         gate.worker_finish(token,outcome=outcome,worker_handle=handle,evidence_ref='evidence:test-1',
                            reason='synthetic blocker' if outcome=='blocked' else None)
 
+    def test_config_rejects_namespace_overlap_with_readonly_or_trading_state(self):
+        cfg=json.loads(self.f.config.read_text())
+        cfg['namespace_dir']=str(self.f.base.resolve())
+        self.f.config.write_text(json.dumps(cfg))
+        with self.assertRaisesRegex(GateError,'must not contain read-only'):
+            load_config(self.f.config)
+        self.f.write_config(namespace_dir=str((self.f.base/'trading-state'/'event-gate').resolve()))
+        with self.assertRaisesRegex(GateError,'must not be inside trading runtime state_dir'):
+            load_config(self.f.config)
+
     def test_normal_ticks_are_byte_stable_and_zero_model_calls(self):
         model_calls=0
         first=self.tick()
