@@ -16,6 +16,7 @@ CASES=[
     'test_delivery_is_not_owner_receipt_execution_or_completion',
     'test_owner_receipt_without_execution_remains_non_active',
     'test_executing_requires_owner_handle_and_evidence_and_interruption_reverts',
+    'test_owner_handoff_suppresses_duplicate_cron_worker_when_source_goes_overdue',
     'test_owner_terminal_result_requires_authoritative_work_completion',
     'test_delivery_claim_interruption_and_failure_retry_are_bounded',
     'test_subprocess_escalation_adapter_is_public_safe_and_not_completion',
