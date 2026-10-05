@@ -285,6 +285,7 @@ class OperatorEventGateTests(unittest.TestCase):
         recovered=self.parse(self.tick(self.f.now+180_000));self.assertTrue(recovered['wakeAgent'])
         self.assertEqual(recovered['context']['transition'],'normal')
         self.finish(recovered,self.f.now+180_000)
+        self.f.refresh_observation_sources(self.f.now+240_000)
         self.assertEqual(self.tick(self.f.now+240_000),FALSE_BYTES)
 
     def test_deadline_checkpoint_derive_only_from_configured_active_authority(self):
