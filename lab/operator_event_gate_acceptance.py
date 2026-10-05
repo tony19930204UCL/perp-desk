@@ -11,6 +11,7 @@ sys.path.insert(0,str(LAB/'tests'))
 import test_operator_event_gate as t
 
 CASES=[
+    'test_config_rejects_namespace_overlap_with_readonly_or_trading_state',
     'test_normal_ticks_are_byte_stable_and_zero_model_calls',
     'test_operator_confirmed_storage_hold_is_not_normal_and_never_autorestart_wake',
     'test_ready_backlog_survives_claim_interruption_lease_and_backoff',
