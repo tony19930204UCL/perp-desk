@@ -350,6 +350,8 @@ class Gate:
         return changed
 
     def _claim_next(self,state):
+        if any(r['status']=='claimed' for r in state['records'].values()):
+            return None
         due=[r for r in state['records'].values() if r['status']=='queued' and r.get('not_before_ms',0)<=self.now]
         due.sort(key=lambda r:(r['generation'],r['event_id']))
         if not due:return None
