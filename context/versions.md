@@ -512,6 +512,15 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 固定窗口仍2026-10-02T16:40:45.744Z至2026-10-04T16:40:45.744Z。來源全窗口及時有效coverage未知，48個heartbeat gaps、4632個poll errors保留；routing audit缺實際routing timestamp，無法用bar close取代。本次正式結算接受，研究判決NOT_PROVEN，不宣稱策略盈利能力／連續性驗證成功。原broker歷史version_id002不改名，以filled signal registry及正式窗口識別003。
 - 13:58:52UTC authority task completed且工作API讀回。證據cache/scratch/h1-paper-003-closeout/formal-closeout-20261005.json及canonical-closeout-economics.json/canonical-closeout-audit.json。初次signal_time_ms欄位不存在造成分析KeyError，後用實際features.bar_close_ms修正並完成，不將失敗當成功。跨DB讀取非atomic restore backup。未寫交易DB／帳戶／原runtime、未解除storage hold、未PR21/24部署或新研究activation。本次人工主session接手成功不代表自動owner handoff已修好。
 
+## PR-027-STAGED-ACCEPTED／SOURCE-INSTALLED／LIVE-HANDOFF-VERIFICATION-IN-PROGRESS（2026-10-05）
+
+- fresh PR27 OPEN/MERGEABLE、精確head a3a21295ba4ea209339abf05de7c3aa4ce493d67。兩個同head CI37329646396/37329616452 completed/success。實際原始log按unittest ID核對38 exporter+295 PAPER=333 unique，9個scheduler與10個owner focused均子集。初次parser漏2個multiline description，補核原named headers後333吻合，沒有修改或重跑engineering tests。Artifact11353707005 ZIP SHA256精確等於15a41d6ccbac3d2be0bf5ca43123ec1cc858f4a12b2bd5ff67bc3bb1cd851190，10case無failures/errors，明示ARTIFICIAL/zero-model/notautomaticresume。
+- 直接GET官方security/pipe-script-output/cli全文核實cron approval與零LLM hermes send；web_extract backend不支援extract的失敗保留。公開文件未提供已拒cron turn到已授權owner session的atomic resume，不宣稱新的one-shot delivery能自動接手。選擇同job的local excluded owner_handoff，120s delivery lease、5/15/30m backoff、4attempts、30m ownerexecutionlease，target從既有origin精確綁定，不新增憑證／平台。
+- pause原operator與normal mirror後，11完整artifacts的既有target全等於base df19651dc9670efd5b6676e7fb06f3b58db3e4d9。原碼/config/cron/gate/work備份，15:33:41UTC實際套用accepted bytes。10個original trading/health/config檔hash不變、private profile settings hash不變、原gate config其餘欄位不變；owner_handoff先disabled parse/pending成功，再enabled。老external blocked歷史不偽造改成新owner事件。單一39023309f8f2每1m原script，model/provider/delivery/skills/toolsets/workdir/continuity不變，僅worker prompt增加真實policy_capability與external_prerequisite分類。CLI去掉prompt末尾newline引起exactassert首次失敗，rstrip比對確認只有newline normalization，其他欄位全相同，不將此當code bug或改permissions。
+- resume後builtin outputs17:36:55/17:37:57（UTC15:36:55/15:37:57）兩次明示wakeAgent=false/agent skipped。正常mirror a5449a8f04248f91bfbdb547205349b3c014332e的11個Git blob精確符合accepted artifact bytes之Git object hash；local ownerconfig/hold未在remote tree。發布CI37334437351由in_progress再讀回completed/success。staged接受comment5997874381 fullbody讀回，Issue26未關閉，PR27未remote merge。
+- 15:41:07UTC既有builtin cron先抓到主驗收task owner-followthrough-gap逾期，event gate-2cdc3623d04fb58081fa，真實worker3d2f984697454988aa7d42a288280f15已adopt，當時仍claimed。隨後登記的重複live-readback queued task取消（不是fakecompleted），避免同部署兩個analysis。尚待此真實worker結果與必要的實際owner delivery/receive/start/result readback，不能以sourceinstalled、quiettick或hosted synthetic當live owner-handshake完成。
+- evidence cache/scratch/pr27-a3a2129-acceptance及deployment（backup/manifests/private config/job/quiet/publication/owner session實際DB讀回）。原003結算completed/NOT_PROVEN不改、原storagehold/trading/supervisor停止保持、無PR21/24 activation。本筆不是整個Issue26 live acceptance已結案，也未承諾新的自動owner resume能力。
+
 
 
 
