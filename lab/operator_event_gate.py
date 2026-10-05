@@ -496,7 +496,11 @@ class Gate:
             if self.now>=rec['claim']['lease_until_ms']:raise GateError('claim lease expired')
             current=rec['claim'].get('worker_handle')
             if current not in (None,handle):raise GateError('claim already owned by different worker')
-            rec['claim']['worker_handle']=handle;atomic_json(self.state_path,state)
+            if current is None:
+                rec['claim']['worker_handle']=handle
+                rec.setdefault('lifecycle',[]).append(dict(state='worker_adopted',at_ms=self.now,
+                                                           worker_handle=handle))
+                atomic_json(self.state_path,state)
             return rec['event_id']
         finally:
             fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
@@ -737,13 +741,19 @@ class Gate:
             fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
 
     def pending(self):
-        state=self._load()
-        rows=[]
-        for r in sorted(state['records'].values(),key=lambda x:x['event_id']):
-            if r['status'] in ('queued','claimed','awaiting_owner','owner_received','executing','blocked'):
-                rows.append({k:r.get(k) for k in ('event_id','kind','transition','status','attempts','evidence_ref',
-                                                  'permitted_next_action','claim','blocked','handoff')})
-        return rows
+        lock=self._lock()
+        try:
+            state=self._load();before=canonical(state)
+            self._recover_handoff_delivery(state);self._recover_owner_execution(state)
+            if canonical(state)!=before:atomic_json(self.state_path,state)
+            rows=[]
+            for r in sorted(state['records'].values(),key=lambda x:x['event_id']):
+                if r['status'] in ('queued','claimed','awaiting_owner','owner_received','executing','blocked'):
+                    rows.append({k:r.get(k) for k in ('event_id','kind','transition','status','attempts','evidence_ref',
+                                                      'permitted_next_action','claim','blocked','handoff')})
+            return rows
+        finally:
+            fcntl.flock(lock,fcntl.LOCK_UN);lock.close()
 
 def scheduler_control(config_path,*,now_ms=None,process_count=None):
     gate=Gate(load_config(config_path),now_ms=now_ms,process_count=process_count)
