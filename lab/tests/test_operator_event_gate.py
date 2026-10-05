@@ -84,17 +84,20 @@ class OperatorEventGateTests(unittest.TestCase):
                            reason='synthetic blocker' if outcome=='blocked' else None)
 
     def test_normal_ticks_are_byte_stable_and_zero_model_calls(self):
-        calls=0
+        model_calls=0
         first=self.tick()
         self.assertEqual(first,FALSE_BYTES)
         state1=(self.f.ns/'gate_state.json').read_bytes();status1=(self.f.ns/'gate_status.json').read_bytes()
-        later=self.f.now+60_000
-        self.f.write_normal(now=later)
-        second=self.tick(later)
-        if self.parse(second).get('wakeAgent'):calls+=1
-        self.assertEqual(second,FALSE_BYTES);self.assertEqual(calls,0)
-        self.assertEqual((self.f.ns/'gate_state.json').read_bytes(),state1)
-        self.assertEqual((self.f.ns/'gate_status.json').read_bytes(),status1)
+        for n in range(1,6):
+            later=self.f.now+n*60_000
+            self.f.write_normal(now=later)
+            output=self.tick(later)
+            if self.parse(output).get('wakeAgent'):
+                model_calls+=1
+            self.assertEqual(output,FALSE_BYTES)
+            self.assertEqual((self.f.ns/'gate_state.json').read_bytes(),state1)
+            self.assertEqual((self.f.ns/'gate_status.json').read_bytes(),status1)
+        self.assertEqual(model_calls,0,'unchanged 60s ticks must invoke zero models')
 
     def test_fault_once_completion_no_repeat_then_recovery_once(self):
         fault=self.parse(self.tick(process=0));self.assertTrue(fault['wakeAgent'])
