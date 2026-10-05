@@ -195,6 +195,11 @@ class OperatorEventGateTests(unittest.TestCase):
         ]}))
         first=self.parse(self.tick());self.assertTrue(first['wakeAgent'])
         self.assertEqual(self.tick(self.f.now+1_000),FALSE_BYTES,'second ready event must wait while one claim is active')
+        work=json.loads(self.f.work.read_text())
+        for task in work['tasks']:
+            if task['id']==first['context']['evidence_ref'].split(':',1)[1]:
+                task['state']='completed'
+        self.f.work.write_text(json.dumps(work))
         self.finish(first,self.f.now+2_000)
         second=self.parse(self.tick(self.f.now+3_000));self.assertTrue(second['wakeAgent'])
         self.assertNotEqual(second['context']['event_id'],first['context']['event_id'])
@@ -238,6 +243,48 @@ class OperatorEventGateTests(unittest.TestCase):
         g.worker_finish(token,outcome='completed',worker_handle='worker:x',evidence_ref='evidence:x')
         state=json.loads((self.f.ns/'gate_state.json').read_text())
         self.assertEqual(state['records'][p['context']['event_id']]['status'],'completed')
+
+    def test_work_completion_requires_authoritative_terminal_evidence_and_records_lifecycle(self):
+        self.f.work.write_text(json.dumps({'schema_version':1,'tasks':[{
+            'id':'durable-work','state':'queued','updated_at':iso(self.f.now),'started_at':iso(self.f.now),
+            'title':'synthetic','current_step':'queued','next_step':'execute','evidence':[]
+        }]}))
+        p=self.parse(self.tick());token=p['context']['claim_token'];handle='worker:lifecycle'
+        g=Gate(load_config(self.f.config),now_ms=self.f.now,process_count=1)
+        g.worker_adopt(token,handle)
+        with self.assertRaisesRegex(GateError,'still unfinished'):
+            g.worker_finish(token,outcome='completed',worker_handle=handle,evidence_ref='evidence:durable-work')
+        state=json.loads((self.f.ns/'gate_state.json').read_text())
+        rec=state['records'][p['context']['event_id']]
+        self.assertEqual(rec['status'],'claimed')
+        self.assertEqual([x['state'] for x in rec['lifecycle'][:3]],['observed','queued','claimed'])
+        work=json.loads(self.f.work.read_text());work['tasks'][0]['state']='completed'
+        self.f.work.write_text(json.dumps(work))
+        g.worker_finish(token,outcome='completed',worker_handle=handle,evidence_ref='evidence:durable-work')
+        rec=json.loads((self.f.ns/'gate_state.json').read_text())['records'][p['context']['event_id']]
+        self.assertEqual(rec['status'],'completed')
+        self.assertEqual(rec['lifecycle'][-1]['state'],'completed')
+        self.assertEqual(self.tick(self.f.now+60_000),FALSE_BYTES)
+
+    def test_configured_timer_source_missing_or_corrupt_faults_once_then_recovers_once(self):
+        missing=self.f.base/'missing-timer.json'
+        cfg=json.loads(self.f.config.read_text())
+        cfg['timer_sources']=[{'id':'authoritative-window','kind':'registration','path':str(missing.resolve())}]
+        self.f.config.write_text(json.dumps(cfg))
+        first=self.parse(self.tick());self.assertTrue(first['wakeAgent'])
+        self.assertEqual(first['context']['kind'],'timer')
+        self.assertEqual(first['context']['transition'],'fault')
+        self.finish(first)
+        self.assertEqual(self.tick(self.f.now+60_000),FALSE_BYTES)
+        missing.write_text('{broken')
+        self.assertEqual(self.tick(self.f.now+120_000),FALSE_BYTES,'same corrupt-source state must dedupe')
+        missing.write_text(json.dumps({'schema_version':1,'active':True,'operator_accepted':True,
+            'registration_id':'accepted-window','start_ms':self.f.now,
+            'checkpoint_ms':self.f.now+600_000,'deadline_ms':self.f.now+1_200_000}))
+        recovered=self.parse(self.tick(self.f.now+180_000));self.assertTrue(recovered['wakeAgent'])
+        self.assertEqual(recovered['context']['transition'],'normal')
+        self.finish(recovered,self.f.now+180_000)
+        self.assertEqual(self.tick(self.f.now+240_000),FALSE_BYTES)
 
     def test_deadline_checkpoint_derive_only_from_configured_active_authority(self):
         # Unconfigured staged files cannot start timers.
