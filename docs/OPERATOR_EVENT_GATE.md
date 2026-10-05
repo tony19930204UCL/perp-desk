@@ -152,7 +152,7 @@ registration.
 
 An actionable transition becomes a durable record with timestamped lifecycle
 evidence:
-`observed -> queued -> claimed -> completed|blocked`.
+`observed -> queued -> claimed -> completed|blocked`. Issue #26 extends a policy/capability block into `awaiting_owner -> owner_received -> executing -> completed`; see `docs/OWNER_RESUMPTION_HANDOFF.md`.
 
 A pre-check wake claims one event for a bounded lease. A second scheduler tick
 cannot duplicate-claim the same active lease. The worker must explicitly adopt
@@ -201,8 +201,12 @@ contract:
 > deciding anything. Never infer completion from the wake itself. Do not restart
 > trading or relax storage/risk/source gates. When work is genuinely complete,
 > finish the claim with a durable relative evidence reference. When manual access,
-> permission, unavailable input, or another unsafe blocker remains, finish as
-> blocked with the reason. Routine progress is local only; only material
+> permission, unavailable input, or another unsafe blocker remains, classify it.
+> An unattended approval/capability denial must use
+> `--outcome blocked --block-class policy_capability` so it remains
+> `awaiting_owner`; a genuine external prerequisite uses
+> `--block-class external_prerequisite`. Never retry a denied operation through
+> another interpreter or loosen approvals. Routine progress is local only; only material
 > unresolved faults or genuine human action should appear in the final response.
 
 Example terminal commands:
@@ -216,7 +220,8 @@ python lab/operator_event_gate.py --config lab/shared/operator_event_gate_config
   --outcome completed --evidence-ref "evidence:operator-work:<id>"
 ```
 
-For a genuine blocker use `--outcome blocked --reason "..."`.
+For an external prerequisite use `--outcome blocked --block-class external_prerequisite --reason "..."`.
+For an unattended approval/capability denial use `--outcome blocked --block-class policy_capability --reason "approval_denied_unattended"` and follow `docs/OWNER_RESUMPTION_HANDOFF.md`.
 
 ## Exact staged install / replacement
 
