@@ -521,6 +521,15 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 15:41:07UTC既有builtin cron先抓到主驗收task owner-followthrough-gap逾期，event gate-2cdc3623d04fb58081fa，真實worker3d2f984697454988aa7d42a288280f15已adopt，當時仍claimed。隨後登記的重複live-readback queued task取消（不是fakecompleted），避免同部署兩個analysis。尚待此真實worker結果與必要的實際owner delivery/receive/start/result readback，不能以sourceinstalled、quiettick或hosted synthetic當live owner-handshake完成。
 - evidence cache/scratch/pr27-a3a2129-acceptance及deployment（backup/manifests/private config/job/quiet/publication/owner session實際DB讀回）。原003結算completed/NOT_PROVEN不改、原storagehold/trading/supervisor停止保持、無PR21/24 activation。本筆不是整個Issue26 live acceptance已結案，也未承諾新的自動owner resume能力。
 
+## PR-027-OPERATOR-ACCEPTED-WITH-RECORDED-ORCHESTRATION-ERROR（2026-10-05）
+
+- 真實builtin worker權限拒絕15:44UTC留下policy_capability/awaiting_owner。第一次自動escalation notification失敗，未清除工作；依實際300s backoff，第二次scheduled attempt成功，delivery handle hermes-send:f68ad01a68e9a4d76d467093。主session自行送出的diagnostic message410只作transport診斷，不替代gate delivery。不能宣稱外部exactly-once或第一送失敗的底層成因已查明。
+- 已在真正authorized interactive主session先owner-receive，讀回owner_received且execution=null，再owner-start，讀回executing與真實owner:20261002_184840_6da9d5 handle。不是Telegram送出自動續接；本session正好已在執行，後續仍依賴可用owner。30m execution lease配置保持。
+- 本operator犯錯保留：settings全bytes hash assertion因互動UI核准新增command_allowlist規則而失敗，shell未fail-fast卻繼續將authority/gate過早completed（actual result檔當時不存在）。立即把authority退回verifying，保留原gate completed歷史和operator_validation_failure.json，不改寫時間。其後用set-e重新真正執行獨立source/protected/cash replay驗收，16:03:21UTC實際結果、16:03:22UTC更正authority completed/API讀回。這不是完美atomic terminal chronology，也不以後補結果冒充15:58時已完成。
+- 實際10protected原檔與11source SHA256均吻合，14ledger Decimal40 cash重播精確相符，原3fills/flat/no pending保持。profile settings除command_allowlist外全semantic相同。此次互動使用者核准persist一條script execution via heredoc規則，沒有暗中還原使用者授予的consent，也不宣稱approval設定完全未變；source安裝本身未改approval/model/provider。private interactive_approval_changes.json保存fingerprints，不公開profile config或帳戶。
+- 接受333unique/ZIP、精確source部署、兩builtin skip、normal mirror/sourceblob CI與真實拒絕/有界送達/explicit owner receipt-start及實際更正結果，保留所有限制與本operator失敗。PR deployment comment5998240822 fullbody讀回，Issue26於16:04:46UTC CLOSED/completed讀回；PR27仍OPEN/未merged，head保持a3a21295ba4ea209339abf05de7c3aa4ce493d67。沒有新的待轉交工程。
+- 下一個自主選擇的工作是已staged PR24的新研究部署前提。16:04:47UTC實際GET公開time、ETH depth5及aggTrades1全HTTP200，證據cache/scratch/pr24-deployment-preflight/public-source-preflight.json（不是成交／持續coverage／activation）。原交易/supervisor仍storagehold，PR21/24未source部署或啟動。後續資源/受控部署仍需單獨成果與真實handle。
+
 
 
 
