@@ -205,8 +205,11 @@ class Gate:
             return
         try: stale=self.now-epoch_ms(data.get('checked_at'))>self.cfg['health_stale_seconds']*1000
         except Exception: stale=True
-        self._transition(state,'health-source','stale' if stale else 'normal',
-                         actionable=(hold is None and stale),kind='health',
+        prior=state['subjects'].get('health-source',{}).get('transition')
+        health_transition=('hold-stale' if hold is not None and stale else 'stale' if stale else 'normal')
+        health_actionable=(hold is None and (stale or (health_transition=='normal' and prior in ('fault','stale'))))
+        self._transition(state,'health-source',health_transition,
+                         actionable=health_actionable,kind='health',
                          evidence_ref='health:status',permitted_next_action='inspect-local-health-evidence',
                          details={'reason':'stale'} if stale else {})
         for inc in data.get('incidents',[]) if isinstance(data.get('incidents'),list) else []:
@@ -231,8 +234,11 @@ class Gate:
                 if snap.get('mode')!='paper' or impl not in SUPPORTED_IMPL: fault='unsupported_identity'
                 elif self.now-epoch_ms(snap.get('updated_at'))>self.cfg['snapshot_stale_seconds']*1000: fault='stale'
             except Exception: fault='invalid_timestamp'
-        self._transition(state,'paper-snapshot','fault' if fault else 'normal',
-                         actionable=(hold is None and fault is not None),kind='snapshot',
+        prior=state['subjects'].get('paper-snapshot',{}).get('transition')
+        snapshot_transition=('hold-fault' if hold is not None and fault else 'fault' if fault else 'normal')
+        snapshot_actionable=(hold is None and (fault is not None or (snapshot_transition=='normal' and prior=='fault')))
+        self._transition(state,'paper-snapshot',snapshot_transition,
+                         actionable=snapshot_actionable,kind='snapshot',
                          evidence_ref='paper:snapshot',permitted_next_action='inspect-local-paper-status',
                          details={'reason':fault} if fault else {})
 
@@ -246,8 +252,9 @@ class Gate:
         elif count==1: transition='normal'
         elif count==0: transition='absent'
         else: transition='duplicate'
+        prior=state['subjects'].get('runtime-process',{}).get('transition')
         self._transition(state,'runtime-process',transition,
-                         actionable=transition!='normal',kind='runtime',
+                         actionable=(transition!='normal' or prior in ('absent','duplicate','unverified')),kind='runtime',
                          evidence_ref='runtime:identity',permitted_next_action='inspect-runtime-ownership-no-auto-restart',
                          details={'classification':transition})
 
