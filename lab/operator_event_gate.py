@@ -135,6 +135,9 @@ class Gate:
         return 'gate-'+hashlib.sha256(raw).hexdigest()[:20]
 
     def _transition(self,state,subject,transition,*,actionable,kind,evidence_ref,permitted_next_action,details=None):
+        if subject not in state['subjects'] and len(state['subjects'])>=self.cfg['max_records']*2:
+            state['capacity_blocked']=True
+            return None
         prior=state['subjects'].get(subject)
         if prior and prior.get('transition')==transition:
             return None
