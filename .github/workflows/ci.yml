@@ -20,6 +20,17 @@ jobs:
       - name: PAPER isolated suite
         working-directory: lab
         run: python3 -m unittest discover -s tests -v
+      - name: Issue 22 isolated scheduler-adapter acceptance
+        run: |
+          mkdir -p artifacts/issue-22-event-gate
+          python3 lab/operator_event_gate_acceptance.py > artifacts/issue-22-event-gate/acceptance.json
+      - name: Upload Issue 22 synthetic event-gate evidence
+        if: ${{ always() && hashFiles('artifacts/issue-22-event-gate/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-22-event-gate-evidence
+          path: artifacts/issue-22-event-gate
+          if-no-files-found: error
       - name: Issue 3 real browser acceptance
         run: python3 lab/browser_issue3_acceptance.py --output artifacts/issue-3-browser
       - name: Upload Issue 3 synthetic browser evidence
