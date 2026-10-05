@@ -504,6 +504,14 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 12:43:49UTC final_acceptance.json保存installed scheduler/claim/quiet skip/publication/protected證據。12:44:29UTC主task event-gated-operator completed/API讀回。PR25 deployment接受comment5994699533 fullbody讀回，Issue22 CLOSED讀回，PR不remote merge/main由local mirror擁有。原staged未部署／未開工與安裝中歷史保留，不改成當時已完成。
 - 這次完成的是#22已安裝gate與scheduler integration，不保證永遠在線或測得整體token/費用省多少，notification post-delivery atomic callback仍未交付，Hermes incident authority與explicit bounded hook限制保留。原003正式closeout仍獨立blocked／未接受，交易停止。已有新readytask/重要事件才wake，不另造重複工程或宣稱未開始的研究在背景跑。Evidence cache/scratch/pr25-229a4a4-acceptance/deployment（final_acceptance/parent_handoff_readback/scheduled_skip_readback/publication_readback/publication_ci/closure_readback）。
 
+## H1-PAPER-003-FORMAL-CLOSEOUT／OWNER-FOLLOWTHROUGH-GAP（2026-10-05）
+
+- 使用者指出「現在就做」之後仍未完成，分鐘級gate是否真能接手。fresh gate讀回：13:30:38UTC實際抓到overdue工作並派builtin worker b505f930d8274e4cb1801264bef09f2c；13:33:47UTC該worker因unattended execute_code approval限制而blocked，沒有繞過權限。這不是每小時才巡查，而是已偵測但owner接手未閉環。此前把gate有跑說成可靠自動續作不成立，此缺口仍未修復。
+- 主session本回合實際執行Decimal40/ROUND_HALF_EVEN逐fill VWAP與平倉，realized精確等於原ledger:6的0.856399999999999999999999999999999999986。14筆ledger逐筆cash重播精確等於100.6914785400000000000000000000000000000，費用0.164921460，funding零，平倉無pending。cash-PNL0.69147854；直接component淨額末位與cash差異保留原Decimal運算順序，不修改帳務或用epsilon假裝精確相等。
+- 唯讀全掃193036筆audit，連續id、所有payload SHA256與previous hash鏈通過，掃描上下界未變。177個routing全join正式registry（003為168、002為9），無未知registry或duplicate routing。003只有1個submitted signal與1個完成position episode，3個fills不等於3筆獨立交易。138個003 signal的bar close在原窗口內，不偷換成138個實際及時routing。
+- 固定窗口仍2026-10-02T16:40:45.744Z至2026-10-04T16:40:45.744Z。來源全窗口及時有效coverage未知，48個heartbeat gaps、4632個poll errors保留；routing audit缺實際routing timestamp，無法用bar close取代。本次正式結算接受，研究判決NOT_PROVEN，不宣稱策略盈利能力／連續性驗證成功。原broker歷史version_id002不改名，以filled signal registry及正式窗口識別003。
+- 13:58:52UTC authority task completed且工作API讀回。證據cache/scratch/h1-paper-003-closeout/formal-closeout-20261005.json及canonical-closeout-economics.json/canonical-closeout-audit.json。初次signal_time_ms欄位不存在造成分析KeyError，後用實際features.bar_close_ms修正並完成，不將失敗當成功。跨DB讀取非atomic restore backup。未寫交易DB／帳戶／原runtime、未解除storage hold、未PR21/24部署或新研究activation。本次人工主session接手成功不代表自動owner handoff已修好。
+
 
 
 
