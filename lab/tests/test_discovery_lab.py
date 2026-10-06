@@ -585,7 +585,8 @@ class RunnerSubprocessTests(unittest.TestCase):
             self.assertEqual(result.returncode,0,result.stderr);restarted=json.loads(result.stdout)
             self.assertEqual(restarted['start_ms'],activation);self.assertEqual(restarted['deadline_ms'],deadline)
             self.assertTrue(restarted['operator_stop_requested'])
-            self.assertEqual(restarted['runner']['polls'],2)
+            self.assertEqual(restarted['runner']['polls'],1)
+            self.assertTrue(restarted['runner']['stop_requested'])
             self.assertTrue(all(x['positions']==0 for x in restarted['arms'].values()))
             self.assertNotIn(str(Path(td)),json.dumps(restarted))
             checkpoint_ms=activation+28_800_000
@@ -595,6 +596,102 @@ class RunnerSubprocessTests(unittest.TestCase):
             final=call(deadline,'report')
             self.assertEqual(final['deadline_ms'],deadline)
             self.assertTrue((root/'reports/final-48h.json').is_file())
+
+
+    def test_bounded_future_source_quarantine_preserves_raw_receipt(self):
+        import sys
+        sys.path.insert(0,str(LAB))
+        import discovery_runner as dr
+        from discovery_feed import SharedFeed
+        with tempfile.TemporaryDirectory() as td:
+            now=[1_000_000]
+            runner=dr.DiscoveryRunner(Path(td)/'runner',client=object(),clock_ms=lambda:now[0])
+            original_sleep=dr.time.sleep
+            def advance(seconds):
+                now[0]+=max(1,int(seconds*1000))
+            dr.time.sleep=advance
+            try:
+                dispatch=runner._causal_dispatch_ms(1_000_232,1_000_000,'book')
+            finally:
+                dr.time.sleep=original_sleep
+            self.assertGreaterEqual(dispatch,1_000_232)
+            feed=SharedFeed(Path(td)/'feed.sqlite3',forward_start_ms=999_000,max_source_age_ms=15000)
+            result=feed.ingest('book',dict(source_ts=1_000_232,receipt_ts=1_000_000,
+                              bids=[['100','1']],asks=[['100.1','1']]),received_ms=dispatch)
+            self.assertEqual(result['event']['source_ts'],1_000_232)
+            self.assertEqual(result['event']['receipt_ts'],1_000_000)
+            self.assertEqual(result['event']['ts'],dispatch)
+            with self.assertRaisesRegex(ValueError,'too far in future'):
+                runner._causal_dispatch_ms(1_006_000,1_000_000,'book')
+
+    def test_real_subprocess_stop_is_sticky_across_slow_success_and_restart(self):
+        import subprocess,sys,time as walltime
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'runner';fixture=Path(td)/'transport.json';activation=self._fixture(fixture)
+            base=[sys.executable,str(LAB/'discovery_runner.py'),'--root',str(root),
+                  '--engineering-fixture','--transport-fixture',str(fixture)]
+            def call(now,*cmd):
+                result=subprocess.run(base+['--now-ms',str(now),*cmd],cwd=LAB,capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            call(3_950_000,'prepare');activated=call(activation,'activate','--operator-accepted')
+            data=json.loads(fixture.read_text())
+            data['responses']['/fapi/v1/depth'][0]['fixture_delay_ms']=900
+            fixture.write_text(json.dumps(data))
+            pump=subprocess.Popen(base+['--now-ms','4020500','run','--max-cycles','3','--poll-seconds','0.05'],
+                                  cwd=LAB,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            walltime.sleep(.2)
+            stop=subprocess.run(base+['--now-ms','4020500','stop'],cwd=LAB,capture_output=True,text=True,timeout=10)
+            self.assertEqual(stop.returncode,0,stop.stderr)
+            out,err=pump.communicate(timeout=15)
+            self.assertEqual(pump.returncode,0,err)
+            report=json.loads(out)
+            state=json.loads((root/'runner_state.json').read_text())
+            durable=json.loads((root/'lab_state.json').read_text())
+            self.assertTrue(state['stop_requested']);self.assertTrue(durable['operator_stop_requested'])
+            self.assertTrue(report['runner']['stop_requested'])
+            self.assertEqual(state['polls'],1)
+            self.assertTrue(all(x['positions']==0 for x in report['arms'].values()))
+            self.assertEqual(sum(x['submitted'] for x in report['arms'].values()),0)
+            self.assertEqual((durable['start_ms'],durable['checkpoint_ms'],durable['deadline_ms']),
+                             (activation,activated['checkpoint_ms'],activated['deadline_ms']))
+            # Same-root restart must retain the completed stop and exit flat without
+            # another public poll or clearing the request.
+            restarted=call(4_021_000,'run','--once')
+            self.assertTrue(restarted['runner']['stop_requested'])
+            self.assertEqual(restarted['runner']['polls'],1)
+            self.assertTrue(json.loads((root/'runner_state.json').read_text())['stop_requested'])
+
+    def test_real_subprocess_stop_survives_slow_failure_retry(self):
+        import subprocess,sys,time as walltime
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'runner';fixture=Path(td)/'transport.json';activation=self._fixture(fixture)
+            base=[sys.executable,str(LAB/'discovery_runner.py'),'--root',str(root),
+                  '--engineering-fixture','--transport-fixture',str(fixture)]
+            def call(now,*cmd):
+                result=subprocess.run(base+['--now-ms',str(now),*cmd],cwd=LAB,capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            call(3_950_000,'prepare');activated=call(activation,'activate','--operator-accepted')
+            data=json.loads(fixture.read_text())
+            bad=data['responses']['/fapi/v1/depth'][0]
+            bad['source_timestamp_ms']=activation-1;bad['payload']['E']=activation-1
+            bad['received_at']=self._iso(activation+50);bad['fixture_delay_ms']=500
+            data['responses']['/fapi/v1/depth']=[bad]
+            fixture.write_text(json.dumps(data))
+            pump=subprocess.Popen(base+['--now-ms','4020500','run','--max-cycles','5','--poll-seconds','0.05'],
+                                  cwd=LAB,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            walltime.sleep(.75)
+            stop=subprocess.run(base+['--now-ms','4020500','stop'],cwd=LAB,capture_output=True,text=True,timeout=10)
+            self.assertEqual(stop.returncode,0,stop.stderr)
+            out,err=pump.communicate(timeout=15)
+            self.assertEqual(pump.returncode,0,err)
+            report=json.loads(out);state=json.loads((root/'runner_state.json').read_text())
+            durable=json.loads((root/'lab_state.json').read_text())
+            self.assertTrue(state['stop_requested']);self.assertTrue(durable['operator_stop_requested'])
+            self.assertGreaterEqual(state['poll_failures'],1);self.assertEqual(state['polls'],0)
+            self.assertTrue(report['runner']['stop_requested'])
+            self.assertTrue(all(x['positions']==0 for x in report['arms'].values()))
+            self.assertEqual((durable['start_ms'],durable['checkpoint_ms'],durable['deadline_ms']),
+                             (activation,activated['checkpoint_ms'],activated['deadline_ms']))
 
 
 class PipelineSubprocessTests(unittest.TestCase):
