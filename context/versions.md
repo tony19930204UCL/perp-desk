@@ -602,6 +602,16 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - PR35 operator comments6016733588與publication followup6016779671 fullbody讀回，PR33 integration comment6016734563 fullbody讀回。Issues/PR未remote merge/close，保留Issue34原容量blocker。看板/API authority讀回：discovery-runtime-exit blocked、parallel-eth-discovery blocked、observer-dashboard-evolution queued（真正外部最小整合未開始，不稱running）。
 - 下個外部工程只續接既有PR33，保留已部署PR35/fresh mirror並合併CI契約，交新精確head完整CI/evidence，不重做看板或PR35。完整人工轉交指令cache/scratch/pr33-pr35-acceptance/PR33保留已部署PR35最小整合完整指令.md。研究/帳戶/窗口/憑證/host/clock/PR21不變。
 
+## PR033-LOCAL-CONSOLE-INSTALLED-READBACK-PASSED（2026-10-06）
+
+- head93fd87c821a7f34703aac532928ae64bca4d6866兩CI37475477685/37475483979精確success；push raw named IDs與Ran38+336核為374unique，focused9/10/10子集。外部短訊371是計數誤差，不改寫原交付或重跑suite。artifact11418298756 ZIP/API SHA256吻合11a5497fabe5efa6deed2ad693d207d44a36cbf1d90182658b2281cf50448ff8，390/768/1280 fixture與blocked/API isolation證據保存。
+- 目前mirror32e8082c550ed35a1a36adc3ad42ea0793ed93e1/local來源hash吻合，PR35五個runtime/test依賴完全保持。12完整source artifacts備份安裝；source_manifest.json為exporter-owned derived metadata，不拷進文件來源或手改mirror，正常sync另生成。
+- 只停止已確認獨立dashboard PID1291690。首次operator誤用relative --research導致proc_39b5ad4ca937/exit2（configuration must be an absolute regular path），保留，不當產品缺陷；按文件absolute config重啟proc_68a8ecfedd29/PID2288917，persist_on_release/notify。private configured A/B/C分別讀原arm-a/b/c broker.sqlite3；不造processproof、不停止/啟動研究、不改root/report。
+- Linux五API200；Windows原生localhost HTML/ledgers/research/status200。default ledger registry完全保持；原default與research分開，A/B/C capital不池化，B2x僅diagnostic。POST /api/research405。19protected research/H1/account/snapshot files在全部browser/API讀後hash仍不變。
+- 真named browser session390/768/1280分別inner/client/scroll=390/375/375、768/753/753、1280/1265/1265，DPR1，無全頁horizontal overflow；每輪跨5秒refresh保持overview focus及scroll。原共享browser session驗收失敗後讀回空白tab，未將它推論成產品錯誤，另named session真URL/DOM證據重驗。私有截圖保存在cache/scratch/pr33-93fd87c-acceptance，不公開。
+- 新總覽顯示行情已過期、process未確認、market_activity_stale/report_stale/source_gaps/storage_entry_stop/process_unconfirmed。研究storage34147846仍超33554432budget，oldpoll77、原期限保持，沒有restart與source健康宣稱。source/API/browser本機验收通過；publication exactbytes/CI待正常sync讀回，不提前稱完成。
+
+
 
 
 

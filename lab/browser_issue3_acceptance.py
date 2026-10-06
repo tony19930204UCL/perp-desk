@@ -53,27 +53,42 @@ def chrome_binary():
 class CdpSession:
     """Minimal stdlib CDP client: one real Chrome page/session, no external driver."""
     def __init__(self,chrome,profile):
+        self.stderr_capture=tempfile.TemporaryFile(mode='w+t',encoding='utf-8',errors='replace')
+        started=time.monotonic()
         self.proc=subprocess.Popen(
             [chrome,'--headless=new','--no-sandbox','--disable-gpu','--disable-dev-shm-usage',
              '--remote-debugging-port=0','--remote-allow-origins=*',
              '--user-data-dir='+str(profile),'about:blank'],
-            stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,bufsize=1)
-        deadline=time.monotonic()+10;port=None
+            stdout=subprocess.DEVNULL,stderr=self.stderr_capture,text=True)
+        # Chrome with port=0 publishes the selected port atomically in the profile.
+        # Hosted runners can take longer than ten seconds under package/cache pressure,
+        # so wait for both the file and the HTTP page target within one finite deadline.
+        active_port=Path(profile)/'DevToolsActivePort'
+        deadline=started+30;page=None;last_error=None
         while time.monotonic()<deadline:
-            line=self.proc.stderr.readline()
-            if not line:
-                if self.proc.poll() is not None: break
-                continue
-            match=re.search(r'DevTools listening on ws://127\.0\.0\.1:(\d+)/',line)
-            if match:
-                port=int(match.group(1));break
-        if port is None:
-            self.close()
-            raise RuntimeError('Chrome DevTools endpoint unavailable')
-        targets=json.loads(urlopen(f'http://127.0.0.1:{port}/json',timeout=5).read())
-        page=next((item for item in targets if item.get('type')=='page'),None)
+            if self.proc.poll() is not None: break
+            try:
+                lines=active_port.read_text().splitlines()
+                if lines and lines[0].isdigit():
+                    port=int(lines[0])
+                    targets=json.loads(urlopen(f'http://127.0.0.1:{port}/json',timeout=1).read())
+                    page=next((item for item in targets if item.get('type')=='page'),None)
+                    if page: break
+            except (FileNotFoundError,OSError,UnicodeError,ValueError) as exc:
+                last_error=type(exc).__name__
+            time.sleep(.05)
+        self.startup_seconds=round(time.monotonic()-started,3)
         if not page:
-            self.close();raise RuntimeError('Chrome page target unavailable')
+            exit_code=self.proc.poll()
+            try:
+                self.stderr_capture.flush();self.stderr_capture.seek(0)
+                stderr_tail=self.stderr_capture.read()[-1200:].replace(str(profile),'<profile>')
+            except (OSError,ValueError):
+                stderr_tail='<unavailable>'
+            self.close()
+            raise RuntimeError(
+                f'Chrome DevTools endpoint unavailable after {self.startup_seconds}s '
+                f'(exit={exit_code!r}, last_error={last_error!r}, stderr_tail={stderr_tail!r})')
         self.ws=self._connect(page['webSocketDebuggerUrl'])
         self.next_id=1;self.events=[]
 
@@ -204,6 +219,9 @@ class CdpSession:
             try:self.proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self.proc.kill();self.proc.wait(timeout=5)
+        try:
+            if getattr(self,'stderr_capture',None):self.stderr_capture.close()
+        except Exception:pass
 
 
 def chrome_dom(chrome,url,width,height):
