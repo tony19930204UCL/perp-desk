@@ -537,6 +537,13 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - refs/heads/main實際讀回8b2f51a659b7bba8f4fcc3e19638334ae720270f，PR24 cached baseRefOid仍66fbf59653b1985e324f8e92ce04a9e4f4adbef3。最初compatibility JSON誤將cached PRbase標current_main，另存integration_block.json更正語義，保留原查詢；hash差異本身有效。開始工程時必須再次fresh main/ancestry，不把本次checkpoint當永遠最新。
 - 選擇在既有Issue23/PR24接續最小最新基線整合，保留PR25/27與原三臂凍結設計，交新版exacthead完整CI/artifacts，不重做策略/不另duplicate項目。PR24 comment5998490971完整payload發布且fullbody讀回。工作API blocked、外部agent尚未開工、無source deployment/activation或背景owner execution。完整可直接轉交ChatGPT的指令：cache/scratch/pr24-deployment-preflight/PR24整合續接派工.md。
 
+## PR024-501ade8-ENGINEERING-ACCEPTED-SOURCE-INSTALLED（2026-10-06）
+
+- 精確501ade85659d943f691dac34e2929095f3e802fb的兩個CI37341251662/37341243585 completed/success。原log皆UNKNOWN STEP，按named test headers與Ran summaries分组38/318/9/10，356unique，focused9/10是子集。第一次按step label解析KeyError保留，未跑本機suite或code review。
+- 三份artifact11358009310/11359240570/11358248732下載ZIP與user supplied及API digest吻合。#23 operational4case無failure/error，pipeline人工Bmakerfill不當績效；#22/26 zero-model、無automaticownerresume限制保持。14local/base對應全吻合，8個不變PR27artifact逐bytes一致。
+- 06:38:16UTC備份後安裝14完整accepted artifacts，10原交易/health/config檔hash不變。既有normal mirror短暫pause/resume，monitor不改。真實prepare成功，ETHUSDT reference filters已驗，window_started=false且只建runner_state.json，沒有broker/activation、新窗口、交易恢復或PR21啟動。
+- normalmirror先settling，讀仍舊main的sourceassert失敗如實保留，不叫publication成功。其後正常sync發布59eb492fae4adb91fe8a588aec9bc7f5beee8821，14Gitblobs精確匹配；CI37424976589讀回in_progress，尚不叫部署全部驗收完成。PR24comment6010849232 fullbody讀回（其描述當時publication仍pending），Issue23 OPEN、PR未merge。Evidence cache/scratch/pr24-501ade8-acceptance。
+
 
 
 
