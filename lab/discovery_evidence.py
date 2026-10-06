@@ -200,5 +200,7 @@ class CausalEvidence:
                     unknown_range_reconstructible_events=0,
                     bounded_unknown_schema=self.supports_unknown_ranges,
                     automatic_pruning=False,
-                    reconstruction_policy=('decision-changing causal facts remain append-only; repeated non-decision '
-                        'unknowns retain count/bounds/rolling integrity only; rolled raw events remain unknown'))
+                    reconstruction_policy=(('decision-changing causal facts remain append-only; repeated non-decision '
+                        'unknowns retain count/bounds/rolling integrity only; rolled raw events remain unknown')
+                        if self.supports_unknown_ranges else
+                        'legacy append-only evidence; bounded unknown ranges unavailable; no automatic migration'))
