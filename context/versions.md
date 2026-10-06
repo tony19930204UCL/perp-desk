@@ -596,6 +596,13 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - fresh refs/main與兩candidate compares證明兩PR唯一共享source是.github/workflows/ci.yml，內容不同。先安裝較優先PR35同root容量修復，PR33不得覆蓋它的Issue34 CI契約，也不自行拼mixed未驗碼。PR33完整候選保存在cache/scratch/pr33-pr35-acceptance/33，UI仍是舊版，要求外部agent續接現branch最小整合PR35/new mirror並交新版exacthead CI，不重做既有看板。兩工程PR保持獨立。
 - 本回合preflight首次terminal guard逾時明示command未run，原scope重試成功，不是approval denial或繞權限。mirror原已有多次TimeoutExpired亦保留，不稱發布已成功。
 
+## PR035-PUBLICATION-READBACK-COMPLETED（2026-10-06）
+
+- 上方最初settling/pending是當時狀態。後續正常sync成功發布7ff8162e0f386b85fa1d6c4d519025873e2c09e2，API source_manifest七candidate SHA256全吻合。publication CI37466495163精確head completed/success獨立讀回。PR35 source安裝/發布接受，原root容量阻擋仍在，不把工程完成當研究恢復。
+- PR35 operator comments6016733588與publication followup6016779671 fullbody讀回，PR33 integration comment6016734563 fullbody讀回。Issues/PR未remote merge/close，保留Issue34原容量blocker。看板/API authority讀回：discovery-runtime-exit blocked、parallel-eth-discovery blocked、observer-dashboard-evolution queued（真正外部最小整合未開始，不稱running）。
+- 下個外部工程只續接既有PR33，保留已部署PR35/fresh mirror並合併CI契約，交新精確head完整CI/evidence，不重做看板或PR35。完整人工轉交指令cache/scratch/pr33-pr35-acceptance/PR33保留已部署PR35最小整合完整指令.md。研究/帳戶/窗口/憑證/host/clock/PR21不變。
+
+
 
 
 
