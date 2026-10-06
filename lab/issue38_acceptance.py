@@ -285,6 +285,7 @@ def run():
     return dict(label='ISSUE38_ACCELERATED_CAPACITY_PLUS_ACTUAL_ENGINE_LIFECYCLE_NOT_REAL_48H',
         fixed_budget_bytes=BUDGET,entry_stop_bytes=ENTRY_STOP,raw_retention_limit=MAX_RAW_EVENTS,
         unknown_range_bucket_ms=UNKNOWN_RANGE_BUCKET_MS,
+        declared_unknown_range_row_bound=3*((WINDOW_MINUTES*60_000)//UNKNOWN_RANGE_BUCKET_MS),
         declared_scope=dict(window_minutes=WINDOW_MINUTES,heavy_invalid_per_minute=HEAVY_INVALID_PER_MINUTE,
             heavy_late_aggtrades_per_minute=HEAVY_AGGTRADES_PER_MINUTE,
             outage_every_minutes=360,outage_duration_minutes=30),
@@ -310,6 +311,8 @@ def validate(result):
         raise AssertionError('heavy workload reduced')
     if heavy['causal']['unknown_events_aggregated']!=heavy['raw_total_events']:
         raise AssertionError('heavy unknown count mismatch')
+    if heavy['causal']['unknown_range_rows']>result['declared_unknown_range_row_bound']:
+        raise AssertionError('heavy unknown range row bound exceeded')
     if heavy['causal']['unknown_range_reconstructible_events']!=0:
         raise AssertionError('aggregated unknowns must not claim per-event reconstruction')
     recon=result['reconstruction']
