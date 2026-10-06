@@ -581,6 +581,28 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - BUGIssue34建立/fullbodyreadback，PR31comment6013653548/Issue32comment6013654060fullbody讀回，說明後續failure+source rollback，避免下一agent把原alreadydeployed/running敘述當永遠目前狀態。Issue32仍獨立工程，優先34runtime/容量，保存32既有branch進度不混PR。
 - 完整人工轉交附件cache/scratch/discovery-runtime-exit/Issue34優先修復與Issue32續接指令.md。工程尚待轉交，不假稱codingworker已開始。Evidence exit-state-readback/rollback/issue/commentreadbacks保存。
 
+## PR035-SOURCE-INSTALLED-SAME-ROOT-CAPACITY-STILL-BLOCKED（2026-10-06）
+
+- PR35 head33d79f542a2ab1ebd7ab1a94a679e9b5928d1ac7兩CI37461786136/37461791124精確success；push raw named IDs 38exporter+328PAPER=366unique，focused9/10/Issue34的10為子集。artifact11412383872 ZIP/API SHA256吻合7d27778bca9beb6dc9a50524a87c3c3826c8127ba84a5672ea1ba3997e63db50。隔離8192invalid/4096retained證據不是48h可行或目前root已解除。
+- 正常鏡像及operator gate短暫pause後，7完整artifacts與目前main d4f7fd7eb2ec3168ef4ab6c53120527b3f4eac26/local來源hash吻合，所有未改lab dependencies吻合。先備份完整root與source，再安裝7檔，不reviewcode、不跑engineering suites。
+- 12:48:51UTC起執行既有入口同root report，exit0。既有raw retention20000→4096並compaction，固定budget不變。storage_used34147846bytes仍超33554432bytes且超90%entrygate。沒有run、activate、restart或publicpoll，report fetch_calls0不是source恢復證據。lifecycle未新增terminal label，不聲稱已演練production terminal_storage_capacity。
+- 同root polls77/failures23、原start/checkpoint/deadline、三臂flat/submitted0/cash不变，causal_evidence.sqlite3與三arm broker bytes完全不變，原H1 runtime/history/snapshots9protected files hash不變。全root備份僅供證據，不還原DB或回覆舊資料。原DNS last_error保留，重試安全CI證據不能當operator DNS根因已修或continuous live已接受。
+- source已安裝，normal mirror第一次入口讀回settling。發布exactbytes/CI需後續讀回，不能提前宣稱publication completed。保留Issue34運行容量blocker與parallel blocked，未merge PR35或push remote main。
+
+## PR033-ENGINEERING-EVIDENCE-ACCEPTED-DEPLOYMENT-INTEGRATION-HOLD（2026-10-06）
+
+- head2baee3817cf4a25cc272ce5531996ebe8faf6171兩CI37459341247/37459346871精確success。push raw named IDs 38+326=364unique，focused9/10子集。artifact11410524057 ZIP/API SHA256吻合9ac8e948aa0f3b8253fa5c5d6b00d443893ac3d75a888d639cfe9b552cb5d8f1。PR run log缺Exporter段，採同head完整push log核數，不當測試失敗。
+- 真Chrome fixture390/768/1280實際inner/client/scroll/DPR、overflowfalse、focus/refresh/contrast/CJK及blocked/sourcegap/storageentry/process未確認讀回；A/B/C/default isolation與B2xdiagnostic證據保留。不稱fixture已部署或operator即時健康。
+- fresh refs/main與兩candidate compares證明兩PR唯一共享source是.github/workflows/ci.yml，內容不同。先安裝較優先PR35同root容量修復，PR33不得覆蓋它的Issue34 CI契約，也不自行拼mixed未驗碼。PR33完整候選保存在cache/scratch/pr33-pr35-acceptance/33，UI仍是舊版，要求外部agent續接現branch最小整合PR35/new mirror並交新版exacthead CI，不重做既有看板。兩工程PR保持獨立。
+- 本回合preflight首次terminal guard逾時明示command未run，原scope重試成功，不是approval denial或繞權限。mirror原已有多次TimeoutExpired亦保留，不稱發布已成功。
+
+## PR035-PUBLICATION-READBACK-COMPLETED（2026-10-06）
+
+- 上方最初settling/pending是當時狀態。後續正常sync成功發布7ff8162e0f386b85fa1d6c4d519025873e2c09e2，API source_manifest七candidate SHA256全吻合。publication CI37466495163精確head completed/success獨立讀回。PR35 source安裝/發布接受，原root容量阻擋仍在，不把工程完成當研究恢復。
+- PR35 operator comments6016733588與publication followup6016779671 fullbody讀回，PR33 integration comment6016734563 fullbody讀回。Issues/PR未remote merge/close，保留Issue34原容量blocker。看板/API authority讀回：discovery-runtime-exit blocked、parallel-eth-discovery blocked、observer-dashboard-evolution queued（真正外部最小整合未開始，不稱running）。
+- 下個外部工程只續接既有PR33，保留已部署PR35/fresh mirror並合併CI契約，交新精確head完整CI/evidence，不重做看板或PR35。完整人工轉交指令cache/scratch/pr33-pr35-acceptance/PR33保留已部署PR35最小整合完整指令.md。研究/帳戶/窗口/憑證/host/clock/PR21不變。
+
+
 
 
 
