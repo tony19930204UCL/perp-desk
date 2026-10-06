@@ -54,6 +54,10 @@ jobs:
           name: issue-26-owner-handoff-evidence
           path: artifacts/issue-26-owner-handoff
           if-no-files-found: error
+      - name: Install Traditional Chinese fixture font
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
       - name: Issue 32 observer console browser acceptance
         run: python3 lab/browser_issue32_acceptance.py --output artifacts/issue-32-observer
       - name: Upload Issue 32 observer console evidence
