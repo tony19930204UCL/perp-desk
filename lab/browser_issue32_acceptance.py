@@ -108,9 +108,12 @@ def main(argv=None):
                 if (after['view']!='research' or after['focus']!='tab-research' or after['hidden']
                         or abs(after['y']-before['y'])>1):
                     raise AssertionError('refresh lost selected view/focus/scroll position')
+                session.evaluate("document.getElementById('themeToggle').focus()")
                 m=metrics(session)
-                if m['innerWidth']!=width or m['clientWidth']!=width or m['overflow']:
+                if m['innerWidth']!=width or m['scrollWidth']>m['clientWidth'] or m['overflow']:
                     raise AssertionError('viewport/root overflow mismatch '+json.dumps(m))
+                if m['focusOutline']=='none':
+                    raise AssertionError('focus-visible outline missing '+json.dumps(m))
                 normal=contrast(m['text'],m['background']);muted=contrast(m['muted'],m['background']);control=contrast(m['controlColor'],m['controlBg'])
                 boundary=contrast(m['controlBorder'],m['controlBg'])
                 if min(normal,muted)<4.5 or control<4.5:raise AssertionError('text contrast below 4.5')
