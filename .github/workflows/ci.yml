@@ -20,6 +20,18 @@ jobs:
       - name: PAPER isolated suite
         working-directory: lab
         run: python3 -m unittest discover -s tests -v
+      - name: Issue 28 public-runner repair acceptance
+        run: |
+          mkdir -p artifacts/issue-28-repair
+          (cd lab && python3 -m unittest -v tests.test_discovery_lab.RunnerSubprocessTests.test_continuous_runner_persists_invalid_book_then_recovers_without_reset) 2>&1 | tee artifacts/issue-28-repair/deterministic-regression.txt
+          python3 lab/issue28_public_probe.py > artifacts/issue-28-repair/public-probe.json
+      - name: Upload Issue 28 repair evidence
+        if: ${{ always() && hashFiles('artifacts/issue-28-repair/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-28-public-runner-repair
+          path: artifacts/issue-28-repair
+          if-no-files-found: error
       - name: Issue 23 isolated discovery pipeline
         run: |
           mkdir -p artifacts/issue-23-discovery

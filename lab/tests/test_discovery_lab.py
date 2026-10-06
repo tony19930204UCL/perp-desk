@@ -597,6 +597,74 @@ class RunnerSubprocessTests(unittest.TestCase):
             self.assertTrue((root/'reports/final-48h.json').is_file())
 
 
+    def test_continuous_runner_persists_invalid_book_then_recovers_without_reset(self):
+        import subprocess,sys
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'runner';fixture=Path(td)/'transport.json';activation=self._fixture(fixture)
+            base=[sys.executable,str(LAB/'discovery_runner.py'),'--root',str(root),
+                  '--engineering-fixture','--transport-fixture',str(fixture)]
+            def call(now,*cmd,ok=True):
+                result=subprocess.run(base+['--now-ms',str(now),*cmd],cwd=LAB,
+                                      capture_output=True,text=True,timeout=30)
+                if ok:self.assertEqual(result.returncode,0,result.stderr)
+                return result
+            self.assertEqual(call(3_950_000,'prepare').returncode,0)
+            activated=json.loads(call(activation,'activate','--operator-accepted').stdout)
+            original=(activated['start_ms'],activated['checkpoint_ms'],activated['deadline_ms'])
+
+            data=json.loads(fixture.read_text())
+            first=data['responses']['/fapi/v1/depth'][0]
+            # Reproduce the observed rejection class without weakening it: receipt is
+            # post-start but the source timestamp is pre-forward-start.
+            first['source_timestamp_ms']=activation-1
+            first['payload']['E']=activation-1
+            first['received_at']=self._iso(activation+50)
+            fixture.write_text(json.dumps(data))
+
+            strict=call(4_020_500,'run','--once',ok=False)
+            self.assertNotEqual(strict.returncode,0)
+            self.assertIn('invalid book source time',strict.stderr)
+            state=json.loads((root/'runner_state.json').read_text())
+            self.assertEqual(state['polls'],0)
+            self.assertEqual(state['poll_failures'],1)
+            self.assertTrue(state['last_failure_retryable'])
+            failed=json.loads((root/'reports/latest.json').read_text())
+            self.assertTrue(failed['runner']['source_failure'])
+            self.assertTrue(failed['runner']['retryable_source_failure'])
+            self.assertEqual(failed['runner']['polls'],0)
+            self.assertIn('invalid book source time',failed['runner']['last_error'])
+
+            # Fresh process, same root and same frozen window. FixtureClient restarts its
+            # index, so remove only the already-observed invalid transport receipt; no
+            # research state/history is reset.
+            recovered=json.loads(fixture.read_text())
+            for endpoint in ('/fapi/v1/depth','/fapi/v1/premiumIndex',
+                             '/fapi/v1/aggTrades','/fapi/v1/klines'):
+                recovered['responses'][endpoint]=[recovered['responses'][endpoint][-1]]
+            # The failed poll never reached funding, so recovery still needs the
+            # finalized settlement row. Observe that same public settlement only
+            # after the persisted gap; do not replay a pre-gap receipt timestamp.
+            funding=recovered['responses']['/fapi/v1/fundingRate'][0]
+            funding['received_at']=self._iso(4_022_900)
+            recovered['responses']['/fapi/v1/fundingRate']=[funding]
+            fixture.write_text(json.dumps(recovered))
+            result=call(4_023_000,'run','--max-cycles','2','--poll-seconds','0')
+            report=json.loads(result.stdout)
+            durable=json.loads((root/'lab_state.json').read_text())
+            self.assertEqual((durable['start_ms'],durable['checkpoint_ms'],durable['deadline_ms']),original)
+            self.assertEqual(report['start_ms'],activation)
+            self.assertEqual(report['runner']['polls'],2)
+            self.assertEqual(report['runner']['poll_failures'],1)
+            self.assertFalse(report['runner']['source_failure'])
+            self.assertIsNone(report['runner']['last_error'])
+            self.assertGreaterEqual(report['source_gaps'],1)
+            self.assertTrue((root/'shared-feed.sqlite3').is_file())
+            final_state=json.loads((root/'runner_state.json').read_text())
+            self.assertEqual(final_state['activated_at_ms'],activation)
+            self.assertEqual(final_state['polls'],2)
+            self.assertEqual(final_state['poll_failures'],1)
+
+
 class PipelineSubprocessTests(unittest.TestCase):
     def test_isolated_pipeline_subprocess_is_public_safe_and_no_live_claim(self):
         import subprocess,sys
