@@ -179,17 +179,20 @@ def read_research(config,now=None):
     try:
         report=validate_report(json.loads(config['report_path'].read_text(encoding='utf-8')))
         mtime_ms=int(config['report_path'].stat().st_mtime*1000)
+        report_age=(now_ms-mtime_ms)/1000
+        report_state='future' if report_age < -5 else ('stale' if report_age>config['fresh_seconds'] else 'fresh')
         runner=report.get('runner') or {}
         last_poll=runner.get('last_poll_ms')
         if last_poll is not None and type(last_poll) is not int:raise ValueError('last poll timestamp invalid')
         last_failure=runner.get('last_failure_ms')
         if last_failure is not None and type(last_failure) is not int:raise ValueError('last failure timestamp invalid')
         poll_age=(now_ms-last_poll)/1000 if last_poll is not None else None
-        if poll_age is None:activity='unconfirmed'
+        if runner.get('source_failure') is True:activity='source_gap'
+        elif report_state=='future':activity='future'
+        elif poll_age is None:activity='unconfirmed'
         elif poll_age<0:activity='future'
-        elif runner.get('source_failure') is True:activity='source_gap'
-        elif poll_age<=config['fresh_seconds']:activity='fresh'
-        else:activity='stale'
+        elif report_state=='stale' or poll_age>config['fresh_seconds']:activity='stale'
+        else:activity='fresh'
         feed=_feed_evidence(config['feed_db_path'])
         if feed:
             feed['source_age_seconds']=(now_ms-feed['source_ts'])/1000
@@ -205,6 +208,9 @@ def read_research(config,now=None):
         process=_process_proof(config['process_proof_path'],now_ms,config['fresh_seconds'])
         blockers=[]
         if activity!='fresh':blockers.append('market_activity_'+activity)
+        if report_state!='fresh':blockers.append('report_'+report_state)
+        if feed and feed.get('source_age_seconds') is not None and feed['source_age_seconds'] < -5:
+            blockers.append('source_evidence_future')
         if report.get('source_gaps',0):blockers.append('source_gaps_recorded')
         if any(a.get('checkpoint',{}).get('stop_new_entries') for a in report['arms'].values()):blockers.append('checkpoint_entry_stop')
         if report.get('storage_used_bytes',0)>=report.get('storage_budget_bytes',1)*0.9:blockers.append('storage_entry_stop')
@@ -212,6 +218,7 @@ def read_research(config,now=None):
         result.update(available=True,state=activity,version_id=report['version_id'],activated=report['activated'],
                       start_ms=report['start_ms'],deadline_ms=report['deadline_ms'],
                       checkpoint_ms=report['start_ms']+28800000,report_file_mtime_ms=mtime_ms,
+                      report_age_seconds=report_age,report_state=report_state,
                       last_successful_poll_ms=last_poll,last_failure_ms=last_failure,
                       poll_age_seconds=poll_age,source_evidence=feed,process_proof=process,
                       source_gaps=report.get('source_gaps',0),unknown_inputs=report.get('unknown_inputs',0),
