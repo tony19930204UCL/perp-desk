@@ -229,6 +229,8 @@ def reconstruction_smoke():
             bids=[['100','1']],asks=[['100.10','2']]),received_ms=START_MS+7100)
         feed.ingest('aggTrade',dict(trade_id=1,source_ts=START_MS+7200,receipt_ts=START_MS+7200,
             price='99.99',qty='1.4',aggressor='SELL'),received_ms=START_MS+7201)
+        feed.ingest('funding',dict(source_ts=START_MS+7250,settlement_ts=START_MS+7250,
+            rate='0.001',mark='100',rate_type='Regular',finalized=True),received_ms=START_MS+7250)
         b=lab.brokers['B']
         primary_fill=sum(1 for f in b.fills if not b.orders[f['order_id']]['intent']['reduce_only'])
         fills_before_unknown=len(b.fills)
@@ -256,6 +258,10 @@ def reconstruction_smoke():
         final_orders={oid:o['status'] for oid,o in b.orders.items()}
         order_pairs={(x['order_id'],x['status']) for x in by_kind['order_state']}
         all_order_states_reconstructible=all((oid,status) in order_pairs for oid,status in final_orders.items())
+        protective_cancel_reconstructed=any(x.get('reason')=='protective_aggtrade_gap'
+                                            for x in by_kind['order_state'])
+        broker_ledger_types=sorted({x['type'] for x in b.ledger})
+        evidence_ledger_types=sorted({x['type'] for x in by_kind['ledger'] if x.get('arm')=='B'})
         protective_orders=[o for o in b.orders.values() if o['intent']['reduce_only'] and o['intent']['kind']=='TAKER']
         before=lab.evidence.summary();lab.close()
         reopened=DiscoveryLab(root,CONFIG,INSTRUMENT)
@@ -270,6 +276,8 @@ def reconstruction_smoke():
             broker_fill_ids_equal_evidence=(fill_ids==evidence_fill_ids),
             broker_ledger_ids_equal_evidence=(ledger_ids==evidence_ledger_ids),
             final_order_states_reconstructible=all_order_states_reconstructible,
+            protective_cancel_reconstructed=protective_cancel_reconstructed,
+            broker_ledger_types=broker_ledger_types,evidence_ledger_types=evidence_ledger_types,
             protective_reduce_only_orders=len(protective_orders),
             unknown_did_not_fill=(fills_before_unknown==fills_after_decision_unknown==fills_after_bounded_unknown),
             flat_after_protection=(not b.positions),
@@ -282,7 +290,10 @@ def run():
     recon=reconstruction_smoke()
     admission='PASS' if valid['capacity_pass'] and heavy['capacity_pass'] and all((
         recon['broker_fill_ids_equal_evidence'],recon['broker_ledger_ids_equal_evidence'],
-        recon['final_order_states_reconstructible'],recon['protective_reduce_only_orders']>=1,
+        recon['final_order_states_reconstructible'],recon['protective_cancel_reconstructed'],
+        recon['protective_reduce_only_orders']>=1,'fee' in recon['broker_ledger_types'],
+        'funding' in recon['broker_ledger_types'],
+        recon['broker_ledger_types']==recon['evidence_ledger_types'],
         recon['unknown_did_not_fill'],recon['sticky_stop_after_restart'],recon['causal_head_same_restart'],
         recon['unknown_ranges_same_restart'])) else 'NOT_FEASIBLE'
     return dict(label='ISSUE38_ACCELERATED_CAPACITY_PLUS_ACTUAL_ENGINE_LIFECYCLE_NOT_REAL_48H',
@@ -322,8 +333,11 @@ def validate(result):
     if recon['primary_maker_entry_fills']<1 or recon['protective_reduce_only_orders']<1:
         raise AssertionError('maker/protective lifecycle not exercised')
     if not all((recon['broker_fill_ids_equal_evidence'],recon['broker_ledger_ids_equal_evidence'],
-                recon['final_order_states_reconstructible'],recon['flat_after_protection'],
-                recon['unknown_did_not_fill'],recon['sticky_stop_after_restart'],recon['causal_head_same_restart'],
+                recon['final_order_states_reconstructible'],recon['protective_cancel_reconstructed'],
+                'fee' in recon['broker_ledger_types'],'funding' in recon['broker_ledger_types'],
+                recon['broker_ledger_types']==recon['evidence_ledger_types'],
+                recon['flat_after_protection'],recon['unknown_did_not_fill'],
+                recon['sticky_stop_after_restart'],recon['causal_head_same_restart'],
                 recon['unknown_ranges_same_restart'])):
         raise AssertionError('causal reconstruction mismatch')
     return True
