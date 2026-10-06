@@ -638,9 +638,15 @@ class RunnerSubprocessTests(unittest.TestCase):
             # index, so remove only the already-observed invalid transport receipt; no
             # research state/history is reset.
             recovered=json.loads(fixture.read_text())
-            for endpoint in ('/fapi/v1/depth','/fapi/v1/premiumIndex','/fapi/v1/fundingRate',
+            for endpoint in ('/fapi/v1/depth','/fapi/v1/premiumIndex',
                              '/fapi/v1/aggTrades','/fapi/v1/klines'):
                 recovered['responses'][endpoint]=[recovered['responses'][endpoint][-1]]
+            # The failed poll never reached funding, so recovery still needs the
+            # finalized settlement row. Observe that same public settlement only
+            # after the persisted gap; do not replay a pre-gap receipt timestamp.
+            funding=recovered['responses']['/fapi/v1/fundingRate'][0]
+            funding['received_at']=self._iso(4_022_900)
+            recovered['responses']['/fapi/v1/fundingRate']=[funding]
             fixture.write_text(json.dumps(recovered))
             result=call(4_023_000,'run','--max-cycles','2','--poll-seconds','0')
             report=json.loads(result.stdout)
