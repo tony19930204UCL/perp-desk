@@ -125,33 +125,51 @@ def _observe(scope,reason_code,ts,event_id,event_type,source,receipt,trade_id,re
 
 def bulk_heavy_ranges(root,minutes=WINDOW_MINUTES):
     groups={}
-    def add(event_type,minute,within,event_index,trade):
-        scope='shared_event:'+event_type;reason_code='source_valid_false'
-        source=START_MS+minute*60_000+within*100
-        receipt=source;ts=source+20_000
-        event_id='invalid:'+str(event_index)
+    outage_cycles=max(1,minutes//360)
+    repeated_outage_failures=0
+
+    def aggregate(scope,reason_code,ts,event_id,event_type,source,receipt,trade,reason):
         bucket=(ts//UNKNOWN_RANGE_BUCKET_MS)*UNKNOWN_RANGE_BUCKET_MS
         key=scope+'|'+reason_code+'|'+str(bucket)
-        observed=_observe(scope,reason_code,ts,event_id,event_type,source,receipt,trade,'source_valid_false')
+        observed=_observe(scope,reason_code,ts,event_id,event_type,source,receipt,trade,reason)
         event_digest=sha(canonical(observed))
         if key not in groups:
             values=CausalEvidence._range_values(scope,reason_code,bucket,ts,ts,source,source,
-                receipt,receipt,event_id,event_id,trade,trade,1,event_digest,
-                'source_valid_false','source_valid_false')
+                receipt,receipt,event_id,event_id,trade,trade,1,event_digest,reason,reason)
         else:
             p=groups[key]
             rolling=sha(p['rolling_hash']+'|'+event_digest)
             values=CausalEvidence._range_values(scope,reason_code,bucket,p['first_ts'],ts,
                 p['first_source_ts'],source,p['first_receipt_ts'],receipt,
                 p['first_event_id'],event_id,p['first_trade_id'],trade,
-                p['count']+1,rolling,p['first_reason'],'source_valid_false')
+                p['count']+1,rolling,p['first_reason'],reason)
         groups[key]=values
+
     for minute in range(minutes):
         base_index=minute*HEAVY_INVALID_PER_MINUTE
         for n in range(HEAVY_AGGTRADES_PER_MINUTE):
-            add('aggTrade',minute,n,base_index+n,minute*HEAVY_AGGTRADES_PER_MINUTE+n)
-        add('book',minute,40,base_index+40,None)
-        add('mark',minute,41,base_index+41,None)
+            source=START_MS+minute*60_000+n*100
+            aggregate('shared_event:aggTrade','source_valid_false',source+20_000,
+                'invalid:'+str(base_index+n),'aggTrade',source,source,
+                minute*HEAVY_AGGTRADES_PER_MINUTE+n,'source_valid_false')
+        for within,event_type in ((40,'book'),(41,'mark')):
+            source=START_MS+minute*60_000+within*100
+            aggregate('shared_event:'+event_type,'source_valid_false',source+20_000,
+                'invalid:'+str(base_index+within),event_type,source,source,None,'source_valid_false')
+
+    # Explicit outage load: first gap is individual causal evidence, then one
+    # repeated transport-unknown observation per minute for the remaining 29
+    # minutes. Recovery is individual evidence. The repeated observations are
+    # bounded ranges, not fake public polls or market payloads.
+    for cycle in range(outage_cycles):
+        gap_ts=START_MS+cycle*360*60_000+1
+        for minute in range(1,30):
+            ts=gap_ts+minute*60_000
+            aggregate('runner_shared_source','transport_or_source_gap',ts,
+                'runner-source-gap-repeat:'+str(cycle)+':'+str(minute),
+                'shared_source_gap',None,None,None,'ARTIFICIAL outage')
+            repeated_outage_failures+=1
+
     path=Path(root)/'causal_evidence.sqlite3'
     with sqlite3.connect(path) as db:
         rows=[]
@@ -168,7 +186,7 @@ def bulk_heavy_ranges(root,minutes=WINDOW_MINUTES):
             VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",rows)
         db.commit()
     evidence=CausalEvidence(path)
-    for cycle in range(max(1,minutes//360)):
+    for cycle in range(outage_cycles):
         gap_ts=START_MS+cycle*360*60_000+1
         rec_ts=gap_ts+30*60_000
         evidence.append('runner-source-gap:'+str(gap_ts),'source_unknown',gap_ts,
@@ -177,7 +195,10 @@ def bulk_heavy_ranges(root,minutes=WINDOW_MINUTES):
                  reconstructible_market_payload=False))
         evidence.append('runner-source-recovered:'+str(rec_ts),'source_recovered',rec_ts,
             dict(event_id='runner-source-recovered:'+str(rec_ts),prior_reason='ARTIFICIAL outage',scope='all_arms'))
-    return evidence.summary()
+    summary=evidence.summary()
+    summary['repeated_outage_unknowns_aggregated']=repeated_outage_failures
+    summary['outage_cycles']=outage_cycles
+    return summary
 
 def materialize_profile(name):
     with tempfile.TemporaryDirectory(prefix='issue38-'+name+'-') as td:
@@ -299,7 +320,8 @@ def run():
     return dict(label='ISSUE38_ACCELERATED_CAPACITY_PLUS_ACTUAL_ENGINE_LIFECYCLE_NOT_REAL_48H',
         fixed_budget_bytes=BUDGET,entry_stop_bytes=ENTRY_STOP,raw_retention_limit=MAX_RAW_EVENTS,
         unknown_range_bucket_ms=UNKNOWN_RANGE_BUCKET_MS,
-        declared_unknown_range_row_bound=3*((WINDOW_MINUTES*60_000)//UNKNOWN_RANGE_BUCKET_MS),
+        declared_unknown_range_row_bound=(3*((WINDOW_MINUTES*60_000)//UNKNOWN_RANGE_BUCKET_MS)+
+            (WINDOW_MINUTES//360)*6),
         declared_scope=dict(window_minutes=WINDOW_MINUTES,heavy_invalid_per_minute=HEAVY_INVALID_PER_MINUTE,
             heavy_late_aggtrades_per_minute=HEAVY_AGGTRADES_PER_MINUTE,
             outage_every_minutes=360,outage_duration_minutes=30),
@@ -323,7 +345,8 @@ def validate(result):
     heavy=by['heavy']
     if heavy['raw_total_events']!=WINDOW_MINUTES*HEAVY_INVALID_PER_MINUTE:
         raise AssertionError('heavy workload reduced')
-    if heavy['causal']['unknown_events_aggregated']!=heavy['raw_total_events']:
+    expected_unknowns=heavy['raw_total_events']+heavy['causal']['repeated_outage_unknowns_aggregated']
+    if heavy['causal']['unknown_events_aggregated']!=expected_unknowns:
         raise AssertionError('heavy unknown count mismatch')
     if heavy['causal']['unknown_range_rows']>result['declared_unknown_range_row_bound']:
         raise AssertionError('heavy unknown range row bound exceeded')
