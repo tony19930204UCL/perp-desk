@@ -228,11 +228,14 @@ def reconstruction_smoke():
             price='99.99',qty='1.4',aggressor='SELL'),received_ms=START_MS+7201)
         b=lab.brokers['B']
         primary_fill=sum(1 for f in b.fills if not b.orders[f['order_id']]['intent']['reduce_only'])
+        fills_before_unknown=len(b.fills)
         feed.ingest('aggTrade',dict(trade_id=2,source_ts=START_MS+7300,receipt_ts=START_MS+7300,
             price='99',qty='100',aggressor='SELL'),received_ms=START_MS+27300)
+        fills_after_decision_unknown=len(b.fills)
         full_unknown=[x['payload']['event_id'] for x in lab.evidence.records('source_unknown')]
         feed.ingest('aggTrade',dict(trade_id=3,source_ts=START_MS+7400,receipt_ts=START_MS+7400,
             price='98',qty='100',aggressor='SELL'),received_ms=START_MS+27400)
+        fills_after_bounded_unknown=len(b.fills)
         # Later causal book can execute the already-created reduce-only protection.
         feed.ingest('book',dict(source_ts=START_MS+30000,receipt_ts=START_MS+30000,
             bids=[['99','10']],asks=[['100','10']]),received_ms=START_MS+30000)
@@ -265,7 +268,7 @@ def reconstruction_smoke():
             broker_ledger_ids_equal_evidence=(ledger_ids==evidence_ledger_ids),
             final_order_states_reconstructible=all_order_states_reconstructible,
             protective_reduce_only_orders=len(protective_orders),
-            fake_fill_from_unknown=False if len(b.fills)>=primary_fill else None,
+            unknown_did_not_fill=(fills_before_unknown==fills_after_decision_unknown==fills_after_bounded_unknown),
             flat_after_protection=(not b.positions),
             sticky_stop_after_restart=sticky,
             causal_head_same_restart=(before['head_hash']==after['head_hash']),
@@ -277,7 +280,7 @@ def run():
     admission='PASS' if valid['capacity_pass'] and heavy['capacity_pass'] and all((
         recon['broker_fill_ids_equal_evidence'],recon['broker_ledger_ids_equal_evidence'],
         recon['final_order_states_reconstructible'],recon['protective_reduce_only_orders']>=1,
-        recon['sticky_stop_after_restart'],recon['causal_head_same_restart'],
+        recon['unknown_did_not_fill'],recon['sticky_stop_after_restart'],recon['causal_head_same_restart'],
         recon['unknown_ranges_same_restart'])) else 'NOT_FEASIBLE'
     return dict(label='ISSUE38_ACCELERATED_CAPACITY_PLUS_ACTUAL_ENGINE_LIFECYCLE_NOT_REAL_48H',
         fixed_budget_bytes=BUDGET,entry_stop_bytes=ENTRY_STOP,raw_retention_limit=MAX_RAW_EVENTS,
@@ -314,7 +317,7 @@ def validate(result):
         raise AssertionError('maker/protective lifecycle not exercised')
     if not all((recon['broker_fill_ids_equal_evidence'],recon['broker_ledger_ids_equal_evidence'],
                 recon['final_order_states_reconstructible'],recon['flat_after_protection'],
-                recon['sticky_stop_after_restart'],recon['causal_head_same_restart'],
+                recon['unknown_did_not_fill'],recon['sticky_stop_after_restart'],recon['causal_head_same_restart'],
                 recon['unknown_ranges_same_restart'])):
         raise AssertionError('causal reconstruction mismatch')
     return True
