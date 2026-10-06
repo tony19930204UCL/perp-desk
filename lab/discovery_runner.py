@@ -78,7 +78,7 @@ class DiscoveryRunner:
             return state
         state=dict(schema_version=RUNNER_SCHEMA,prepared=False,stop_requested=False,
                    instrument=None,last_bar_cursor=None,funding_cursor=None,
-                   polls=0,last_poll_ms=None,last_error=None,poll_failures=0,last_failure_ms=None)
+                   polls=0,last_poll_ms=None,last_error=None)
         atomic_json(self.runner_path,state);return state
 
     def _save(self):
@@ -234,12 +234,11 @@ class DiscoveryRunner:
     def poll_once(self):
         self.state=self._load_runner_state()
         lab,feed=self._open()
-        stage='reference'
+        stage='shared'
         try:
             if self.state.get('stop_requested'):lab.request_operator_stop(self.clock())
             # Exact filter verification is performed before every process run/poll batch.
             self._spec()
-            stage='shared'
             feed.begin_poll()
             depth=self.client.get('/fapi/v1/depth',dict(symbol='ETHUSDT',limit=20))
             b=book_event(depth,'ETHUSDT',self.config['max_source_age_ms'])
@@ -259,8 +258,6 @@ class DiscoveryRunner:
             lab.clear_source_gap(now)
             report=lab.report(now)
             report['runner']=dict(polls=self.state['polls']+1,last_poll_ms=now,
-                                  last_error=None,poll_failures=self.state.get('poll_failures',0),
-                                  last_failure_ms=self.state.get('last_failure_ms'),source_failure=False,
                                   public_source='Binance USD-M public REST or injected public-shaped fixture',
                                   one_shared_poll_per_cycle=True,stop_requested=bool(self.state.get('stop_requested')),
                                   historical_warmup_only=True,feed=feed.snapshot())
@@ -277,28 +274,7 @@ class DiscoveryRunner:
                     lab.request_source_gap(now,gap_reason)
             except Exception as gap_exc:
                 gap_reason += '; gap_record_error='+type(gap_exc).__name__+': '+str(gap_exc)
-            retryable=stage in ('shared','aggTrade') and isinstance(exc,(ValueError,OSError,TimeoutError))
-            self.state['last_error']=gap_reason
-            self.state['last_failure_retryable']=retryable
-            self.state['poll_failures']=self.state.get('poll_failures',0)+1
-            self.state['last_failure_ms']=now
-            self._save()
-            # Persist the fail-closed state before propagating the failed poll. This is
-            # evidence of a source failure, never a successful poll or synthetic fill.
-            try:
-                failed=lab.report(now)
-                failed['runner']=dict(polls=self.state['polls'],last_poll_ms=self.state.get('last_poll_ms'),
-                                      last_error=gap_reason,poll_failures=self.state['poll_failures'],
-                                      last_failure_ms=now,source_failure=True,retryable_source_failure=retryable,
-                                      public_source='Binance USD-M public REST or injected public-shaped fixture',
-                                      one_shared_poll_per_cycle=True,stop_requested=bool(self.state.get('stop_requested')),
-                                      historical_warmup_only=True,feed=feed.snapshot())
-                self._persist_report(failed,lab,now)
-            except Exception:
-                # runner_state + lab source-gap state remain authoritative if report
-                # rendering itself is unavailable; never mask the original source error.
-                pass
-            raise
+            self.state['last_error']=gap_reason;self._save();raise
         finally:lab.close()
 
     def _persist_report(self,report,lab,now):
@@ -319,24 +295,13 @@ class DiscoveryRunner:
         finally:lab.close()
 
     def run(self,*,once=False,poll_seconds=1.0,max_cycles=None):
-        attempts=0
+        cycles=0
         while True:
-            try:
-                report=self.poll_once();attempts+=1
-            except Exception:
-                attempts+=1
-                # A one-shot probe remains strict. Continuous mode only retries an
-                # explicitly classified public-source rejection/transport failure;
-                # reference-contract, storage/database and programming failures exit.
-                if (once or self.state.get('last_failure_retryable') is not True
-                        or (max_cycles is not None and attempts>=max_cycles)):
-                    raise
-                time.sleep(poll_seconds)
-                continue
+            report=self.poll_once();cycles+=1
             flat=all(x['positions']==0 for x in report['arms'].values())
             if once or (self.state.get('stop_requested') and flat):
                 return report
-            if max_cycles is not None and attempts>=max_cycles:return report
+            if max_cycles is not None and cycles>=max_cycles:return report
             time.sleep(poll_seconds)
 
 def build_runner(args):

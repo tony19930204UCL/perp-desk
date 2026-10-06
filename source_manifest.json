@@ -1,6 +1,6 @@
 {
   "files": {
-    ".github/workflows/ci.yml": "4828bdcfe85028836de2e660a1310d3705e24fee51b35f3cfa0ee846491fa104",
+    ".github/workflows/ci.yml": "71972b9f523c7f2b005824bd4e5de8955d7e2fd704a768cbb749c5a13f9b92b1",
     ".gitignore": "e49fe1b585b7bfea6a86ae02f17b24a0cefc3f01b55300f481e6e1f37c791632",
     "AGENTS.md": "4cb6f42aa5ec4263567a7dec156b86784ccc522d8a675572b62d23f711193525",
     "README.md": "29ca1ff35eaea818ea049842bc2640413bb8163037329b4c478390895b056a28",
@@ -16,7 +16,7 @@
     "docs/ARCHITECTURE.md": "fbc1ac897a7640545ce764975539e204f8288a478640dbc7de0b946d487df634",
     "docs/AUTO_SYNC.md": "d4a02a00f38bdebc349cab54bdd86fd03a0e96f7169981aed22375fe9551accd",
     "docs/DEPLOYMENT_AND_GAPS.md": "9bcdfef909f6a4cf7c473ec3c35ac6fb084aee943475221422a5590117fba49c",
-    "docs/ETH_DISCOVERY_LAB.md": "dd61bade478fa88c5747519bbdc2ca641807624d9245fabf83790fb3944ca873",
+    "docs/ETH_DISCOVERY_LAB.md": "fe1899dc9f70412aac54b4c7b5c241fe43af6e2f80b8fb13e90e558901d7fa05",
     "docs/HEALTH_V3_OPERATOR.md": "df5aaa4571afca2b4692c743535612ddae642448cd5b71e5bbbb805e3454ec77",
     "docs/MULTI_LEDGER_DASHBOARD.md": "86b32ca465f70a6e2ee8ce8e610659f0edd795a4e1eeffe4c6beca9f74c61f25",
     "docs/OPERATOR_EVENT_GATE.md": "451feb37fa793a1f2aac3df94f23be92567a7624970a1897ce8e91fb2e4ac01f",
@@ -141,12 +141,11 @@
     "lab/discovery_lab.py": "1cbf61ad6f6e6b30cb350691e4eb149f23c149777f3041aebabf8e1ee3f21713",
     "lab/discovery_operational_check.py": "479a24a5748363e5e4a188163152704e4fc79401df547ce6fbe7701b740b0b90",
     "lab/discovery_pipeline_check.py": "0f62187001194e41b0b6cac002bf58cba1da89e527e06ecc25037d45ed003028",
-    "lab/discovery_runner.py": "48108ac98e7f820866b1925c2babc6008d987946ba99a6c4d7021e0b65dee6d3",
+    "lab/discovery_runner.py": "15967023b0e1807a3d028dbdc6d41b81e0022506d8015422ebf0c1dc354c338d",
     "lab/discovery_signal.py": "5c52490f2d65a4440b7652ba680eeed45756827fed9ebd6a569a13ff7d4f5ed2",
     "lab/evidence/freshness_actual_failure.json": "0c38cb2ad3a590c2b84ba31c693123fb39f008f9c73650c514bc7023d7ffbda6",
     "lab/evidence/v2_timestamp_failure_actual.json": "c4df99699043d8f58fa683cbed58d7fab9174fb5c4cc692ec56cd6d702b9d4c7",
     "lab/health_watchdog.py": "5c27de0c71653070cb598cff39eb034ca1ecc6bedde2db5ee22fb0af5098a10d",
-    "lab/issue28_public_probe.py": "0b096ed7b8fa94c4c396e9420c67e9a46eec44b3c0cc38bce2b7e0fec1ae54b1",
     "lab/observer_analytics.py": "770d94b2c1d22b7acd53d8d58606b561d2ff3f0615fc6c9ff25580ee83879922",
     "lab/operator_event_gate.py": "54c429461f72430084b71c3052f07197b7ae1dbd34d10318173d554707746abc",
     "lab/operator_event_gate_acceptance.py": "bbd074a6daa96ab8ac936e4b55ac7a5baee63aacf10aeabf8db290147cc20fce",
@@ -244,7 +243,7 @@
     "lab/tests/test_browser_issue3_evidence.py": "6ce83c7e2cff70515704733d14f8c23425a3f4e2202c7bb852f46edfecce6298",
     "lab/tests/test_collector.py": "eb8a39b178d2abb89c36be1a1094d4ea04021ba30c23157eafbccdc1c9fd5feb",
     "lab/tests/test_dashboard.py": "235e4c65256f8e1e521a491271c9324643390ad6e268d504c5911e3f3b528ea6",
-    "lab/tests/test_discovery_lab.py": "766b4afdc9fb4fc368145fcf7937e9d220e39004d455aa17f8057dbb75a99eaf",
+    "lab/tests/test_discovery_lab.py": "cbfd986e50ee886a0cd2dfbba04f004329cd8e833b1009d3906e9dc50fab1bff",
     "lab/tests/test_entry_risk_sizing.py": "bf0d34fa07c3ac14a0dc3f33ed76d3f63609e8b105e20625a879c4f78c2286de",
     "lab/tests/test_freshness.py": "2230fb09c460e8482bf540e836083121a87f1975af12068d1360f6d716804bb7",
     "lab/tests/test_health_watchdog.py": "ff0249d2104d428745d361bd9105ff71587c8131dec2a3354ac3f4df44bf4cad",
@@ -274,7 +273,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "0a8fe7a6054c8ffd0ea1b8a294d33d1acbf22af55ce23b42488cde489c8572f0",
+  "fingerprint": "dc442d45dfb82ec9a44b1a294eb66c8cc0ff639dfb210dcb0d8b82a08387d2f3",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }

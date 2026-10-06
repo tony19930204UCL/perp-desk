@@ -141,15 +141,7 @@ Exact sequence:
    maker-only source outage. A shared depth/mark/reference/funding/closed-bar
    transport failure is a shared-source gap and fails closed across all arms.
    Both gap types are durable across restart and are cleared only after a complete
-   valid recovery cycle. In continuous `run` mode, a rejected public poll is
-   persisted as a source failure and does **not** count as a successful poll; the
-   same process waits for the next poll and may recover only when a later complete
-   causal cycle passes the unchanged timestamp/age/gap gates. `run --once` remains
-   strict and exits non-zero on that rejection. Restart after a process failure must
-   use the **same root**: activation/start, 8h checkpoint, 48h deadline, warmup,
-   evidence, orders/fills/ledgers and prior failure history are never reset or
-   extended by recovery.
-   Closed bars missed beyond the 15s source-age gate are
+   valid recovery cycle. Closed bars missed beyond the 15s source-age gate are
    unknown and force normal causal gap handling rather than retroactive signals.
 
 4. **Reports**
