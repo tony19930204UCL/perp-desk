@@ -68,8 +68,8 @@ class ReviewSyncTests(unittest.TestCase):
                 self.assertEqual(m.main(base+['--visibility','public','--authorize-public-repo','owner/repo']),1)
             self.assertEqual(json.loads((root/'repo_sync/status.json').read_text())['state'],'blocked')
         wrapper=(Path(__file__).resolve().parents[2]/'scripts/paper_review_sync.py').read_text()
-        self.assertIn("'--visibility','private'",wrapper)
-        self.assertNotIn("'--authorize-public-repo'",wrapper)
+        self.assertIn("default='private'",wrapper)
+        self.assertIn("'--authorize-public-repo'",wrapper)
 
     def test_public_fetches_all_remote_refs_before_security_scan(self):
         import review_sync as m
@@ -103,6 +103,123 @@ class ReviewSyncTests(unittest.TestCase):
             self.assertEqual(public['lab/a.py'],raw['lab/a.py'])
             self.assertEqual(set(public),set(raw)-{'context/SOUL.md','context/SPEC.md'})
             with self.assertRaises(m.Blocked):m.collect(root,visibility='auto')
+
+    def test_script_only_public_entrypoint_authorizes_literal_exact_repo(self):
+        import runpy, types
+        from unittest.mock import patch
+        import review_sync as m
+        scripts=Path(__file__).resolve().parents[2]/'scripts'
+        public=scripts/'paper_review_sync_public.py'
+        self.assertTrue(public.is_file(),'script-only public scheduler entry missing')
+        with patch.object(m,'main',return_value=0) as exporter:
+            wrapper=types.ModuleType('paper_review_sync')
+            wrapper.__dict__.update(runpy.run_path(str(scripts/'paper_review_sync.py')))
+            with patch.dict(sys.modules,{'paper_review_sync':wrapper}),patch.object(sys,'argv',[str(public)]):
+                with self.assertRaises(SystemExit) as ended:
+                    runpy.run_path(str(public),run_name='__main__')
+            self.assertEqual(ended.exception.code,0)
+            self.assertEqual(exporter.call_args.args[0],[
+                '--profile',str(wrapper.PROFILE),'--repository',str(wrapper.PROFILE/'repo_sync/mirror'),
+                '--remote','https://github.com/tony19930204UCL/perp-desk.git',
+                '--owner-repo','tony19930204UCL/perp-desk',
+                '--visibility','public','--authorize-public-repo','tony19930204UCL/perp-desk'])
+            exporter.reset_mock()
+            self.assertEqual(wrapper.run([]),0)
+            self.assertEqual(exporter.call_args.args[0][-2:],['--visibility','private'])
+
+    def test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);(root/'scripts').mkdir()
+            scripts=Path(__file__).resolve().parents[2]/'scripts'
+            names=('paper_review_sync.py','paper_review_sync_public.py')
+            for name in names:(root/'scripts'/name).write_bytes((scripts/name).read_bytes())
+            for name in ('paper_review_sync_other.py','paper_review_sync_public_backup.py','unrelated.py'):
+                (root/'scripts'/name).write_text('private unrelated source\n')
+            for mode in ('private','public'):
+                files=m.collect(root,visibility=mode)
+                self.assertEqual(set(files),{'scripts/'+name for name in names},
+                                 'only the two literal scheduler paths may be exported')
+                for name in names:self.assertEqual(files['scripts/'+name],(scripts/name).read_bytes())
+            public=root/'scripts/paper_review_sync_public.py'
+            public.unlink();public.symlink_to(scripts/'paper_review_sync_public.py')
+            with self.assertRaises(m.Blocked):m.collect(root,visibility='public')
+
+    def test_scheduler_public_transition_is_explicit_and_exact_target(self):
+        import runpy
+        from unittest.mock import patch
+        import review_sync as m
+        wrapper=Path(__file__).resolve().parents[2]/'scripts/paper_review_sync.py'
+        with patch.object(m,'main',return_value=0) as exporter:
+            entry=runpy.run_path(str(wrapper))
+            self.assertIn('run',entry,'scheduler has no explicit transition entry')
+            self.assertEqual(entry['run']([]),0)
+            private_args=exporter.call_args.args[0]
+            self.assertEqual(private_args[-2:],['--visibility','private'])
+            exporter.reset_mock()
+            owner='tony19930204UCL/perp-desk'
+            self.assertEqual(entry['run'](['--visibility','public','--authorize-public-repo',owner]),0)
+            self.assertEqual(exporter.call_args.args[0],private_args[:-2]+[
+                '--visibility','public','--authorize-public-repo',owner])
+            for flags in (['--visibility','public'],
+                          ['--visibility','public','--authorize-public-repo','other/perp-desk'],
+                          ['--visibility','public','--authorize-public-repo','tony19930204UCL/other'],
+                          ['--authorize-public-repo',owner],
+                          ['--remote','https://github.com/other/perp-desk.git'],
+                          ['--visibility','auto'],['--force']):
+                exporter.reset_mock()
+                with self.subTest(flags=flags),self.assertRaises(SystemExit):entry['run'](flags)
+                exporter.assert_not_called()
+
+    def test_scheduler_transition_runs_existing_exporter_with_isolated_metadata(self):
+        import runpy,subprocess,json,contextlib,io
+        from unittest.mock import patch
+        import review_sync as m
+        wrapper=Path(__file__).resolve().parents[2]/'scripts/paper_review_sync.py'
+        owner='tony19930204UCL/perp-desk'
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);(root/'lab').mkdir();(root/'lab/a.py').write_text('pass\n')
+            remote=root/'remote.git'
+            subprocess.run(['git','init','--bare',str(remote)],check=True,capture_output=True)
+            metadata={'private':True,'full_name':owner}
+            gh=root/'gh';scanner=root/'scanner'
+            scanner.write_text('#!/bin/sh\nexit 0\n');scanner.chmod(0o700)
+            original_main=m.main;original_publish=m.publish
+            def local_main(args):
+                return original_main(args+['--gh',str(gh),'--gitleaks',str(scanner),'--force'])
+            def local_publish(files,repository,remote_url,*args,**kwargs):
+                self.assertEqual(remote_url,'https://github.com/'+owner+'.git')
+                return original_publish(files,repository,str(remote),*args,**kwargs,_test_remote=remote)
+            with patch.object(m,'main',local_main),patch.object(m,'publish',local_publish),contextlib.redirect_stdout(io.StringIO()):
+                entry=runpy.run_path(str(wrapper));entry['run'].__globals__['PROFILE']=root
+                def invoke(flags):
+                    gh.write_text('#!/usr/bin/env python3\nprint('+repr(json.dumps(metadata))+')\n');gh.chmod(0o700)
+                    if flags:
+                        # The actual scheduler supplies only this script path, no CLI flags.
+                        import types
+                        public_entry=wrapper.with_name('paper_review_sync_public.py')
+                        module=types.ModuleType('paper_review_sync');module.__dict__.update(entry)
+                        with patch.dict(sys.modules,{'paper_review_sync':module}),patch.object(sys,'argv',[str(public_entry)]):
+                            with self.assertRaises(SystemExit) as ended:
+                                runpy.run_path(str(public_entry),run_name='__main__')
+                        return ended.exception.code
+                    return entry['run'](flags)
+                public=['--visibility','public','--authorize-public-repo',owner]
+                self.assertEqual(invoke([]),0)
+                before=m.git(root/'repo_sync/mirror','rev-parse','HEAD').stdout.strip()
+                self.assertEqual(invoke(public),1,'public flags must reject still-private metadata')
+                metadata['private']=False
+                self.assertEqual(invoke([]),1,'legacy private invocation must reject after flip')
+                self.assertEqual(invoke(public),0)
+                for bad in ({'private':False,'full_name':'other/perp-desk'},
+                            {'private':False,'full_name':'tony19930204UCL/other'},
+                            {'private':'false','full_name':owner},{'private':0,'full_name':owner},{}):
+                    metadata=bad
+                    self.assertEqual(invoke(public),1)
+                    self.assertEqual(m.git(root/'repo_sync/mirror','rev-parse','HEAD').stdout.strip(),before)
+                metadata={'private':True,'full_name':owner}
+                self.assertEqual(invoke([]),0,'private rollback must preserve history')
+                self.assertEqual(m.git(root/'repo_sync/mirror','rev-parse','HEAD').stdout.strip(),before)
 
     def test_scheduler_wrapper_is_profile_bound_and_script_only(self):
         p=Path(__file__).resolve().parents[2]/'scripts/paper_review_sync.py'
