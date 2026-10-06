@@ -10,7 +10,7 @@ from collections import deque
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-MAX_RAW_EVENTS=20000
+MAX_RAW_EVENTS=4096
 
 def canonical(value):
     return json.dumps(value,sort_keys=True,separators=(',',':'),default=str)
@@ -69,6 +69,14 @@ class SharedFeed:
                                 aggtrade_valid=False,gaps=[],duplicates=0,out_of_order=0,
                                 source_invalid=0,events_persisted=0,events_evicted=0,reconnects=0)
                 self._save(db)
+            # Raw receipts are a bounded replay window, not the immutable causal
+            # evidence store. Enforce the current limit on same-root reopen and
+            # compact only when rollover actually removed old raw rows.
+            overflow=db.execute('SELECT count(*) FROM feed_events').fetchone()[0]-self.retention
+            if overflow>0:
+                db.execute('DELETE FROM feed_events WHERE seq IN (SELECT seq FROM feed_events ORDER BY seq LIMIT ?)',(overflow,))
+                self.state['events_evicted']+=overflow
+                self._save(db);db.commit();db.execute('VACUUM')
 
     def subscribe(self,callback):
         self._subscribers.append(callback)
@@ -105,8 +113,9 @@ class SharedFeed:
                         open_time_ms=payload['open_time_ms'],close_time_ms=source,closed=True,
                         source_valid=(0<=received_ms-source<=self.max_source_age_ms),**values)
         if kind=='book':
-            source=payload.get('source_ts')
-            if type(source) is not int or not self.forward_start_ms<=source<=received_ms:
+            source=payload.get('source_ts');receipt=payload.get('receipt_ts',received_ms)
+            if (type(source) is not int or type(receipt) is not int or receipt>received_ms
+                    or not self.forward_start_ms<=source<=received_ms):
                 raise ValueError('invalid book source time')
             bids=payload.get('bids');asks=payload.get('asks')
             if not isinstance(bids,list) or not isinstance(asks,list):
@@ -117,15 +126,17 @@ class SharedFeed:
                         raise ValueError('invalid level')
                     _decimal(level[0],positive=True);_decimal(level[1],positive=True)
             return dict(type='book',event_id='book:'+str(source)+':'+hashlib.sha256(canonical(payload).encode()).hexdigest()[:16],
-                        symbol='ETHUSDT',ts=received_ms,source_ts=source,bids=bids,asks=asks,
+                        symbol='ETHUSDT',ts=received_ms,source_ts=source,receipt_ts=receipt,bids=bids,asks=asks,
                         source_valid=(0<=received_ms-source<=self.max_source_age_ms))
         if kind=='mark':
-            source=payload.get('source_ts');price=payload.get('price')
-            if type(source) is not int or not self.forward_start_ms<=source<=received_ms:
+            source=payload.get('source_ts');receipt=payload.get('receipt_ts',received_ms);price=payload.get('price')
+            if (type(source) is not int or type(receipt) is not int or receipt>received_ms
+                    or not self.forward_start_ms<=source<=received_ms):
                 raise ValueError('invalid mark source time')
             _decimal(price,positive=True)
             return dict(type='mark',event_id='mark:'+str(source),symbol='ETHUSDT',ts=received_ms,
-                        source_ts=source,price=str(price),source_valid=(0<=received_ms-source<=self.max_source_age_ms))
+                        source_ts=source,receipt_ts=receipt,price=str(price),
+                        source_valid=(0<=received_ms-source<=self.max_source_age_ms))
         if kind=='funding_status':
             source=payload.get('source_ts');valid=payload.get('valid_until_ts');complete=payload.get('complete')
             if type(source) is not int or type(valid) is not int or type(complete) is not bool:
@@ -149,6 +160,9 @@ class SharedFeed:
         tid=payload.get('trade_id');source=payload.get('source_ts')
         if type(tid) is not int or tid<0 or type(source) is not int or not self.forward_start_ms<=source<=received_ms:
             raise ValueError('invalid aggTrade identity/timestamp')
+        receipt=payload.get('receipt_ts',received_ms)
+        if type(receipt) is not int or receipt>received_ms:
+            raise ValueError('invalid aggTrade receipt timestamp')
         price=_decimal(payload.get('price'),positive=True);qty=_decimal(payload.get('qty'),positive=True)
         aggressor=payload.get('aggressor')
         if aggressor not in ('BUY','SELL'):
@@ -167,7 +181,7 @@ class SharedFeed:
         timely=0<=received_ms-source<=self.max_source_age_ms
         valid=bool(timely and self.state.get('aggtrade_valid'))
         return dict(type='aggTrade',event_id='aggTrade:'+str(tid),trade_id=tid,symbol='ETHUSDT',
-                    ts=received_ms,source_ts=source,price=str(price),qty=str(qty),aggressor=aggressor,
+                    ts=received_ms,source_ts=source,receipt_ts=receipt,price=str(price),qty=str(qty),aggressor=aggressor,
                     source_valid=valid,duplicate=duplicate)
 
     def mark_reconnected(self,*,next_trade_id,observed_ms):

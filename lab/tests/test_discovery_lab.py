@@ -274,6 +274,56 @@ class DiscoveryLabTests(unittest.TestCase):
         self.assertEqual(self.lab.state['deadline_ms'],deadline)
         self.assertEqual(self.lab.checkpoint('A',now)['status'],'passed')
 
+    def test_operator_stop_cancels_pending_entries_and_blocks_new_entries(self):
+        from discovery_feed import SharedFeed
+        feed=SharedFeed(self.root/'stop-feed.sqlite3',forward_start_ms=self.start)
+        self.lab.bind_feed(feed);feed.mark_reconnected(next_trade_id=1,observed_ms=self.start)
+        for arm,b in self.lab.brokers.items():
+            b.on_event(dict(type='funding_status',event_id='stop-f:'+arm,symbol='ETHUSDT',
+                            ts=self.start+1,source_ts=self.start+1,complete=True,
+                            valid_until_ts=self.start+100000))
+        feed.ingest('book',dict(source_ts=self.start+5000,bids=[['100','1']],asks=[['100.1','2']]),
+                    received_ms=self.start+5000)
+        self.lab._route_signal(self.signal(target='105',sid='stop-pending'),self.start+5001)
+        for broker in self.lab.brokers.values():
+            self.assertTrue(any(not o['intent']['reduce_only'] and o['status']=='PENDING'
+                                for o in broker.orders.values()))
+        stop_at=self.start+5100
+        self.lab.request_operator_stop(stop_at)
+        self.assertTrue(self.lab.state['operator_stop_requested'])
+        self.assertEqual(self.lab.state['operator_stop_requested_ms'],stop_at)
+        for broker in self.lab.brokers.values():
+            self.assertTrue(all(o['status']=='CANCELED'
+                                for o in broker.orders.values() if not o['intent']['reduce_only']))
+        before=sum(1 for b in self.lab.brokers.values() for o in b.orders.values()
+                   if not o['intent']['reduce_only'])
+        self.lab._route_signal(self.signal(target='106',sid='after-stop'),self.start+5200)
+        after=sum(1 for b in self.lab.brokers.values() for o in b.orders.values()
+                  if not o['intent']['reduce_only'])
+        self.assertEqual(after,before,'operator stop must inhibit new entry orders')
+
+    def test_operator_stop_keeps_existing_exposure_reduce_only_protection(self):
+        self.ready(now=self.start+10000)
+        self.lab._route_signal(self.signal(target='105',sid='stop-open'),self.start+10001)
+        self.lab.on_shared_event(dict(type='book',event_id='stop-arrival',symbol='ETHUSDT',
+            ts=self.start+12100,source_ts=self.start+12100,
+            bids=[['100','5']],asks=[['100.1','5']],source_valid=True))
+        self.assertIn('ETHUSDT',self.lab.brokers['A'].positions)
+        self.assertIn('ETHUSDT',self.lab.brokers['C'].positions)
+        stop_at=self.start+12200
+        self.lab.request_operator_stop(stop_at)
+        stop_price=min(D(self.lab.brokers[a].positions['ETHUSDT']['stop']) for a in ('A','C'))
+        self.lab.on_shared_event(dict(type='mark',event_id='stop-protect-mark',symbol='ETHUSDT',
+            ts=self.start+13000,source_ts=self.start+13000,price=str(stop_price-D('.01')),source_valid=True))
+        self.lab.on_shared_event(dict(type='book',event_id='stop-protect-book',symbol='ETHUSDT',
+            ts=self.start+15100,source_ts=self.start+15100,
+            bids=[[str(stop_price-D('.02')),'10']],asks=[[str(stop_price-D('.01')),'10']],source_valid=True))
+        for arm in ('A','C'):
+            broker=self.lab.brokers[arm]
+            self.assertNotIn('ETHUSDT',broker.positions)
+            self.assertTrue(any(o['intent']['reduce_only'] and o['intent']['kind']=='TAKER' and o['status']=='FILLED'
+                                for o in broker.orders.values()))
+
     def test_runner_source_gap_scope_is_durable_and_fail_closed(self):
         from discovery_feed import SharedFeed
         feed=SharedFeed(self.root/'scope-feed.sqlite3',forward_start_ms=self.start)
@@ -585,7 +635,8 @@ class RunnerSubprocessTests(unittest.TestCase):
             self.assertEqual(result.returncode,0,result.stderr);restarted=json.loads(result.stdout)
             self.assertEqual(restarted['start_ms'],activation);self.assertEqual(restarted['deadline_ms'],deadline)
             self.assertTrue(restarted['operator_stop_requested'])
-            self.assertEqual(restarted['runner']['polls'],2)
+            self.assertEqual(restarted['runner']['polls'],1)
+            self.assertTrue(restarted['runner']['stop_requested'])
             self.assertTrue(all(x['positions']==0 for x in restarted['arms'].values()))
             self.assertNotIn(str(Path(td)),json.dumps(restarted))
             checkpoint_ms=activation+28_800_000
@@ -595,6 +646,198 @@ class RunnerSubprocessTests(unittest.TestCase):
             final=call(deadline,'report')
             self.assertEqual(final['deadline_ms'],deadline)
             self.assertTrue((root/'reports/final-48h.json').is_file())
+
+
+    def test_continuous_runner_completes_two_valid_cycles_same_root(self):
+        import subprocess,sys
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'runner';fixture=Path(td)/'transport.json';activation=self._fixture(fixture)
+            base=[sys.executable,str(LAB/'discovery_runner.py'),'--root',str(root),
+                  '--engineering-fixture','--transport-fixture',str(fixture)]
+            def call(now,*cmd):
+                result=subprocess.run(base+['--now-ms',str(now),*cmd],cwd=LAB,capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            call(3_950_000,'prepare');activated=call(activation,'activate','--operator-accepted')
+            report=call(4_023_000,'run','--max-cycles','2','--poll-seconds','0')
+            state=json.loads((root/'runner_state.json').read_text())
+            durable=json.loads((root/'lab_state.json').read_text())
+            self.assertEqual(report['runner']['polls'],2);self.assertEqual(state['polls'],2)
+            self.assertIsNone(state['last_error']);self.assertFalse(state['stop_requested'])
+            self.assertEqual((durable['start_ms'],durable['checkpoint_ms'],durable['deadline_ms']),
+                             (activation,activated['checkpoint_ms'],activated['deadline_ms']))
+            self.assertTrue((root/'reports/latest.json').is_file())
+
+    def test_bounded_future_source_quarantine_preserves_raw_receipt(self):
+        import sys
+        sys.path.insert(0,str(LAB))
+        import discovery_runner as dr
+        from discovery_feed import SharedFeed
+        with tempfile.TemporaryDirectory() as td:
+            now=[1_000_000]
+            runner=dr.DiscoveryRunner(Path(td)/'runner',client=object(),clock_ms=lambda:now[0])
+            original_sleep=dr.time.sleep
+            def advance(seconds):
+                now[0]+=max(1,int(seconds*1000))
+            dr.time.sleep=advance
+            try:
+                dispatch=runner._causal_dispatch_ms(1_000_232,1_000_000,'book')
+            finally:
+                dr.time.sleep=original_sleep
+            self.assertGreaterEqual(dispatch,1_000_232)
+            feed=SharedFeed(Path(td)/'feed.sqlite3',forward_start_ms=999_000,max_source_age_ms=15000)
+            result=feed.ingest('book',dict(source_ts=1_000_232,receipt_ts=1_000_000,
+                              bids=[['100','1']],asks=[['100.1','1']]),received_ms=dispatch)
+            self.assertEqual(result['event']['source_ts'],1_000_232)
+            self.assertEqual(result['event']['receipt_ts'],1_000_000)
+            self.assertEqual(result['event']['ts'],dispatch)
+            with self.assertRaisesRegex(ValueError,'too far in future'):
+                runner._causal_dispatch_ms(1_006_000,1_000_000,'book')
+
+    def test_real_subprocess_stop_is_sticky_across_slow_success_and_restart(self):
+        import subprocess,sys,time as walltime
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'runner';fixture=Path(td)/'transport.json';activation=self._fixture(fixture)
+            base=[sys.executable,str(LAB/'discovery_runner.py'),'--root',str(root),
+                  '--engineering-fixture','--transport-fixture',str(fixture)]
+            def call(now,*cmd):
+                result=subprocess.run(base+['--now-ms',str(now),*cmd],cwd=LAB,capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            call(3_950_000,'prepare');activated=call(activation,'activate','--operator-accepted')
+            data=json.loads(fixture.read_text())
+            data['responses']['/fapi/v1/depth'][0]['fixture_delay_ms']=900
+            fixture.write_text(json.dumps(data))
+            pump=subprocess.Popen(base+['--now-ms','4020500','run','--max-cycles','3','--poll-seconds','0.05'],
+                                  cwd=LAB,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            walltime.sleep(.2)
+            stop=subprocess.run(base+['--now-ms','4020500','stop'],cwd=LAB,capture_output=True,text=True,timeout=10)
+            self.assertEqual(stop.returncode,0,stop.stderr)
+            out,err=pump.communicate(timeout=15)
+            self.assertEqual(pump.returncode,0,err)
+            report=json.loads(out)
+            state=json.loads((root/'runner_state.json').read_text())
+            durable=json.loads((root/'lab_state.json').read_text())
+            self.assertTrue(state['stop_requested']);self.assertTrue(durable['operator_stop_requested'])
+            self.assertTrue(report['runner']['stop_requested'])
+            self.assertEqual(state['polls'],1)
+            self.assertTrue(all(x['positions']==0 for x in report['arms'].values()))
+            self.assertEqual(sum(x['submitted'] for x in report['arms'].values()),0)
+            self.assertEqual((durable['start_ms'],durable['checkpoint_ms'],durable['deadline_ms']),
+                             (activation,activated['checkpoint_ms'],activated['deadline_ms']))
+            # Same-root restart must retain the completed stop and exit flat without
+            # another public poll or clearing the request.
+            restarted=call(4_021_000,'run','--once')
+            self.assertTrue(restarted['runner']['stop_requested'])
+            self.assertEqual(restarted['runner']['polls'],1)
+            self.assertTrue(json.loads((root/'runner_state.json').read_text())['stop_requested'])
+
+    def test_real_subprocess_stop_survives_slow_failure_retry(self):
+        import subprocess,sys,time as walltime
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'runner';fixture=Path(td)/'transport.json';activation=self._fixture(fixture)
+            base=[sys.executable,str(LAB/'discovery_runner.py'),'--root',str(root),
+                  '--engineering-fixture','--transport-fixture',str(fixture)]
+            def call(now,*cmd):
+                result=subprocess.run(base+['--now-ms',str(now),*cmd],cwd=LAB,capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            call(3_950_000,'prepare');activated=call(activation,'activate','--operator-accepted')
+            data=json.loads(fixture.read_text())
+            bad=data['responses']['/fapi/v1/depth'][0]
+            bad['source_timestamp_ms']=activation-1;bad['payload']['E']=activation-1
+            bad['received_at']=self._iso(activation+50);bad['fixture_delay_ms']=500
+            data['responses']['/fapi/v1/depth']=[bad]
+            fixture.write_text(json.dumps(data))
+            pump=subprocess.Popen(base+['--now-ms','4020500','run','--max-cycles','5','--poll-seconds','0.05'],
+                                  cwd=LAB,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            walltime.sleep(.75)
+            stop=subprocess.run(base+['--now-ms','4020500','stop'],cwd=LAB,capture_output=True,text=True,timeout=10)
+            self.assertEqual(stop.returncode,0,stop.stderr)
+            out,err=pump.communicate(timeout=15)
+            self.assertEqual(pump.returncode,0,err)
+            report=json.loads(out);state=json.loads((root/'runner_state.json').read_text())
+            durable=json.loads((root/'lab_state.json').read_text())
+            self.assertTrue(state['stop_requested']);self.assertTrue(durable['operator_stop_requested'])
+            self.assertGreaterEqual(state['poll_failures'],1);self.assertEqual(state['polls'],0)
+            self.assertTrue(report['runner']['stop_requested'])
+            self.assertTrue(all(x['positions']==0 for x in report['arms'].values()))
+            self.assertEqual((durable['start_ms'],durable['checkpoint_ms'],durable['deadline_ms']),
+                             (activation,activated['checkpoint_ms'],activated['deadline_ms']))
+
+
+class Issue34TransportCapacityTests(unittest.TestCase):
+    def test_reference_dns_is_retryable_but_reference_validation_is_terminal(self):
+        import sys
+        from urllib.error import URLError
+        sys.path.insert(0,str(LAB))
+        import discovery_runner as dr
+        self.assertTrue(dr.DiscoveryRunner._retryable_failure('reference',URLError('temporary DNS')))
+        self.assertTrue(dr.DiscoveryRunner._retryable_failure('reference',TimeoutError('timeout')))
+        self.assertFalse(dr.DiscoveryRunner._retryable_failure('reference',ValueError('filters changed')))
+        self.assertTrue(dr.DiscoveryRunner._retryable_failure('shared',ValueError('invalid public receipt')))
+
+    def test_strict_failure_persists_explicit_terminal_contract(self):
+        import sys
+        sys.path.insert(0,str(LAB))
+        import discovery_runner as dr
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'runner'
+            runner=dr.DiscoveryRunner(root,client=object(),clock_ms=lambda:1234)
+            runner.state.update(last_error='URLError: temporary DNS',
+                                last_failure_retryable=True,lifecycle='retryable_failure')
+            runner._save()
+            reports=root/'reports';reports.mkdir()
+            (reports/'latest.json').write_text(json.dumps(dict(runner={})))
+            runner._mark_terminal_failure('terminal_one_shot_failure')
+            state=json.loads((root/'runner_state.json').read_text())
+            report=json.loads((reports/'latest.json').read_text())
+            self.assertTrue(state['terminal_blocked'])
+            self.assertEqual(state['lifecycle'],'terminal_one_shot_failure')
+            self.assertTrue(report['runner']['terminal_blocked'])
+            self.assertTrue(report['runner']['retryable_source_failure'])
+
+    def test_same_root_open_rolls_raw_window_down_and_compacts_without_losing_counters(self):
+        import sqlite3,sys
+        sys.path.insert(0,str(LAB))
+        from discovery_feed import SharedFeed
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/'feed.sqlite3'
+            feed=SharedFeed(path,forward_start_ms=1000,retention=5)
+            for i in range(5):
+                ts=1100+i
+                feed.ingest('book',dict(source_ts=ts,receipt_ts=ts,
+                            bids=[['100','1']],asks=[['100.1','1']]),received_ms=ts)
+            before=path.stat().st_size
+            reopened=SharedFeed(path,forward_start_ms=1000,retention=3)
+            snap=reopened.snapshot()
+            self.assertEqual(snap['retained_events'],3)
+            self.assertEqual(snap['events_persisted'],5)
+            self.assertEqual(snap['events_evicted'],2)
+            self.assertLessEqual(path.stat().st_size,before)
+            with sqlite3.connect(path) as db:
+                self.assertEqual(db.execute('SELECT count(*) FROM feed_events').fetchone()[0],3)
+
+
+class Issue34CapacityHaltTests(unittest.TestCase):
+    def test_flat_root_at_entry_stop_halts_before_public_poll(self):
+        import sys
+        sys.path.insert(0,str(LAB))
+        import discovery_runner as dr
+        with tempfile.TemporaryDirectory() as td:
+            runner=dr.DiscoveryRunner(Path(td)/'runner',client=object(),clock_ms=lambda:2000)
+            class Lab:
+                state={'checkpoint_ms':999999,'deadline_ms':9999999}
+                def report(self,now):
+                    return dict(storage_used_bytes=90,storage_budget_bytes=100,
+                                arms={a:dict(positions=0) for a in 'ABC'})
+                def close(self):pass
+            class Feed:
+                def snapshot(self):return dict(retained_events=0)
+            runner._open=lambda:(Lab(),Feed())
+            report=runner._storage_capacity_halt_report()
+            self.assertEqual(report['runner']['lifecycle'],'terminal_storage_capacity')
+            self.assertTrue(report['runner']['terminal_blocked'])
+            state=json.loads((runner.root/'runner_state.json').read_text())
+            self.assertEqual(state['storage_halt_used_bytes'],90)
+            self.assertTrue(state['terminal_blocked'])
 
 
 class PipelineSubprocessTests(unittest.TestCase):

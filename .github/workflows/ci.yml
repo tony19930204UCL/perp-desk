@@ -54,6 +54,19 @@ jobs:
           name: issue-26-owner-handoff-evidence
           path: artifacts/issue-26-owner-handoff
           if-no-files-found: error
+      - name: Issue 34 transport, sticky-stop and fixed-capacity acceptance
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/issue-34-runtime-capacity
+          (cd lab && python3 -m unittest -v tests.test_discovery_lab.RunnerSubprocessTests tests.test_discovery_lab.RetentionEvidenceTests tests.test_discovery_lab.Issue34TransportCapacityTests tests.test_discovery_lab.Issue34CapacityHaltTests) 2>&1 | tee artifacts/issue-34-runtime-capacity/focused-tests.txt
+          python3 lab/issue34_acceptance.py > artifacts/issue-34-runtime-capacity/acceptance.json
+      - name: Upload Issue 34 isolated runtime/capacity evidence
+        if: ${{ always() && hashFiles('artifacts/issue-34-runtime-capacity/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-34-runtime-capacity-evidence
+          path: artifacts/issue-34-runtime-capacity
+          if-no-files-found: error
       - name: Issue 3 real browser acceptance
         run: python3 lab/browser_issue3_acceptance.py --output artifacts/issue-3-browser
       - name: Upload Issue 3 synthetic browser evidence

@@ -141,7 +141,20 @@ Exact sequence:
    maker-only source outage. A shared depth/mark/reference/funding/closed-bar
    transport failure is a shared-source gap and fails closed across all arms.
    Both gap types are durable across restart and are cleared only after a complete
-   valid recovery cycle. Closed bars missed beyond the 15s source-age gate are
+   valid recovery cycle.
+
+   Public REST source clocks and the local receipt clock are retained as separate
+   raw facts. If a valid Binance source timestamp is slightly ahead of the local
+   receipt timestamp but remains within the existing +5s future bound, the runner
+   quarantines that receipt and performs **no dispatch** until the unchanged local
+   wall clock reaches the raw source timestamp. The event then records both the
+   original receipt timestamp and the later dispatch timestamp. The raw source and
+   receipt are never rewritten. A source still future after the bounded wait,
+   more than +5s future at receipt, or older than the unchanged 15s source-age
+   limit remains fail-closed. This bounded causal wait is not a clock correction,
+   tolerance expansion, replay, or evidence of profitability.
+
+   Closed bars missed beyond the 15s source-age gate are
    unknown and force normal causal gap handling rather than retroactive signals.
 
 4. **Reports**
@@ -160,12 +173,18 @@ Exact sequence:
 
    `python3 lab/discovery_runner.py --root ./discovery-eth-lab stop`
 
-   This writes an operator stop request; it does **not** kill a process. The running
-   pump cancels new/pending entry risk, keeps the public source running for normal
-   reduce-only protective completion, and exits once all three arms are flat. A
-   subsequent `run`/ `report` reopens the same namespace and preserves the
-   original start/deadline. Ctrl-C is only a process interruption; use the stop
-   command for the staged orderly-stop contract.
+   This writes an operator stop request; it does **not** kill a process. The request
+   is sticky for that activated root: there is no implicit resume/clear path, and
+   an in-flight poll is forbidden to overwrite it with stale state. The running
+   pump re-reads durable stop state after slow public I/O and before dispatch,
+   cancels new/pending entry risk, keeps only the public inputs needed for normal
+   reduce-only protective completion, and exits once all three arms are flat.
+   A source failure/retry cannot clear the stop. If the root is already flat, a
+   restarted `run` observes the same stop and exits without starting another
+   successful poll. `report` preserves and shows the stop state. Restart always
+   uses the same namespace/start/checkpoint/deadline/history; it never extends or
+   resets the original 48h window. Ctrl-C is only a process interruption; use the
+   stop command for the staged orderly-stop contract.
 
 The CI fixture mode (`--engineering-fixture --transport-fixture ... --now-ms ...`)
 exists only for isolated subprocess acceptance using public-shaped synthetic
@@ -268,3 +287,18 @@ confirmation experiment requires a new preregistration and new forward data.
 This staged PR does not verify operator activation, real host resource usage,
 actual future aggTrade continuity, actual maker queue position, profitability,
 actual account/VIP fees, or any TradFi venue/session/index/funding behavior.
+
+
+## Issue #34 transport and fixed-capacity lifecycle
+
+This candidate is not an activation command and must not be pointed at the stopped operator root until its exact head and artifact are accepted.
+
+- Continuous mode treats public DNS, socket and timeout failures as retryable source-unknown events. Pending entry risk is cancelled by the preserved source-gap contract; retries use capped exponential delay and keep the original root, start, checkpoint, deadline and history.
+- Strict `run --once`, non-retryable validation failures and bounded-cycle exhaustion persist an explicit terminal lifecycle. A terminal report must not be described as running.
+- The raw replay window is 4096 events. On same-root open, only raw rows older than that already-defined rollover window are evicted and the dedicated feed database is compacted. The separate hash-chained causal-evidence store is never pruned.
+- At the unchanged 90% storage entry-stop, a flat three-arm root persists `terminal_storage_capacity` before another public poll. If exposure exists, entry risk remains inhibited while the preserved reduce-only protective path can continue. There is no budget increase or automatic reset.
+- The isolated invalid-load artifact proves bounded rollover, transport classification and sub-90% raw-store size. It does not prove the existing operator root will fall below budget or that 48 hours is feasible; the immutable causal store makes unbounded retention impossible.
+
+Operator acceptance sequence after merge/install approval: back up the entire existing root; verify the candidate SHA and all seven source artifacts; run `report` first; confirm the original start/checkpoint/deadline and failed history; confirm all arms are flat; then inspect the persisted lifecycle. If it is `terminal_storage_capacity`, do not restart. Restart remains an explicit operator decision only after same-root bytes are below the fixed gate and all other blockers are accepted.
+
+Rollback replaces only the installed source artifacts with the pre-install backup. It never restores, resets, deletes or substitutes the research root/database and never clears stop or terminal state. No host, DNS, clock, service, cron, permission, provider, model, private API or account change belongs to this repair.
