@@ -234,11 +234,12 @@ class DiscoveryRunner:
     def poll_once(self):
         self.state=self._load_runner_state()
         lab,feed=self._open()
-        stage='shared'
+        stage='reference'
         try:
             if self.state.get('stop_requested'):lab.request_operator_stop(self.clock())
             # Exact filter verification is performed before every process run/poll batch.
             self._spec()
+            stage='shared'
             feed.begin_poll()
             depth=self.client.get('/fapi/v1/depth',dict(symbol='ETHUSDT',limit=20))
             b=book_event(depth,'ETHUSDT',self.config['max_source_age_ms'])
@@ -276,7 +277,9 @@ class DiscoveryRunner:
                     lab.request_source_gap(now,gap_reason)
             except Exception as gap_exc:
                 gap_reason += '; gap_record_error='+type(gap_exc).__name__+': '+str(gap_exc)
+            retryable=stage in ('shared','aggTrade') and isinstance(exc,(ValueError,OSError,TimeoutError))
             self.state['last_error']=gap_reason
+            self.state['last_failure_retryable']=retryable
             self.state['poll_failures']=self.state.get('poll_failures',0)+1
             self.state['last_failure_ms']=now
             self._save()
@@ -286,7 +289,7 @@ class DiscoveryRunner:
                 failed=lab.report(now)
                 failed['runner']=dict(polls=self.state['polls'],last_poll_ms=self.state.get('last_poll_ms'),
                                       last_error=gap_reason,poll_failures=self.state['poll_failures'],
-                                      last_failure_ms=now,source_failure=True,
+                                      last_failure_ms=now,source_failure=True,retryable_source_failure=retryable,
                                       public_source='Binance USD-M public REST or injected public-shaped fixture',
                                       one_shared_poll_per_cycle=True,stop_requested=bool(self.state.get('stop_requested')),
                                       historical_warmup_only=True,feed=feed.snapshot())
@@ -322,11 +325,11 @@ class DiscoveryRunner:
                 report=self.poll_once();attempts+=1
             except Exception:
                 attempts+=1
-                # A one-shot probe remains strict: its caller gets the source failure.
-                # The documented continuous runner stays fail-closed but alive so a
-                # later causal public receipt can recover without replacing/resetting
-                # the activated root or extending its checkpoint/deadline.
-                if once or (max_cycles is not None and attempts>=max_cycles):
+                # A one-shot probe remains strict. Continuous mode only retries an
+                # explicitly classified public-source rejection/transport failure;
+                # reference-contract, storage/database and programming failures exit.
+                if (once or self.state.get('last_failure_retryable') is not True
+                        or (max_cycles is not None and attempts>=max_cycles)):
                     raise
                 time.sleep(poll_seconds)
                 continue
