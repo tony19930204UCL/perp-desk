@@ -55,7 +55,11 @@ class FixtureClient:
         if not candidates:candidates=[choices[-1]]
         index=self.indices.get(endpoint,0);selected=candidates[min(index,len(candidates)-1)]
         self.indices[endpoint]=index+1
-        receipt={k:v for k,v in selected.items() if k!='fixture_match'}
+        delay=selected.get('fixture_delay_ms',0)
+        if type(delay) is not int or delay<0 or delay>5000:
+            raise ValueError('invalid fixture delay')
+        if delay:time.sleep(delay/1000)
+        receipt={k:v for k,v in selected.items() if k not in ('fixture_match','fixture_delay_ms')}
         receipt['endpoint']=endpoint;receipt['params']=dict(params)
         self.calls.append(dict(endpoint=endpoint,params=dict(params)))
         return receipt
@@ -68,6 +72,7 @@ class DiscoveryRunner:
         self.config_path=Path(config_path)
         self.config=json.loads(self.config_path.read_text())
         self.runner_path=self.root/'runner_state.json'
+        self.runner_state_lock=self.root/'runner-state.lock'
         self.state=self._load_runner_state()
 
     def _load_runner_state(self):
@@ -78,11 +83,59 @@ class DiscoveryRunner:
             return state
         state=dict(schema_version=RUNNER_SCHEMA,prepared=False,stop_requested=False,
                    instrument=None,last_bar_cursor=None,funding_cursor=None,
-                   polls=0,last_poll_ms=None,last_error=None)
+                   polls=0,last_poll_ms=None,last_error=None,poll_failures=0,
+                   last_failure_ms=None,last_failure_retryable=False)
         atomic_json(self.runner_path,state);return state
 
     def _save(self):
-        atomic_json(self.runner_path,self.state)
+        # runner_state has two writers: the owned pump and the documented stop CLI.
+        # Stop is monotonic for an activated root: there is no resume/clear command,
+        # so a stale in-flight pump must never overwrite a concurrent true with false.
+        fd=os.open(self.runner_state_lock,os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
+        try:
+            fcntl.flock(fd,fcntl.LOCK_EX)
+            if self.runner_path.exists():
+                current=json.loads(self.runner_path.read_text())
+                if current.get('schema_version')!=RUNNER_SCHEMA:
+                    raise ValueError('runner state schema mismatch')
+                if current.get('stop_requested'):
+                    self.state['stop_requested']=True
+                    if current.get('stop_requested_ms') is not None:
+                        prior=self.state.get('stop_requested_ms')
+                        self.state['stop_requested_ms']=current['stop_requested_ms'] if prior is None else min(prior,current['stop_requested_ms'])
+            atomic_json(self.runner_path,self.state)
+        finally:
+            fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+
+    def _observe_stop(self,lab):
+        durable=self._load_runner_state()
+        if durable.get('stop_requested'):
+            self.state['stop_requested']=True
+            self.state['stop_requested_ms']=durable.get('stop_requested_ms')
+            lab.request_operator_stop(self.clock())
+            return True
+        return False
+
+    def _causal_dispatch_ms(self,source_ms,receipt_ms,label):
+        if type(source_ms) is not int or type(receipt_ms) is not int:
+            raise ValueError('invalid '+label+' timing')
+        if source_ms<=receipt_ms:
+            return receipt_ms
+        future=source_ms-receipt_ms
+        if future>5000:
+            raise ValueError(label+' source timestamp too far in future')
+        # Quarantine, do not dispatch, until the unchanged local wall clock reaches
+        # the raw source timestamp. Raw source and receipt remain separately stored.
+        deadline=time.monotonic()+5.0
+        while self.clock()<source_ms:
+            if time.monotonic()>=deadline:
+                raise ValueError(label+' source remained future after bounded wait')
+            wait_ms=max(1,min(250,source_ms-self.clock()))
+            time.sleep(wait_ms/1000)
+        dispatch=self.clock()
+        if dispatch-source_ms>self.config['max_source_age_ms']:
+            raise ValueError(label+' source stale after bounded wait')
+        return dispatch
 
     def _spec(self):
         receipt=self.client.get('/fapi/v1/exchangeInfo')
@@ -154,7 +207,16 @@ class DiscoveryRunner:
         finally:lab.close()
 
     def request_stop(self):
-        self.state['stop_requested']=True;self.state['stop_requested_ms']=self.clock();self._save()
+        fd=os.open(self.runner_state_lock,os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
+        try:
+            fcntl.flock(fd,fcntl.LOCK_EX)
+            state=self._load_runner_state()
+            state['stop_requested']=True
+            state.setdefault('stop_requested_ms',self.clock())
+            if state.get('stop_requested_ms') is None:state['stop_requested_ms']=self.clock()
+            atomic_json(self.runner_path,state);self.state=state
+        finally:
+            fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
         return dict(action='stop_requested',kills_process=False,new_entries_will_stop=True,
                     exits_continue_until_flat=True)
 
@@ -174,10 +236,12 @@ class DiscoveryRunner:
             raise ValueError('future nextFundingTime required')
         start=max(0,self.state.get('funding_cursor') or lab.state['start_ms'])
         adjustments=self.client.get('/fapi/v1/fundingInfo')
+        self._observe_stop(lab)
         matched=[row for row in adjustments.get('payload',[]) if row.get('symbol')=='ETHUSDT']
         if len(matched)>1 or (matched and matched[0].get('fundingIntervalHours')!=8):
             raise ValueError('unsupported funding interval requires operator review')
         receipt=self.client.get('/fapi/v1/fundingRate',dict(symbol='ETHUSDT',startTime=start,limit=1000))
+        self._observe_stop(lab)
         rows=receipt.get('payload')
         if not isinstance(rows,list) or len(rows)>=1000:raise ValueError('missing/truncated funding coverage')
         observed=receipt_ms(receipt)
@@ -208,22 +272,26 @@ class DiscoveryRunner:
         if last is None:params['startTime']=lab.state['start_ms']
         else:params['fromId']=last+1
         receipt=self.client.get('/fapi/v1/aggTrades',params)
+        self._observe_stop(lab)
         rows=receipt.get('payload')
         if not isinstance(rows,list) or len(rows)>1000:raise ValueError('invalid aggTrade batch')
         if not rows:return
         observed=receipt_ms(receipt)
         first=binance_aggtrade_input(rows[0])
+        max_source=max(binance_aggtrade_input(row)['source_ts'] for row in rows)
+        dispatch=self._causal_dispatch_ms(max_source,observed,'aggTrade')
         expected=first['trade_id'] if last is None else last+1
         if feed.state.get('aggtrade_valid') is not True and first['trade_id']==expected:
             feed.mark_reconnected(next_trade_id=expected,observed_ms=observed)
         for raw in rows:
             mapped=binance_aggtrade_input(raw)
             if mapped['source_ts']<lab.state['start_ms']:continue
-            feed.ingest('aggTrade',mapped,received_ms=observed)
+            feed.ingest('aggTrade',dict(mapped,receipt_ts=observed),received_ms=dispatch)
 
     def _closed_bars(self,lab,feed):
         start=max(lab.state['start_ms'],self.state.get('last_bar_cursor') or lab.state['start_ms'])
         receipt=self.client.get('/fapi/v1/klines',dict(symbol='ETHUSDT',interval='1m',startTime=start,limit=1000))
+        self._observe_stop(lab)
         observed=receipt_ms(receipt)
         bars=self._bars(receipt,observed)
         for bar in bars:
@@ -234,18 +302,27 @@ class DiscoveryRunner:
     def poll_once(self):
         self.state=self._load_runner_state()
         lab,feed=self._open()
-        stage='shared'
+        stage='reference'
         try:
             if self.state.get('stop_requested'):lab.request_operator_stop(self.clock())
             # Exact filter verification is performed before every process run/poll batch.
             self._spec()
-            feed.begin_poll()
+            self._observe_stop(lab)
+            stage='shared';feed.begin_poll()
             depth=self.client.get('/fapi/v1/depth',dict(symbol='ETHUSDT',limit=20))
+            self._observe_stop(lab)
             b=book_event(depth,'ETHUSDT',self.config['max_source_age_ms'])
-            feed.ingest('book',dict(source_ts=b['ts_ms'],bids=b['bids'],asks=b['asks']),received_ms=b['observed_ms'])
+            book_dispatch=self._causal_dispatch_ms(b['ts_ms'],b['observed_ms'],'book')
+            self._observe_stop(lab)
+            feed.ingest('book',dict(source_ts=b['ts_ms'],receipt_ts=b['observed_ms'],
+                                    bids=b['bids'],asks=b['asks']),received_ms=book_dispatch)
             mark=self.client.get('/fapi/v1/premiumIndex',dict(symbol='ETHUSDT'))
+            self._observe_stop(lab)
             m=mark_event(mark,'ETHUSDT',self.config['max_source_age_ms'])
-            feed.ingest('mark',dict(source_ts=m['ts_ms'],price=m['mark_price']),received_ms=m['observed_ms'])
+            mark_dispatch=self._causal_dispatch_ms(m['ts_ms'],m['observed_ms'],'mark')
+            self._observe_stop(lab)
+            feed.ingest('mark',dict(source_ts=m['ts_ms'],receipt_ts=m['observed_ms'],
+                                    price=m['mark_price']),received_ms=mark_dispatch)
             self._funding(lab,feed,mark)
             stage='aggTrade'
             self._aggtrades(lab,feed)
@@ -257,7 +334,10 @@ class DiscoveryRunner:
             now=self.clock()
             lab.clear_source_gap(now)
             report=lab.report(now)
+            self._observe_stop(lab)
             report['runner']=dict(polls=self.state['polls']+1,last_poll_ms=now,
+                                  last_error=None,poll_failures=self.state.get('poll_failures',0),
+                                  last_failure_ms=self.state.get('last_failure_ms'),source_failure=False,
                                   public_source='Binance USD-M public REST or injected public-shaped fixture',
                                   one_shared_poll_per_cycle=True,stop_requested=bool(self.state.get('stop_requested')),
                                   historical_warmup_only=True,feed=feed.snapshot())
@@ -274,7 +354,24 @@ class DiscoveryRunner:
                     lab.request_source_gap(now,gap_reason)
             except Exception as gap_exc:
                 gap_reason += '; gap_record_error='+type(gap_exc).__name__+': '+str(gap_exc)
-            self.state['last_error']=gap_reason;self._save();raise
+            retryable=stage in ('shared','aggTrade') and isinstance(exc,(ValueError,OSError,TimeoutError))
+            try:self._observe_stop(lab)
+            except Exception:pass
+            self.state['last_error']=gap_reason
+            self.state['last_failure_retryable']=retryable
+            self.state['poll_failures']=self.state.get('poll_failures',0)+1
+            self.state['last_failure_ms']=now
+            self._save()
+            try:
+                failed=lab.report(now)
+                failed['runner']=dict(polls=self.state['polls'],last_poll_ms=self.state.get('last_poll_ms'),
+                                      last_error=gap_reason,poll_failures=self.state['poll_failures'],
+                                      last_failure_ms=now,source_failure=True,retryable_source_failure=retryable,
+                                      stop_requested=bool(self.state.get('stop_requested')),feed=feed.snapshot())
+                self._persist_report(failed,lab,now)
+            except Exception:
+                pass
+            raise
         finally:lab.close()
 
     def _persist_report(self,report,lab,now):
@@ -285,8 +382,10 @@ class DiscoveryRunner:
         if now>=lab.state['deadline_ms']:atomic_json(reports/'final-48h.json',report)
 
     def report(self):
+        self.state=self._load_runner_state()
         lab,feed=self._open()
         try:
+            self._observe_stop(lab)
             now=self.clock();report=lab.report(now)
             report['runner']=dict(polls=self.state['polls'],last_poll_ms=self.state.get('last_poll_ms'),
                                   last_error=self.state.get('last_error'),stop_requested=bool(self.state.get('stop_requested')),
@@ -294,14 +393,42 @@ class DiscoveryRunner:
             self._persist_report(report,lab,now);return report
         finally:lab.close()
 
-    def run(self,*,once=False,poll_seconds=1.0,max_cycles=None):
-        cycles=0
-        while True:
-            report=self.poll_once();cycles+=1
+    def _flat_stop_report(self):
+        self.state=self._load_runner_state()
+        if not self.state.get('stop_requested'):return None
+        lab,feed=self._open()
+        try:
+            lab.request_operator_stop(self.clock())
+            report=lab.report(self.clock())
             flat=all(x['positions']==0 for x in report['arms'].values())
+            report['runner']=dict(polls=self.state.get('polls',0),last_poll_ms=self.state.get('last_poll_ms'),
+                                  last_error=self.state.get('last_error'),poll_failures=self.state.get('poll_failures',0),
+                                  stop_requested=True,feed=feed.snapshot())
+            if flat:self._persist_report(report,lab,self.clock())
+            return report if flat else None
+        finally:lab.close()
+
+    def run(self,*,once=False,poll_seconds=1.0,max_cycles=None):
+        attempts=0
+        stopped=self._flat_stop_report()
+        if stopped is not None:return stopped
+        while True:
+            try:
+                report=self.poll_once();attempts+=1
+            except Exception:
+                attempts+=1
+                stopped=self._flat_stop_report()
+                if stopped is not None:return stopped
+                self.state=self._load_runner_state()
+                if (once or self.state.get('last_failure_retryable') is not True
+                        or (max_cycles is not None and attempts>=max_cycles)):
+                    raise
+                time.sleep(poll_seconds);continue
+            flat=all(x['positions']==0 for x in report['arms'].values())
+            self.state=self._load_runner_state()
             if once or (self.state.get('stop_requested') and flat):
                 return report
-            if max_cycles is not None and cycles>=max_cycles:return report
+            if max_cycles is not None and attempts>=max_cycles:return report
             time.sleep(poll_seconds)
 
 def build_runner(args):

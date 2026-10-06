@@ -20,6 +20,25 @@ jobs:
       - name: PAPER isolated suite
         working-directory: lab
         run: python3 -m unittest discover -s tests -v
+      - name: Issue 30 durable stop and source timing acceptance
+        run: |
+          mkdir -p artifacts/issue-30-repair
+          (cd lab && python3 -m unittest -v \
+            tests.test_discovery_lab.DiscoveryLabTests.test_operator_stop_cancels_pending_entries_and_blocks_new_entries \
+            tests.test_discovery_lab.DiscoveryLabTests.test_operator_stop_keeps_existing_exposure_reduce_only_protection \
+            tests.test_discovery_lab.RunnerSubprocessTests.test_continuous_runner_completes_two_valid_cycles_same_root \
+            tests.test_discovery_lab.RunnerSubprocessTests.test_bounded_future_source_quarantine_preserves_raw_receipt \
+            tests.test_discovery_lab.RunnerSubprocessTests.test_real_subprocess_stop_is_sticky_across_slow_success_and_restart \
+            tests.test_discovery_lab.RunnerSubprocessTests.test_real_subprocess_stop_survives_slow_failure_retry) \
+            2>&1 | tee artifacts/issue-30-repair/deterministic-subprocess.txt
+          python3 lab/issue30_public_probe.py > artifacts/issue-30-repair/public-probe.json
+      - name: Upload Issue 30 repair evidence
+        if: ${{ always() && hashFiles('artifacts/issue-30-repair/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-30-durable-stop-public-timing
+          path: artifacts/issue-30-repair
+          if-no-files-found: error
       - name: Issue 23 isolated discovery pipeline
         run: |
           mkdir -p artifacts/issue-23-discovery
