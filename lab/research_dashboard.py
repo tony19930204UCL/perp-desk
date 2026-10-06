@@ -141,15 +141,18 @@ def _feed_evidence(path):
     uri='file:'+str(path)+'?mode=ro'
     with sqlite3.connect(uri,uri=True) as db:
         rows=db.execute('SELECT payload FROM feed_events ORDER BY seq DESC LIMIT 64').fetchall()
+    fallback=None
     for (raw,) in rows:
         event=json.loads(raw)
         if isinstance(event,dict) and type(event.get('source_ts')) is int and type(event.get('ts')) is int:
             receipt=event.get('receipt_ts')
             if receipt is not None and type(receipt) is not int:continue
-            return dict(type=event.get('type'),event_id=event.get('event_id'),
-                        source_ts=event['source_ts'],receipt_ts=receipt,dispatch_ts=event['ts'],
-                        source_valid=event.get('source_valid'))
-    return None
+            item=dict(type=event.get('type'),event_id=event.get('event_id'),
+                      source_ts=event['source_ts'],receipt_ts=receipt,dispatch_ts=event['ts'],
+                      source_valid=event.get('source_valid'))
+            if receipt is not None:return item
+            if fallback is None:fallback=item
+    return fallback
 
 def _process_proof(path,now_ms,fresh_seconds):
     if path is None or not path.exists():
