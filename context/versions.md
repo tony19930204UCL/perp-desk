@@ -563,6 +563,16 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - source_gaps/unknown可能包含大量reject，按原report保存，不把計数當網路斷線episode數。flat/submitted0/filledentry0確認後只killownedPID，工具和/proc讀回absence。07:27:22UTC回滾5source artifacts（新probe解除安裝，stage仍保存），同root當下bytes與10原protected保持，無DBrestore/reset/延長期限。
 - 新BUGIssue30 fullbody讀回，PR29comment6011525497 fullbody讀回，Issue28仍OPEN／PR29未merge與未live accepted。完整可轉交指令Issue30完整派工指令.md。工程尚待人工轉交，主operator不假稱codingagent已啟動。cache/scratch/pr29-fb2cf91-acceptance保存exacthead/CI/digest/來源/所有readbacks/rollback證據。
 
+## PR031-OPERATOR-ACCEPTED-DEPLOYED-SAME-ROOT-RUNNING（2026-10-06）
+
+- 精確7ced67fd35c34e2362bab7ae383b55292fad5d18的CI37435529889/37435524051success。38exporter+324PAPER=362unique逐ID核實，focused6/9/10子集不另加。artifact11399580811ZIP/APIsha吻合adc763b4d7eaf8319c67270f3cfe9cf414cdb2fd60c2669c0e9b410e1ca1774f。六deterministic case含真subprocess慢成功/慢失敗stop overlap與stickyrestart、pending/newstop、已有曝險reduceonly、2validcycles與rawreceipt quarantine。本機不跑工程suite/code review。
+- 08:48:35UTC七完整artifact備份安裝，local/base全匹配，八未改PR24artifactGitblob保持，十原protected hash不變。原root自然stop=false，不clear旗標或重新activation，restart前所有原root檔案bytes不變。原start2026-10-06T06:57Z/checkpoint14:57Z/deadline2026-10-08T06:57Z保持。
+- 兩次真實public run--once成功：polls3→4→5，last_error=null。隨即同回合啟動單一common-sourcepump proc_f4d7f7d4ad10/PID2067391，persist_on_release+exitnotification，/proc argv/cwd核實與實際polls6→7→8→10。老poll_failures21保存，這些accepted readbacks未增新failure。不把只是alive當健康，也不稱開機自啟/48h已完成。
+- 兩輪operator shipped public probe /time/depth/premiumIndex皆HTTP200。新depth相對receipt+106ms/+204ms保存，不倒推原首失敗timing根因。readonlyfeed真book保存receipt_ts/source_ts/ts分離，source<=dispatch，沒有改rawreceipt/clock/sourceage。GHprobe兩輪HTTP451另保留為blocked而非live成功。
+- 正常mirror e1afc84f9f5be4102ba00533b9e23e229686998a七blob一致，publicationCI37438808065completed/success精確讀回。PR31comment6012824454fullbodyreadback，Issue30CLOSED/APIreadback，PR31仍OPEN未merge。
+- 不在active root額外呼叫不可逆stop只為live演練，該項驗收是獨立CI真subprocess/fixture六case，不能冒稱productionstoprehearsal。現researchNOT_PROVEN，三臂當時flat/noorders/nofills/rawcandidates0，coverage曾3/480，不把完成poll等於充分sourcecoverage，舊gap/lateaggtrade仍unknown、不補績效；32MiB/90%entry-stop不變。
+- 本回合不是留下next-step就停止，研究已有真實持續背景handle。runner自帶8h/48h輸出與entrygates仍按原期限。報告產出不代表automatic authorizedmodel-ownerreview。Evidence cache/scratch/pr31-7ced67f-acceptance/deployment（installation/two-public-cycles/live1/live2/final/booktiming/operatorprobe/publicationCI/acceptance-report）。
+
 
 
 
