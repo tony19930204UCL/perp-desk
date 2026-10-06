@@ -611,6 +611,15 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 真named browser session390/768/1280分別inner/client/scroll=390/375/375、768/753/753、1280/1265/1265，DPR1，無全頁horizontal overflow；每輪跨5秒refresh保持overview focus及scroll。原共享browser session驗收失敗後讀回空白tab，未將它推論成產品錯誤，另named session真URL/DOM證據重驗。私有截圖保存在cache/scratch/pr33-93fd87c-acceptance，不公開。
 - 新總覽顯示行情已過期、process未確認、market_activity_stale/report_stale/source_gaps/storage_entry_stop/process_unconfirmed。研究storage34147846仍超33554432budget，oldpoll77、原期限保持，沒有restart與source健康宣稱。source/API/browser本機验收通過；publication exactbytes/CI待正常sync讀回，不提前稱完成。
 
+## PR033-DEPLOYMENT-COMPLETED-AND-DISCOVERY-8H-GATE（2026-10-06）
+
+- 正常sync mirror0c75bca56d80fce2985eb8d10355a4ab0d72184d的12candidate SHA256完全匹配，private observer config未export。publication CI37482541263精確head completed/success讀回。PR33 acceptance comment6019004968 fullbody讀回；Issue32 CLOSED讀回；localhost work authority completed讀回。PR33未merge，main僅正常local單向sync。operator/mirror兩排程enabled及every1m讀回，部署收尾已完成，不留假next/queued。
+- 使用者指出等待22分鐘，主operator承認回報不及與首次錯用relative config，當時網站已live而不是交易pump。延遲/操作失誤保留，不稱所有22分鐘都是外部CI。
+- 14:57UTC原ETH-DISCOVERY-LAB-001 8h checkpoint已到，以既有report入口真正凍結reports/checkpoint-8h.json。A/B/C均covered19/480、throughput0、data_quality_inconclusive、stop_new_entries=true；storage34147738仍超33554432budget。維持停止採樣與NOT_PROVEN，原start/deadline/history不延長/不reset，不把工程/資料失敗當策略虧損或盈利反證。
+- 最新歷史帳戶API仍1complete_round_trip/3partial fills（兩入場部分fill＋一次退出）。168signals/167blocked，拒因90insufficient_reward_after_costs、36late_closed_bar_signal、38research_window_closed、3single_position_or_pending。這是歷史快照診斷，不拿它當新樣本或為湊成交降低成本/風險門檻。
+- 自主下一步只處理採樣阻擋，不再修飾UI。Issue36 RESEARCH INFRASTRUCTURE/ENGINEERING已建立/fullbody readback：固定32MiB全store的48h declared-load/source准入，保留因果重建与PR33/35安全；可交NOT_FEASIBLE，不准刪/移舊causal假裝降低budget，不啟動新window。工程尚待人工轉交，不假稱agent已開工。完整附件cache/scratch/pr33-93fd87c-acceptance/連續採樣容量與来源准入完整派工.md。
+
+
 
 
 
