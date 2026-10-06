@@ -73,6 +73,15 @@ jobs:
           name: issue-26-owner-handoff-evidence
           path: artifacts/issue-26-owner-handoff
           if-no-files-found: error
+      - name: Issue 32 observer console browser acceptance
+        run: python3 lab/browser_issue32_acceptance.py --output artifacts/issue-32-observer
+      - name: Upload Issue 32 observer console evidence
+        if: ${{ always() && hashFiles('artifacts/issue-32-observer/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-32-observer-console-evidence
+          path: artifacts/issue-32-observer
+          if-no-files-found: error
       - name: Issue 3 real browser acceptance
         run: python3 lab/browser_issue3_acceptance.py --output artifacts/issue-3-browser
       - name: Upload Issue 3 synthetic browser evidence
