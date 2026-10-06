@@ -129,6 +129,36 @@ def main(argv=None):
                 shot=a.output/f'issue32-{width}.png';size=session.screenshot(shot)
                 evidence['views'][str(width)]=dict(metrics=m,screenshot_size=size,screenshot_sha256=hashlib.sha256(shot.read_bytes()).hexdigest(),
                                                    contrast=dict(normal=normal,muted=muted,control=control,boundary=boundary),refresh_before=before,refresh_after=after)
+            # Real-DOM blocked-state acceptance: source gap + storage stop + inactive
+            # process proof must remain visibly blocked/unconfirmed after an ordinary refresh.
+            blocked=json.loads(f.report.read_text())
+            blocked['runner']['source_failure']=True
+            blocked['source_gaps']=2
+            blocked['storage_used_bytes']=31_500_000
+            f.report.write_text(json.dumps(blocked))
+            f.proof.write_text(json.dumps(dict(schema_version=1,active=False,
+                                               observed_at_ms=int(datetime.now(timezone.utc).timestamp()*1000),
+                                               proof_kind='owned_process')))
+            session.evaluate("document.getElementById('tab-overview').click();refresh()")
+            deadline=time.monotonic()+4
+            blocked_dom=None
+            while time.monotonic()<deadline:
+                blocked_dom=session.evaluate("""(()=>({
+                  state:document.getElementById('researchState')?.textContent||'',
+                  blockers:document.getElementById('currentBlockers')?.innerText||'',
+                  process:document.getElementById('processProof')?.textContent||'',
+                  processAge:document.getElementById('processProofAge')?.textContent||''
+                }))()""")
+                if ('source gap' in blocked_dom.get('state','')
+                        and 'source_gaps_recorded' in blocked_dom.get('blockers','')
+                        and 'storage_entry_stop' in blocked_dom.get('blockers','')
+                        and 'process_unconfirmed' in blocked_dom.get('blockers','')
+                        and blocked_dom.get('process')=='未確認'):
+                    break
+                time.sleep(.05)
+            else:
+                raise AssertionError('blocked research state not truthfully rendered '+json.dumps(blocked_dom,ensure_ascii=False))
+            evidence['blocked_dom']=blocked_dom
             # Keyboard tab navigation is explicit, not color-only.
             session.evaluate("document.getElementById('tab-overview').focus();document.getElementById('tab-overview').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}))")
             key=session.evaluate("({focus:document.activeElement.id,selected:document.querySelector('.tab[aria-selected=true]').id})")
