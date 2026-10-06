@@ -275,12 +275,20 @@ class DiscoveryLabTests(unittest.TestCase):
         self.assertEqual(self.lab.checkpoint('A',now)['status'],'passed')
 
     def test_operator_stop_cancels_pending_entries_and_blocks_new_entries(self):
-        self.ready(now=self.start+10000)
-        self.lab._route_signal(self.signal(target='105',sid='stop-pending'),self.start+10001)
+        from discovery_feed import SharedFeed
+        feed=SharedFeed(self.root/'stop-feed.sqlite3',forward_start_ms=self.start)
+        self.lab.bind_feed(feed);feed.mark_reconnected(next_trade_id=1,observed_ms=self.start)
+        for arm,b in self.lab.brokers.items():
+            b.on_event(dict(type='funding_status',event_id='stop-f:'+arm,symbol='ETHUSDT',
+                            ts=self.start+1,source_ts=self.start+1,complete=True,
+                            valid_until_ts=self.start+100000))
+        feed.ingest('book',dict(source_ts=self.start+5000,bids=[['100','1']],asks=[['100.1','2']]),
+                    received_ms=self.start+5000)
+        self.lab._route_signal(self.signal(target='105',sid='stop-pending'),self.start+5001)
         for broker in self.lab.brokers.values():
             self.assertTrue(any(not o['intent']['reduce_only'] and o['status']=='PENDING'
                                 for o in broker.orders.values()))
-        stop_at=self.start+10100
+        stop_at=self.start+5100
         self.lab.request_operator_stop(stop_at)
         self.assertTrue(self.lab.state['operator_stop_requested'])
         self.assertEqual(self.lab.state['operator_stop_requested_ms'],stop_at)
@@ -289,7 +297,7 @@ class DiscoveryLabTests(unittest.TestCase):
                                 for o in broker.orders.values() if not o['intent']['reduce_only']))
         before=sum(1 for b in self.lab.brokers.values() for o in b.orders.values()
                    if not o['intent']['reduce_only'])
-        self.lab._route_signal(self.signal(target='106',sid='after-stop'),self.start+10200)
+        self.lab._route_signal(self.signal(target='106',sid='after-stop'),self.start+5200)
         after=sum(1 for b in self.lab.brokers.values() for o in b.orders.values()
                   if not o['intent']['reduce_only'])
         self.assertEqual(after,before,'operator stop must inhibit new entry orders')
