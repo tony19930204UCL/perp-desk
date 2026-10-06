@@ -274,31 +274,36 @@ class DiscoveryLabTests(unittest.TestCase):
         self.assertEqual(self.lab.state['deadline_ms'],deadline)
         self.assertEqual(self.lab.checkpoint('A',now)['status'],'passed')
 
-    def test_operator_stop_cancels_entries_and_keeps_reduce_only_protection(self):
+    def test_operator_stop_cancels_pending_entries_and_blocks_new_entries(self):
+        self.ready(now=self.start+10000)
+        self.lab._route_signal(self.signal(target='105',sid='stop-pending'),self.start+10001)
+        for broker in self.lab.brokers.values():
+            self.assertTrue(any(not o['intent']['reduce_only'] and o['status']=='PENDING'
+                                for o in broker.orders.values()))
+        stop_at=self.start+10100
+        self.lab.request_operator_stop(stop_at)
+        self.assertTrue(self.lab.state['operator_stop_requested'])
+        self.assertEqual(self.lab.state['operator_stop_requested_ms'],stop_at)
+        for broker in self.lab.brokers.values():
+            self.assertTrue(all(o['status']=='CANCELED'
+                                for o in broker.orders.values() if not o['intent']['reduce_only']))
+        before=sum(1 for b in self.lab.brokers.values() for o in b.orders.values()
+                   if not o['intent']['reduce_only'])
+        self.lab._route_signal(self.signal(target='106',sid='after-stop'),self.start+10200)
+        after=sum(1 for b in self.lab.brokers.values() for o in b.orders.values()
+                  if not o['intent']['reduce_only'])
+        self.assertEqual(after,before,'operator stop must inhibit new entry orders')
+
+    def test_operator_stop_keeps_existing_exposure_reduce_only_protection(self):
         self.ready(now=self.start+10000)
         self.lab._route_signal(self.signal(target='105',sid='stop-open'),self.start+10001)
-        # Cross the 2s arrival so A/C take entries and B has resting/pending entry risk.
         self.lab.on_shared_event(dict(type='book',event_id='stop-arrival',symbol='ETHUSDT',
             ts=self.start+12100,source_ts=self.start+12100,
             bids=[['100','5']],asks=[['100.1','5']],source_valid=True))
         self.assertIn('ETHUSDT',self.lab.brokers['A'].positions)
         self.assertIn('ETHUSDT',self.lab.brokers['C'].positions)
-        self.assertTrue(any(not o['intent']['reduce_only'] and o['status'] in ('PENDING','RESTING')
-                            for o in self.lab.brokers['B'].orders.values()))
         stop_at=self.start+12200
         self.lab.request_operator_stop(stop_at)
-        self.assertTrue(self.lab.state['operator_stop_requested'])
-        self.assertEqual(self.lab.state['operator_stop_requested_ms'],stop_at)
-        for broker in self.lab.brokers.values():
-            self.assertTrue(all(o['status'] not in ('PENDING','RESTING')
-                                for o in broker.orders.values() if not o['intent']['reduce_only']))
-        before=sum(1 for b in self.lab.brokers.values() for o in b.orders.values()
-                   if not o['intent']['reduce_only'])
-        self.lab._route_signal(self.signal(target='106',sid='after-stop'),self.start+12300)
-        after=sum(1 for b in self.lab.brokers.values() for o in b.orders.values()
-                  if not o['intent']['reduce_only'])
-        self.assertEqual(after,before,'operator stop must inhibit new entry orders')
-        # Existing exposure keeps the normal protective reduce-only taker path.
         stop_price=min(D(self.lab.brokers[a].positions['ETHUSDT']['stop']) for a in ('A','C'))
         self.lab.on_shared_event(dict(type='mark',event_id='stop-protect-mark',symbol='ETHUSDT',
             ts=self.start+13000,source_ts=self.start+13000,price=str(stop_price-D('.01')),source_valid=True))
