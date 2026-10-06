@@ -58,7 +58,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts/issue-34-runtime-capacity
-          (cd lab && python3 -m unittest -v tests.test_discovery_lab.RunnerSubprocessTests tests.test_discovery_lab.RetentionEvidenceTests tests.test_discovery_lab.Issue34TransportCapacityTests) 2>&1 | tee artifacts/issue-34-runtime-capacity/focused-tests.txt
+          (cd lab && python3 -m unittest -v tests.test_discovery_lab.RunnerSubprocessTests tests.test_discovery_lab.RetentionEvidenceTests tests.test_discovery_lab.Issue34TransportCapacityTests tests.test_discovery_lab.Issue34CapacityHaltTests) 2>&1 | tee artifacts/issue-34-runtime-capacity/focused-tests.txt
           python3 lab/issue34_acceptance.py > artifacts/issue-34-runtime-capacity/acceptance.json
       - name: Upload Issue 34 isolated runtime/capacity evidence
         if: ${{ always() && hashFiles('artifacts/issue-34-runtime-capacity/**') != '' }}
