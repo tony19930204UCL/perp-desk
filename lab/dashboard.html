@@ -1,144 +1,148 @@
 <!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Perp Desk｜觀察員看板</title><style>
-:root{color-scheme:light;--purple:#7132f5;--ink:#101114;--muted:#686b82;--border:#dedee5;--green:#149e61;--red:#bb3249}*{box-sizing:border-box}body{margin:0;background:#f5f5fa;color:var(--ink);font-family:system-ui,-apple-system,'Segoe UI',sans-serif}main{max-width:1320px;margin:auto;padding:30px 28px}header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}h1{font-size:26px;letter-spacing:-.6px;margin:0}h2{font-size:17px;margin:0 0 18px}p{line-height:1.7}small,.muted{color:var(--muted)}.badge{font-size:12px;letter-spacing:.8px;font-weight:700;color:var(--purple);background:#ede4fe;padding:8px 12px;border-radius:8px}.notice{background:#fff8e9;border:1px solid #efd49c;border-left:4px solid #d29526;border-radius:12px;padding:14px 18px;font-size:14px;margin-bottom:22px}.notice strong{display:block;margin-bottom:5px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}.card,.panel{background:white;border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 4px 24px #10111404}.card label{display:block;font-size:13px;color:var(--muted);margin-bottom:12px}.value{font:600 31px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:-1px;overflow-wrap:anywhere}.unit{font-size:11px;color:var(--muted);margin-top:10px}.split{display:grid;grid-template-columns:1.7fr 1fr;gap:16px;margin-bottom:16px}.panel{min-width:0}.status{font-size:14px;padding:12px 15px;border-radius:10px;background:#f1edf9;margin-bottom:18px}.good{color:var(--green)}.bad{color:var(--red)}.scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}td,th{padding:12px 10px;border-bottom:1px solid #eeeef4;text-align:left}th{color:var(--muted);font-weight:500}td.number{font-family:ui-monospace,Consolas,monospace}ul{padding-left:20px;margin:0;font-size:14px;line-height:1.9}#empty{padding:24px 0;color:var(--muted)}svg{width:100%;height:150px;border-bottom:1px solid #eee}footer{font-size:12px;color:var(--muted);padding:15px 0}.counts{display:flex;gap:22px;margin-top:16px;font-size:13px}.counts b{font-size:20px;display:block;margin-top:6px}.sub{font-size:12px;color:var(--muted);margin-top:12px}.version{border-left:3px solid var(--purple);padding:8px 12px;margin:12px 0;font-size:13px;overflow-wrap:anywhere}@media(max-width:800px){main{padding:20px 14px}.cards{grid-template-columns:repeat(2,1fr)}.split{grid-template-columns:1fr}header{align-items:flex-start}.value{font-size:25px}.card,.panel{padding:18px}}@media(max-width:420px){.cards{gap:9px}.value{font-size:22px}h1{font-size:22px}.ledger-picker{width:100%;justify-content:space-between}.ledger-picker select{min-width:0;max-width:62vw}header{flex-wrap:wrap}td,th{padding:10px 7px}.exact-number{max-width:18ch}}
-.ledger-picker{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.ledger-picker select{max-width:220px;border:1px solid var(--border);border-radius:8px;background:white;padding:7px 9px;color:var(--ink)}.exact-number{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;position:relative}.exact-number[tabindex]{cursor:help}.exact-number:focus{outline:2px solid var(--purple);outline-offset:2px}.exact-number:focus::after,.exact-number:hover::after{content:attr(data-exact);position:fixed;left:12px;right:12px;bottom:12px;z-index:20;white-space:normal;overflow-wrap:anywhere;background:#101114;color:white;border-radius:8px;padding:10px 12px;font:12px ui-monospace,Consolas,monospace;box-shadow:0 4px 20px #0006}.number,.value,.research-big,.stats strong{min-width:0;overflow-wrap:anywhere}html,body{max-width:100%;overflow-x:hidden}.scroll{max-width:100%}.panel,details{margin-bottom:14px}details{background:white;border:1px solid var(--border);border-radius:14px;padding:20px}summary{cursor:pointer;font-size:13px;font-weight:600}summary:focus-visible{outline:2px solid var(--purple)}.status{font-size:12px;margin:12px 0 14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:8px 12px}.research{border-top:3px solid var(--purple)}.research-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.research-big{font:600 28px ui-monospace,Consolas,monospace;margin:8px 0}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}.stats strong{display:block;margin-top:6px;font:600 19px ui-monospace,Consolas,monospace}progress{width:100%;height:8px;accent-color:var(--purple)}svg{height:240px}.value{font-size:clamp(19px,2.3vw,28px)}@media(max-width:760px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.research-grid{grid-template-columns:1fr}.stats strong{font-size:14px}.research-big{font-size:24px}}</style></head><body><main>
-<header><div><h1>Perp Desk <span class="muted">/ 觀察員看板</span></h1><small id="accountName">公開行情 · 唯讀帳本</small></div><div class="ledger-picker"><label for="ledgerSelect">帳本</label><select id="ledgerSelect" aria-label="選擇已配置帳本" disabled><option>讀取中</option></select><span class="badge">PAPER</span></div></header>
-<section class="cards" aria-label="帳戶資金">
-<div class="card"><label>帳戶權益</label><div id="equity" class="value">—</div><div class="unit">USDT · 本金 <span id="initial">—</span></div></div>
-<div class="card"><label>帳戶現金</label><div id="cash" class="value">—</div><div class="unit">USDT</div></div>
-<div class="card"><label>累計淨 PNL</label><div id="total" class="value">—</div><div class="unit">USDT · 扣成本後</div></div>
-<div class="card"><label>已實現淨 PNL</label><div id="realized" class="value">—</div><div class="unit">USDT</div></div>
-<div class="card"><label>未實現 PNL</label><div id="unrealized" class="value">—</div><div class="unit">USDT</div></div>
-<div class="card"><label>持倉數</label><div id="positionCount" class="value">—</div><div class="unit">依帳本快照</div></div></section>
-<section class="panel"><h2>目前持倉</h2><div id="empty" class="muted">尚未讀取</div><div id="positionList"></div><div id="accounting" class="sub">成本分項尚未確認</div></section>
-<div id="health" class="status" role="status" tabindex="0">快照尚未確認 · PAPER · 唯讀 · 實盤停用</div>
-<section class="panel" aria-label="現在健康與未解問題"><h2>現在健康／未解問題</h2><div id="opsHealth" class="status bad" role="status">健康未確認。尚未讀取監控資料</div><div id="opsIssues"></div><div id="opsLimit" class="sub">健康只根據程序身分、資料時效與故障證據。工程 completed 不代表系統健康；監控不會啟動修復。</div></section>
-<section class="panel research"><h2>目前研究窗口 <small id="researchVersion"></small></h2><div class="research-grid"><div><small>完整交易 (flat-to-flat)</small><div id="roundTrips" class="research-big">—</div><progress id="sampleProgress" value="0" max="1" aria-label="完整交易樣本進度"></progress><div class="sub">部分成交不另算一筆，不為達標強迫成交。</div></div><div><small>剩餘時間</small><div id="remaining" class="research-big">—</div><div id="windowTimes" class="sub">窗口尚未確認</div></div></div><div class="stats"><div><small>勝率 (扣全成本)</small><strong id="winRate">—</strong></div><div><small>平均每筆淨損益</small><strong id="meanNet">—</strong></div><div><small>手續費 / 毛利</small><strong id="feeRatio">—</strong></div></div><div id="statisticsNote" class="sub">只統計窗口完整交易，不含未平倉。</div></section>
-<section class="split"><div class="panel"><h2>帳戶權益曲線</h2><svg id="chart" viewBox="0 0 720 240" role="img" aria-label="實際快照權益，座標時間UTC"></svg><div id="chartNote" class="sub"></div></div><div class="panel"><h2>拒單原因分布 <small>(目前窗口)</small></h2><div class="counts"><div>訊號<b id="signals">—</b></div><div>受阻<b id="blocked">—</b></div><div>帳戶成交<b id="fills">—</b></div></div><div class="scroll"><table><thead><tr><th>原因</th><th>次數</th><th>占拒單</th></tr></thead><tbody id="rejectionDistribution"></tbody></table></div><div id="rejectionNote" class="sub"></div></div></section>
-<section class="panel"><h2>已平倉交易 <small>(目前研究窗口)</small></h2><div class="scroll"><table><thead><tr><th>平倉時間 (UTC)</th><th>標的 / 方向</th><th>入場時間 (UTC)</th><th>入場均價</th><th>出場均價</th><th>淨損益 (USDT)</th><th>持有時間</th><th>費用 / funding</th></tr></thead><tbody id="closedTrades"></tbody></table></div><div id="tradesNote" class="sub"></div></section>
-<details class="panel"><summary>公開市場觀察</summary><div class="scroll"><table><thead><tr><th>合約 / 類別</th><th>買一</th><th>賣一</th><th>標記價</th><th>預估 funding</th><th>最小名目</th></tr></thead><tbody id="markets"></tbody></table></div><div id="marketNote" class="sub"></div></details>
-<details class="panel"><summary>引擎狀態 / 阻擋詳情</summary><div id="modeNotice" class="sub"></div><ul id="blockers"></ul></details>
-<details id="proofDetails"><summary>版本 / 雜湊與稽核證明</summary><div id="versions"></div></details>
-<details class="panel"><summary>背景工作 / 下一步</summary><div id="workHealth" class="sub">工程狀態尚未確認</div><div id="workTasks"></div><div class="sub">工程回報不是行情健康。超過5分鐘標活動未確認。</div></details>
-<footer id="stamp">本機 localhost · 每5秒刷新 · 公開 REST 非逐筆交易所成交引擎</footer>
-</main><script>
+<html lang="zh-Hant" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Perp Desk｜觀察員 Console</title>
+<style>
+:root{color-scheme:dark;--bg:#111417;--surface:#191d21;--surface2:#20252a;--ink:#f2f4f5;--muted:#aeb6bd;--line:#394149;--accent:#7db5ff;--accent2:#b8d7ff;--good:#71d39a;--warn:#f0c36a;--bad:#ff8f9d;--unknown:#b9c0c7;--focus:#9bc7ff}
+html[data-theme="light"]{color-scheme:light;--bg:#f4f6f7;--surface:#fff;--surface2:#f2f4f5;--ink:#171a1d;--muted:#59636c;--line:#c6cdd2;--accent:#165fad;--accent2:#174f89;--good:#176b3c;--warn:#755300;--bad:#a22638;--unknown:#4d5861;--focus:#0d64bd}
+*{box-sizing:border-box}html,body{margin:0;max-width:100%;overflow-x:hidden}body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;font-size:14px;line-height:1.5}
+button,select{font:inherit}button:focus-visible,select:focus-visible,[tabindex]:focus-visible,summary:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+main{max-width:1440px;margin:auto;padding:18px 22px 40px}header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}.brand h1{font-size:21px;margin:0 0 4px;letter-spacing:-.3px}.muted{color:var(--muted)}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.control{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:7px;padding:7px 9px}.readonly{font-weight:700;border:1px solid var(--line);padding:6px 9px;border-radius:999px}
+.tabs{display:flex;gap:5px;border-bottom:1px solid var(--line);margin:0 0 14px;overflow:auto;padding-bottom:1px}.tab{appearance:none;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--muted);padding:10px 13px;white-space:nowrap;cursor:pointer}.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:700}
+.view[hidden]{display:none}.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px}.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:15px;min-width:0}.span12{grid-column:span 12}.span8{grid-column:span 8}.span6{grid-column:span 6}.span4{grid-column:span 4}.span3{grid-column:span 3}
+h2{font-size:15px;margin:0 0 12px}h3{font-size:13px;margin:0 0 9px}.eyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--muted);font-weight:700}.headline{font-size:23px;font-weight:750;letter-spacing:-.4px;margin:3px 0 7px}.mono,.num{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums}.num{text-align:right}
+.status{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:4px 8px;font-size:12px;font-weight:650}.status::before{content:"";width:8px;height:8px;border:2px solid currentColor;border-radius:2px}.fresh{color:var(--good)}.warning{color:var(--warn)}.danger{color:var(--bad)}.unknown{color:var(--unknown)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.kpi{background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:11px;min-width:0}.kpi .label{color:var(--muted);font-size:11px;margin-bottom:5px}.kpi .value{font:700 17px ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}.note{font-size:12px;color:var(--muted);margin-top:7px}
+.timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.timebox{border-left:3px solid var(--line);padding:5px 9px}.timebox strong{display:block}.list{list-style:none;margin:0;padding:0}.list li{padding:7px 0;border-bottom:1px solid var(--line)}.list li:last-child{border-bottom:0}
+.table-wrap{max-width:100%;overflow:auto;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:760px;font-size:12px}th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{position:sticky;top:0;background:var(--surface2);color:var(--muted);font-weight:650}tr:last-child td{border-bottom:0}
+.arm-title{display:flex;align-items:center;gap:8px}.arm-tag{display:inline-grid;place-items:center;width:25px;height:25px;border:1px solid var(--line);border-radius:6px;font-weight:800}.exact-number{display:inline-block;max-width:100%;overflow-wrap:anywhere}.exact-number[tabindex]{cursor:help}.rounding{font-size:10px;color:var(--muted)}
+details{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface2)}summary{cursor:pointer;font-weight:650}.tech{white-space:pre-wrap;overflow-wrap:anywhere;font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--muted)}
+.empty{padding:15px;border:1px dashed var(--line);border-radius:8px;color:var(--muted)}.progress{height:7px;background:var(--surface2);border:1px solid var(--line);border-radius:99px;overflow:hidden}.progress span{display:block;height:100%;background:var(--accent)}
+.metricline{display:flex;justify-content:space-between;gap:12px;padding:5px 0}.metricline span:first-child{color:var(--muted)}.metricline span:last-child{text-align:right}
+footer{margin-top:18px;color:var(--muted);font-size:11px}
+@media(max-width:1000px){.span8,.span6,.span4,.span3{grid-column:span 12}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){main{padding:12px 10px 30px}header{flex-direction:column}.toolbar{justify-content:flex-start;width:100%}.kpis{grid-template-columns:1fr 1fr}.timeline{grid-template-columns:1fr}.headline{font-size:19px}.panel{padding:12px}.tabs{margin-left:-4px;margin-right:-4px}.tab{padding:9px 10px}table{min-width:680px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style></head><body><main>
+<header><div class="brand"><h1>Perp Desk <span class="muted">/ 觀察員 Console</span></h1><div id="accountName" class="muted">讀取唯讀來源中</div></div>
+<div class="toolbar"><label class="muted" for="ledgerSelect">歷史帳本</label><select id="ledgerSelect" class="control" aria-label="選擇已配置歷史帳本" disabled><option>讀取中</option></select><button id="themeToggle" class="control" type="button">淺色模式</button><span class="readonly">PAPER · 唯讀</span></div></header>
+<nav class="tabs" role="tablist" aria-label="看板視圖">
+<button class="tab" id="tab-overview" role="tab" aria-controls="view-overview" aria-selected="true" data-view="overview">總覽</button>
+<button class="tab" id="tab-research" role="tab" aria-controls="view-research" aria-selected="false" data-view="research">目前研究</button>
+<button class="tab" id="tab-account" role="tab" aria-controls="view-account" aria-selected="false" data-view="account">歷史帳戶</button>
+<button class="tab" id="tab-work" role="tab" aria-controls="view-work" aria-selected="false" data-view="work">工作／證據</button>
+</nav>
+
+<section id="view-overview" class="view" role="tabpanel" aria-labelledby="tab-overview">
+<div class="grid">
+<div class="panel span8"><div class="eyebrow">明確設定的目前研究</div><div id="currentResearchName" class="headline">未設定</div><div><span id="researchState" class="status unknown">未確認</span> <span id="researchVersion" class="muted mono"></span></div>
+<div class="kpis" style="margin-top:14px">
+<div class="kpi"><div class="label">最後成功 poll</div><div id="lastPoll" class="value">—</div><div id="pollAge" class="note">未確認</div></div>
+<div class="kpi"><div class="label">Report 檔案時間</div><div id="reportTime" class="value">—</div><div class="note">不等於行情成功</div></div>
+<div class="kpi"><div class="label">Source receipt / age</div><div id="sourceReceipt" class="value">—</div><div id="sourceAge" class="note">未確認</div></div>
+<div class="kpi"><div class="label">Process proof</div><div id="processProof" class="value">未確認</div><div id="processProofAge" class="note">缺失不推定 running</div></div>
+</div></div>
+<div class="panel span4"><h2>目前阻擋</h2><ul id="currentBlockers" class="list"><li class="muted">讀取中</li></ul><details style="margin-top:10px"><summary>技術細節</summary><div id="overviewTech" class="tech"></div></details></div>
+<div class="panel span12"><h2>原始窗口與進度</h2><div class="timeline"><div class="timebox"><span class="muted">Start</span><strong id="windowStart">—</strong></div><div class="timebox"><span class="muted">8h checkpoint</span><strong id="windowCheckpoint">—</strong></div><div class="timebox"><span class="muted">Deadline</span><strong id="windowDeadline">—</strong></div></div><div id="coverageSummary" class="note" style="margin-top:10px">Coverage 尚未確認</div></div>
+<div class="panel span6"><h2>三臂摘要</h2><div id="armSummary" class="kpis"></div></div>
+<div class="panel span6"><h2>歷史帳戶摘要</h2><div class="metricline"><span>綁定</span><span id="historyBinding">default · 未讀取</span></div><div class="metricline"><span>權益</span><span id="historyEquity">—</span></div><div class="metricline"><span>市場</span><span id="historyMarkets">—</span></div><div class="note">歷史帳戶不會被目前三臂研究覆寫或合併。</div></div>
+</div></section>
+
+<section id="view-research" class="view" role="tabpanel" aria-labelledby="tab-research" hidden>
+<div class="grid"><div class="panel span12"><h2>A / B / C 獨立研究帳本</h2><div class="note">各臂本金、PnL、樣本完全分離。B 的 2x queue 僅為預先凍結 diagnostic，不是第四個策略／帳戶。</div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>臂</th><th>語意</th><th>權益 / 淨損益</th><th>費用 / Funding</th><th>持倉 / Pending</th><th>候選 → Cost-qualified → Submitted</th><th>Maker fills</th><th>Flat-to-flat</th><th>Risk / Storage</th></tr></thead><tbody id="armsTable"></tbody></table></div></div>
+<div class="panel span6"><h2>B · 1x primary</h2><div id="primaryQueue">—</div></div><div class="panel span6"><h2>B · 2x diagnostic</h2><div id="stressQueue">—</div><div class="note">只作 sensitivity；不進主 ledger／checkpoint／策略選擇。</div></div>
+<div class="panel span12"><h2>Source / process 證據</h2><div id="sourceEvidence" class="tech">—</div></div></div></section>
+
+<section id="view-account" class="view" role="tabpanel" aria-labelledby="tab-account" hidden>
+<div class="grid"><div class="panel span12"><div class="eyebrow">歷史 / 已有 default binding</div><div id="historyTitle" class="headline">PAPER 歷史帳戶</div><div id="historyStatus" class="status unknown">未確認</div><div class="note">此視圖保留原帳戶與舊研究窗口；不把 ETH-DISCOVERY-LAB-001 資金/PnL/樣本合併進來。</div></div>
+<div class="panel span4"><h2>資金</h2><div class="metricline"><span>Initial</span><span id="initial">—</span></div><div class="metricline"><span>Cash</span><span id="cash">—</span></div><div class="metricline"><span>Equity</span><span id="equity">—</span></div><div class="metricline"><span>Total PnL</span><span id="total">—</span></div></div>
+<div class="panel span8"><h2>歷史研究 / 觀察統計</h2><div id="historyObserver" class="empty">未交易／樣本不足時不顯示虛構曲線或勝率。</div></div>
+<div class="panel span12"><h2>市場 / 持倉</h2><div class="table-wrap"><table><thead><tr><th>Symbol</th><th>Bid</th><th>Ask</th><th>Mark</th><th>狀態</th></tr></thead><tbody id="historyMarketRows"></tbody></table></div></div></div></section>
+
+<section id="view-work" class="view" role="tabpanel" aria-labelledby="tab-work" hidden>
+<div class="grid"><div class="panel span6"><h2>工作 authority</h2><div id="workAge" class="note">未確認</div><h3 style="margin-top:12px">進行中 / 受阻</h3><ul id="activeWork" class="list"></ul><details style="margin-top:10px"><summary>歷史已完成工作</summary><ul id="completedWork" class="list"></ul></details></div>
+<div class="panel span6"><h2>Health / incidents</h2><div id="healthSummary" class="status unknown">未確認</div><div id="healthAge" class="note"></div><ul id="incidentList" class="list" style="margin-top:10px"></ul><div class="note">舊 incident 保留原狀；過期 health 不會被新 work 或頁面 refresh 自動 resolve。</div></div>
+<div class="panel span12"><h2>版本與證據</h2><details open><summary>目前研究技術 evidence</summary><div id="evidenceDetails" class="tech"></div></details></div></div></section>
+<footer>唯讀 localhost console · 顯示數字可能為 UI rounding；focus / hover 可讀 exact 值。HTTP 200 或頁面刷新不代表行情成功。</footer>
+</main>
+<script>
 'use strict';
 const $=id=>document.getElementById(id);
-const labels={insufficient_reward_after_costs:'預期報酬不足以涵蓋成本',late_closed_bar_signal:'閉合K線訊號已過期',risk_per_trade:'單筆風險超限',risk_limits_not_set:'風險限額未設定，禁止 paper 開倉',sim_broker_not_implemented:'模擬券商尚未完成，沒有成交驗證',signals_not_implemented:'策略訊號尚未實作，沒有績效樣本'};
-function compactDecimal(value,max=16){
- const raw=String(value??'—');if(raw==='—')return raw;
- if(/^[+-]?0+(?:\.0+)?(?:[eE][+-]?\d+)?$/.test(raw))return '0';
- if(raw.length<=max)return raw;
- const m=raw.match(/^([+-]?)(\d+)(?:\.(\d*))?([eE][+-]?\d+)?$/);if(!m)return raw.slice(0,max-1)+'…';
- if(m[4])return raw.slice(0,max-1)+'…';
- const sign=m[1],ints=m[2],frac=m[3]??'',trimmedFrac=frac.replace(/0+$/,'');
- const trimmed=sign+ints+(trimmedFrac?'.'+trimmedFrac:'');
- if(trimmed.length<=max)return trimmed;
- const unsigned=ints+(frac?'.'+frac:'');
- const [iPart,fPart='']=unsigned.split('.');
- if(iPart.replace(/^0+/,'').length>0){
-   const sig=iPart.replace(/^0+/,'')+fPart,exp=iPart.replace(/^0+/,'').length-1;
-   return sign+sig[0]+(sig.slice(1,9)?'.'+sig.slice(1,9):'')+'e'+exp;
- }
- const first=fPart.search(/[1-9]/);if(first>=0){const sig=fPart.slice(first);return sign+sig[0]+(sig.slice(1,9)?'.'+sig.slice(1,9):'')+'e-'+(first+1);}
- return '0';
-}
-function exactNode(value,suffix=''){const exact=String(value??'—')+suffix,span=document.createElement('span');span.className='exact-number';span.tabIndex=0;span.dataset.exact=exact;span.title='精確值 '+exact;span.setAttribute('aria-label','顯示 '+compactDecimal(value)+suffix+'；精確值 '+exact);span.textContent=compactDecimal(value)+suffix;return span;}
-function text(id,value){const e=$(id),numeric=['equity','initial','cash','total','realized','unrealized','winRate','meanNet','feeRatio'].includes(id);e.replaceChildren();if(numeric&&value!==null&&value!==undefined&&value!=='—'&&!String(value).includes('樣本')&&!String(value).includes('不適用')&&!String(value).includes('不可用'))e.appendChild(exactNode(value));else e.textContent=String(value??'—');}
-function cell(row,value,cls=''){const e=document.createElement('td');e.textContent=String(value??'—');e.className=cls;row.appendChild(e);}
-function exactCell(row,value,suffix='',cls='number'){const e=document.createElement('td');e.className=cls;e.appendChild(exactNode(value,suffix));row.appendChild(e);}
-function amount(id,value){text(id,value);$(id).classList.remove('good','bad');const n=Number(value);if(Number.isFinite(n)&&n!==0)$(id).classList.add(n>0?'good':'bad');}
-function unavailable(reason){deadline=null;for(const id of ['initial','roundTrips','remaining','winRate','meanNet','feeRatio'])text(id,'—');for(const id of ['closedTrades','rejectionDistribution'])$(id).replaceChildren();text('windowTimes','窗口不可用');text('statisticsNote','資料不可用，不推定勝率');text('tradesNote','資料不可用，不推定完整交易');$('sampleProgress').setAttribute('value','0');text('health','資料不可用 / 未確認：'+reason);$('health').className='status bad';for(const id of ['equity','cash','total','realized','unrealized','positionCount','signals','fills','blocked'])text(id,'—');$('markets').replaceChildren();$('chart').replaceChildren();$('positionList').replaceChildren();text('accounting','快照不可用，不推定費用或 funding 分項');text('modeNotice','快照不可用；不推定 PAPER 引擎狀態或當前交易權限，實盤停用。');text('empty','快照無效，不推定持倉或餘額');text('marketNote','不能把舊行情視為即時');text('chartNote','資料不可用，不繪製假績效');text('versions','資料不可用');text('stamp','讀取失敗。只使用本地唯讀快照，不觸碰實盤。');$('blockers').replaceChildren();const li=document.createElement('li');li.textContent='資料不可用，所有交易維持停用';$('blockers').appendChild(li);}
+let selectedLedger=new URL(location.href).searchParams.get('ledger')||null;
+let activeView=sessionStorage.getItem('perpdesk-view')||'overview';
+const state={status:null,research:null,work:null,health:null};
+function text(id,v){const e=$(id);if(e)e.textContent=v==null?'—':String(v)}
+function escState(kind){return ['fresh','warning','danger','unknown'].includes(kind)?kind:'unknown'}
+function setStatus(id,label,kind){const e=$(id);e.textContent=label;e.className='status '+escState(kind)}
+function timeMs(ms){if(typeof ms!=='number')return '—';return new Date(ms).toLocaleString('zh-TW',{hour12:false,timeZoneName:'short'})}
+function age(v){if(typeof v!=='number'||!Number.isFinite(v))return '未確認';if(v<0)return '未來 '+Math.abs(v).toFixed(1)+'s';return v<120?v.toFixed(1)+'s':(v/60).toFixed(1)+'m'}
+function roundedDecimal(raw,places=6){const s=String(raw??'');const m=s.match(/^(-?)(\d+)(?:\.(\d+))?$/);if(!m)return s;let sign=m[1],whole=m[2],frac=m[3]||'';if(frac.length<=places)return sign+whole+(frac?'.'+frac:'');let kept=frac.slice(0,places).split('');if(Number(frac[places])>=5){let carry=1;for(let i=kept.length-1;i>=0&&carry;i--){let n=Number(kept[i])+carry;kept[i]=String(n%10);carry=n>9?1:0}if(carry){let digits=whole.split('');for(let i=digits.length-1;i>=0&&carry;i--){let n=Number(digits[i])+carry;digits[i]=String(n%10);carry=n>9?1:0}if(carry)digits.unshift('1');whole=digits.join('')}}return sign+whole+(places?'.'+kept.join(''):'')}
+function exactNode(raw,places=6){const span=document.createElement('span');span.className='exact-number mono';span.dataset.exact=String(raw);span.tabIndex=0;span.title='Exact: '+String(raw);span.setAttribute('aria-label','顯示 '+roundedDecimal(raw,places)+'；Exact '+String(raw));span.textContent=roundedDecimal(raw,places);return span}
+function setExact(id,raw,places=6){const e=$(id);e.replaceChildren(exactNode(raw,places))}
+function clearList(id,msg){const e=$(id);e.replaceChildren();if(msg){const li=document.createElement('li');li.textContent=msg;li.className='muted';e.appendChild(li)}}
+function addLi(id,txt,cls=''){const li=document.createElement('li');li.textContent=txt;if(cls)li.className=cls;$(id).appendChild(li)}
+function setView(name,focus=false){activeView=['overview','research','account','work'].includes(name)?name:'overview';sessionStorage.setItem('perpdesk-view',activeView);document.querySelectorAll('.view').forEach(v=>v.hidden=v.id!=='view-'+activeView);document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.view===activeView)));if(focus)$('tab-'+activeView)?.focus()}
+document.querySelectorAll('.tab').forEach((b,i,all)=>{b.addEventListener('click',()=>setView(b.dataset.view));b.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();const n=(i+(e.key==='ArrowRight'?1:-1)+all.length)%all.length;setView(all[n].dataset.view,true)})});
+function theme(){const light=document.documentElement.dataset.theme==='light';document.documentElement.dataset.theme=light?'dark':'light';$('themeToggle').textContent=light?'淺色模式':'深色模式';localStorage.setItem('perpdesk-theme',document.documentElement.dataset.theme)}
+$('themeToggle').addEventListener('click',theme);document.documentElement.dataset.theme=localStorage.getItem('perpdesk-theme')||'dark';$('themeToggle').textContent=document.documentElement.dataset.theme==='light'?'深色模式':'淺色模式';setView(activeView);
 
-function utc(ms){const d=new Date(ms);return Number.isFinite(d.getTime())?d.toISOString().replace('T',' ').replace(/\.\d+Z$/,' UTC'):'—';}
-function duration(ms){if(!Number.isFinite(ms)||ms<0)return '—';const seconds=Math.floor(ms/1000),hours=Math.floor(seconds/3600),minutes=Math.floor(seconds%3600/60);return hours+'h '+minutes+'m '+seconds%60+'s';}
-let deadline=null;
-function updateCountdown(){text('remaining',deadline===null?'窗口未提供':Date.now()>=deadline?'窗口已截止':duration(deadline-Date.now()));}
-function renderResearch(s){
- const r=s.research,a=s.observer;deadline=null;text('researchVersion',s.engine?.version_id??'未提供');
- if(r&&Number.isInteger(r.complete_round_trips)&&r.complete_round_trips>=0&&Number.isInteger(r.target_complete_round_trips)&&r.target_complete_round_trips>0&&Number.isInteger(r.strategy_start_ms)&&Number.isInteger(r.deadline_ms)&&r.deadline_ms>r.strategy_start_ms){if(a?.available===true&&a.statistics?.samples===r.complete_round_trips){text('roundTrips',r.complete_round_trips+' / '+r.target_complete_round_trips);$('sampleProgress').setAttribute('max',String(r.target_complete_round_trips));$('sampleProgress').setAttribute('value',String(r.complete_round_trips));}else{text('roundTrips','樣本未確認 / '+r.target_complete_round_trips);$('sampleProgress').setAttribute('value','0');}deadline=r.deadline_ms;text('windowTimes',utc(r.strategy_start_ms)+' 至 '+utc(r.deadline_ms));}else{text('roundTrips','窗口未提供');text('windowTimes','沒有研究窗口，不套用預設目標');$('sampleProgress').setAttribute('value','0');}
- updateCountdown();$('closedTrades').replaceChildren();
- if(a?.available===true&&a.statistics){const st=a.statistics;if(st.win_rate_percent===null)text('winRate','樣本不足');else{const e=$('winRate');e.replaceChildren(exactNode(st.win_rate_percent,'%'));}if(st.mean_net_pnl_usdt===null)text('meanNet','樣本不足');else{const e=$('meanNet');e.replaceChildren(exactNode(st.mean_net_pnl_usdt,' USDT'));}if(st.fee_to_gross_percent===null)text('feeRatio','不適用');else{const e=$('feeRatio');e.replaceChildren(exactNode(st.fee_to_gross_percent,'%'));}text('statisticsNote','目前窗口完整交易 '+st.samples+' 筆 (勝 '+st.wins+' / 負 '+st.losses+' / 平 '+st.breakeven+')，不含未平倉。手續費÷毛已實現淨利，毛利≤0不計。');for(const t of a.closed_trades){const row=document.createElement('tr');cell(row,utc(t.closed_ms));cell(row,t.symbol+' / '+t.direction);cell(row,utc(t.opened_ms));exactCell(row,t.entry_price);exactCell(row,t.exit_price);exactCell(row,t.net_pnl_usdt,' USDT');cell(row,duration(t.holding_ms));const cost=document.createElement('td');cost.appendChild(exactNode(t.fees_usdt,' fee'));cost.appendChild(document.createTextNode(' / '));cost.appendChild(exactNode(t.funding_pnl_usdt,' funding'));row.appendChild(cost);$('closedTrades').appendChild(row);}text('tradesNote',a.closed_trades.length?a.scope:'目前窗口沒有完整已平倉交易，未交易不是零勝率。');}else{for(const id of ['winRate','meanNet','feeRatio'])text(id,'不可用');text('statisticsNote','統計不可用：'+(a?.error??'快照沒有可核對成交與成本ledger'));text('tradesNote','已平倉清單不可用，不把缺失當成零交易。');}
- const categories=r?.rejection_categories;$('rejectionDistribution').replaceChildren();
- const valid=categories&&typeof categories==='object'&&!Array.isArray(categories)&&Object.values(categories).every(n=>Number.isSafeInteger(n)&&n>=0);
- const pairs=valid?Object.entries(categories).sort((a,b)=>b[1]-a[1]):[],sum=pairs.reduce((n,p)=>n+p[1],0);
- if(valid&&Number.isSafeInteger(r.blocked_signals_count)&&r.blocked_signals_count>=0&&Number.isSafeInteger(r.signals_count)&&r.signals_count>=r.blocked_signals_count&&sum===r.blocked_signals_count){for(const [reason,count] of pairs){const row=document.createElement('tr');cell(row,(labels[reason]?labels[reason]+' ':'')+'('+reason+')');cell(row,count);cell(row,sum?(count*100/sum).toFixed(1)+'%':'—');$('rejectionDistribution').appendChild(row);}text('rejectionNote',sum?'共 '+sum+' 個受阻訊號 (原因加總已核對窗口計數)。':'目前窗口沒有拒單記錄。');}else{text('blocked','未確認');text('rejectionNote','拒單分布未確認 (缺少計數或原因加總不一致)，不推定為零。');}
+function researchStatus(r){if(!r?.configured)return ['未設定目前研究','unknown'];if(!r.available)return [r.state==='missing'?'Report 缺失':'Report 無效 / 未確認','danger'];if(r.state==='fresh')return ['有效行情已確認','fresh'];if(r.state==='source_gap')return ['目前 source gap','danger'];if(r.state==='stale')return ['行情已過期','warning'];if(r.state==='future')return ['時間證據在未來','danger'];return ['活動未確認','unknown']}
+function renderResearch(r){
+ state.research=r;const [label,kind]=researchStatus(r);text('currentResearchName',r?.label||'未設定');setStatus('researchState',label,kind);text('researchVersion',r?.version_id||'');
+ if(!r?.available){['lastPoll','reportTime','sourceReceipt','processProof','windowStart','windowCheckpoint','windowDeadline'].forEach(id=>text(id,'—'));clearList('currentBlockers',r?.error||'目前研究不可用');$('armsTable').replaceChildren();text('coverageSummary','Coverage 未確認');return}
+ text('lastPoll',timeMs(r.last_successful_poll_ms));text('pollAge','距今 '+age(r.poll_age_seconds));text('reportTime',timeMs(r.report_file_mtime_ms));
+ text('sourceReceipt',timeMs(r.source_evidence?.receipt_ts));text('sourceAge','source age '+age(r.source_evidence?.source_age_seconds));
+ text('processProof',r.process_proof?.confirmed?'已確認':'未確認');text('processProofAge',(r.process_proof?.state||'unknown')+' · '+age(r.process_proof?.age_seconds));
+ text('windowStart',timeMs(r.start_ms));text('windowCheckpoint',timeMs(r.checkpoint_ms));text('windowDeadline',timeMs(r.deadline_ms));
+ clearList('currentBlockers');if(!r.blockers?.length)addLi('currentBlockers','沒有由目前已配置 evidence 判定的 blocker','fresh');else r.blockers.forEach(x=>addLi('currentBlockers',x,''));
+ const cover=Object.entries(r.arms).map(([a,x])=>a+' '+x.checkpoint.covered+'/'+x.checkpoint.expected+' ('+(Number(x.checkpoint.coverage)*100).toFixed(1)+'%) · '+x.checkpoint.status);text('coverageSummary',cover.join(' ｜ '));
+ text('overviewTech',JSON.stringify({version:r.version_id,source:r.source_evidence,process:r.process_proof,source_gaps:r.source_gaps,unknown_inputs:r.unknown_inputs},null,2));
+ renderArms(r);
 }
-
-function drawChart(s){
- const root=$('chart');root.replaceChildren();const baseline=Number(s.initial_equity_usdt);
- const history=s.equity_history.map(p=>({...p,time:Date.parse(p.ts),value:Number(p.equity_usdt)})).filter(p=>Number.isFinite(p.time)&&Number.isFinite(p.value)).sort((a,b)=>a.time-b.time);
- function node(tag,attrs,label){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,String(v));if(label!==undefined)el.textContent=label;root.appendChild(el);return el;}
- if(!history.length||!Number.isFinite(baseline)){text('chartNote','沒有可用的實際時間與權益紀錄，不繪製假績效。');return;}
- const values=[baseline,...history.map(p=>p.value)],min=Math.min(...values),max=Math.max(...values),pad=Math.max((max-min)*.12,Math.abs(baseline)*.001,.01),low=min-pad,high=max+pad;
- const t0=history[0].time,t1=history[history.length-1].time,x=t=>t1===t0?380:72+(t-t0)*608/(t1-t0),y=v=>184-(v-low)*156/(high-low);
- for(let i=0;i<3;i++){const v=low+(high-low)*i/2,yy=y(v);node('line',{x1:72,x2:680,y1:yy,y2:yy,stroke:'#eeeef4'});node('text',{x:65,y:yy+4,'text-anchor':'end','font-size':11,fill:'#686b82'},v.toFixed(2));}
- node('line',{x1:72,x2:72,y1:28,y2:184,stroke:'#9b9baa'});node('line',{x1:72,x2:680,y1:184,y2:184,stroke:'#9b9baa'});
- node('text',{x:72,y:16,'font-size':11,fill:'#686b82'},'權益 USDT');
- node('line',{x1:72,x2:680,y1:y(baseline),y2:y(baseline),stroke:'#8b8b9b','stroke-dasharray':'5 4','data-role':'baseline'});
- node('text',{x:680,y:Math.max(24,y(baseline)-5),'text-anchor':'end','font-size':11,fill:'#686b82'},'本金 '+s.initial_equity_usdt+' USDT');
- const ticks=t0===t1?[t0]:[t0,(t0+t1)/2,t1];
- for(const t of ticks){node('line',{x1:x(t),x2:x(t),y1:184,y2:189,stroke:'#9b9baa'});node('text',{x:x(t),y:205,'text-anchor':'middle','font-size':10,fill:'#686b82'},new Date(t).toISOString().slice(11,19));}
- node('text',{x:380,y:227,'text-anchor':'middle','font-size':10,fill:'#686b82'},new Date(t0).toISOString().slice(0,10)+(new Date(t1).toISOString().slice(0,10)!==new Date(t0).toISOString().slice(0,10)?' 至 '+new Date(t1).toISOString().slice(0,10):'')+' UTC');
- let d='',connected=false,stale=0;
- for(const p of history){if(p.valuation_stale===true){connected=false;stale++;node('circle',{cx:x(p.time),cy:y(p.value),r:3,fill:'#bbb','data-role':'stale-point'});continue;}d+=(connected?'L':'M')+x(p.time)+','+y(p.value);connected=true;node('circle',{cx:x(p.time),cy:y(p.value),r:2,fill:'#7132f5'});}
- if(d)node('path',{d,fill:'none',stroke:'#7132f5','stroke-width':2,'data-role':'equity-path'});
- text('chartNote','實際快照 '+history.length+' 個，本金 '+s.initial_equity_usdt+' USDT，過期估值 '+stale+' 個 (灰點、斷線)，不補造績效。');
+function armSemantics(a){return a==='A'?'004 long · taker control':a==='B'?'long · maker entry/profit':'long + symmetric short · taker'}
+function renderArms(r){
+ const sum=$('armSummary');sum.replaceChildren();const tbody=$('armsTable');tbody.replaceChildren();
+ for(const a of ['A','B','C']){const x=r.arms[a],acct=x.account||{};const k=document.createElement('div');k.className='kpi';const l=document.createElement('div');l.className='label';l.textContent='Arm '+a+' · '+armSemantics(a);const v=document.createElement('div');v.className='value';v.appendChild(exactNode(acct.equity??'unknown'));const n=document.createElement('div');n.className='note';n.textContent='net '+roundedDecimal(x.net_ledger_usdt)+' · pending '+(acct.pending_orders??'?');k.append(l,v,n);sum.appendChild(k);
+ const tr=document.createElement('tr');const cells=[
+  'Arm '+a,armSemantics(a),
+  (acct.equity_confirmed?roundedDecimal(acct.equity):'權益未確認')+' / '+(acct.total_pnl==null?'PnL 未確認':roundedDecimal(acct.total_pnl)),
+  roundedDecimal(x.fees_usdt)+' / '+roundedDecimal(x.funding_pnl_usdt),
+  String(acct.positions?.length??x.positions)+' / '+String(acct.pending_orders??'?'),
+  x.raw_candidates+' → '+x.cost_qualified+' → '+x.submitted,
+  a==='B'?String(x.filled_entry_orders):'n/a',
+  String(x.flat_to_flat_count),
+  x.risk_rejections+' / '+(x.checkpoint?.stop_new_entries?'entry stop':'open')
+ ];cells.forEach((val,i)=>{const td=document.createElement('td');td.textContent=val;if(i>=2)td.classList.add('mono');tr.appendChild(td)});tbody.appendChild(tr)}
+ const b=r.arms.B;const primary='實際 maker filled entries '+b.filled_entry_orders+'；checkpoint '+b.checkpoint.status; text('primaryQueue',primary);
+ const stress=b.queue_stress_sensitivity||[];const counts={};stress.forEach(x=>{const key=x.status||x.outcome||'unknown';counts[key]=(counts[key]||0)+1});text('stressQueue',stress.length?Object.entries(counts).map(([k,v])=>k+' '+v).join(' · '):'尚無 2x diagnostic 樣本');
+ text('sourceEvidence',JSON.stringify({last_successful_poll_ms:r.last_successful_poll_ms,report_file_mtime_ms:r.report_file_mtime_ms,source_evidence:r.source_evidence,process_proof:r.process_proof},null,2));
+ text('evidenceDetails',JSON.stringify({research_id:r.id,version_id:r.version_id,causal_source:r.source_evidence,process_proof:r.process_proof,blockers:r.blockers},null,2));
 }
-
-function render(s){
- if(s.schema_version!==1||!['shadow','paper'].includes(s.mode)||s.live_trading_enabled!==false||typeof s.paper_trading_enabled!=='boolean'||!Array.isArray(s.markets)||!Array.isArray(s.positions)||typeof s.feed_stale!=='boolean')throw Error('不支援或不完整的快照');
- const paper=s.mode==='paper',traded=s.fills_count>0?'已交易':'未交易（成交計數 0）';
- let state='影子觀察 · PAPER 開倉停用 · 未交易，非績效';
- if(paper){if(!s.engine||!s.risk||s.risk.approved!==true)throw Error('缺少 PAPER 引擎／風險證明');const names={warmup:'暖機',ready:'就緒',running:'運行',halted:'停止',error:'錯誤停止'};state='PAPER 引擎 '+names[s.engine.status];if(s.engine.status==='warmup'&&s.engine.warmup_received!==undefined&&s.engine.warmup_required!==undefined)state+=' '+s.engine.warmup_received+'/'+s.engine.warmup_required;state+=' · '+traded+' · 紙上交易'+(s.paper_trading_enabled?'啟用':'停用')+' · 實盤停用';}
- text('modeNotice',state+'。沒有讀取你的帳戶；本介面唯讀，不能交易或變更配置。');
- text('initial',s.initial_equity_usdt);text('accountName',String(s.ledger_view?.label??s.account_id??s.engine?.version_id??'公開行情')+' · 唯讀帳本');text('equity',s.equity_usdt);text('cash',s.cash_usdt);amount('total',s.total_pnl_usdt);amount('realized',s.realized_pnl_usdt);amount('unrealized',s.unrealized_pnl_usdt);text('positionCount',s.positions.length);text('signals',s.research?.signals_count??s.signals_count);text('fills',s.fills_count);text('blocked',s.research?.blocked_signals_count??s.blocked_signals_count);
- text('health',(s.fixture?'ARTIFICIAL ENGINEERING FIXTURE，非績效 · ':'')+(s.feed_stale?'行情過期 / 中斷，僅顯示最後快照；不推定當前交易權限 · ':'行情新鮮 · ')+state);$('health').setAttribute('title',$('health').textContent);$('health').className='status '+(s.feed_stale||['halted','error'].includes(s.engine?.status)?'bad':'');
- $('markets').replaceChildren();for(const m of s.markets){const row=document.createElement('tr');cell(row,m.symbol+' / '+m.category);for(const k of ['bid','ask','mark_price','funding_rate','min_notional'])exactCell(row,m[k]);$('markets').appendChild(row);}
- text('marketNote','資料來源：'+s.feed.transport+'（非 WebSocket） · Funding 顯示是預估值，不是已结算現金流');
- $('blockers').replaceChildren();for(const b of (s.blockers.length?s.blockers:['無開倉阻擋記錄（不代表交易授權）'])){const li=document.createElement('li');li.textContent=labels[b]??b;$('blockers').appendChild(li);}
- $('versions').replaceChildren();if(paper){const div=document.createElement('div');div.className='version';div.textContent=s.engine.version_id+' · '+s.engine.status+' · '+s.engine.implementation+'\n前瞻起點 '+s.engine.forward_start_at+'\n模型 '+s.engine.model_sha256+'\n風險 '+s.risk.risk_version+' · '+s.risk.risk_config_sha256;$('versions').appendChild(div);}for(const v of s.versions){const div=document.createElement('div');div.className='version';div.textContent=v.id+' · '+v.status+'\n前瞻起點 '+v.sample_start_at;$('versions').appendChild(div);}
- {const box=$('accounting');box.replaceChildren(document.createTextNode('淨已實現含全部費用與 funding；'));const parts=[['gross_realized_pnl_usdt','毛已實現'],['fees_usdt','費用'],['funding_pnl_usdt','funding']].filter(([key])=>s[key]!==undefined);parts.forEach(([key,label],i)=>{if(i)box.appendChild(document.createTextNode('；'));box.append(document.createTextNode(label+' '),exactNode(s[key],' USDT'));});}
- text('empty',s.positions.length?'以下為快照中記錄的 PAPER 持倉':'沒有持倉。'+(paper?traded:'未交易，零 PNL 不是策略成績。'));$('positionList').replaceChildren();for(const p of s.positions){const div=document.createElement('div');div.className='version';div.append(document.createTextNode(p.symbol+' · '+p.side+' · 數量 '),exactNode(p.qty),document.createTextNode(' · 入場 '),exactNode(p.entry_price),document.createTextNode(' · 標記 '),exactNode(p.mark_price),document.createTextNode(' · 止損 '),exactNode(p.stop_price),document.createTextNode(' · 未實現 '),exactNode(p.unrealized_pnl_usdt,' USDT'));$('positionList').appendChild(div);}
- renderResearch(s);
- drawChart(s);
- text('stamp','快照 '+s.updated_at+' · 行情年齡 '+Math.round(s.feed_age_seconds??0)+' 秒 · 累計錯誤 '+s.feed.errors_count+' · 缺口 '+s.feed.gaps_count+' · '+(s.latest_error??'無最近錯誤'));
- measureLayout('sync');
- if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>measureLayout('raf'));
+function renderStatus(s){
+ state.status=s;if(!s?.schema_version)return;const label=String(s.ledger_view?.label??s.account_id??s.engine?.version_id??'PAPER');text('accountName',label+' · 唯讀帳本');text('historyBinding',(s.ledger_view?.id||'default')+' · '+label);setExact('historyEquity',s.equity_usdt);text('historyMarkets',(s.markets||[]).map(x=>x.symbol).join(', ')||'無');
+ text('historyTitle',(s.engine?.version_id||'PAPER')+' · 歷史帳戶');setStatus('historyStatus',s.feed_stale?'歷史快照 / 行情過期':'歷史帳戶快照','warning');
+ setExact('initial',s.initial_equity_usdt);setExact('cash',s.cash_usdt);setExact('equity',s.equity_usdt);setExact('total',s.total_pnl_usdt);
+ const ob=s.observer;if(ob?.available&&ob.statistics){const samples=ob.statistics.samples; text('historyObserver',samples?('已完成樣本 '+samples+'；勝率 '+(ob.statistics.win_rate_percent??'樣本不足')+'；此為歷史帳戶統計。'):'未交易／樣本不足；不顯示虛構勝率。')}else text('historyObserver','歷史 observer unavailable：'+(ob?.error||'未確認'));
+ const body=$('historyMarketRows');body.replaceChildren();for(const m of s.markets||[]){const tr=document.createElement('tr');[m.symbol,m.bid,m.ask,m.mark_price,s.feed_stale?'過期/最後快照':'快照內有效'].forEach((v,i)=>{const td=document.createElement('td');td.textContent=v??'—';if(i>0&&i<4)td.className='mono';tr.appendChild(td)});body.appendChild(tr)}
 }
-function measureLayout(phase){
- const root=document.documentElement;
- // Reading these values forces a real layout calculation after render. Acceptance
- // can distinguish a genuine overflow from a browser-readiness race.
- const scrollWidth=root.scrollWidth,clientWidth=root.clientWidth;
- root.dataset.layoutScrollWidth=String(scrollWidth);
- root.dataset.layoutClientWidth=String(clientWidth);
- root.dataset.layoutOverflow=String(scrollWidth>clientWidth);
- root.dataset.layoutPhase=phase;
- root.dataset.renderReady='true';
+function workStamp(task){return task.updated_at||task.completed_at||task.started_at||null}
+function renderWork(d){state.work=d;clearList('activeWork');clearList('completedWork');if(!d?.available||!Array.isArray(d.tasks)){clearList('activeWork','work authority 不可用');text('workAge','未確認');return}let newest=null;for(const t of d.tasks){const ts=Date.parse(workStamp(t)||'');if(Number.isFinite(ts))newest=Math.max(newest||0,ts);const line=(t.title||t.id||'task')+' · '+t.state;addLi(['completed','cancelled'].includes(t.state)?'completedWork':'activeWork',line)}text('workAge',newest?'owner work update age '+age((Date.now()-newest)/1000):'owner work update age 未確認');if(!$('activeWork').children.length)clearList('activeWork','目前沒有進行中/受阻工作');if(!$('completedWork').children.length)clearList('completedWork','沒有歷史完成項')}
+function renderHealth(d){state.health=d;clearList('incidentList');if(!d?.available){setStatus('healthSummary','Health 不可用','unknown');text('healthAge','');return}const stale=d.health_stale===true;setStatus('healthSummary',stale?'Health snapshot 過期':(d.operational_healthy?'Health snapshot 正常':'Health snapshot 有 fault'),stale?'warning':(d.operational_healthy?'fresh':'danger'));text('healthAge','health age '+age(d.health_age_seconds));for(const i of d.incidents||[])addLi('incidentList',(i.id||'incident')+' · '+i.status);if(!$('incidentList').children.length)clearList('incidentList','snapshot 中沒有 incident')}
+function unavailableStatus(msg){text('accountName','歷史帳戶不可用 · 唯讀');setStatus('historyStatus','歷史帳戶不可用','danger');text('historyObserver',msg)}
+async function getJson(path){const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const r=await fetch(path,{cache:'no-store',signal:ctl.signal});const d=await r.json();return {ok:r.ok,status:r.status,data:d}}finally{clearTimeout(timer)}}
+let refreshing=false;
+async function refresh(){
+ if(refreshing)return;refreshing=true;const y=scrollY,focus=document.activeElement?.id;
+ try{
+  const suffix=selectedLedger?'?ledger='+encodeURIComponent(selectedLedger):'';
+  const [rs,rr,rw,rh]=await Promise.allSettled([getJson('/api/status'+suffix),getJson('/api/research'),getJson('/api/work'),getJson('/api/health')]);
+  if(rs.status==='fulfilled'&&rs.value.ok)renderStatus(rs.value.data);else unavailableStatus('歷史帳戶 snapshot unavailable');
+  renderResearch(rr.status==='fulfilled'?rr.value.data:{configured:false,available:false,state:'unavailable',error:'research endpoint unavailable'});
+  renderWork(rw.status==='fulfilled'&&rw.value.ok?rw.value.data:{available:false});
+  renderHealth(rh.status==='fulfilled'&&rh.value.ok?rh.value.data:{available:false});
+ }finally{refreshing=false;if(focus&&document.getElementById(focus))document.getElementById(focus).focus({preventScroll:true});scrollTo(0,y);measureLayout()}
 }
-let busy=false,selectedLedger=(typeof location!=='undefined'?new URLSearchParams(location.search).get('ledger'):null);async function refresh(){if(busy)return;busy=true;const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const suffix=selectedLedger?'?ledger='+encodeURIComponent(selectedLedger):'';const r=await fetch('/api/status'+suffix,{cache:'no-store',signal:ctl.signal});if(!r.ok)throw Error('HTTP '+r.status);render(await r.json());}catch(e){unavailable(e.message);}finally{clearTimeout(timer);busy=false;}}
-async function loadLedgers(){const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const r=await fetch('/api/ledgers',{cache:'no-store',signal:ctl.signal});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();if(d.schema_version!==1||!Array.isArray(d.ledgers)||!d.ledgers.length)throw Error('ledger config invalid');const ids=new Set(d.ledgers.map(x=>x.id));if(selectedLedger&&!ids.has(selectedLedger))throw Error('unknown configured ledger');if(!selectedLedger)selectedLedger=d.default;const select=$('ledgerSelect');select.replaceChildren();for(const item of d.ledgers){const o=document.createElement('option');o.value=item.id;o.textContent=item.label+(item.default?' · 預設':'');o.selected=item.id===selectedLedger;select.appendChild(o);}select.disabled=d.ledgers.length<2;select.addEventListener('change',()=>{selectedLedger=select.value;const u=new URL(location.href);if(selectedLedger===d.default)u.searchParams.delete('ledger');else u.searchParams.set('ledger',selectedLedger);history.replaceState(null,'',u);refresh();});}catch(e){const select=$('ledgerSelect');select.replaceChildren();const o=document.createElement('option');o.textContent='帳本配置不可用';select.appendChild(o);select.disabled=true;unavailable('帳本配置不可用：'+e.message);}finally{clearTimeout(timer);}}
-function renderWork(data){
- if(data.available!==true||!Array.isArray(data.tasks))throw Error('工作狀態格式錯誤');
- const names={queued:'待執行',running:'進行中',testing:'測試中',verifying:'驗收中',completed:'已完成',failed:'失敗',blocked:'受阻',cancelled:'已取消'};
- $('workTasks').replaceChildren();text('workHealth',data.tasks.length?'最後回報如下（非逐字直播）':'沒有登記背景工作');
- for(const t of data.tasks){const card=document.createElement('div');card.className='version';card.style.whiteSpace='pre-wrap';
- card.textContent=t.title+' · '+(t.activity_unconfirmed?'活動未確認（最後回報 '+names[t.state]+'）':names[t.state])+'\n目前：'+t.current_step+'\n下一步：'+t.next_step+'\n最後更新：'+t.updated_at+'（'+Math.floor(t.update_age_seconds)+' 秒前）'+(t.evidence.length?'\n證據：'+t.evidence.join('、'):'\n證據：尚未登記');$('workTasks').appendChild(card);}
-}
-let workBusy=false;async function refreshWork(){if(workBusy)return;workBusy=true;const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const r=await fetch('/api/work',{cache:'no-store',signal:ctl.signal});if(!r.ok)throw Error('HTTP '+r.status);renderWork(await r.json());}catch(e){text('workHealth','工程狀態不可用 / 活動未確認：'+e.message);$('workTasks').replaceChildren();}finally{clearTimeout(timer);workBusy=false;}}
-function renderHealth(data){
- if(data.available!==true||!Array.isArray(data.incidents)||!Array.isArray(data.pending_work)||typeof data.operational_healthy!=='boolean'||typeof data.health_stale!=='boolean')throw Error('健康狀態格式錯誤');
- const unresolved=data.incidents.filter(i=>i.status!=='resolved');
- text('opsHealth',data.health_stale?'監控過期／未確認，不推定健康':(!data.operational_healthy?'運行故障／待處理':(unresolved.length?'目前運行正常，但歷史事件尚未結案':'目前檢查未見故障，不保證未來無錯誤')));
- $('opsHealth').className='status '+(data.health_stale||!data.operational_healthy||unresolved.length?'bad':'good');
- $('opsIssues').replaceChildren();
- const names={open:'未解／故障',recovered_monitoring:'恢復觀察（未結案）',resolved:'已明確驗證結案'};
- for(const i of unresolved){const div=document.createElement('div');div.className='version';div.style.whiteSpace='pre-wrap';div.textContent=i.id+' · '+names[i.status]+'\n'+(i.message??'')+'\n首次偵測 '+(i.first_seen??'—')+' · 最後觀察 '+(i.last_observed??'—')+'\n最後錯誤：'+(i.last_error??'沒有記錄')+'\n外部工作：'+(i.linked_task_id??'尚未連結');$('opsIssues').appendChild(div);}
- if(!unresolved.length){const div=document.createElement('div');div.className='sub';div.textContent='目前沒有未結案 incident。';$('opsIssues').appendChild(div);}
- const pending=(data.pending_work??[]).map(t=>t.id+(t.activity_unconfirmed?'（活動未確認）':'')).join('、')||'無';
- text('opsLimit','監控檢查 '+(data.checked_at??'未確認')+' · 待處理工程：'+pending+'。'+(data.service_restart_limitation??'')+'。監控只回報，不啟動修復。');
-}
-let healthBusy=false;async function refreshHealth(){if(healthBusy)return;healthBusy=true;const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),4000);try{const r=await fetch('/api/health',{cache:'no-store',signal:ctl.signal});if(!r.ok)throw Error('HTTP '+r.status);renderHealth(await r.json());}catch(e){text('opsHealth','健康不可用／未確認：'+e.message);$('opsHealth').className='status bad';$('opsIssues').replaceChildren();}finally{clearTimeout(timer);healthBusy=false;}}
-if(typeof window!=='undefined'){loadLedgers().then(refresh);setInterval(refresh,5000);refreshHealth();setInterval(refreshHealth,5000);refreshWork();setInterval(refreshWork,5000);setInterval(updateCountdown,1000);}
+async function loadLedgers(){try{const r=await getJson('/api/ledgers');if(!r.ok)throw Error();const d=r.data;const ids=new Set(d.ledgers.map(x=>x.id));if(selectedLedger&&!ids.has(selectedLedger))selectedLedger=d.default;if(!selectedLedger)selectedLedger=d.default;const sel=$('ledgerSelect');sel.replaceChildren();for(const item of d.ledgers){const o=document.createElement('option');o.value=item.id;o.textContent=item.label+(item.default?' · 預設':'');o.selected=item.id===selectedLedger;sel.appendChild(o)}sel.disabled=d.ledgers.length<2;sel.addEventListener('change',()=>{selectedLedger=sel.value;const u=new URL(location.href);if(selectedLedger===d.default)u.searchParams.delete('ledger');else u.searchParams.set('ledger',selectedLedger);history.replaceState(null,'',u);refresh()})}catch(e){$('ledgerSelect').disabled=true}}
+function measureLayout(){const root=document.documentElement;const sw=root.scrollWidth,cw=root.clientWidth;root.dataset.renderReady='true';root.dataset.layoutScrollWidth=String(sw);root.dataset.layoutClientWidth=String(cw);root.dataset.layoutOverflow=String(sw>cw);root.dataset.layoutPhase='sync'}
+loadLedgers().then(refresh);setInterval(refresh,5000);addEventListener('resize',measureLayout);
 </script></body></html>
