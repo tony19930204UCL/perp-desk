@@ -71,7 +71,7 @@ footer{margin-top:18px;color:var(--muted);font-size:11px}
 <div id="winRate"></div><div id="meanNet"></div><div id="feeRatio"></div><div id="statisticsNote"></div>
 <svg id="chart"></svg><div id="chartNote"></div><table><tbody id="rejectionDistribution"></tbody></table><div id="rejectionNote"></div>
 <table><tbody id="closedTrades"></tbody></table><div id="tradesNote"></div><table><tbody id="markets"></tbody></table><div id="marketNote"></div>
-<ul id="blockers"></ul><div id="versions"></div><div id="stamp"></div>
+<ul id="blockers"></ul><details id="proofDetails"><summary>版本 / 雜湊與稽核證明</summary><div id="versions"></div></details><div id="stamp"></div>
 </div>
 <footer>唯讀 localhost console · 顯示數字可能為 UI rounding；focus / hover 可讀 exact 值。HTTP 200 或頁面刷新不代表行情成功。</footer>
 </main>
@@ -194,8 +194,8 @@ function render(s){
  legacyText('realized',s.realized_pnl_usdt,true);legacyText('unrealized',s.unrealized_pnl_usdt,true);legacyText('positionCount',s.positions.length);legacyText('signals',s.research?.signals_count??s.signals_count);legacyText('fills',s.fills_count);legacyText('blocked',s.research?.blocked_signals_count??s.blocked_signals_count);
  // Override the compact-money nodes used by historical presentation regressions.
  for(const [id,val] of [['initial',s.initial_equity_usdt],['equity',s.equity_usdt],['cash',s.cash_usdt],['total',s.total_pnl_usdt]])legacyText(id,val,true);
- const engineNames={warmup:'暖機',ready:'就緒',running:'運行',halted:'停止',error:'錯誤停止'},state=paper?'PAPER 引擎 '+(engineNames[engine]||engine)+' · '+traded:'影子觀察 · 未交易';
- legacyText('health',(s.feed_stale?'行情過期 / 中斷 · ':'行情新鮮 · ')+state);legacyText('modeNotice',state+'。本介面唯讀，不能交易或變更配置。');
+ const engineNames={warmup:'暖機',ready:'就緒',running:'運行',halted:'停止',error:'錯誤停止'};let engineState=engineNames[engine]||engine;if(engine==='warmup'&&s.engine?.warmup_received!==undefined&&s.engine?.warmup_required!==undefined)engineState+=' '+s.engine.warmup_received+'/'+s.engine.warmup_required;const legacyState=paper?'PAPER 引擎 '+engineState+' · '+traded:'影子觀察 · 未交易';
+ legacyText('health',(s.feed_stale?'行情過期 / 中斷 · ':'行情新鮮 · ')+legacyState);legacyText('modeNotice',legacyState+'。本介面唯讀，不能交易或變更配置。');
  $('positionList').replaceChildren();for(const p of s.positions){const div=document.createElement('div');div.textContent=p.symbol+' · '+p.side+' · 數量 '+p.qty+' · 入場 '+p.entry_price+' · 標記 '+p.mark_price+' · 止損 '+p.stop_price+' · 未實現 '+p.unrealized_pnl_usdt+' USDT';$('positionList').appendChild(div)}legacyText('empty',s.positions.length?'以下為快照中記錄的 PAPER 持倉':'沒有持倉。');
  const box=$('accounting');box.replaceChildren(document.createTextNode('淨已實現 '+compactDecimal(s.realized_pnl_usdt)+'；'));for(const [key,label] of [['gross_realized_pnl_usdt','毛已實現'],['fees_usdt','費用'],['funding_pnl_usdt','funding']])if(s[key]!==undefined)box.appendChild(document.createTextNode(label+' '+compactDecimal(s[key])+'；'));box.appendChild(document.createTextNode('現金 '+compactDecimal(s.cash_usdt)));
  $('blockers').replaceChildren();for(const b of (s.blockers?.length?s.blockers:['無'])){const li=document.createElement('li');li.textContent=legacyLabels[b]??b;$('blockers').appendChild(li)}
