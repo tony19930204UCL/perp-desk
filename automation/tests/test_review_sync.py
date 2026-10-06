@@ -554,8 +554,10 @@ class ReviewSyncTests(unittest.TestCase):
                          'repo_sync/docs/docs/OPERATOR_EVENT_GATE.md',
                          'repo_sync/docs/docs/OWNER_RESUMPTION_HANDOFF.md',
                          'repo_sync/docs/docs/ETH_DISCOVERY_LAB.md',
+                         'repo_sync/docs/docs/OBSERVER_CONSOLE.md',
                          'lab/operator_event_gate_config.example.json',
                          'lab/discovery_config_v1.json',
+                         'lab/research_dashboard_config.example.json',
                          'scripts/paper_startup_supervisor.py','scripts/public_source_timing_probe.py',
                          'scripts/paper_operator_event_gate.py',
                          'repo_sync/evidence/green1.txt','repo_sync/status.json'):
@@ -573,8 +575,10 @@ class ReviewSyncTests(unittest.TestCase):
             self.assertIn('docs/OPERATOR_EVENT_GATE.md',files,'operator event-gate contract must survive normal mirror export')
             self.assertIn('docs/OWNER_RESUMPTION_HANDOFF.md',files,'owner resumption contract must survive normal mirror export')
             self.assertIn('docs/ETH_DISCOVERY_LAB.md',files,'discovery operator contract must survive normal mirror export')
+            self.assertIn('docs/OBSERVER_CONSOLE.md',files,'observer console contract must survive normal mirror export')
             self.assertIn('lab/operator_event_gate_config.example.json',files,'disabled event-gate config template must survive export')
             self.assertIn('lab/discovery_config_v1.json',files,'discovery frozen config must survive normal mirror export')
+            self.assertIn('lab/research_dashboard_config.example.json',files,'research dashboard config must survive normal mirror export')
             self.assertIn('scripts/paper_operator_event_gate.py',files,'Hermes event-gate precheck wrapper must survive export')
             self.assertIn('scripts/public_source_timing_probe.py',files,'public timing probe must survive normal mirror export')
             self.assertIn('evidence/sync/green1.txt',files)

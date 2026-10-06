@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "root": "/ABSOLUTE/OPERATOR/CONFIGURED/DISCOVERY-ROOT",
+  "current": {
+    "id": "eth-discovery",
+    "label": "ETH-DISCOVERY-LAB-001",
+    "fresh_seconds": 15,
+    "report": "reports/latest.json",
+    "feed_db": "shared-feed.sqlite3",
+    "process_proof": "dashboard-process-proof.json",
+    "arms": {
+      "A": "arm-A.sqlite3",
+      "B": "arm-B.sqlite3",
+      "C": "arm-C.sqlite3"
+    }
+  }
+}
