@@ -25,6 +25,13 @@ Each durable range preserves:
 - a rolling SHA-256 digest over every observation summary
 - a row-integrity hash
 
+For the declared heavy 48h envelope there are exactly three aggregated
+source-event scopes (aggTrade/book/mark) and 576 five-minute buckets, so the
+bounded representation permits at most **1,728 unknown-range rows** for those
+120,960 invalid raw events. The acceptance artifact reports the actual
+`causal_evidence.sqlite3` bytes and all other root bytes; no fixed per-row byte
+size is assumed.
+
 The range explicitly records `reconstructible_events=0`. Rolled raw payloads
 inside the range **cannot be reconstructed event-by-event** and remain unknown.
 Range evidence cannot be used to infer a price, queue depletion or maker fill.
