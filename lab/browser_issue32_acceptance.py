@@ -53,6 +53,8 @@ def metrics(s):
       muted:getComputedStyle(document.querySelector('.muted')).color,
       controlColor:getComputedStyle(document.getElementById('themeToggle')).color,
       controlBg:getComputedStyle(document.getElementById('themeToggle')).backgroundColor,
+      controlBorder:getComputedStyle(document.getElementById('themeToggle')).borderTopColor,
+      surface:getComputedStyle(document.querySelector('.panel')).backgroundColor,
       focusOutline:getComputedStyle(document.getElementById('themeToggle')).getPropertyValue('outline-style')
     }})()""")
 
@@ -109,15 +111,28 @@ def main(argv=None):
                 if m['innerWidth']!=width or m['clientWidth']!=width or m['overflow']:
                     raise AssertionError('viewport/root overflow mismatch '+json.dumps(m))
                 normal=contrast(m['text'],m['background']);muted=contrast(m['muted'],m['background']);control=contrast(m['controlColor'],m['controlBg'])
+                boundary=contrast(m['controlBorder'],m['controlBg'])
                 if min(normal,muted)<4.5 or control<4.5:raise AssertionError('text contrast below 4.5')
+                if boundary<3:raise AssertionError('non-text control contrast below 3')
                 shot=a.output/f'issue32-{width}.png';size=session.screenshot(shot)
                 evidence['views'][str(width)]=dict(metrics=m,screenshot_size=size,screenshot_sha256=hashlib.sha256(shot.read_bytes()).hexdigest(),
-                                                   contrast=dict(normal=normal,muted=muted,control=control),refresh_before=before,refresh_after=after)
+                                                   contrast=dict(normal=normal,muted=muted,control=control,boundary=boundary),refresh_before=before,refresh_after=after)
             # Keyboard tab navigation is explicit, not color-only.
             session.evaluate("document.getElementById('tab-overview').focus();document.getElementById('tab-overview').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}))")
             key=session.evaluate("({focus:document.activeElement.id,selected:document.querySelector('.tab[aria-selected=true]').id})")
             if key!=dict(focus='tab-research',selected='tab-research'):raise AssertionError('keyboard tab navigation failed')
             evidence['keyboard']=key
+            from urllib.request import urlopen
+            api_research=json.loads(urlopen(base+'api/research',timeout=5).read())
+            api_ledgers=json.loads(urlopen(base+'api/ledgers',timeout=5).read())
+            api=dict(research=dict(id=api_research.get('id'),label=api_research.get('label'),
+                                   state=api_research.get('state'),capital_pooled=api_research.get('capital_pooled'),
+                                   arms={a:dict(net_ledger_usdt=api_research['arms'][a]['net_ledger_usdt'],
+                                                positions=len(api_research['arms'][a]['account']['positions']),
+                                                pending=api_research['arms'][a]['account']['pending_orders'])
+                                         for a in 'ABC'}),
+                     ledgers=api_ledgers)
+            (a.output/'api-evidence.json').write_text(json.dumps(api,indent=2,sort_keys=True))
             (a.output/'evidence.json').write_text(json.dumps(evidence,indent=2,sort_keys=True))
         finally:
             if session:session.close()
