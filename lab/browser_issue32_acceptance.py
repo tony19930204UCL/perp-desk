@@ -39,7 +39,7 @@ def wait_ready(s):
         d=s.evaluate("""(()=>({ready:document.documentElement.dataset.renderReady,
           research:document.getElementById('currentResearchName')?.textContent||'',
           account:document.getElementById('accountName')?.textContent||''}))()""")
-        if d and d['ready']=='true' and d['research']=='ETH-DISCOVERY-LAB-001' and '唯讀帳本' in d['account']:return d
+        if d and d.get('ready')=='true' and d.get('research')=='ETH-DISCOVERY-LAB-001' and '唯讀帳本' in d.get('account',''):return d
         time.sleep(.05)
     raise AssertionError('dashboard did not render')
 
