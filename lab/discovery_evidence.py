@@ -26,7 +26,13 @@ class CausalEvidence:
             names={r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             if names-{'evidence','unknown_ranges','sqlite_sequence'}:
                 raise ValueError('dedicated causal evidence store required')
-            db.execute("""CREATE TABLE IF NOT EXISTS evidence(
+            if existed:
+                if 'evidence' not in names:
+                    raise ValueError('existing causal evidence schema missing')
+                # Existing roots are read as-is. No CREATE/ALTER/migration is issued.
+                self.supports_unknown_ranges='unknown_ranges' in names
+                return
+            db.execute("""CREATE TABLE evidence(
                 seq INTEGER PRIMARY KEY AUTOINCREMENT,
                 evidence_key TEXT UNIQUE NOT NULL,
                 kind TEXT NOT NULL,
@@ -34,32 +40,28 @@ class CausalEvidence:
                 payload TEXT NOT NULL,
                 previous_hash TEXT NOT NULL,
                 hash TEXT NOT NULL)""")
-            # Legacy operator roots are immutable. Opening an existing evidence DB
-            # without the Issue38 table must not auto-migrate or write it.
-            if not existed or 'unknown_ranges' in names:
-                db.execute("""CREATE TABLE IF NOT EXISTS unknown_ranges(
-                    range_key TEXT PRIMARY KEY,
-                    scope TEXT NOT NULL,
-                    reason_code TEXT NOT NULL,
-                    bucket_start_ms INTEGER NOT NULL,
-                    first_ts INTEGER NOT NULL,
-                    last_ts INTEGER NOT NULL,
-                    first_source_ts INTEGER,
-                    last_source_ts INTEGER,
-                    first_receipt_ts INTEGER,
-                    last_receipt_ts INTEGER,
-                    first_event_id TEXT,
-                    last_event_id TEXT,
-                    first_trade_id INTEGER,
-                    last_trade_id INTEGER,
-                    count INTEGER NOT NULL,
-                    rolling_hash TEXT NOT NULL,
-                    first_reason TEXT,
-                    last_reason TEXT,
-                    reconstructible_events INTEGER NOT NULL,
-                    row_hash TEXT NOT NULL)""")
-            names={r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            self.supports_unknown_ranges='unknown_ranges' in names
+            db.execute("""CREATE TABLE unknown_ranges(
+                range_key TEXT PRIMARY KEY,
+                scope TEXT NOT NULL,
+                reason_code TEXT NOT NULL,
+                bucket_start_ms INTEGER NOT NULL,
+                first_ts INTEGER NOT NULL,
+                last_ts INTEGER NOT NULL,
+                first_source_ts INTEGER,
+                last_source_ts INTEGER,
+                first_receipt_ts INTEGER,
+                last_receipt_ts INTEGER,
+                first_event_id TEXT,
+                last_event_id TEXT,
+                first_trade_id INTEGER,
+                last_trade_id INTEGER,
+                count INTEGER NOT NULL,
+                rolling_hash TEXT NOT NULL,
+                first_reason TEXT,
+                last_reason TEXT,
+                reconstructible_events INTEGER NOT NULL,
+                row_hash TEXT NOT NULL)""")
+            self.supports_unknown_ranges=True
 
     def append(self,evidence_key,kind,ts,payload):
         if not isinstance(evidence_key,str) or not evidence_key or not isinstance(kind,str) or not kind:
