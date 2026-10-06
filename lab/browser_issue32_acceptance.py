@@ -55,7 +55,9 @@ def metrics(s):
       controlBg:getComputedStyle(document.getElementById('themeToggle')).backgroundColor,
       controlBorder:getComputedStyle(document.getElementById('themeToggle')).borderTopColor,
       surface:getComputedStyle(document.querySelector('.panel')).backgroundColor,
-      focusOutline:getComputedStyle(document.getElementById('themeToggle')).getPropertyValue('outline-style')
+      focusOutline:getComputedStyle(document.getElementById('themeToggle')).getPropertyValue('outline-style'),
+      bodyFont:getComputedStyle(b).fontFamily,
+      cjkFontAvailable:document.fonts.check('14px "Noto Sans CJK TC"','觀察員目前研究歷史帳戶工作證據')
     }})()""")
 
 def main(argv=None):
@@ -118,6 +120,8 @@ def main(argv=None):
                     raise AssertionError('viewport/root overflow mismatch '+json.dumps(m))
                 if m['focusOutline']=='none':
                     raise AssertionError('focus-visible outline missing '+json.dumps(m))
+                if not m['cjkFontAvailable']:
+                    raise AssertionError('Traditional Chinese fixture font unavailable '+json.dumps(m))
                 normal=contrast(m['text'],m['background']);muted=contrast(m['muted'],m['background']);control=contrast(m['controlColor'],m['controlBg'])
                 boundary=contrast(m['controlBorder'],m['controlBg'])
                 if min(normal,muted)<4.5 or control<4.5:raise AssertionError('text contrast below 4.5')
