@@ -553,6 +553,16 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - verification第一次讀/proc/cmdline因程序已死FileNotFoundError如實保留，之後explicit absence+state/report+10originalprotected hashes核實。activation-failure-readback.json保存完整證據。根因未知，未擷取首失敗raw book timing，不推論clock成因、不放寬source gate或重跑到綠。
 - 原交易/account/hold/health保持不變。failed隔離pump已退出，不接管live服務或promotion；保留已activation namespace/帳本/期限/失敗來源證據，不能回滾舊DB或刪除新證據。工程修復交Issue28（BUG）fullbody讀回，原Issue23 acceptance仍未完成。附Issue28完整派工指令.md，agent尚待人工轉交，無codingworker在執行。
 
+## PR029-HEAD-CI-ACCEPTED-REAL-RECOVERY-OBSERVED-OPERATIONAL-REJECTED-SOURCE-ROLLED-BACK（2026-10-06）
+
+- 精確fb2cf91b86fc1caa2a02988796ed727cba8c4602，CI37428464518/37428459777均success。原log逐ID38+319=357unique，focused1/9/10子集。解析前幾次assert失敗因step隔離與focused tests.test_discovery_lab import namespace，真ID逐對核後核實，不跑本機suite。artifact11396511555 ZIP/API digest符合48b218cf70f7c38402f1e2e50c1b798f5a618f1991441b0c64d3666d7e6e417f，deterministic1/1OK，GHpublic451/containerDNSblocked不是本機成功。
+- 07:23:50UTC五完整sourceartifacts備份安裝。local/base相符，10未改PR24檔逐Gitblob相符，10原protected hash不變，restart前整個既有隔離root逐bytes不變。normalmirror4f837f9d2f81ce78a859e89fceb34112cfeccbe4五blob核實，publicationCI37429505318completed/success。未改原交易/health/帳戶/假說/風控/sourcegate/clock/cron。
+- 本回合實際啟動same-root continuous pump proc_2434d86f7638/PID2010854（真背景handle，不是queued）。前兩readbacks polls0/failures4→8，後續polls1→2→3與failures19，ValueError invalid book source time反覆。原start/deadline保持，真實retry/recovery確實存在，但持續來源可行性未通過。
+- shipped standalone publicprobe真HTTP200三endpoint。NEW depth E1791271478933/T1791271478929晚於receipt1791271478701，time serverTime1791271478607晚於receipt1791271478393。保存operator-public-probe.json，不倒推原未保存raw首失敗確定根因，也不推論OSclock/network成因。
+- 主operator最初見0poll後過早將retrying視為沒有recover並發出stop，verification assert polls0失敗揭露已polls1，保留錯誤並更正恢復事實。stop工具回stop_requested，state曾true；稍後sameprocess仍alive、stop_requested/report.operator_stop_requested均false，沒有operatorresume/clear。不code-review/debug其overwrite成因。
+- source_gaps/unknown可能包含大量reject，按原report保存，不把計数當網路斷線episode數。flat/submitted0/filledentry0確認後只killownedPID，工具和/proc讀回absence。07:27:22UTC回滾5source artifacts（新probe解除安裝，stage仍保存），同root當下bytes與10原protected保持，無DBrestore/reset/延長期限。
+- 新BUGIssue30 fullbody讀回，PR29comment6011525497 fullbody讀回，Issue28仍OPEN／PR29未merge與未live accepted。完整可轉交指令Issue30完整派工指令.md。工程尚待人工轉交，主operator不假稱codingagent已啟動。cache/scratch/pr29-fb2cf91-acceptance保存exacthead/CI/digest/來源/所有readbacks/rollback證據。
+
 
 
 
