@@ -90,7 +90,7 @@ function researchStatus(r){if(!r?.configured)return ['未設定目前研究','un
 function renderResearch(r){
  state.research=r;const [label,kind]=researchStatus(r);text('currentResearchName',r?.label||'未設定');setStatus('researchState',label,kind);text('researchVersion',r?.version_id||'');
  if(!r?.available){['lastPoll','reportTime','sourceReceipt','processProof','windowStart','windowCheckpoint','windowDeadline'].forEach(id=>text(id,'—'));clearList('currentBlockers',r?.error||'目前研究不可用');$('armsTable').replaceChildren();text('coverageSummary','Coverage 未確認');return}
- text('lastPoll',timeMs(r.last_successful_poll_ms));text('pollAge','距今 '+age(r.poll_age_seconds));text('reportTime',timeMs(r.report_file_mtime_ms));
+ text('lastPoll',timeMs(r.last_successful_poll_ms));text('pollAge','距今 '+age(r.poll_age_seconds));text('reportTime',timeMs(r.report_file_mtime_ms));$('reportTime').title='report '+(r.report_state||'unknown')+' · age '+age(r.report_age_seconds);
  text('sourceReceipt',timeMs(r.source_evidence?.receipt_ts));text('sourceAge','source age '+age(r.source_evidence?.source_age_seconds));
  text('processProof',r.process_proof?.confirmed?'已確認':'未確認');text('processProofAge',(r.process_proof?.state||'unknown')+' · '+age(r.process_proof?.age_seconds));
  text('windowStart',timeMs(r.start_ms));text('windowCheckpoint',timeMs(r.checkpoint_ms));text('windowDeadline',timeMs(r.deadline_ms));
