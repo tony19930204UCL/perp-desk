@@ -29,6 +29,28 @@ class UnknownRangeStoreTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'integrity mismatch'):
                 CausalEvidence(path).unknown_ranges()
 
+    def test_legacy_evidence_open_is_byte_stable_and_write_fails_closed(self):
+        from discovery_evidence import CausalEvidence
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/'legacy.sqlite3'
+            with sqlite3.connect(path) as db:
+                db.execute("""CREATE TABLE evidence(
+                    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                    evidence_key TEXT UNIQUE NOT NULL,
+                    kind TEXT NOT NULL,
+                    ts INTEGER NOT NULL,
+                    payload TEXT NOT NULL,
+                    previous_hash TEXT NOT NULL,
+                    hash TEXT NOT NULL)""")
+            before=path.read_bytes()
+            e=CausalEvidence(path)
+            self.assertFalse(e.supports_unknown_ranges)
+            self.assertEqual(path.read_bytes(),before)
+            with self.assertRaisesRegex(ValueError,'legacy root'):
+                e.record_unknown_range('shared_event:book','source_valid_false',START,
+                    dict(event_id='legacy',type='book',source_ts=START,receipt_ts=START,reason='late'))
+            self.assertEqual(path.read_bytes(),before)
+
     def test_time_bucket_boundary_creates_bounded_new_range(self):
         from discovery_evidence import CausalEvidence,UNKNOWN_RANGE_BUCKET_MS
         with tempfile.TemporaryDirectory() as td:
