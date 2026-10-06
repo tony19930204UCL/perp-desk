@@ -1,0 +1,39 @@
+{
+  "base": "20af4ef6d503c26f81f7e8128b2d6b7883ff2c00",
+  "deployment": "NOT_DEPLOYED",
+  "evidence_sha256": {
+    "issue40-exporter-tests.txt": "85e39bf8dc51dbd8ce522befcb851c946f1b01c7c0eeb07f20cdae65734bef51",
+    "issue40-real-scanner-tests.txt": "190557b77751517bcc334808711d3c13148f5ed9412947852346012d622d2dd4",
+    "issue40-regression.txt": "f7b7323cb78586103c240f7f3f383932aec653f498df41e236090a00cd4763bc"
+  },
+  "extra_paper_suite": "INCOMPLETE tool timeout; not claimed passing",
+  "hosted_ci": "NOT_YET_DISPATCHED; local evidence never substitutes green CI",
+  "independent_review": "pending parent acceptance",
+  "issue": 40,
+  "local_exporter_tests": {
+    "actual": 40,
+    "exit": 0,
+    "expected": 40,
+    "skips": 0
+  },
+  "raw_local_log_sha256": {
+    "exporter-suite.log": "eb9037907cd61c897601d948c9e8454abee6f72dda1ffcfc2d18d3e1f71eecf9",
+    "green-wrapper.log": "3b4684035a7108099b989d1b4ec53c1e3420e3fc5e09ce7866ec0c9a00bb7705",
+    "lab-suite.log": "c829fa04b1b30892d74050bea077f20853bef0e23b48c11909240eba3a703c87",
+    "real-scanner-green.log": "41fa059023248012cfa2e36b23df8703e5894cde18851cc004286f2464c8154f",
+    "red-wrapper.log": "f4dd41fec2db81302b2cf1d14b8e90545a2e3b0de636613941c19d32e7ad8096"
+  },
+  "real_scanner_tests": {
+    "count": 2,
+    "exit": 0,
+    "version": "8.30.1"
+  },
+  "runtime_cron_visibility_main_changed": false,
+  "source_sha256": {
+    ".github/workflows/ci.yml": "701f82e9b074cbf395d642972e49675363e3d576f4a478fdbb19921fb43bac25",
+    "automation/review_sync.py": "467b979b0bfbeeb1cdf7893ce51a8914be9e860d4cc17046488a260ee494501f",
+    "automation/tests/test_review_sync.py": "5ec54e7ebc17100c441ff91c9aa48c63acc85614a808f7b61b47f9eb3baa1772",
+    "docs/AUTO_SYNC.md": "5f824ca7a35734509344aa0134f107b56c2a88e57e0e998c51614380e97ef4e4",
+    "scripts/paper_review_sync.py": "8622647983ae04b4244a37ed3fed4ef09f8c00ed7ca60ff9f5838ab2fc402619"
+  }
+}
