@@ -816,6 +816,30 @@ class Issue34TransportCapacityTests(unittest.TestCase):
                 self.assertEqual(db.execute('SELECT count(*) FROM feed_events').fetchone()[0],3)
 
 
+class Issue34CapacityHaltTests(unittest.TestCase):
+    def test_flat_root_at_entry_stop_halts_before_public_poll(self):
+        import sys
+        sys.path.insert(0,str(LAB))
+        import discovery_runner as dr
+        with tempfile.TemporaryDirectory() as td:
+            runner=dr.DiscoveryRunner(Path(td)/'runner',client=object(),clock_ms=lambda:2000)
+            class Lab:
+                state={'checkpoint_ms':999999,'deadline_ms':9999999}
+                def report(self,now):
+                    return dict(storage_used_bytes=90,storage_budget_bytes=100,
+                                arms={a:dict(positions=0) for a in 'ABC'})
+                def close(self):pass
+            class Feed:
+                def snapshot(self):return dict(retained_events=0)
+            runner._open=lambda:(Lab(),Feed())
+            report=runner._storage_capacity_halt_report()
+            self.assertEqual(report['runner']['lifecycle'],'terminal_storage_capacity')
+            self.assertTrue(report['runner']['terminal_blocked'])
+            state=json.loads((runner.root/'runner_state.json').read_text())
+            self.assertEqual(state['storage_halt_used_bytes'],90)
+            self.assertTrue(state['terminal_blocked'])
+
+
 class PipelineSubprocessTests(unittest.TestCase):
     def test_isolated_pipeline_subprocess_is_public_safe_and_no_live_claim(self):
         import subprocess,sys
