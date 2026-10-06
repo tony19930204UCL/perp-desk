@@ -544,6 +544,15 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 06:38:16UTC備份後安裝14完整accepted artifacts，10原交易/health/config檔hash不變。既有normal mirror短暫pause/resume，monitor不改。真實prepare成功，ETHUSDT reference filters已驗，window_started=false且只建runner_state.json，沒有broker/activation、新窗口、交易恢復或PR21啟動。
 - normalmirror先settling，讀仍舊main的sourceassert失敗如實保留，不叫publication成功。其後正常sync發布59eb492fae4adb91fe8a588aec9bc7f5beee8821，14Gitblobs精確匹配；CI37424976589讀回in_progress，尚不叫部署全部驗收完成。PR24comment6010849232 fullbody讀回（其描述當時publication仍pending），Issue23 OPEN、PR未merge。Evidence cache/scratch/pr24-501ade8-acceptance。
 
+## PR024-PUBLICATION-PASSED-ACTIVATED-OPERATIONAL-LAUNCH-FAILED（2026-10-06）
+
+- 06:46UTC fresh讀回publication CI37424976589 completed/success at59eb492fae4adb91fe8a588aec9bc7f5beee8821。研究當時polls0/null且無runner，上一輪只改queued沒有派送，owner漏接。保留status-20261006T0646.json，不回填早已啟動。
+- Observer再次要求接著做，主operator本回合實際完成啟動前核對、decision與activate。PR21 staged head5c4b7c58f76f8907eb0f1241609421c0a8d24a8d OPEN且兩CI success，只核staged，不deploy/migrate004。14accepted sourcehash精確不變、隔離root僅prepared、空間足夠。
+- 真activate成功，61historical warmup only，原start2026-10-06T06:57:00Z、8h checkpoint14:57Z、48h deadline2026-10-08T06:57:00Z。固定窗口不延長，不reset原/新account。決策文件deployment/activation-decision.md。
+- 實際背景pump handleproc_73d186198937/PID1983126啟動後exit1：ValueError: invalid book source time，路徑run→poll_once→feed.ingest book→normalize。process tool明示exited、exit1。readback polls0,last_poll_ms=null,source_gaps1,unknown_inputs1，沒有成交，不宣稱已成功跑研究。
+- verification第一次讀/proc/cmdline因程序已死FileNotFoundError如實保留，之後explicit absence+state/report+10originalprotected hashes核實。activation-failure-readback.json保存完整證據。根因未知，未擷取首失敗raw book timing，不推論clock成因、不放寬source gate或重跑到綠。
+- 原交易/account/hold/health保持不變。failed隔離pump已退出，不接管live服務或promotion；保留已activation namespace/帳本/期限/失敗來源證據，不能回滾舊DB或刪除新證據。工程修復交Issue28（BUG）fullbody讀回，原Issue23 acceptance仍未完成。附Issue28完整派工指令.md，agent尚待人工轉交，無codingworker在執行。
+
 
 
 
