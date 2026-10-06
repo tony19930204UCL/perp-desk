@@ -628,6 +628,15 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 已建立Issue38/fullbody readback，目標未來候選有界且可重建的unknown因果表示，保留每次真正改變交易/資產/風險判斷的必要因果，不能聚合掉maker相關成交或將unknown合成known。固定budget、原immutable因果與已部署PR33/35/策略/門檻保持。由agent決定實作，須declared-range/超範圍安全失效、兩profile全store/WAL與因果/安全重建證據，不能達成就NOT_FEASIBLE。
 - PR37收尾與Issue38新語義分開PR，完整人工轉交附件cache/scratch/pr37-37de668-acceptance/PR37收尾與Issue38完整派工.md。尚待人工轉交，沒有外部executor，不標running或宣稱已派送。
 
+## PR037-PR039-EXACT-HEAD-CI-PLATFORM-PREREQUISITE-BLOCK（2026-10-06）
+
+- PR37新headd3edc7ce7f0e68d22276cd1a0451cedfe773f8ed：runs37494905900/37494912429均completed/failure、attempt2，兩次jobs均runner_id0/steps空。PR39 head5b752c0c6e9611ad11eac5251a545915008f3601：runs37497874775(attempt2)/37497880587(attempt1)同樣pre-runner失敗。平台failure不是已執行test failure；owner account prerequisite annotation私有保存，不發布敏感診斷。main d34191593e1147ffaf2bf255ac4d65c76d40c462/run37493885004亦同症狀，不能僅稱暫時無runner。
+- 378unique/舊artifact11424306363僅PR37舊37de668 head歷史，不替新head驗收。PR39預期386只是未執行inventory，沒有實際unique/新artifact/兩負荷PASS。兩候選均未部署、未merge、未動main/root/窗口/策略/PR33/35，也未重試至綠或改CI/runner/permissions繞gate。
+- PR37新head operator文件確實已讀回40lateagg＋book＋mark負荷與--root ROOT report，bulk/lifecycle證據分開。文件修正確認不等於新head完整綠CI。PR39有界unknown設計僅外部未執行候選，範圍/1776rows/重建與容量結果未由operator接受。
+- PR37 comment6021616054、PR39 comment6021616565 fullbody讀回，以privacy-safe CI prerequisite描述保留成果並停止重複rerun。work兩項blocked真localhost讀回；研究仍34147738/33554432、三臂flat且8hstop_new_entries保持。
+- 需owner確認CI帳戶prerequisite，operator不擅自提高spending/付款、刪artifact、公開repo或架self-hostedrunner。解除後才續既有精確head做一次bounded CI/readback，不重做成果、不替尚未執行的測試編數字。私有證據cache/scratch/pr37-pr39-runner-block。
+
+
 
 
 
