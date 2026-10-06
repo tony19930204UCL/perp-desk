@@ -7,6 +7,7 @@ service installation, default PAPER mutation, or automatic research activation.
 from __future__ import annotations
 import argparse, fcntl, json, os, tempfile, time
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from urllib.error import URLError
 
@@ -423,6 +424,32 @@ class DiscoveryRunner:
             return report if flat else None
         finally:lab.close()
 
+    def _storage_capacity_halt_report(self):
+        lab,feed=self._open()
+        try:
+            now=self.clock();report=lab.report(now)
+            limit=int(report['storage_budget_bytes'])
+            threshold=int(Decimal(str(self.config['storage']['entry_stop_fraction']))*Decimal(limit))
+            flat=all(x['positions']==0 for x in report['arms'].values())
+            if not flat or int(report['storage_used_bytes'])<threshold:
+                return None
+            self.state=self._load_runner_state()
+            self.state['lifecycle']='terminal_storage_capacity'
+            self.state['terminal_blocked']=True
+            self.state['storage_halt_used_bytes']=int(report['storage_used_bytes'])
+            self.state['storage_halt_budget_bytes']=limit
+            self._save()
+            report['runner']=dict(
+                polls=self.state.get('polls',0),last_poll_ms=self.state.get('last_poll_ms'),
+                last_error=self.state.get('last_error'),poll_failures=self.state.get('poll_failures',0),
+                stop_requested=bool(self.state.get('stop_requested')),feed=feed.snapshot(),
+                lifecycle='terminal_storage_capacity',terminal_blocked=True,
+                storage_entry_stop_bytes=threshold,
+                note='flat root halted before another public poll; history and fixed budget preserved')
+            self._persist_report(report,lab,now)
+            return report
+        finally:lab.close()
+
     def _mark_terminal_failure(self,lifecycle):
         self.state=self._load_runner_state()
         self.state['lifecycle']=lifecycle;self.state['terminal_blocked']=True
@@ -439,6 +466,8 @@ class DiscoveryRunner:
         attempts=0
         stopped=self._flat_stop_report()
         if stopped is not None:return stopped
+        capacity_halt=self._storage_capacity_halt_report()
+        if capacity_halt is not None:return capacity_halt
         while True:
             try:
                 report=self.poll_once();attempts+=1
@@ -461,6 +490,8 @@ class DiscoveryRunner:
                 self.state['next_retry_delay_seconds']=delay;self._save()
                 time.sleep(delay);continue
             flat=all(x['positions']==0 for x in report['arms'].values())
+            capacity_halt=self._storage_capacity_halt_report()
+            if capacity_halt is not None:return capacity_halt
             self.state=self._load_runner_state()
             if once or (self.state.get('stop_requested') and flat):
                 return report
