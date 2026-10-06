@@ -9,7 +9,7 @@
     "context/AGENTS.md": "93a258d9d681b264bcfc08f8f4e9063e7a2eaf8f39d77465d9969088b9bbd22d",
     "context/OPERATING_AGREEMENT.md": "b340382e6dbfa64defb007ffac3a6dcbe875abcf7172b93c78849b72ede62b0a",
     "context/open_questions.md": "7247519ae062622c0c33a645a3be2569e1e7132773a2e850186099adfd1f31b0",
-    "context/versions.md": "30410efd0cc908d15a6666b821c6b2d719a722f560b12415c95c0a81a5ea7741",
+    "context/versions.md": "bbf189c51333043e0daa4dc666a27ff8a4aff05458cd43d639b6eb8051c32726",
     "docs/AI_REVIEW_GUIDE.md": "208dbc2c8fc70f34ffcba27034b0a7c4c531992c6800bf4f3f069183a7c8c47d",
     "docs/ARCHITECTURE.md": "fbc1ac897a7640545ce764975539e204f8288a478640dbc7de0b946d487df634",
     "docs/AUTO_SYNC.md": "f0239318a852f483d353fb4d38e3cf8e815b9658dabb955d8c1ed6002faf0bd2",
@@ -278,7 +278,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "f6621c3293218c370ded2f194f3abd104c55600fcb1075e3c7355545946e7460",
+  "fingerprint": "98dd1d7405d76a2d49c3e8d6c2a637832759bae9035cd7ad70f7424a30fa09b3",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
