@@ -172,8 +172,11 @@ class PaperPresentationTests(unittest.TestCase):
         self.assertEqual(elements['positionList']['children'], [])
         self.assertEqual(dom_text(elements['equity']), '—')
         html = (LAB / 'dashboard.html').read_text()
-        for forbidden in ('innerHTML', 'https://', '<button', '<form', '<iframe'):
+        for forbidden in ('innerHTML', 'https://', '<form', '<iframe', 'method="post"', "method='post'", '/api/order', '/api/stop', '/api/approve'):
             self.assertNotIn(forbidden, html)
+        # Read-only navigation/theme buttons are permitted; there must be no write-action controls.
+        self.assertIn('role="tab"', html)
+        self.assertIn('id="themeToggle"', html)
 
     def test_paper_brief_reports_net_pnl_states_and_fails_closed(self):
         snapshot = paper_fixture()

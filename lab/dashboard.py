@@ -193,9 +193,11 @@ def load_ledger_config(path, default_status):
     return dict(default=default,ledgers=ledgers)
 
 
-def make_server(port, status_path, html_path, ledger_config_path=None):
+def make_server(port, status_path, html_path, ledger_config_path=None, research_config_path=None):
     status_path, html_path = Path(status_path).resolve(), Path(html_path)
     ledger_config=load_ledger_config(ledger_config_path,status_path)
+    from research_dashboard import load_research_config
+    research_config=load_research_config(research_config_path)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -271,6 +273,10 @@ def make_server(port, status_path, html_path, ledger_config_path=None):
                         for ledger_id,item in ledger_config['ledgers'].items()]
                 self.send(200,json.dumps(dict(schema_version=1,default=ledger_config['default'],ledgers=public)).encode(),
                           'application/json; charset=utf-8')
+            elif parsed.path == '/api/research' and not query:
+                from research_dashboard import read_research
+                data=read_research(research_config,datetime.now(timezone.utc))
+                self.send(200,json.dumps(data).encode(),'application/json; charset=utf-8')
             elif parsed.path == '/api/status':
                 selected_values=query.get('ledger',[])
                 if len(query)>1 or any(key!='ledger' for key in query) or len(selected_values)>1:
@@ -332,11 +338,13 @@ def main(argv=None):
     parser.add_argument('--html', type=Path, default=root / 'dashboard.html')
     parser.add_argument('--ledgers', type=Path,
                         help='absolute operator-owned ledger allowlist JSON; omitted keeps single-ledger behavior')
+    parser.add_argument('--research', type=Path,
+                        help='absolute operator-owned current-research read-only config JSON; omitted shows unconfigured')
     args = parser.parse_args(argv)
     try:
-        server=make_server(args.port,args.status,args.html,args.ledgers)
+        server=make_server(args.port,args.status,args.html,args.ledgers,args.research)
     except (OSError,ValueError,UnicodeError,json.JSONDecodeError) as exc:
-        parser.error('invalid ledger configuration: '+str(exc))
+        parser.error('invalid dashboard configuration: '+str(exc))
     with server:
         print(f'Read-only PAPER dashboard http://127.0.0.1:{server.server_port}', flush=True)
         try:

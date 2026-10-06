@@ -1,6 +1,6 @@
 {
   "files": {
-    ".github/workflows/ci.yml": "f1367dbb3a64bd58cbe5d331be939ab4b77e168913fee30a06c1899195951eec",
+    ".github/workflows/ci.yml": "701f82e9b074cbf395d642972e49675363e3d576f4a478fdbb19921fb43bac25",
     ".gitignore": "e49fe1b585b7bfea6a86ae02f17b24a0cefc3f01b55300f481e6e1f37c791632",
     "AGENTS.md": "4cb6f42aa5ec4263567a7dec156b86784ccc522d8a675572b62d23f711193525",
     "README.md": "29ca1ff35eaea818ea049842bc2640413bb8163037329b4c478390895b056a28",
@@ -274,7 +274,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "74e56e495db0d6004489e7ff3459096854643146a08ef3033f505e48b2a39508",
+  "fingerprint": "ac7b646d9e410d53260c4aca55815b0ba0de946a8a7ab8d59103f29e6a908a4f",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
