@@ -60,14 +60,17 @@ def bulk_raw(root,total_events,invalid_events,profile):
         db.execute('INSERT OR REPLACE INTO feed_state VALUES(1,?)',(canonical(state),))
         rows=[]
         for i in range(first,total_events):
-            source=START_MS+i*1000;bad=i<invalid_events
+            bad=i<invalid_events
             if profile=='valid':
-                within=i%5;kind=('aggTrade','book','mark','closed_bar','funding_status')[within]
-                trade_id=i//5 if kind=='aggTrade' else None
+                minute=i//5;within=i%5
+                kind=('aggTrade','book','mark','closed_bar','funding_status')[within]
+                trade_id=minute if kind=='aggTrade' else None
+                source=START_MS+minute*60_000+within*100
             else:
-                within=i%HEAVY_INVALID_PER_MINUTE
+                minute=i//HEAVY_INVALID_PER_MINUTE;within=i%HEAVY_INVALID_PER_MINUTE
                 kind='aggTrade' if within<HEAVY_AGGTRADES_PER_MINUTE else 'book' if within==40 else 'mark'
-                trade_id=(i//HEAVY_INVALID_PER_MINUTE)*HEAVY_AGGTRADES_PER_MINUTE+within if kind=='aggTrade' else None
+                trade_id=minute*HEAVY_AGGTRADES_PER_MINUTE+within if kind=='aggTrade' else None
+                source=START_MS+minute*60_000+within*100
             payload=dict(type=kind,event_id=profile+':'+str(i),symbol='ETHUSDT',
                          ts=source+(20_000 if bad else 0),source_ts=source,
                          receipt_ts=source,source_valid=not bad)
@@ -122,11 +125,11 @@ def _observe(scope,reason_code,ts,event_id,event_type,source,receipt,trade_id,re
 
 def bulk_heavy_ranges(root,minutes=WINDOW_MINUTES):
     groups={}
-    trade_id=0
-    def add(event_type,ts,event_id,trade):
-        nonlocal groups
+    def add(event_type,minute,within,event_index,trade):
         scope='shared_event:'+event_type;reason_code='source_valid_false'
-        source=ts-20_000;receipt=source
+        source=START_MS+minute*60_000+within*100
+        receipt=source;ts=source+20_000
+        event_id='invalid:'+str(event_index)
         bucket=(ts//UNKNOWN_RANGE_BUCKET_MS)*UNKNOWN_RANGE_BUCKET_MS
         key=scope+'|'+reason_code+'|'+str(bucket)
         observed=_observe(scope,reason_code,ts,event_id,event_type,source,receipt,trade,'source_valid_false')
@@ -144,11 +147,11 @@ def bulk_heavy_ranges(root,minutes=WINDOW_MINUTES):
                 p['count']+1,rolling,p['first_reason'],'source_valid_false')
         groups[key]=values
     for minute in range(minutes):
-        base=START_MS+(minute+1)*60_000
+        base_index=minute*HEAVY_INVALID_PER_MINUTE
         for n in range(HEAVY_AGGTRADES_PER_MINUTE):
-            add('aggTrade',base+n,'heavy-agg:'+str(trade_id),trade_id);trade_id+=1
-        add('book',base+50,'heavy-book:'+str(minute),None)
-        add('mark',base+51,'heavy-mark:'+str(minute),None)
+            add('aggTrade',minute,n,base_index+n,minute*HEAVY_AGGTRADES_PER_MINUTE+n)
+        add('book',minute,40,base_index+40,None)
+        add('mark',minute,41,base_index+41,None)
     path=Path(root)/'causal_evidence.sqlite3'
     with sqlite3.connect(path) as db:
         rows=[]
