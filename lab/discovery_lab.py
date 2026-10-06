@@ -138,8 +138,10 @@ class DiscoveryLab:
     def request_operator_stop(self,now):
         if type(now) is not int or now<0:
             raise ValueError('invalid stop timestamp')
+        already=bool(self.state.get('operator_stop_requested'))
         self.state['operator_stop_requested']=True
-        self.state['operator_stop_requested_ms']=now
+        if not already or self.state.get('operator_stop_requested_ms') is None:
+            self.state['operator_stop_requested_ms']=now
         if self.brokers:
             for arm in ARMS:self._cancel_pending_entries(arm,now,'operator_stop_requested')
         self._save()
