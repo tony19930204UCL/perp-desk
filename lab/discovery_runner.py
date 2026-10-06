@@ -301,6 +301,12 @@ class DiscoveryRunner:
             feed.ingest('closed_bar',bar,received_ms=observed)
             self.state['last_bar_cursor']=bar['close_time_ms']
 
+    @staticmethod
+    def _retryable_failure(stage,exc):
+        if isinstance(exc,(URLError,TimeoutError,ConnectionError,OSError)):
+            return True
+        return stage in ('shared','aggTrade') and isinstance(exc,ValueError)
+
     def poll_once(self):
         self.state=self._load_runner_state()
         lab,feed=self._open()
@@ -359,7 +365,7 @@ class DiscoveryRunner:
             except Exception as gap_exc:
                 gap_reason += '; gap_record_error='+type(gap_exc).__name__+': '+str(gap_exc)
             transport_failure=isinstance(exc,(URLError,TimeoutError,ConnectionError,OSError))
-            retryable=transport_failure or (stage in ('shared','aggTrade') and isinstance(exc,ValueError))
+            retryable=self._retryable_failure(stage,exc)
             try:self._observe_stop(lab)
             except Exception:pass
             self.state['last_error']=gap_reason
