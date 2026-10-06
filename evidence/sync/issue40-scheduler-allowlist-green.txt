@@ -1,0 +1,6 @@
+test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips (automation.tests.test_review_sync.ReviewSyncTests.test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.011s
+
+OK

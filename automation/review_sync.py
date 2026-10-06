@@ -408,8 +408,10 @@ def collect(profile,*,visibility='private'):
     scripts += list((profile/'scripts').glob('paper_startup_*.py'))
     scripts += list((profile/'scripts').glob('public_source_timing_probe.py'))
     scripts += list((profile/'scripts').glob('paper_operator_event_gate.py'))
-    sync_entry=profile/'scripts/paper_review_sync.py'
-    if sync_entry.is_file():scripts.append(sync_entry)
+    # Literal scheduler entries only; never export a generic scripts directory/glob.
+    for name in ('paper_review_sync.py','paper_review_sync_public.py'):
+        sync_entry=profile/'scripts'/name
+        if sync_entry.is_file():scripts.append(sync_entry)
     for p in scripts:
         if p.is_file():files['scripts/'+p.name]=safe_read(p,profile)
     sync=profile/'repo_sync'

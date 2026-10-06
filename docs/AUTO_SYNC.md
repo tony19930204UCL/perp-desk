@@ -17,12 +17,22 @@ From the operator's already configured profile directory:
 # Before the owner flips visibility: existing command, no flags.
 python3 scripts/paper_review_sync.py
 
-# After the owner flips visibility AND the accepted candidate is deployed:
+# Manual invocation after visibility flip AND accepted candidate deployment:
 python3 scripts/paper_review_sync.py --visibility public --authorize-public-repo tony19930204UCL/perp-desk
+
+# Script-only scheduler equivalent (no arguments supplied by the scheduler):
+python3 scripts/paper_review_sync_public.py
 ```
 
-The scheduler's configured invocation must use the corresponding exact command;
-interactive flags do not persist or silently modify the scheduler. The wrapper
+The scheduler accepts a **script path**, not a shell command or script arguments.
+After exact-head green CI and deployment, its existing job's `script` field must
+point to the deployed `scripts/paper_review_sync_public.py`, with **no appended
+arguments**. This entry calls the original wrapper with literal public visibility
+and literal authorization for `tony19930204UCL/perp-desk`; it does not infer mode
+from the API or environment. Its sibling `paper_review_sync.py` and deployed
+`repo_sync/review_sync.py` are required dependencies. The private job continues
+to point to `scripts/paper_review_sync.py` without arguments. Interactive flags
+do not persist or silently modify the scheduler. The original wrapper
 accepts only these visibility/authorization options, not a profile, repository,
 remote override, `--force`, or arbitrary exporter options. Public mode requires
 both explicit flags and the literal exact target above. Private mode rejects a
@@ -41,9 +51,10 @@ allowed until the original exact-head green-CI requirement is satisfied.
 
 1. Refresh main, the candidate head and currently installed source hashes. Review
    the narrow diff and public-readiness evidence independently. If installed
-   wrapper/tests/docs drifted, stop and request exact-head integration; do not
+   exporter/wrapper/tests/docs drifted, stop and request exact-head integration; do not
    overwrite newer work or any other PR's deployed contracts. Preserve the
-   exporter allowlist, workflow and all runtime/research/UI sources.
+   workflow and all runtime/research/UI sources. The sole allowlist extension is
+   the literal `scripts/paper_review_sync_public.py` path, not a scripts glob.
 2. If hosted CI becomes green while still private, accept and deploy only this
    narrow candidate through the existing operator process, backed up first.
    Keep the original no-flag invocation while private. Verify normal sync's
@@ -71,13 +82,16 @@ allowed until the original exact-head green-CI requirement is satisfied.
    checks, runner changes or billing changes.
 6. Only after exact-head hosted CI is green and parent acceptance is complete,
    deploy the narrow files using the original operator workflow and backup/hash
-   checks. Mirror mappings are `scripts/paper_review_sync.py` to the same relative
-   operator path, `automation/tests/test_review_sync.py` to
+   checks. Mirror mappings are both `scripts/paper_review_sync.py` and
+   `scripts/paper_review_sync_public.py` to their same relative operator paths,
+   `automation/review_sync.py` to `repo_sync/review_sync.py`,
+   `automation/tests/test_review_sync.py` to
    `repo_sync/tests/test_review_sync.py`, and `docs/AUTO_SYNC.md` to
-   `repo_sync/docs/docs/AUTO_SYNC.md`. The exporter itself is unchanged; evidence
-   sidecars are not runtime inputs. Do not merge/push remote main to install.
-7. While sync remains paused, change only its existing configured invocation to
-   the explicit public command above, retaining all schedule/delivery/ownership
+   `repo_sync/docs/docs/AUTO_SYNC.md`. The exporter change is limited to the one
+   literal entrypoint allowlist addition; all publication gates are unchanged.
+   Evidence sidecars are not runtime inputs. Do not merge/push remote main to install.
+7. While sync remains paused, change only its existing job's `script` field to
+   the deployed public entrypoint path above, retaining all schedule/delivery/ownership
    settings. The operator must read back that exact configuration. Run a normal
    authorized tick; allow the existing 15-second settling interval (no forced
    gate bypass), then verify scans, status and exact remote SHA readback. Resume
@@ -93,11 +107,11 @@ main remain untouched by engineering delivery.
 
 Pause and drain sync first. While the repository is still private, restore the
 backed-up wrapper if needed and use the original no-flag invocation. If it is
-public, reverting to a legacy/private-only wrapper or removing public flags
+public, reverting to a legacy/private-only wrapper or the private script path
 **cannot** restore successful synchronization: leave sync paused/fail-closed.
 Only an explicit owner return to private permits the private invocation to work
 again after strict identity/visibility readback. Alternatively keep the accepted
-candidate and exact authorized public invocation. Do not force push, reset main,
+candidate and exact authorized public script path. Do not force push, reset main,
 rewrite history, restore old runtime databases, or widen any authorization.
 Making a repository private again does not retract copies of published history.
 
@@ -115,8 +129,10 @@ No-change produces no commit. Failure records blocked and preserves last success
 Remote-main divergence/unowned history requires review, never overwrite.
 
 Local telemetry, ownership/status files, credentials, gateway/chat/session data,
-runtime DBs, raw snapshots and private config remain excluded. No allowlist is
-broadened. Established public collection omits context/SOUL.md and obsolete
+runtime DBs, raw snapshots and private config remain excluded. Only the literal
+`scripts/paper_review_sync_public.py` path is added to the export allowlist;
+similarly named scripts and unrelated script files remain excluded. Established
+public collection omits context/SOUL.md and obsolete
 context/SPEC.md, filters the personal/account/environment section of context/AGENTS.md,
 and hashes actual exported bytes. Original profile sources are not modified by
 collection. New snapshots do not erase prior history. Secret scanning is not a

@@ -104,6 +104,47 @@ class ReviewSyncTests(unittest.TestCase):
             self.assertEqual(set(public),set(raw)-{'context/SOUL.md','context/SPEC.md'})
             with self.assertRaises(m.Blocked):m.collect(root,visibility='auto')
 
+    def test_script_only_public_entrypoint_authorizes_literal_exact_repo(self):
+        import runpy, types
+        from unittest.mock import patch
+        import review_sync as m
+        scripts=Path(__file__).resolve().parents[2]/'scripts'
+        public=scripts/'paper_review_sync_public.py'
+        self.assertTrue(public.is_file(),'script-only public scheduler entry missing')
+        with patch.object(m,'main',return_value=0) as exporter:
+            wrapper=types.ModuleType('paper_review_sync')
+            wrapper.__dict__.update(runpy.run_path(str(scripts/'paper_review_sync.py')))
+            with patch.dict(sys.modules,{'paper_review_sync':wrapper}),patch.object(sys,'argv',[str(public)]):
+                with self.assertRaises(SystemExit) as ended:
+                    runpy.run_path(str(public),run_name='__main__')
+            self.assertEqual(ended.exception.code,0)
+            self.assertEqual(exporter.call_args.args[0],[
+                '--profile',str(wrapper.PROFILE),'--repository',str(wrapper.PROFILE/'repo_sync/mirror'),
+                '--remote','https://github.com/tony19930204UCL/perp-desk.git',
+                '--owner-repo','tony19930204UCL/perp-desk',
+                '--visibility','public','--authorize-public-repo','tony19930204UCL/perp-desk'])
+            exporter.reset_mock()
+            self.assertEqual(wrapper.run([]),0)
+            self.assertEqual(exporter.call_args.args[0][-2:],['--visibility','private'])
+
+    def test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);(root/'scripts').mkdir()
+            scripts=Path(__file__).resolve().parents[2]/'scripts'
+            names=('paper_review_sync.py','paper_review_sync_public.py')
+            for name in names:(root/'scripts'/name).write_bytes((scripts/name).read_bytes())
+            for name in ('paper_review_sync_other.py','paper_review_sync_public_backup.py','unrelated.py'):
+                (root/'scripts'/name).write_text('private unrelated source\n')
+            for mode in ('private','public'):
+                files=m.collect(root,visibility=mode)
+                self.assertEqual(set(files),{'scripts/'+name for name in names},
+                                 'only the two literal scheduler paths may be exported')
+                for name in names:self.assertEqual(files['scripts/'+name],(scripts/name).read_bytes())
+            public=root/'scripts/paper_review_sync_public.py'
+            public.unlink();public.symlink_to(scripts/'paper_review_sync_public.py')
+            with self.assertRaises(m.Blocked):m.collect(root,visibility='public')
+
     def test_scheduler_public_transition_is_explicit_and_exact_target(self):
         import runpy
         from unittest.mock import patch
@@ -153,6 +194,15 @@ class ReviewSyncTests(unittest.TestCase):
                 entry=runpy.run_path(str(wrapper));entry['run'].__globals__['PROFILE']=root
                 def invoke(flags):
                     gh.write_text('#!/usr/bin/env python3\nprint('+repr(json.dumps(metadata))+')\n');gh.chmod(0o700)
+                    if flags:
+                        # The actual scheduler supplies only this script path, no CLI flags.
+                        import types
+                        public_entry=wrapper.with_name('paper_review_sync_public.py')
+                        module=types.ModuleType('paper_review_sync');module.__dict__.update(entry)
+                        with patch.dict(sys.modules,{'paper_review_sync':module}),patch.object(sys,'argv',[str(public_entry)]):
+                            with self.assertRaises(SystemExit) as ended:
+                                runpy.run_path(str(public_entry),run_name='__main__')
+                        return ended.exception.code
                     return entry['run'](flags)
                 public=['--visibility','public','--authorize-public-repo',owner]
                 self.assertEqual(invoke([]),0)
