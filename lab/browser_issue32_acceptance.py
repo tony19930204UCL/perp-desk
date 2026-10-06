@@ -105,8 +105,9 @@ def main(argv=None):
                 session.evaluate("refresh()")
                 time.sleep(.4)
                 after=session.evaluate("({view:sessionStorage.getItem('perpdesk-view'),focus:document.activeElement.id,y:scrollY,hidden:document.getElementById('view-research').hidden})")
-                if after['view']!='research' or after['focus']!='tab-research' or after['hidden']:
-                    raise AssertionError('refresh lost selected view/focus')
+                if (after['view']!='research' or after['focus']!='tab-research' or after['hidden']
+                        or abs(after['y']-before['y'])>1):
+                    raise AssertionError('refresh lost selected view/focus/scroll position')
                 m=metrics(session)
                 if m['innerWidth']!=width or m['clientWidth']!=width or m['overflow']:
                     raise AssertionError('viewport/root overflow mismatch '+json.dumps(m))
