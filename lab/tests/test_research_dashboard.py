@@ -101,6 +101,11 @@ class ResearchDashboardTests(unittest.TestCase):
         d=read_research(cfg,datetime.fromtimestamp(self.f.now/1000,timezone.utc))
         self.assertEqual(d['report_state'],'future');self.assertEqual(d['state'],'future')
         self.assertIn('report_future',d['blockers'])
+        stale=(self.f.now-60_000)/1000
+        os.utime(self.f.report,(stale,stale))
+        d=read_research(cfg,datetime.fromtimestamp(self.f.now/1000,timezone.utc))
+        self.assertEqual(d['report_state'],'stale');self.assertEqual(d['state'],'stale')
+        self.assertIn('report_stale',d['blockers'])
         os.utime(self.f.report,None)
         with sqlite3.connect(self.f.root/'shared-feed.sqlite3') as db:
             event=dict(type='book',event_id='book:future',source_ts=self.f.now+10_000,
@@ -109,6 +114,25 @@ class ResearchDashboardTests(unittest.TestCase):
                        ('future',json.dumps(event),'1'*64))
         d=read_research(cfg,datetime.fromtimestamp(self.f.now/1000,timezone.utc))
         self.assertIn('source_evidence_future',d['blockers'])
+
+    def test_empty_three_arm_state_remains_zero_without_fake_samples(self):
+        raw=json.loads(self.f.report.read_text())
+        for arm in 'ABC':
+            row=raw['arms'][arm]
+            for key in ('positions','raw_candidates','cost_qualified','submitted','filled_entry_orders','flat_to_flat_count','risk_rejections'):
+                row[key]=0
+            row['queue_stress_sensitivity']=[]
+            path=self.f.root/f'arm-{arm}.sqlite3';path.unlink()
+            broker(path,'100',positions={},marks={},pending=0)
+        self.f.report.write_text(json.dumps(raw))
+        d=read_research(load_research_config(self.f.cfg),datetime.fromtimestamp(self.f.now/1000,timezone.utc))
+        for arm in 'ABC':
+            self.assertEqual(d['arms'][arm]['raw_candidates'],0)
+            self.assertEqual(d['arms'][arm]['filled_entry_orders'],0)
+            self.assertEqual(d['arms'][arm]['flat_to_flat_count'],0)
+            self.assertEqual(d['arms'][arm]['account']['positions'],[])
+            self.assertEqual(d['arms'][arm]['account']['pending_orders'],0)
+        self.assertEqual(d['arms']['B']['queue_stress_sensitivity'],[])
 
     def test_missing_and_malformed_are_honest_and_no_paths_leak(self):
         cfg=load_research_config(self.f.cfg);self.f.report.unlink()
