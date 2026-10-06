@@ -619,6 +619,16 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 最新歷史帳戶API仍1complete_round_trip/3partial fills（兩入場部分fill＋一次退出）。168signals/167blocked，拒因90insufficient_reward_after_costs、36late_closed_bar_signal、38research_window_closed、3single_position_or_pending。這是歷史快照診斷，不拿它當新樣本或為湊成交降低成本/風險門檻。
 - 自主下一步只處理採樣阻擋，不再修飾UI。Issue36 RESEARCH INFRASTRUCTURE/ENGINEERING已建立/fullbody readback：固定32MiB全store的48h declared-load/source准入，保留因果重建与PR33/35安全；可交NOT_FEASIBLE，不准刪/移舊causal假裝降低budget，不啟動新window。工程尚待人工轉交，不假稱agent已開工。完整附件cache/scratch/pr33-93fd87c-acceptance/連續採樣容量與来源准入完整派工.md。
 
+## PR037-NOT-FEASIBLE-EVIDENCE-VERIFIED-OPERATOR-CONTRACT-HOLD（2026-10-06）
+
+- head37de6681e61c0a7953f6449714a149d9ac936796兩CI37486893864/37486903500精確completed/success。raw named IDs38exporter+340PAPER=378unique，focused9/10/10/4均子集。artifact11424306363 ZIP/API SHA256吻合7e06d7d818664d01149582e93fb039bd3dc6095238c349bf366d23695a924f77。
+- 指定加速bulk same-schema 48h materialization：valid total1982949bytes；heavy total54440421bytes，causal53182464bytes，證實該declared profile在固定33554432budget/30198988entrygate下NOT_FEASIBLE。這不是48h真行情、完整continuous publicpoll或盈利證據，不回推舊root逐列根因。public_probe欄位只是BLOCKED條件marker，不當獨立HTTP451實測。
+- 接受NOT_FEASIBLE研究結論，但完整operator交付仍hold：文件20lateaggTrade/min與artifact40(+book/mark42invalid/min)不一致，report命令漏--root。PR37 comment6020366798全文讀回要求原PR最小文件/界限收尾，不重做harness、不放寬負荷或重新跑到綠。五source候選僅staged保存，未安裝、未改cron/sources/看板/原root，也未啟動新window；Issue36仍OPEN。
+- 真localhost research讀回原root34147738/33554432、三臂data_quality_inconclusive，保持停機/8h gate，沒有新成交或source恢復宣稱。
+- 已建立Issue38/fullbody readback，目標未來候選有界且可重建的unknown因果表示，保留每次真正改變交易/資產/風險判斷的必要因果，不能聚合掉maker相關成交或將unknown合成known。固定budget、原immutable因果與已部署PR33/35/策略/門檻保持。由agent決定實作，須declared-range/超範圍安全失效、兩profile全store/WAL與因果/安全重建證據，不能達成就NOT_FEASIBLE。
+- PR37收尾與Issue38新語義分開PR，完整人工轉交附件cache/scratch/pr37-37de668-acceptance/PR37收尾與Issue38完整派工.md。尚待人工轉交，沒有外部executor，不標running或宣稱已派送。
+
+
 
 
 
