@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse, fcntl, json, os, tempfile, time
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.error import URLError
 
 from discovery_feed import SharedFeed, binance_aggtrade_input
 from discovery_lab import DiscoveryLab
