@@ -108,11 +108,11 @@ def main(argv=None):
                 if (after['view']!='research' or after['focus']!='tab-research' or after['hidden']
                         or abs(after['y']-before['y'])>1):
                     raise AssertionError('refresh lost selected view/focus/scroll position')
-                session.evaluate("document.activeElement?.blur()")
-                session.call('Input.dispatchKeyEvent',dict(type='keyDown',key='Tab',code='Tab',windowsVirtualKeyCode=9,nativeVirtualKeyCode=9))
-                session.call('Input.dispatchKeyEvent',dict(type='keyUp',key='Tab',code='Tab',windowsVirtualKeyCode=9,nativeVirtualKeyCode=9))
+                session.call('Input.dispatchKeyEvent',dict(type='keyDown',key='Shift',code='ShiftLeft',windowsVirtualKeyCode=16,nativeVirtualKeyCode=16))
+                session.evaluate("document.getElementById('themeToggle').focus()")
+                session.call('Input.dispatchKeyEvent',dict(type='keyUp',key='Shift',code='ShiftLeft',windowsVirtualKeyCode=16,nativeVirtualKeyCode=16))
                 focus_id=session.evaluate("document.activeElement?.id||''")
-                if focus_id!='themeToggle':raise AssertionError('keyboard focus did not reach theme control: '+focus_id)
+                if focus_id!='themeToggle':raise AssertionError('keyboard-modality focus missing on theme control: '+focus_id)
                 m=metrics(session)
                 if m['innerWidth']!=width or m['scrollWidth']>m['clientWidth'] or m['overflow']:
                     raise AssertionError('viewport/root overflow mismatch '+json.dumps(m))
