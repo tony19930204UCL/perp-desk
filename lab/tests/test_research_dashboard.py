@@ -1,4 +1,4 @@
-import json,sqlite3,tempfile,threading,unittest
+import json,os,sqlite3,tempfile,threading,unittest
 from datetime import datetime,timezone,timedelta
 from pathlib import Path
 from http.client import HTTPConnection
@@ -93,6 +93,22 @@ class ResearchDashboardTests(unittest.TestCase):
         self.assertEqual(d['state'],'source_gap');self.assertIn('source_gaps_recorded',d['blockers']);self.assertIn('storage_entry_stop',d['blockers'])
         self.proof=self.f.proof;self.proof.write_text(json.dumps(dict(schema_version=1,active=True,observed_at_ms=self.f.now-60000,proof_kind='owned_process')))
         d=read_research(cfg,datetime.fromtimestamp(self.f.now/1000,timezone.utc));self.assertFalse(d['process_proof']['confirmed']);self.assertEqual(d['process_proof']['state'],'stale')
+
+    def test_report_future_and_source_future_are_distinct_fail_closed_states(self):
+        cfg=load_research_config(self.f.cfg)
+        future=(self.f.now+20_000)/1000
+        os.utime(self.f.report,(future,future))
+        d=read_research(cfg,datetime.fromtimestamp(self.f.now/1000,timezone.utc))
+        self.assertEqual(d['report_state'],'future');self.assertEqual(d['state'],'future')
+        self.assertIn('report_future',d['blockers'])
+        os.utime(self.f.report,None)
+        with sqlite3.connect(self.f.root/'shared-feed.sqlite3') as db:
+            event=dict(type='book',event_id='book:future',source_ts=self.f.now+10_000,
+                       receipt_ts=self.f.now,ts=self.f.now,source_valid=False)
+            db.execute('INSERT INTO feed_events(event_id,payload,sha256) VALUES(?,?,?)',
+                       ('future',json.dumps(event),'1'*64))
+        d=read_research(cfg,datetime.fromtimestamp(self.f.now/1000,timezone.utc))
+        self.assertIn('source_evidence_future',d['blockers'])
 
     def test_missing_and_malformed_are_honest_and_no_paths_leak(self):
         cfg=load_research_config(self.f.cfg);self.f.report.unlink()
