@@ -16,13 +16,33 @@ Two accelerated 48h engineering profiles are explicit:
 
 1. Continuous valid source: one poll/minute with one book, mark,
    funding-status, aggTrade and closed forward bar per minute.
-2. Heavy invalid/outage: one poll/minute with twenty late aggTrades plus one
-   late book and mark per minute, and a 30-minute transport-outage lifecycle
-   every six hours.
+2. Heavy invalid/outage: the exact tested accelerated bulk load materializes
+   **40 late/invalid aggTrades + 1 late/invalid book + 1 late/invalid mark =
+   42 invalid raw events/minute**, plus a recovery marker for a declared
+   30-minute transport-outage lifecycle every six hours. This is the same
+   workload recorded by the accepted PR37 artifact; it is not reduced here.
 
 These are synthetic engineering loads. They are not 48h of real market data,
 not profitability evidence, and do not identify the cause of the historical
 operator-root growth.
+
+Evidence classes are deliberately separate:
+- **accelerated bulk same-schema materialization** proves byte growth and
+  retention/capacity behavior in the actual SQLite schemas. Its
+  `fetch_calls=0` is expected and explicitly means it did **not** execute
+  2,880 real engine polls.
+- **actual engine lifecycle smoke** uses the real SharedFeed/DiscoveryLab path
+  for a bounded valid source plus late/invalid input, source-gap/recovery and
+  same-root restart readback. It proves lifecycle semantics only, not a 48h run.
+- **real-public source evidence** must come from the existing bounded public
+  probe. A successful workflow step with HTTP 451/error output is still
+  externally BLOCKED; a placeholder contract string is not a completed public
+  probe.
+
+A valid-only capacity PASS is therefore not complete source admission. Full
+engineering admission requires every declared capacity profile plus causal and
+safety reconstruction to pass, and still does not imply real-public source
+health, real 48h polling or profitability.
 
 ## Admission rule
 
@@ -46,7 +66,7 @@ Before any separately preregistered future window, use the existing read-only
 report entrypoint on the intended root and do **not** run/activate it:
 
 ```sh
-python3 lab/discovery_runner.py ROOT report
+python3 lab/discovery_runner.py --root ROOT report
 ```
 
 Run the isolated admission probe from candidate source:
