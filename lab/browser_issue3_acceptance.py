@@ -57,16 +57,20 @@ class CdpSession:
             [chrome,'--headless=new','--no-sandbox','--disable-gpu','--disable-dev-shm-usage',
              '--remote-debugging-port=0','--remote-allow-origins=*',
              '--user-data-dir='+str(profile),'about:blank'],
-            stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,bufsize=1)
+            stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,text=True)
+        # Chrome with port=0 publishes the selected port atomically in the profile.
+        # Poll that documented process artifact instead of blocking on stderr.readline().
+        active_port=Path(profile)/'DevToolsActivePort'
         deadline=time.monotonic()+10;port=None
         while time.monotonic()<deadline:
-            line=self.proc.stderr.readline()
-            if not line:
-                if self.proc.poll() is not None: break
-                continue
-            match=re.search(r'DevTools listening on ws://127\.0\.0\.1:(\d+)/',line)
-            if match:
-                port=int(match.group(1));break
+            if self.proc.poll() is not None: break
+            try:
+                lines=active_port.read_text().splitlines()
+                if lines and lines[0].isdigit():
+                    port=int(lines[0]);break
+            except (FileNotFoundError,OSError,UnicodeError):
+                pass
+            time.sleep(.05)
         if port is None:
             self.close()
             raise RuntimeError('Chrome DevTools endpoint unavailable')
