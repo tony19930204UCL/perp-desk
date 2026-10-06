@@ -24,6 +24,7 @@ jobs:
         run: |
           mkdir -p artifacts/issue-30-repair
           (cd lab && python3 -m unittest -v \
+            tests.test_discovery_lab.DiscoveryLabTests.test_operator_stop_cancels_entries_and_keeps_reduce_only_protection \
             tests.test_discovery_lab.RunnerSubprocessTests.test_bounded_future_source_quarantine_preserves_raw_receipt \
             tests.test_discovery_lab.RunnerSubprocessTests.test_real_subprocess_stop_is_sticky_across_slow_success_and_restart \
             tests.test_discovery_lab.RunnerSubprocessTests.test_real_subprocess_stop_survives_slow_failure_retry) \
