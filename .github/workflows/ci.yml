@@ -20,6 +20,18 @@ jobs:
       - name: PAPER isolated suite
         working-directory: lab
         run: python3 -m unittest discover -s tests -v
+      - name: Issue 23 isolated discovery pipeline
+        run: |
+          mkdir -p artifacts/issue-23-discovery
+          (cd lab && python3 discovery_pipeline_check.py --self-check) > artifacts/issue-23-discovery/pipeline.json
+          python3 lab/discovery_operational_check.py > artifacts/issue-23-discovery/operational.json
+      - name: Upload Issue 23 synthetic discovery evidence
+        if: ${{ always() && hashFiles('artifacts/issue-23-discovery/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-23-discovery-evidence
+          path: artifacts/issue-23-discovery
+          if-no-files-found: error
       - name: Issue 22 isolated scheduler-adapter acceptance
         run: |
           mkdir -p artifacts/issue-22-event-gate

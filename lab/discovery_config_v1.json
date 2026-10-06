@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "version_id": "ETH-DISCOVERY-LAB-001",
+  "active": false,
+  "symbol": "ETHUSDT",
+  "category": "crypto",
+  "window_ms": 172800000,
+  "checkpoint_ms": 28800000,
+  "closed_bar_interval_ms": 60000,
+  "prior_return_samples": 60,
+  "downside_sigma": "1.5",
+  "upside_sigma": "1.5",
+  "volume_multiple": "1.2",
+  "target_lookback_bars": 15,
+  "stop_distance_fraction": "0.005",
+  "max_holding_ms": 1800000,
+  "minimum_gross_reward_to_estimated_cost": "2",
+  "latency_ms": 2000,
+  "max_source_age_ms": 15000,
+  "entry_slippage_ticks": 2,
+  "exit_slippage_ticks": 2,
+  "initial_equity_usdt_per_arm": "100",
+  "risk": {
+    "version": "PAPER-RISK-001",
+    "max_loss_per_trade_usdt": "1",
+    "max_daily_loss_usdt": "3",
+    "total_loss_limit_usdt": "10",
+    "max_effective_exposure_x": "3",
+    "max_positions": 1,
+    "paper_leverage": "3"
+  },
+  "fees": {
+    "maker": "0.0002",
+    "taker": "0.0005",
+    "basis": "configured_unverified_actual_account_vip"
+  },
+  "maker": {
+    "entry_expiry_ms": 15000,
+    "primary_queue_multiplier": "1",
+    "stress_queue_multiplier": "2",
+    "fill_rule": "strict_trade_through_opposite_aggressor_volume",
+    "profit_exit": "post_only_maker_else_explicit_reduce_only_taker_fallback",
+    "protective_exit": "reduce_only_taker"
+  },
+  "checkpoint": {
+    "minimum_timely_source_valid_coverage": "0.90",
+    "arm_a_minimum_cost_qualified_candidates": 4,
+    "arm_b_minimum_actual_maker_filled_entry_orders": 4,
+    "arm_c_minimum_cost_qualified_candidates": 4
+  },
+  "arms": {
+    "A": {
+      "directions": [
+        "long"
+      ],
+      "entry": "taker",
+      "profit_exit": "existing_taker"
+    },
+    "B": {
+      "directions": [
+        "long"
+      ],
+      "entry": "maker",
+      "profit_exit": "maker",
+      "protective_exit": "taker"
+    },
+    "C": {
+      "directions": [
+        "long",
+        "short"
+      ],
+      "entry": "taker",
+      "profit_exit": "existing_taker"
+    }
+  },
+  "tradfi_enabled": false,
+  "storage": {
+    "budget_bytes": 33554432,
+    "warning_fraction": "0.80",
+    "entry_stop_fraction": "0.90",
+    "scope": "isolated_discovery_lab_only"
+  }
+}
