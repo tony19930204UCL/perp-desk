@@ -55,12 +55,12 @@ def new_lab(root):
     lab.bind_feed(feed)
     return lab,feed
 
-def valid_profile(root):
+def valid_profile(root,window_minutes=WINDOW_MINUTES):
     lab,feed=new_lab(root)
     counts=dict(polls=0,poll_successes=0,poll_failures=0,gaps=0,late_invalid=0,
                 raw_events=0,closed_bars=0,aggtrades=0)
     trade_id=1
-    for minute in range(1,WINDOW_MINUTES+1):
+    for minute in range(1,window_minutes+1):
         now=START_MS+minute*60_000
         feed.begin_poll();counts['polls']+=1
         feed.ingest('book',dict(source_ts=now,receipt_ts=now,bids=[['100','2']],asks=[['100.10','2']]),received_ms=now)
@@ -83,7 +83,7 @@ def valid_profile(root):
     reopened.bind_feed(reopened_feed)
     readback=reopened.report(START_MS+end_minute*60_000);reopened.close()
     sizes=file_sizes(root)
-    return dict(profile='continuous_valid_source',window_minutes=WINDOW_MINUTES,
+    return dict(profile='continuous_valid_source',window_minutes=window_minutes,
                 completed_minutes=end_minute,explicit_rate='1 poll/min; 1 each book/mark/funding_status/aggTrade/closed_bar per min',
                 counters=counts,feed=feed_snapshot,source_receipt_dispatch=source_sample(Path(root)/'shared-feed.sqlite3'),
                 evidence=evidence_metrics(Path(root)/'causal_evidence.sqlite3'),
@@ -91,16 +91,16 @@ def valid_profile(root):
                 report_storage_bytes=report['storage_used_bytes'],
                 restart_readback_storage_bytes=readback['storage_used_bytes'],
                 restart_readback_causal_head=readback['causal_evidence']['head_hash'],
-                capacity_pass=(end_minute==WINDOW_MINUTES and sizes['total_bytes']<ENTRY_STOP),
+                capacity_pass=(end_minute==window_minutes and sizes['total_bytes']<ENTRY_STOP),
                 real_public_market_claim=False)
 
-def invalid_profile(root):
+def invalid_profile(root,window_minutes=WINDOW_MINUTES):
     lab,feed=new_lab(root)
     counts=dict(polls=0,poll_successes=0,poll_failures=0,gaps=0,recoveries=0,
                 late_invalid=0,raw_events=0,aggtrades=0)
     trade_id=1
     gate_minute=None
-    for minute in range(1,WINDOW_MINUTES+1):
+    for minute in range(1,window_minutes+1):
         now=START_MS+minute*60_000
         feed.begin_poll();counts['polls']+=1
         # Every six hours, exercise an explicit 30-minute transport outage/recovery
@@ -134,7 +134,7 @@ def invalid_profile(root):
     reopened.bind_feed(reopened_feed)
     readback=reopened.report(START_MS+end_minute*60_000);reopened.close()
     sizes=file_sizes(root)
-    return dict(profile='heavy_late_invalid_transport_outage_recovery',window_minutes=WINDOW_MINUTES,
+    return dict(profile='heavy_late_invalid_transport_outage_recovery',window_minutes=window_minutes,
                 completed_minutes=end_minute,gate_minute=gate_minute,
                 explicit_rate='1 poll/min; 20 late aggTrades + 1 late book + 1 late mark per min; 30m outage every 6h',
                 counters=counts,feed=feed_snapshot,source_receipt_dispatch=source_sample(Path(root)/'shared-feed.sqlite3'),
@@ -142,20 +142,21 @@ def invalid_profile(root):
                 size_after_reopen=sizes,report_storage_bytes=report['storage_used_bytes'],
                 restart_readback_storage_bytes=readback['storage_used_bytes'],
                 restart_readback_causal_head=readback['causal_evidence']['head_hash'],
-                capacity_pass=(gate_minute is None and end_minute==WINDOW_MINUTES and sizes['total_bytes']<ENTRY_STOP),
+                capacity_pass=(gate_minute is None and end_minute==window_minutes and sizes['total_bytes']<ENTRY_STOP),
                 real_public_market_claim=False)
 
-def run_profiles():
+def run_profiles(window_minutes=WINDOW_MINUTES):
     with tempfile.TemporaryDirectory(prefix='issue36-valid-') as td:
-        valid=valid_profile(Path(td))
+        valid=valid_profile(Path(td),window_minutes)
     with tempfile.TemporaryDirectory(prefix='issue36-invalid-') as td:
-        invalid=invalid_profile(Path(td))
+        invalid=invalid_profile(Path(td),window_minutes)
     overall='PASS' if valid['capacity_pass'] and invalid['capacity_pass'] else 'NOT_FEASIBLE'
     blockers=[]
     if not valid['capacity_pass']:blockers.append('continuous_valid_profile_exceeds_fixed_90pct_gate')
     if not invalid['capacity_pass']:blockers.append('heavy_invalid_outage_profile_exceeds_fixed_90pct_gate_before_48h')
     return dict(label='ISSUE36_ISOLATED_ACCELERATED_48H_ENGINEERING_NOT_MARKET_PERFORMANCE',
                 fixed_budget_bytes=BUDGET,entry_stop_bytes=ENTRY_STOP,raw_retention_limit=MAX_RAW_EVENTS,
+                requested_window_minutes=window_minutes,
                 profiles=[valid,invalid],admission=overall,blockers=blockers,
                 causal_policy='append-only evidence unchanged; unavailable rolled raw context remains unknown',
                 preserved_contracts=['fixed_32MiB','90pct_entry_stop','raw_4096_rollover','immutable_causal',
@@ -163,11 +164,31 @@ def run_profiles():
                 public_probe='BLOCKED_IN_GITHUB_IF_HTTP451_OR_NETWORK_UNAVAILABLE',
                 operator_root_touched=False,new_window_started=False,deployed=False)
 
+def validate_full_result(result):
+    if result.get('requested_window_minutes')!=WINDOW_MINUTES:
+        raise AssertionError('full admission must cover exactly 48h')
+    by={x['profile']:x for x in result['profiles']}
+    valid=by['continuous_valid_source'];invalid=by['heavy_late_invalid_transport_outage_recovery']
+    if not valid['capacity_pass'] or valid['completed_minutes']!=WINDOW_MINUTES:
+        raise AssertionError('continuous valid-source 48h profile did not fit fixed gate')
+    if valid['feed']['retained_events']!=MAX_RAW_EVENTS or valid['feed']['events_evicted']<=0:
+        raise AssertionError('valid profile did not exercise raw rollover')
+    if invalid['capacity_pass'] or invalid['gate_minute'] is None or invalid['gate_minute']>=WINDOW_MINUTES:
+        raise AssertionError('heavy invalid/outage profile did not demonstrate pre-48h capacity failure')
+    if invalid['feed']['retained_events']!=MAX_RAW_EVENTS:
+        raise AssertionError('invalid profile did not exercise raw retention')
+    if invalid['evidence']['kinds'].get('source_unknown',0)<=0:
+        raise AssertionError('invalid profile missing causal unknown evidence')
+    if result['admission']!='NOT_FEASIBLE':
+        raise AssertionError('combined required profiles must be NOT_FEASIBLE')
+    return True
+
 def main(argv=None):
     p=argparse.ArgumentParser()
     p.add_argument('--output')
     args=p.parse_args(argv)
     result=run_profiles()
+    validate_full_result(result)
     raw=json.dumps(result,sort_keys=True,separators=(',',':'))
     if args.output:Path(args.output).write_text(raw+'\n')
     print(raw)
