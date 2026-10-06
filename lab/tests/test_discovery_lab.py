@@ -618,6 +618,7 @@ class RunnerSubprocessTests(unittest.TestCase):
             # post-start but the source timestamp is pre-forward-start.
             first['source_timestamp_ms']=activation-1
             first['payload']['E']=activation-1
+            first['received_at']=self._iso(activation+50)
             fixture.write_text(json.dumps(data))
 
             strict=call(4_020_500,'run','--once',ok=False)
