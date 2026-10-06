@@ -139,7 +139,11 @@ the dashboard:
 9. Confirm no account/research/health/work bytes changed from dashboard reads.
 
 Linux/Windows localhost acceptance is operator-owned; CI fixture evidence is not
-operator-host deployment evidence.
+operator-host deployment evidence. The console uses only system font fallbacks
+(`Noto Sans TC` / `Noto Sans CJK TC` / `Microsoft JhengHei` / `PingFang TC`);
+the CI browser fixture installs the Ubuntu Noto CJK system package so the
+Traditional Chinese screenshots prove readable glyph rendering without a CDN or
+bundled webfont.
 
 ## Rollback
 
