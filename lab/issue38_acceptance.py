@@ -47,7 +47,11 @@ def init_root(root):
 def bulk_raw(root,total_events,invalid_events,profile):
     path=Path(root)/'shared-feed.sqlite3'
     retained=min(total_events,MAX_RAW_EVENTS);first=total_events-retained
-    state=dict(forward_start_ms=START_MS,last_agg_trade_id=total_events-1,
+    if profile=='valid':
+        last_trade_id=total_events//5-1
+    else:
+        last_trade_id=(total_events//HEAVY_INVALID_PER_MINUTE)*HEAVY_AGGTRADES_PER_MINUTE-1
+    state=dict(forward_start_ms=START_MS,last_agg_trade_id=last_trade_id,
                aggtrade_valid=True,gaps=[],duplicates=0,out_of_order=0,
                source_invalid=invalid_events,events_persisted=total_events,
                events_evicted=total_events-retained,reconnects=1)
@@ -58,14 +62,17 @@ def bulk_raw(root,total_events,invalid_events,profile):
         for i in range(first,total_events):
             source=START_MS+i*1000;bad=i<invalid_events
             if profile=='valid':
-                kind=('aggTrade','book','mark','closed_bar','funding_status')[i%5]
+                within=i%5;kind=('aggTrade','book','mark','closed_bar','funding_status')[within]
+                trade_id=i//5 if kind=='aggTrade' else None
             else:
-                kind=('aggTrade','book','mark')[i%3]
+                within=i%HEAVY_INVALID_PER_MINUTE
+                kind='aggTrade' if within<HEAVY_AGGTRADES_PER_MINUTE else 'book' if within==40 else 'mark'
+                trade_id=(i//HEAVY_INVALID_PER_MINUTE)*HEAVY_AGGTRADES_PER_MINUTE+within if kind=='aggTrade' else None
             payload=dict(type=kind,event_id=profile+':'+str(i),symbol='ETHUSDT',
                          ts=source+(20_000 if bad else 0),source_ts=source,
                          receipt_ts=source,source_valid=not bad)
             if kind=='aggTrade':
-                payload.update(trade_id=i,price='100.05',qty='0.1',aggressor='BUY')
+                payload.update(trade_id=trade_id,price='100.05',qty='0.1',aggressor='BUY')
             raw=canonical(payload);rows.append((payload['event_id'],raw,sha(raw)))
         db.executemany('INSERT INTO feed_events(event_id,payload,sha256) VALUES(?,?,?)',rows)
         db.commit();db.execute('VACUUM')
