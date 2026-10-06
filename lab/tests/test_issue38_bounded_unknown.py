@@ -63,6 +63,32 @@ class UnknownRangeStoreTests(unittest.TestCase):
             self.assertEqual([r['count'] for r in rows],[2,1])
             self.assertTrue(all(r['reconstructible_events']==0 for r in rows))
 
+    def test_range_chronology_regression_fails_closed(self):
+        from discovery_evidence import CausalEvidence
+        with tempfile.TemporaryDirectory() as td:
+            e=CausalEvidence(Path(td)/'e.sqlite3')
+            e.record_unknown_range('shared_event:mark','source_valid_false',START+100,
+                dict(event_id='m1',type='mark',source_ts=START,receipt_ts=START,reason='late'))
+            with self.assertRaisesRegex(ValueError,'chronology regression'):
+                e.record_unknown_range('shared_event:mark','source_valid_false',START+99,
+                    dict(event_id='m0',type='mark',source_ts=START-1,receipt_ts=START-1,reason='late'))
+
+    def test_shared_feed_duplicate_conflict_and_cursor_are_unchanged(self):
+        from discovery_feed import SharedFeed
+        with tempfile.TemporaryDirectory() as td:
+            feed=SharedFeed(Path(td)/'feed.sqlite3',forward_start_ms=START,retention=8)
+            feed.mark_reconnected(next_trade_id=7,observed_ms=START)
+            first=feed.ingest('aggTrade',dict(trade_id=7,source_ts=START+100,
+                price='100',qty='1',aggressor='BUY'),received_ms=START+101)
+            self.assertTrue(first['persisted'])
+            duplicate=feed.ingest('aggTrade',dict(trade_id=7,source_ts=START+100,
+                price='100',qty='1',aggressor='BUY'),received_ms=START+101)
+            self.assertFalse(duplicate['persisted'])
+            with self.assertRaisesRegex(ValueError,'conflicting duplicate'):
+                feed.ingest('aggTrade',dict(trade_id=7,source_ts=START+100,
+                    price='100',qty='2',aggressor='BUY'),received_ms=START+101)
+            self.assertEqual(feed.snapshot()['last_agg_trade_id'],7)
+
 class DiscoveryBoundedUnknownTests(unittest.TestCase):
     def setUp(self):
         from discovery_lab import DiscoveryLab
