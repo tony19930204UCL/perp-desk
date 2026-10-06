@@ -648,6 +648,25 @@ class RunnerSubprocessTests(unittest.TestCase):
             self.assertTrue((root/'reports/final-48h.json').is_file())
 
 
+    def test_continuous_runner_completes_two_valid_cycles_same_root(self):
+        import subprocess,sys
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'runner';fixture=Path(td)/'transport.json';activation=self._fixture(fixture)
+            base=[sys.executable,str(LAB/'discovery_runner.py'),'--root',str(root),
+                  '--engineering-fixture','--transport-fixture',str(fixture)]
+            def call(now,*cmd):
+                result=subprocess.run(base+['--now-ms',str(now),*cmd],cwd=LAB,capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0,result.stderr);return json.loads(result.stdout)
+            call(3_950_000,'prepare');activated=call(activation,'activate','--operator-accepted')
+            report=call(4_023_000,'run','--max-cycles','2','--poll-seconds','0')
+            state=json.loads((root/'runner_state.json').read_text())
+            durable=json.loads((root/'lab_state.json').read_text())
+            self.assertEqual(report['runner']['polls'],2);self.assertEqual(state['polls'],2)
+            self.assertIsNone(state['last_error']);self.assertFalse(state['stop_requested'])
+            self.assertEqual((durable['start_ms'],durable['checkpoint_ms'],durable['deadline_ms']),
+                             (activation,activated['checkpoint_ms'],activated['deadline_ms']))
+            self.assertTrue((root/'reports/latest.json').is_file())
+
     def test_bounded_future_source_quarantine_preserves_raw_receipt(self):
         import sys
         sys.path.insert(0,str(LAB))
