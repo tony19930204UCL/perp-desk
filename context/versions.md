@@ -573,6 +573,14 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 不在active root額外呼叫不可逆stop只為live演練，該項驗收是獨立CI真subprocess/fixture六case，不能冒稱productionstoprehearsal。現researchNOT_PROVEN，三臂當時flat/noorders/nofills/rawcandidates0，coverage曾3/480，不把完成poll等於充分sourcecoverage，舊gap/lateaggtrade仍unknown、不補績效；32MiB/90%entry-stop不變。
 - 本回合不是留下next-step就停止，研究已有真實持續背景handle。runner自帶8h/48h輸出與entrygates仍按原期限。報告產出不代表automatic authorizedmodel-ownerreview。Evidence cache/scratch/pr31-7ced67f-acceptance/deployment（installation/two-public-cycles/live1/live2/final/booktiming/operatorprobe/publicationCI/acceptance-report）。
 
+## PR031-LATER-RUNTIME-EXIT-CAPACITY-BLOCK-SOURCE-ROLLBACK（2026-10-06）
+
+- Gateway真background退出notification，proc_f4d7f7d4ad10process tool讀回exited/exit1且/proc2067391不存在。最後成功polls77，exchangeInfo publicDNS URLError Temporaryfailureinname resolution，lastfailure retryable=false/pollfailures23。是先前成功後的新事故，不把PR31初始接受改寫成未曾成功，也不維持running標籤。
+- 09:44UTC readonlyreport隔離storage40644101bytes超33554432budget，sourcegaps78023/unknowninputs78168僅reportcounts，不當独立incidentepisodes或自己推論growthrootcause。三臂flat/submitted0/filledentries0，原帳戶停機保護不動。
+- 09:45UTC恢復七sourceartifacts到prePR31 stoppedbaseline，整個已activationroot當下bytes不變，無DBrestore/reset/delete/增budget/延deadline/自動restart。parallel-eth-discovery改blocked讀回。舊stop/timing修復需新candidate重新整合保留，不能復裝舊31冒充解新事故。
+- BUGIssue34建立/fullbodyreadback，PR31comment6013653548/Issue32comment6013654060fullbody讀回，說明後續failure+source rollback，避免下一agent把原alreadydeployed/running敘述當永遠目前狀態。Issue32仍獨立工程，優先34runtime/容量，保存32既有branch進度不混PR。
+- 完整人工轉交附件cache/scratch/discovery-runtime-exit/Issue34優先修復與Issue32續接指令.md。工程尚待轉交，不假稱codingworker已開始。Evidence exit-state-readback/rollback/issue/commentreadbacks保存。
+
 
 
 
