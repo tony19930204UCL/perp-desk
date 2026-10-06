@@ -26,9 +26,12 @@ Each durable range preserves:
 - a row-integrity hash
 
 For the declared heavy 48h envelope there are exactly three aggregated
-source-event scopes (aggTrade/book/mark) and 576 five-minute buckets, so the
-bounded representation permits at most **1,728 unknown-range rows** for those
-120,960 invalid raw events. The acceptance artifact reports the actual
+source-event scopes (aggTrade/book/mark) and 576 five-minute buckets, giving
+1,728 source-event range rows for those 120,960 invalid raw events. The eight
+declared 30-minute outages additionally model one repeated transport unknown
+per minute after each individually preserved first gap; those repeated outage
+observations occupy at most 48 more five-minute range rows. The declared total
+bound is therefore **1,776 unknown-range rows**. The acceptance artifact reports the actual
 `causal_evidence.sqlite3` bytes and all other root bytes; no fixed per-row byte
 size is assumed.
 
@@ -64,7 +67,9 @@ profiles under the unchanged 32 MiB budget and 90% entry gate:
 - valid profile: same declared PR37 valid engineering load
 - heavy profile: **40 late/invalid aggTrades + 1 late/invalid book + 1
   late/invalid mark = 42 invalid events/minute**, plus a 30-minute outage every
-  six hours and recovery evidence
+  six hours; each outage preserves the first gap individually, materializes one
+  repeated transport-unknown/minute for the remaining 29 minutes, then preserves
+  recovery individually
 
 Both profiles retain 4096 raw events and account for every file in the isolated
 root, including SQLite sidecars if any. Clean-close WAL/SHM absence is reported
