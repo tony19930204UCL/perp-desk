@@ -21,6 +21,7 @@ def _hash(value):
 class CausalEvidence:
     def __init__(self,path):
         self.path=Path(path)
+        existed=self.path.exists()
         with sqlite3.connect(self.path) as db:
             names={r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             if names-{'evidence','unknown_ranges','sqlite_sequence'}:
@@ -33,27 +34,32 @@ class CausalEvidence:
                 payload TEXT NOT NULL,
                 previous_hash TEXT NOT NULL,
                 hash TEXT NOT NULL)""")
-            db.execute("""CREATE TABLE IF NOT EXISTS unknown_ranges(
-                range_key TEXT PRIMARY KEY,
-                scope TEXT NOT NULL,
-                reason_code TEXT NOT NULL,
-                bucket_start_ms INTEGER NOT NULL,
-                first_ts INTEGER NOT NULL,
-                last_ts INTEGER NOT NULL,
-                first_source_ts INTEGER,
-                last_source_ts INTEGER,
-                first_receipt_ts INTEGER,
-                last_receipt_ts INTEGER,
-                first_event_id TEXT,
-                last_event_id TEXT,
-                first_trade_id INTEGER,
-                last_trade_id INTEGER,
-                count INTEGER NOT NULL,
-                rolling_hash TEXT NOT NULL,
-                first_reason TEXT,
-                last_reason TEXT,
-                reconstructible_events INTEGER NOT NULL,
-                row_hash TEXT NOT NULL)""")
+            # Legacy operator roots are immutable. Opening an existing evidence DB
+            # without the Issue38 table must not auto-migrate or write it.
+            if not existed or 'unknown_ranges' in names:
+                db.execute("""CREATE TABLE IF NOT EXISTS unknown_ranges(
+                    range_key TEXT PRIMARY KEY,
+                    scope TEXT NOT NULL,
+                    reason_code TEXT NOT NULL,
+                    bucket_start_ms INTEGER NOT NULL,
+                    first_ts INTEGER NOT NULL,
+                    last_ts INTEGER NOT NULL,
+                    first_source_ts INTEGER,
+                    last_source_ts INTEGER,
+                    first_receipt_ts INTEGER,
+                    last_receipt_ts INTEGER,
+                    first_event_id TEXT,
+                    last_event_id TEXT,
+                    first_trade_id INTEGER,
+                    last_trade_id INTEGER,
+                    count INTEGER NOT NULL,
+                    rolling_hash TEXT NOT NULL,
+                    first_reason TEXT,
+                    last_reason TEXT,
+                    reconstructible_events INTEGER NOT NULL,
+                    row_hash TEXT NOT NULL)""")
+            names={r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            self.supports_unknown_ranges='unknown_ranges' in names
 
     def append(self,evidence_key,kind,ts,payload):
         if not isinstance(evidence_key,str) or not evidence_key or not isinstance(kind,str) or not kind:
@@ -98,6 +104,8 @@ class CausalEvidence:
         boundaries and a rolling digest of every observation. It intentionally
         cannot reconstruct each rolled raw market event.
         """
+        if not self.supports_unknown_ranges:
+            raise ValueError('bounded unknown ranges unavailable on legacy root')
         if (not isinstance(scope,str) or not scope or len(scope)>80 or
                 not isinstance(reason_code,str) or not reason_code or len(reason_code)>80):
             raise ValueError('bounded unknown scope/reason required')
@@ -165,6 +173,7 @@ class CausalEvidence:
                 for k,t,ts,p,prev,h in rows]
 
     def unknown_ranges(self):
+        if not self.supports_unknown_ranges:return []
         with sqlite3.connect(self.path) as db:
             rows=db.execute("""SELECT range_key,scope,reason_code,bucket_start_ms,first_ts,last_ts,
                 first_source_ts,last_source_ts,first_receipt_ts,last_receipt_ts,
@@ -189,6 +198,7 @@ class CausalEvidence:
                     unknown_events_aggregated=sum(r['count'] for r in ranges),
                     unknown_range_bucket_ms=UNKNOWN_RANGE_BUCKET_MS,
                     unknown_range_reconstructible_events=0,
+                    bounded_unknown_schema=self.supports_unknown_ranges,
                     automatic_pruning=False,
                     reconstruction_policy=('decision-changing causal facts remain append-only; repeated non-decision '
                         'unknowns retain count/bounds/rolling integrity only; rolled raw events remain unknown'))
