@@ -626,8 +626,10 @@ class RunnerSubprocessTests(unittest.TestCase):
             state=json.loads((root/'runner_state.json').read_text())
             self.assertEqual(state['polls'],0)
             self.assertEqual(state['poll_failures'],1)
+            self.assertTrue(state['last_failure_retryable'])
             failed=json.loads((root/'reports/latest.json').read_text())
             self.assertTrue(failed['runner']['source_failure'])
+            self.assertTrue(failed['runner']['retryable_source_failure'])
             self.assertEqual(failed['runner']['polls'],0)
             self.assertIn('invalid book source time',failed['runner']['last_error'])
 
