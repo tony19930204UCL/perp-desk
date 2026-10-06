@@ -80,6 +80,18 @@ jobs:
           name: issue-32-observer-console-evidence
           path: artifacts/issue-32-observer
           if-no-files-found: error
+      - name: Issue 36 fixed-budget 48h admission
+        run: |
+          mkdir -p artifacts/issue-36-capacity-admission
+          python3 lab/issue36_capacity_admission.py --output artifacts/issue-36-capacity-admission/admission.json
+          (cd lab && python3 -m unittest -v tests.test_issue36_capacity_admission) 2>&1 | tee artifacts/issue-36-capacity-admission/focused-tests.txt
+      - name: Upload Issue 36 capacity admission evidence
+        if: ${{ always() && hashFiles('artifacts/issue-36-capacity-admission/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-36-capacity-admission-evidence
+          path: artifacts/issue-36-capacity-admission
+          if-no-files-found: error
       - name: Issue 3 real browser acceptance
         run: python3 lab/browser_issue3_acceptance.py --output artifacts/issue-3-browser
       - name: Upload Issue 3 synthetic browser evidence
