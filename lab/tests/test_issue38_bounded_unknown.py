@@ -188,4 +188,34 @@ class InflightCapacityEvidenceTests(unittest.TestCase):
         self.assertEqual(peak['active_write_transactions_at_peak'],peak['sqlite_files'])
         self.assertTrue(peak['all_sqlite_connections_open'])
 
+
+class ActualWritePeakTests(unittest.TestCase):
+    def test_actual_declared_writes_capture_natural_transient_sidecars_and_phases(self):
+        from issue38_acceptance import ENTRY_STOP,materialize_profile
+        profile=materialize_profile('heavy')
+        peak=profile['actual_write_peak_sampled_lower_bound']
+        samples=profile['actual_write_samples']
+        phases={s['phase'] for s in samples}
+        self.assertEqual(profile['capacity_basis'],'actual_write_sampled_lower_bound')
+        self.assertIn('raw_after_executemany_before_commit',phases)
+        self.assertIn('raw_after_commit_before_vacuum',phases)
+        self.assertIn('raw_after_vacuum',phases)
+        self.assertIn('heavy_ranges_after_executemany_before_commit',phases)
+        self.assertIn('heavy_ranges_after_commit',phases)
+        self.assertTrue(any(s['sqlite_sidecars'] for s in samples))
+        self.assertTrue(all(s['sqlite_files']>=5 for s in samples))
+        self.assertEqual(peak['total_bytes'],max(s['total_bytes'] for s in samples))
+        self.assertEqual(profile['capacity_pass'],peak['total_bytes']<ENTRY_STOP)
+        self.assertEqual(profile['capacity_gate_at_actual_write_peak']['measured_bytes'],peak['total_bytes'])
+
+    def test_actual_write_peak_is_not_user_version_probe_or_claimed_exhaustive(self):
+        from issue38_acceptance import materialize_profile
+        profile=materialize_profile('valid')
+        self.assertNotIn('user_version',profile['actual_write_peak_sampled_lower_bound']['phase'])
+        self.assertEqual(profile['actual_write_peak_kind'],'sampled_lower_bound_not_exhaustive_peak')
+        self.assertFalse(profile['actual_write_peak_exhaustive'])
+        self.assertIn('sampling',profile['actual_write_peak_limitation'].lower())
+        self.assertEqual(profile['workload_count_proof']['expected_raw_total_events'],
+                         profile['workload_count_proof']['observed_raw_events_persisted'])
+
 if __name__=='__main__':unittest.main()
