@@ -207,6 +207,8 @@ class ActualWritePeakTests(unittest.TestCase):
         self.assertEqual(peak['total_bytes'],max(s['total_bytes'] for s in samples))
         self.assertEqual(profile['capacity_pass'],peak['total_bytes']<ENTRY_STOP)
         self.assertEqual(profile['capacity_gate_at_actual_write_peak']['measured_bytes'],peak['total_bytes'])
+        self.assertIn('heavy_after_boundary_evidence_appends',phases)
+        self.assertGreaterEqual(peak['total_bytes'],profile['inventory_after_restart']['total_bytes'])
 
     def test_actual_write_peak_is_not_user_version_probe_or_claimed_exhaustive(self):
         from issue38_acceptance import materialize_profile
