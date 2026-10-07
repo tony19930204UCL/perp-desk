@@ -38,6 +38,17 @@ def file_inventory(root):
     return dict(total_bytes=sum(stores.values()),stores=stores,sqlite_sidecars=sidecars,
                 sidecar_bytes=sum(sidecars.values()))
 
+def actual_write_sample(root,phase):
+    sample=file_inventory(root)
+    sample.update(phase=phase,
+                  sqlite_files=sum(1 for p in Path(root).rglob('*.sqlite3') if p.is_file() and not p.is_symlink()),
+                  observed_wall_ns=time.time_ns(),
+                  observed_monotonic_ns=time.monotonic_ns())
+    return sample
+
+def _sample(observer,root,phase):
+    if observer is not None:observer(actual_write_sample(root,phase))
+
 def inflight_peak_inventory(root):
     """Observe whole-root bytes with every SQLite store in an active write transaction.
 
@@ -103,7 +114,7 @@ def init_root(root):
     lab.close()
     SharedFeed(Path(root)/'shared-feed.sqlite3',forward_start_ms=START_MS)
 
-def bulk_raw(root,total_events,invalid_events,profile):
+def bulk_raw(root,total_events,invalid_events,profile,observer=None):
     path=Path(root)/'shared-feed.sqlite3'
     retained=min(total_events,MAX_RAW_EVENTS);first=total_events-retained
     if profile=='valid':
@@ -137,10 +148,12 @@ def bulk_raw(root,total_events,invalid_events,profile):
                 payload.update(trade_id=trade_id,price='100.05',qty='0.1',aggressor='BUY')
             raw=canonical(payload);rows.append((payload['event_id'],raw,sha(raw)))
         db.executemany('INSERT INTO feed_events(event_id,payload,sha256) VALUES(?,?,?)',rows)
-        db.commit();db.execute('VACUUM')
+        _sample(observer,root,'raw_after_executemany_before_commit')
+        db.commit();_sample(observer,root,'raw_after_commit_before_vacuum')
+        db.execute('VACUUM');_sample(observer,root,'raw_after_vacuum')
     return SharedFeed(path,forward_start_ms=START_MS).snapshot()
 
-def bulk_evidence(root,counts):
+def bulk_evidence(root,counts,observer=None):
     path=Path(root)/'causal_evidence.sqlite3'
     seq=[]
     for kind,count in counts.items():
@@ -174,7 +187,8 @@ def bulk_evidence(root,counts):
         rows.append((key,kind,ts,raw,previous,digest));previous=digest
     with sqlite3.connect(path) as db:
         db.executemany('INSERT INTO evidence(evidence_key,kind,ts,payload,previous_hash,hash) VALUES(?,?,?,?,?,?)',rows)
-        db.commit()
+        _sample(observer,root,'evidence_after_executemany_before_commit')
+        db.commit();_sample(observer,root,'evidence_after_commit')
     return CausalEvidence(path).summary()
 
 def _observe(scope,reason_code,ts,event_id,event_type,source,receipt,trade_id,reason):
@@ -182,7 +196,7 @@ def _observe(scope,reason_code,ts,event_id,event_type,source,receipt,trade_id,re
                 receipt_ts=receipt,event_id=event_id,trade_id=trade_id,
                 event_type=event_type,reason=reason)
 
-def bulk_heavy_ranges(root,minutes=WINDOW_MINUTES):
+def bulk_heavy_ranges(root,minutes=WINDOW_MINUTES,observer=None):
     groups={}
     outage_cycles=max(1,minutes//360)
     repeated_outage_failures=0
@@ -243,7 +257,8 @@ def bulk_heavy_ranges(root,minutes=WINDOW_MINUTES):
             first_event_id,last_event_id,first_trade_id,last_trade_id,count,rolling_hash,
             first_reason,last_reason,reconstructible_events,row_hash)
             VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",rows)
-        db.commit()
+        _sample(observer,root,'heavy_ranges_after_executemany_before_commit')
+        db.commit();_sample(observer,root,'heavy_ranges_after_commit')
     evidence=CausalEvidence(path)
     for cycle in range(outage_cycles):
         gap_ts=START_MS+cycle*360*60_000+1
@@ -262,22 +277,24 @@ def bulk_heavy_ranges(root,minutes=WINDOW_MINUTES):
 def materialize_profile(name):
     with tempfile.TemporaryDirectory(prefix='issue38-'+name+'-') as td:
         root=Path(td);init_root(root)
+        actual_samples=[];observe=actual_samples.append
         if name=='valid':
             total=WINDOW_MINUTES*5
-            raw=bulk_raw(root,total,0,'valid')
+            raw=bulk_raw(root,total,0,'valid',observer=observe)
             evidence=bulk_evidence(root,dict(signal_decision=WINDOW_MINUTES*3//10,
                 order_state=WINDOW_MINUTES//10,fill=WINDOW_MINUTES*3//60,
                 ledger=WINDOW_MINUTES*4//60,maker_queue_arrival=WINDOW_MINUTES//30,
-                maker_trade_observation=WINDOW_MINUTES*4//30))
+                maker_trade_observation=WINDOW_MINUTES*4//30),observer=observe)
             declared='5 valid raw/min; same PR37 valid engineering causal rates'
         elif name=='heavy':
             total=WINDOW_MINUTES*HEAVY_INVALID_PER_MINUTE
-            raw=bulk_raw(root,total,total,'invalid')
-            evidence=bulk_heavy_ranges(root)
+            raw=bulk_raw(root,total,total,'invalid',observer=observe)
+            evidence=bulk_heavy_ranges(root,observer=observe)
             declared='40 late/invalid aggTrade + book + mark = 42 invalid/min; 30m outage every 6h'
         else:raise ValueError('unknown profile')
+        actual_peak=max(actual_samples,key=lambda x:x['total_bytes'])
+        gate=capacity_gate_at_measured_peak(root,actual_peak['total_bytes'])
         inflight=inflight_peak_inventory(root)
-        gate=capacity_gate_at_measured_peak(root,inflight['total_bytes'])
         before=file_inventory(root)
         # Same-root readback is read-only for Issue38 new-schema roots.
         er=CausalEvidence(root/'causal_evidence.sqlite3')
@@ -292,14 +309,22 @@ def materialize_profile(name):
                          repeated_outage_unknowns_aggregated=evidence.get('repeated_outage_unknowns_aggregated',0))
         return dict(profile=name,declared_rate=declared,raw_total_events=total,raw=raw,
                     causal=evidence,workload_count_proof=count_proof,
-                    inventory_inflight_peak=inflight,capacity_gate_at_inflight_peak=gate,
-                    capacity_basis='inflight_whole_root_peak',
+                    actual_write_samples=actual_samples,
+                    actual_write_peak_sampled_lower_bound=actual_peak,
+                    actual_write_peak_kind='sampled_lower_bound_not_exhaustive_peak',
+                    actual_write_peak_exhaustive=False,
+                    actual_write_peak_limitation=('sampling occurs at explicit transaction/commit/compaction boundaries of the '
+                        'accelerated declared materialization; shorter filesystem/SQLite transients between sampling points '
+                        'may be higher, so this is a lower bound rather than an exhaustive peak'),
+                    inventory_inflight_peak=inflight,
+                    capacity_gate_at_actual_write_peak=gate,
+                    capacity_basis='actual_write_sampled_lower_bound',
                     inventory_before_restart=before,inventory_after_restart=after,
                     restart_readback=dict(raw_retained=feed.snapshot()['retained_events'],
                         evidence_head=er.summary()['head_hash'],
                         unknown_range_rows=er.summary()['unknown_range_rows'],
                         unknown_events_aggregated=er.summary()['unknown_events_aggregated']),
-                    capacity_pass=(inflight['total_bytes']<ENTRY_STOP and gate['allows_new_entry']),
+                    capacity_pass=(actual_peak['total_bytes']<ENTRY_STOP and gate['allows_new_entry']),
                     accelerated_bulk_same_schema=True,engine_poll_cycles=0,
                     real_public_market_claim=False)
 
@@ -398,7 +423,7 @@ def run():
             outage_every_minutes=360,outage_duration_minutes=30),
         out_of_scope_behavior=('no arbitrary-rate/permanent-retention claim; existing 90% storage gate must '
             'halt new entry risk and preserve protective exits when actual bytes exceed the declared envelope'),
-        capacity_measurement='inflight whole-root peak with every SQLite store in an active rollbackable write transaction',
+        capacity_measurement='sampled lower bound from actual accelerated materialization write/commit/compaction boundaries; not exhaustive transient peak',
         profiles=[valid,heavy],reconstruction=recon,admission=admission,
         public_source_evidence='SEPARATE_BOUNDED_PROBE_REQUIRED; accelerated capacity/lifecycle evidence is not public-source health',
         operator_root_touched=False,new_window_started=False,deployed=False)
@@ -408,23 +433,21 @@ def validate(result):
     by={x['profile']:x for x in result['profiles']}
     for name in ('valid','heavy'):
         p=by[name]
-        peak=p['inventory_inflight_peak'];gate=p['capacity_gate_at_inflight_peak']
-        if p['capacity_basis']!='inflight_whole_root_peak':
-            raise AssertionError(name+' profile capacity basis is not inflight peak')
-        if (not peak['all_sqlite_connections_open'] or
-                peak['open_connections_at_peak']!=peak['sqlite_files'] or
-                peak['active_write_transactions_at_peak']!=peak['sqlite_files']):
-            raise AssertionError(name+' inflight peak did not hold all SQLite writers open')
-        if not peak['sqlite_sidecars'] or peak['total_bytes']!=sum(peak['stores'].values()):
-            raise AssertionError(name+' inflight sidecars/whole-root accounting missing')
-        if peak['total_bytes']<p['inventory_after_restart']['total_bytes']:
-            raise AssertionError(name+' inflight peak below clean-close inventory')
+        peak=p['actual_write_peak_sampled_lower_bound'];gate=p['capacity_gate_at_actual_write_peak']
+        if p['capacity_basis']!='actual_write_sampled_lower_bound' or p['actual_write_peak_exhaustive']:
+            raise AssertionError(name+' capacity basis must be non-exhaustive actual-write sampled lower bound')
+        if not p['actual_write_samples'] or not any(x['sqlite_sidecars'] for x in p['actual_write_samples']):
+            raise AssertionError(name+' actual-write samples missed natural SQLite sidecars')
+        if not all(x['total_bytes']==sum(x['stores'].values()) and x['sqlite_files']>=5 for x in p['actual_write_samples']):
+            raise AssertionError(name+' actual-write whole-root/all-store accounting missing')
+        if peak['total_bytes']!=max(x['total_bytes'] for x in p['actual_write_samples']):
+            raise AssertionError(name+' sampled lower bound is not maximum observed actual-write sample')
         if gate['actual_discovery_gate'] is not True or gate['measured_bytes']!=peak['total_bytes']:
-            raise AssertionError(name+' actual storage gate was not checked at measured peak')
+            raise AssertionError(name+' actual storage gate was not checked at sampled lower bound')
         if gate['allows_new_entry']!=(peak['total_bytes']<ENTRY_STOP):
-            raise AssertionError(name+' storage gate disagrees with measured peak')
+            raise AssertionError(name+' storage gate disagrees with sampled lower bound')
         if not p['capacity_pass'] or peak['total_bytes']>=ENTRY_STOP:
-            raise AssertionError(name+' profile exceeds fixed gate at inflight peak')
+            raise AssertionError(name+' profile exceeds fixed gate at sampled lower bound')
         if p['raw']['retained_events']!=MAX_RAW_EVENTS or p['raw']['events_evicted']<=0:
             raise AssertionError(name+' profile missing raw rollover')
         if p['inventory_after_restart']['sqlite_sidecars']:

@@ -181,8 +181,8 @@ class InflightCapacityEvidenceTests(unittest.TestCase):
         from issue38_acceptance import ENTRY_STOP,materialize_profile
         profile=materialize_profile('valid')
         peak=profile['inventory_inflight_peak']
-        self.assertEqual(profile['capacity_basis'],'inflight_whole_root_peak')
-        self.assertEqual(profile['capacity_pass'],peak['total_bytes']<ENTRY_STOP)
+        self.assertEqual(profile['capacity_basis'],'actual_write_sampled_lower_bound')
+        self.assertTrue(profile['actual_write_samples'])
         self.assertGreaterEqual(peak['total_bytes'],profile['inventory_after_restart']['total_bytes'])
         self.assertEqual(peak['open_connections_at_peak'],peak['sqlite_files'])
         self.assertEqual(peak['active_write_transactions_at_peak'],peak['sqlite_files'])

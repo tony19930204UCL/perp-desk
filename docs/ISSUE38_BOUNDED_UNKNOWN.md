@@ -179,3 +179,10 @@ python3 lab/issue38_acceptance.py --output issue38-acceptance.json
 The `--config` selection is part of the root identity: every prepare/activate/run/report/stop invocation for LAB002 must repeat the same v2 path. Reopening that root with LAB001 fails closed on the durable `version_id`. Omitting `--config` retains the legacy LAB001 default and does not rewrite an existing root.
 
 Preserve the old root/window/history unchanged. A new root does not reopen or extend any old window. The fixed 32 MiB envelope includes every store plus SQLite WAL/SHM and metadata whenever present. Rollback is source/process rollback only: stop the candidate, preserve the entire candidate root/evidence, and restore the operator-owned pre-install source backup. Never back-convert `unknown_ranges` into synthetic event facts, copy over the historical root, weaken source/arrival/risk/cost gates, or use GitHub `main` as the deployment tree.
+
+
+## Actual-write capacity sampling (2026-10-07)
+
+Capacity admission now uses samples taken during the existing accelerated declared materialization itself: raw executemany before commit, after commit before VACUUM, after VACUUM, and causal evidence/range insertion before and after commit. Each sample inventories the entire isolated root, including naturally present SQLite WAL/SHM/rollback-journal files and metadata.
+
+This is deliberately reported as a **sampled lower bound, not an exhaustive transient peak**. Sampling occurs at explicit persistence boundaries; a shorter SQLite/filesystem transient between those positions could be larger. The earlier rollbackable user_version probe remains visible only as diagnostic comparison and is not the admission basis. The declared valid/heavy event counts, rates, outages, retention, 32 MiB budget and 90% entry-stop gate are unchanged. If the sampled lower bound reaches the gate, admission is NOT_FEASIBLE; passing the sampled lower bound does not by itself prove an unobserved upper bound.
