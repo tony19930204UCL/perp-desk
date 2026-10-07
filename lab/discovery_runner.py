@@ -502,14 +502,15 @@ def build_runner(args):
     if args.engineering_fixture:
         if not args.transport_fixture or args.now_ms is None:
             raise ValueError('fixture mode requires --transport-fixture and --now-ms')
-        return DiscoveryRunner(args.root,client=FixtureClient(args.transport_fixture),clock_ms=lambda:args.now_ms)
+        return DiscoveryRunner(args.root,client=FixtureClient(args.transport_fixture),clock_ms=lambda:args.now_ms,config_path=args.config)
     if args.transport_fixture or args.now_ms is not None:
         raise ValueError('fixture-only options require --engineering-fixture')
-    return DiscoveryRunner(args.root)
+    return DiscoveryRunner(args.root,config_path=args.config)
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--root',required=True)
+    p.add_argument('--config',type=Path,default=CONFIG,help='immutable discovery config for this root; default remains LAB001')
     p.add_argument('--engineering-fixture',action='store_true')
     p.add_argument('--transport-fixture')
     p.add_argument('--now-ms',type=int)

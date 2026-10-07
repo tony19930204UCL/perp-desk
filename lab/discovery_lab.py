@@ -38,7 +38,7 @@ class DiscoveryLab:
         self.root=Path(root).resolve()
         self.root.mkdir(parents=True,exist_ok=True)
         self.config=json.loads(Path(config_path).read_text())
-        if self.config.get('active') is not False or self.config.get('version_id')!='ETH-DISCOVERY-LAB-001':
+        if self.config.get('active') is not False or self.config.get('version_id') not in ('ETH-DISCOVERY-LAB-001','ETH-DISCOVERY-LAB-002'):
             raise ValueError('staged inactive discovery config required')
         if self.config.get('tradfi_enabled') is not False:
             raise ValueError('TradFi must remain disabled')
@@ -57,10 +57,10 @@ class DiscoveryLab:
     def _load_state(self):
         if self.state_path.exists():
             state=json.loads(self.state_path.read_text())
-            if state.get('schema_version')!=1 or state.get('version_id')!='ETH-DISCOVERY-LAB-001':
+            if state.get('schema_version')!=1 or state.get('version_id')!=self.config['version_id']:
                 raise ValueError('discovery state identity mismatch')
             return state
-        state=dict(schema_version=1,version_id='ETH-DISCOVERY-LAB-001',activated=False,
+        state=dict(schema_version=1,version_id=self.config['version_id'],activated=False,
                    start_ms=None,deadline_ms=None,checkpoint_ms=None,
                    coverage={},diagnostics=[],targets={},history=[],latest_book=None,
                    arm=dict(A={},B={},C={}),source_gaps=0,unknown_inputs=0,
@@ -105,7 +105,7 @@ class DiscoveryLab:
             d=self.root/('arm-'+arm.lower());d.mkdir(exist_ok=True)
             self.brokers[arm]=SimBroker(d/'broker.sqlite3',initial_cash=D(self.config['initial_equity_usdt_per_arm']),
                 instruments=[self.instrument],execution=ex,risk=risk,
-                version_id='ETH-DISCOVERY-LAB-001-'+arm,forward_start=self.state['start_ms'],
+                version_id=self.config['version_id']+'-'+arm,forward_start=self.state['start_ms'],
                 compact_seen_events=True)
 
     def close(self):

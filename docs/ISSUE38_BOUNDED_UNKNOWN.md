@@ -128,6 +128,8 @@ For an accepted candidate, install reviewed source bytes into the existing opera
 
 - `lab/discovery_evidence.py` -> existing operator `lab/discovery_evidence.py`
 - `lab/discovery_lab.py` -> existing operator `lab/discovery_lab.py`
+- `lab/discovery_runner.py` -> existing operator `lab/discovery_runner.py`
+- `lab/discovery_config_v2.json` -> existing operator `lab/discovery_config_v2.json` (LAB002; all frozen parameters equal LAB001 except `version_id`)
 - `lab/issue38_acceptance.py` -> existing operator `lab/issue38_acceptance.py`
 - `lab/tests/test_issue38_bounded_unknown.py` -> existing operator test path
 - `docs/ISSUE38_BOUNDED_UNKNOWN.md` -> existing review-sync docs source
@@ -142,27 +144,29 @@ Do not construct or bind replacement runtime objects manually. The existing runn
 python3 scripts/public_source_timing_probe.py
 
 # reference/filter preflight only; does not start a research window
-python3 lab/discovery_runner.py --root <NEW_ROOT> prepare
+python3 lab/discovery_runner.py --root <NEW_ROOT> --config lab/discovery_config_v2.json prepare
 
 # only this explicit accepted action starts the new immutable forward window
-python3 lab/discovery_runner.py --root <NEW_ROOT> activate --operator-accepted
+python3 lab/discovery_runner.py --root <NEW_ROOT> --config lab/discovery_config_v2.json activate --operator-accepted
 
 # foreground shared-source run
-python3 lab/discovery_runner.py --root <NEW_ROOT> run --poll-seconds 1
+python3 lab/discovery_runner.py --root <NEW_ROOT> --config lab/discovery_config_v2.json run --poll-seconds 1
 
 # bounded one-cycle diagnostic
-python3 lab/discovery_runner.py --root <NEW_ROOT> run --once --poll-seconds 1
+python3 lab/discovery_runner.py --root <NEW_ROOT> --config lab/discovery_config_v2.json run --once --poll-seconds 1
 
 # existing status/report entrypoint
-python3 lab/discovery_runner.py --root <NEW_ROOT> report
+python3 lab/discovery_runner.py --root <NEW_ROOT> --config lab/discovery_config_v2.json report
 
 # durable stop request; never resets or extends a window
-python3 lab/discovery_runner.py --root <NEW_ROOT> stop
+python3 lab/discovery_runner.py --root <NEW_ROOT> --config lab/discovery_config_v2.json stop
 
 # engineering-only Issue38 capacity/safety acceptance
 python3 lab/issue38_acceptance.py --output issue38-acceptance.json
 ```
 
 ### Namespace and rollback
+
+The `--config` selection is part of the root identity: every prepare/activate/run/report/stop invocation for LAB002 must repeat the same v2 path. Reopening that root with LAB001 fails closed on the durable `version_id`. Omitting `--config` retains the legacy LAB001 default and does not rewrite an existing root.
 
 Preserve the old root/window/history unchanged. A new root does not reopen or extend any old window. The fixed 32 MiB envelope includes every store plus SQLite WAL/SHM and metadata whenever present. Rollback is source/process rollback only: stop the candidate, preserve the entire candidate root/evidence, and restore the operator-owned pre-install source backup. Never back-convert `unknown_ranges` into synthetic event facts, copy over the historical root, weaken source/arrival/risk/cost gates, or use GitHub `main` as the deployment tree.
