@@ -645,6 +645,16 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 原job2d2db10436e9只改script為paper_review_sync_public.py，原schedule/workdir/delivery/model/ownership不變。恢復與真正scheduled tick另由operator讀回記錄。證據cache/scratch/public-transition-engineering/operator-{preflight,installation,publication}.json與accepted-ci logs。
 - 公開掃描不是零風險保證；原45hits分類44fixtures、1稽核本機API token未發布，user確認無手動真秘密上傳。PAPER100USDT／已接受name/email不作自動阻擋。原容量停止及尚未驗收PR37/39結果不因同步完成而解除。
 
+## PAPER-READINESS-20261007-v1（清單與新隔離運行路線，未啟動）
+
+- 使用者要求今天完成PAPER上線必要工程，建立有證據checklist並用chatgpt-github-workflow替代人工搬運，不為此改交易邏輯。清單固定22項，13項工程交付有來源證據；今日上線六項關卡仍0/6，不是系統成熟/盈利百分比，也不把歷史completed當目前運行。
+- 唯讀review deleg_1205e8aa完成，主operator核versions423-436、511-513、ETH_DISCOVERY_LAB9-31/194-219與原storage policy。003結算已接受，PR21舊waiting-closeout文字過時；004是先前預登記的target改版，不冒稱與003完全同策略。原帳戶storage hold維持，不以migration/new100本金/刪ledger解除。
+- 選擇在PR39最新main兼容、source/資源/帳戶保護preflight通過後，以既有三臂凍結設計建立新隔離ETH-DISCOVERY-LAB-002。不改A/B/C參數、成本/風控/source/queue/arrival契約。每臂原定人工研究帳戶獨立，不池化，不restore或取代原H1帳戶。原003/001停止、判決/causal/ledger/帳戶history保持。
+- 尚未prepare/activate，沒有新start/deadline，不宣稱紙盤開始。合法activate後才固定新start/8h/48h並保存版本與snapshot。候選工程PASS不等於public-source或inflight WAL峰值或真48h已驗，未知如實inconclusive，不restart到綠。
+- fresh main dbd5cbbeeb5fd2a592a39fe8dee322aaea59d854對PR39 a846280812eaa0dbad1226045a04351a120036ff實際diverged/behind3，共享CI/exporter。先續既有PR39最小整合保留PR41/33/35，不讓operator手拼mixed source。首relay proc_aee0ca68cea6實际提交前pinned-thread拒絕，sent/intent均false，refusal保留；恢復已授權thread後proc_0ffe7ca6e1d8真送一次，等待回報。未有新head/部署/研究運行。
+- 清單及證據：lab/shared/paper-readiness-checklist.{md,json}；cache/scratch/paper-readiness-oct07/route-decision.md、pr39-fresh-main-compare.json、integration-pre-send-refusal-retained.json；chatgpt-fixed-relay/job-readinesspr39integrationrecovered.json。Skill補入thread漂移時fresh保護draft/attachment/generation並保留refusal後續送的規則，不宣稱controller已自動實作所有恢復。
+
+
 
 
 
