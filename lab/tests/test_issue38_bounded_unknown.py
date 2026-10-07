@@ -118,6 +118,9 @@ class DiscoveryBoundedUnknownTests(unittest.TestCase):
         self.assertFalse(any(b.fills for b in self.lab.brokers.values()))
 
     def test_decision_changing_unknown_is_preserved_and_never_makes_maker_fill(self):
+        from discovery_feed import SharedFeed
+        feed=SharedFeed(self.root/'issue38-feed.sqlite3',forward_start_ms=START)
+        self.lab.bind_feed(feed);feed.mark_reconnected(next_trade_id=1,observed_ms=START)
         self._funding_ready()
         self.lab.on_shared_event(dict(type='book',event_id='book0',symbol='ETHUSDT',
             ts=START+5000,source_ts=START+5000,bids=[['100','1']],asks=[['100.10','2']],source_valid=True))
