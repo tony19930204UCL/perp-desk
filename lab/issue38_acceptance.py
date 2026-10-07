@@ -486,29 +486,38 @@ def run():
             'halt new entry risk and preserve protective exits when actual bytes exceed the declared envelope'),
         capacity_measurement='conservative all-store transient upper envelope is admission basis; sampled actual-write maxima are retained only as lower-bound observations',
         profiles=[valid,heavy],reconstruction=recon,admission=admission,
-        public_source_evidence='SEPARATE_BOUNDED_PROBE_REQUIRED; accelerated capacity/lifecycle evidence is not public-source health',
+        public_source_evidence='ROOTLESS_ALL_SOURCE_PREFLIGHT_IS_SEPARATE_ARTIFACT; accelerated capacity/lifecycle evidence is not public-source health',
         operator_root_touched=False,new_window_started=False,deployed=False)
 
 def validate(result):
-    if result['admission']!='PASS':raise AssertionError('Issue38 engineering admission not PASS')
+    if result['admission'] not in ('PASS','NOT_FEASIBLE'):
+        raise AssertionError('invalid Issue38 engineering admission state')
     by={x['profile']:x for x in result['profiles']}
     for name in ('valid','heavy'):
         p=by[name]
-        peak=p['actual_write_peak_sampled_lower_bound'];gate=p['capacity_gate_at_actual_write_peak']
-        if p['capacity_basis']!='actual_write_sampled_lower_bound' or p['actual_write_peak_exhaustive']:
-            raise AssertionError(name+' capacity basis must be non-exhaustive actual-write sampled lower bound')
+        peak=p['actual_write_peak_sampled_lower_bound']
+        bound=p['conservative_transient_envelope']
+        gate=p['capacity_gate_at_conservative_bound']
+        if p['capacity_basis']!='conservative_transient_upper_bound' or p['actual_write_peak_exhaustive']:
+            raise AssertionError(name+' admission must use conservative bound while samples remain non-exhaustive lower bounds')
         if not p['actual_write_samples'] or not any(x['sqlite_sidecars'] for x in p['actual_write_samples']):
             raise AssertionError(name+' actual-write samples missed natural SQLite sidecars')
         if not all(x['total_bytes']==sum(x['stores'].values()) and x['sqlite_files']>=5 for x in p['actual_write_samples']):
             raise AssertionError(name+' actual-write whole-root/all-store accounting missing')
         if peak['total_bytes']!=max(x['total_bytes'] for x in p['actual_write_samples']):
             raise AssertionError(name+' sampled lower bound is not maximum observed actual-write sample')
-        if gate['actual_discovery_gate'] is not True or gate['measured_bytes']!=peak['total_bytes']:
-            raise AssertionError(name+' actual storage gate was not checked at sampled lower bound')
-        if gate['allows_new_entry']!=(peak['total_bytes']<ENTRY_STOP):
-            raise AssertionError(name+' storage gate disagrees with sampled lower bound')
-        if not p['capacity_pass'] or peak['total_bytes']>=ENTRY_STOP:
-            raise AssertionError(name+' profile exceeds fixed gate at sampled lower bound')
+        if bound['upper_bound_bytes']<peak['total_bytes']:
+            raise AssertionError(name+' conservative bound fell below observed lower bound')
+        if gate['actual_discovery_gate'] is not True or gate['measured_bytes']!=bound['upper_bound_bytes']:
+            raise AssertionError(name+' actual storage gate was not checked at conservative bound')
+        expected_pass=bool(bound['bound_supported'] and bound['upper_bound_bytes']<ENTRY_STOP)
+        expected_status=('PROVEN_WITHIN_GATE' if expected_pass else
+                         'NO_GO_BOUND_EXCEEDS_GATE' if bound['bound_supported']
+                         else 'INCONCLUSIVE_UNSUPPORTED_SQLITE_MODE')
+        if p['capacity_status']!=expected_status or p['capacity_pass']!=expected_pass:
+            raise AssertionError(name+' conservative capacity classification mismatch')
+        if gate['allows_new_entry']!=(bound['upper_bound_bytes']<ENTRY_STOP):
+            raise AssertionError(name+' storage gate disagrees with conservative bound')
         if p['raw']['retained_events']!=MAX_RAW_EVENTS or p['raw']['events_evicted']<=0:
             raise AssertionError(name+' profile missing raw rollover')
         if p['inventory_after_restart']['sqlite_sidecars']:
@@ -526,14 +535,19 @@ def validate(result):
     recon=result['reconstruction']
     if recon['primary_maker_entry_fills']<1 or recon['protective_reduce_only_orders']<1:
         raise AssertionError('maker/protective lifecycle not exercised')
-    if not all((recon['broker_fill_ids_equal_evidence'],recon['broker_ledger_ids_equal_evidence'],
+    recon_ok=all((recon['broker_fill_ids_equal_evidence'],recon['broker_ledger_ids_equal_evidence'],
                 recon['final_order_states_reconstructible'],recon['protective_cancel_reconstructed'],
+                recon['protective_reduce_only_orders']>=1,
                 'fee' in recon['broker_ledger_types'],'funding' in recon['broker_ledger_types'],
                 recon['broker_ledger_types']==recon['evidence_ledger_types'],
                 recon['flat_after_protection'],recon['unknown_did_not_fill'],
                 recon['sticky_stop_after_restart'],recon['causal_head_same_restart'],
-                recon['unknown_ranges_same_restart'])):
+                recon['unknown_ranges_same_restart']))
+    if not recon_ok:
         raise AssertionError('causal reconstruction mismatch')
+    expected_admission='PASS' if all(by[n]['capacity_pass'] for n in ('valid','heavy')) and recon_ok else 'NOT_FEASIBLE'
+    if result['admission']!=expected_admission:
+        raise AssertionError('admission does not match conservative capacity and lifecycle evidence')
     return True
 
 def main(argv=None):
