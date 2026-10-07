@@ -654,6 +654,16 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - fresh main dbd5cbbeeb5fd2a592a39fe8dee322aaea59d854對PR39 a846280812eaa0dbad1226045a04351a120036ff實際diverged/behind3，共享CI/exporter。先續既有PR39最小整合保留PR41/33/35，不讓operator手拼mixed source。首relay proc_aee0ca68cea6實际提交前pinned-thread拒絕，sent/intent均false，refusal保留；恢復已授權thread後proc_0ffe7ca6e1d8真送一次，等待回報。未有新head/部署/研究運行。
 - 清單及證據：lab/shared/paper-readiness-checklist.{md,json}；cache/scratch/paper-readiness-oct07/route-decision.md、pr39-fresh-main-compare.json、integration-pre-send-refusal-retained.json；chatgpt-fixed-relay/job-readinesspr39integrationrecovered.json。Skill補入thread漂移時fresh保護draft/attachment/generation並保留refusal後續送的規則，不宣稱controller已自動實作所有恢復。
 
+## PR039-LAB002-SOURCE-INSTALLED-PREPARED-NOT-ACTIVATED（2026-10-07）
+
+- 精確eaaa651326ec8725507741021397481e4333123d兩CI37640530442/37640521772成功，RED f9e8cae/run37640057969兩identity tests失敗；GREEN raw log exporter42/PAPER346與Issue38 focused8實際OK。artifact11491482805 ZIP/API SHA256 e160187b77669bacc40c9971e4761b4aef250a84f5e2bf30e75306a994deaff0吻合。v1/v2 config只有version_id不同，不變更交易參數。
+- 唯讀preflight deleg_cc4e6cff完成後，主operator重新逐bytes核main baseline與未改lab/scripts依賴。正常mirror/operator gate短暫pause，核無owned相關程序，source完整backup後安裝10mapped來源（7runtime/config/test、doc、exporter、CI）。不用tar內過時derived source_manifest或context/versions覆蓋歷史。27個原帳戶/研究/hold/政策文件SHA256保持，不restore舊DB、不重啟LAB001。
+- 真prepare --root lab/data/eth-discovery-lab-002 --config lab/discovery_config_v2.json exit0，ETHUSDT reference filters驗證，prepared=true/polls0，沒有lab_state/window。沒有activate/run或新start/deadline，不宣稱紙盤開始。
+- 本機既有public client有界探測7endpoint皆成功，保留原始receipt與hash，不拿HTTP可達當連續source gate或績效。/time、depth、mark的future deltas與wall/monotonic discrepancy原樣保存，不調clock、不retimestamp、不推論根因。inflight全root/WAL/SHM峰值仍未驗，declared capacity clean-close PASS不能替代。
+- mirror/operator原排程恢復，正常mirror 9bff4b5ccb25450c15e3712968005b4971d5ab73的10source hashes遠端讀回全吻合；publication CI37646784948 exacthead completed/success。source部署/發布完成，PAPER activation仍NO-GO。
+- PR39後續inflight峰值驗收規格comment6041485658已全文remote讀回，未有新coding worker。ChatGPT正常Runtime.evaluate包括極小URL讀回兩次OperationCanceled。一次截圖恢復未先確認URL，意外取得非本任務頁面，隨即停止，未將其內容作派工依據；host-level metadata確認唯一tab已切至其他聊天室。未送指令、切頁或干擾另一profile。工程尚未派送，不把GitHubcomment算worker。
+- 證據cache/scratch/paper-readiness-oct07/deployment-20261007T154417Z/{preflight,installation,prepare,public-source-preflight,publication-readback,pr39-inflight-comment-readback}.json。
+
 
 
 
