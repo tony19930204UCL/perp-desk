@@ -155,4 +155,37 @@ class DiscoveryBoundedUnknownTests(unittest.TestCase):
         self.assertEqual(sum(r['count'] for r in ranges),1)
         self.assertEqual(ranges[0]['scope'],'runner_shared_source')
 
+
+class InflightCapacityEvidenceTests(unittest.TestCase):
+    def test_inflight_peak_inventory_counts_all_open_sqlite_sidecars(self):
+        from issue38_acceptance import inflight_peak_inventory
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            (root/'metadata.json').write_text('{"kind":"metadata"}\n')
+            for name in ('one.sqlite3','two.sqlite3'):
+                with sqlite3.connect(root/name) as db:
+                    db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, value TEXT)')
+                    db.execute('INSERT INTO t(value) VALUES(?)',('x',))
+            clean=sum(p.stat().st_size for p in root.rglob('*') if p.is_file())
+            peak=inflight_peak_inventory(root)
+            self.assertEqual(peak['sqlite_files'],2)
+            self.assertEqual(peak['open_connections_at_peak'],2)
+            self.assertEqual(peak['active_write_transactions_at_peak'],2)
+            self.assertTrue(peak['all_sqlite_connections_open'])
+            self.assertGreaterEqual(peak['total_bytes'],clean)
+            self.assertTrue(peak['sqlite_sidecars'])
+            self.assertEqual(peak['total_bytes'],sum(peak['stores'].values()))
+            self.assertIn('metadata.json',peak['stores'])
+
+    def test_declared_valid_profile_capacity_uses_inflight_peak(self):
+        from issue38_acceptance import ENTRY_STOP,materialize_profile
+        profile=materialize_profile('valid')
+        peak=profile['inventory_inflight_peak']
+        self.assertEqual(profile['capacity_basis'],'inflight_whole_root_peak')
+        self.assertEqual(profile['capacity_pass'],peak['total_bytes']<ENTRY_STOP)
+        self.assertGreaterEqual(peak['total_bytes'],profile['inventory_after_restart']['total_bytes'])
+        self.assertEqual(peak['open_connections_at_peak'],peak['sqlite_files'])
+        self.assertEqual(peak['active_write_transactions_at_peak'],peak['sqlite_files'])
+        self.assertTrue(peak['all_sqlite_connections_open'])
+
 if __name__=='__main__':unittest.main()
