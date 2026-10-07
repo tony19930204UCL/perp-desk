@@ -1,0 +1,9 @@
+Command: python3 real_scanner_check.py (engineering-local synthetic fixtures)
+Exit: 0
+gitleaks: 8.30.1, real installed binary, forced default rules
+test_real_scanner_private_public_and_private_rollback (__main__.Issue40RealScannerTests.test_real_scanner_private_public_and_private_rollback) ... {"diagnostic_state": "blocked", "error": "remote must be the exact authorized public repository"}
+test_real_scanner_synthetic_secret_blocks_without_remote_commit (__main__.Issue40RealScannerTests.test_real_scanner_synthetic_secret_blocks_without_remote_commit) ... ok
+{"scanner_calls": [["dir", 0], ["dir", 0], ["git", 0], ["dir", 0], ["git", 0], ["dir", 0], ["git", 0], ["dir", 0], ["git", 0], ["dir", 0], ["git", 0]], "fixture_only": true}
+{"synthetic_secret": "scanner rejected", "remote_commit": false}
+Both named tests: ok. Directory and all-ref/reflog history scanner commands executed.
+Initial harness attempts failed due to a harness instrumentation positional-argument TypeError; fixed only in the sidecar harness. Production source unchanged by diagnosis.

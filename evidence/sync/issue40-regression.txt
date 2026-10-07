@@ -1,0 +1,5 @@
+Command: python3 -m unittest discover -s automation/tests -k test_scheduler_public_transition_is_explicit_and_exact_target -v
+RED against original wrapper: exit 1, missing explicit run entry (expected feature absence).
+GREEN after fix: exit 0, same ID passed.
+Regression does not pass with the original wrapper.
+Extra unchanged PAPER suite: tool timed out after 420 seconds, incomplete, not acceptance; 212 completed IDs observed. No rerun; no test process remains.

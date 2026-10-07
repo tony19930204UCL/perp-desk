@@ -1,0 +1,72 @@
+test_allowlisted_framework_only_no_runtime_or_credentials (test_review_sync.ReviewSyncTests.test_allowlisted_framework_only_no_runtime_or_credentials) ... ok
+test_atomic_mirror_provenance_deletes_only_owned_files (test_review_sync.ReviewSyncTests.test_atomic_mirror_provenance_deletes_only_owned_files) ... ok
+test_cli_runs_real_private_metadata_and_secret_scanner (test_review_sync.ReviewSyncTests.test_cli_runs_real_private_metadata_and_secret_scanner) ... ok
+test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment (test_review_sync.ReviewSyncTests.test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment) ... ok
+test_crash_after_commit_recovers_only_exact_transaction_commit (test_review_sync.ReviewSyncTests.test_crash_after_commit_recovers_only_exact_transaction_commit) ... ok
+test_docs_reject_nonallowlisted_names_before_read (test_review_sync.ReviewSyncTests.test_docs_reject_nonallowlisted_names_before_read) ... ok
+test_entire_outgoing_tree_must_match_snapshot_bytes (test_review_sync.ReviewSyncTests.test_entire_outgoing_tree_must_match_snapshot_bytes) ... ok
+test_erroneous_python_is_exported_as_raw_review_evidence (test_review_sync.ReviewSyncTests.test_erroneous_python_is_exported_as_raw_review_evidence) ... ok
+test_exact_reviewed_lab_failure_evidence_is_exported (test_review_sync.ReviewSyncTests.test_exact_reviewed_lab_failure_evidence_is_exported) ... ok
+test_existing_git_execution_config_is_rejected_before_scan (test_review_sync.ReviewSyncTests.test_existing_git_execution_config_is_rejected_before_scan) ... ok
+test_existing_hook_files_never_execute (test_review_sync.ReviewSyncTests.test_existing_hook_files_never_execute) ... ok
+test_export_rejects_symlinks_secrets_binary_and_oversize (test_review_sync.ReviewSyncTests.test_export_rejects_symlinks_secrets_binary_and_oversize) ... ok
+test_exporter_owned_staged_commit_failure_retries_but_unknown_stage_blocks (test_review_sync.ReviewSyncTests.test_exporter_owned_staged_commit_failure_retries_but_unknown_stage_blocks) ... ok
+test_filesystem_roots_and_manifest_symlinks_fail_before_io (test_review_sync.ReviewSyncTests.test_filesystem_roots_and_manifest_symlinks_fail_before_io) ... ok
+test_flattened_evidence_collisions_fail_closed (test_review_sync.ReviewSyncTests.test_flattened_evidence_collisions_fail_closed) ... ok
+test_framework_docs_automation_and_evidence_are_exported_without_status (test_review_sync.ReviewSyncTests.test_framework_docs_automation_and_evidence_are_exported_without_status) ... ok
+test_git_directory_symlinks_rejected_before_config_read (test_review_sync.ReviewSyncTests.test_git_directory_symlinks_rejected_before_config_read) ... ok
+test_git_uses_only_fixed_official_github_credential_helper (test_review_sync.ReviewSyncTests.test_git_uses_only_fixed_official_github_credential_helper) ... ok
+test_group_writable_git_entries_fail_before_scanner_or_hooks (test_review_sync.ReviewSyncTests.test_group_writable_git_entries_fail_before_scanner_or_hooks) ... ok
+test_inherited_git_environment_cannot_redirect_or_execute (test_review_sync.ReviewSyncTests.test_inherited_git_environment_cannot_redirect_or_execute) ... ok
+test_mirror_parent_swap_before_read_or_delete_never_follows_symlink (test_review_sync.ReviewSyncTests.test_mirror_parent_swap_before_read_or_delete_never_follows_symlink) ... ok
+test_pathspec_magic_is_staged_literally (test_review_sync.ReviewSyncTests.test_pathspec_magic_is_staged_literally) ... ok
+test_persistent_git_tree_churn_is_bounded_and_blocked (test_review_sync.ReviewSyncTests.test_persistent_git_tree_churn_is_bounded_and_blocked) ... ok
+test_production_url_is_bound_before_metadata_or_network (test_review_sync.ReviewSyncTests.test_production_url_is_bound_before_metadata_or_network) ... ok
+test_public_cli_and_scheduler_require_exact_opt_in (test_review_sync.ReviewSyncTests.test_public_cli_and_scheduler_require_exact_opt_in) ... ok
+test_public_collection_omits_personal_account_context_but_keeps_review_rules (test_review_sync.ReviewSyncTests.test_public_collection_omits_personal_account_context_but_keeps_review_rules) ... ok
+test_public_fetches_all_remote_refs_before_security_scan (test_review_sync.ReviewSyncTests.test_public_fetches_all_remote_refs_before_security_scan) ... ok
+test_public_metadata_is_strict_and_identity_precedes_side_effects (test_review_sync.ReviewSyncTests.test_public_metadata_is_strict_and_identity_precedes_side_effects) ... ok
+test_public_mode_requires_exact_explicit_authorization_and_private_default (test_review_sync.ReviewSyncTests.test_public_mode_requires_exact_explicit_authorization_and_private_default) ... ok
+test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips (test_review_sync.ReviewSyncTests.test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips) ... ok
+test_real_git_push_no_change_and_remote_divergence_fail_closed (test_review_sync.ReviewSyncTests.test_real_git_push_no_change_and_remote_divergence_fail_closed) ... ok
+test_scanner_failure_new_unstaged_file_removed_next_snapshot_converges (test_review_sync.ReviewSyncTests.test_scanner_failure_new_unstaged_file_removed_next_snapshot_converges) ... ok
+test_scanner_failure_preserves_deletions_for_retry (test_review_sync.ReviewSyncTests.test_scanner_failure_preserves_deletions_for_retry) ... ok
+test_scheduled_tick_debounces_records_failures_and_recovers (test_review_sync.ReviewSyncTests.test_scheduled_tick_debounces_records_failures_and_recovers) ... ok
+test_scheduler_public_transition_is_explicit_and_exact_target (test_review_sync.ReviewSyncTests.test_scheduler_public_transition_is_explicit_and_exact_target) ... usage: python -m unittest [-h] [--visibility {private,public}]
+                          [--authorize-public-repo AUTHORIZE_PUBLIC_REPO]
+python -m unittest: error: public sync requires exact repository authorization
+usage: python -m unittest [-h] [--visibility {private,public}]
+                          [--authorize-public-repo AUTHORIZE_PUBLIC_REPO]
+python -m unittest: error: public sync requires exact repository authorization
+usage: python -m unittest [-h] [--visibility {private,public}]
+                          [--authorize-public-repo AUTHORIZE_PUBLIC_REPO]
+python -m unittest: error: public sync requires exact repository authorization
+usage: python -m unittest [-h] [--visibility {private,public}]
+                          [--authorize-public-repo AUTHORIZE_PUBLIC_REPO]
+python -m unittest: error: public authorization requires explicit public visibility
+usage: python -m unittest [-h] [--visibility {private,public}]
+                          [--authorize-public-repo AUTHORIZE_PUBLIC_REPO]
+python -m unittest: error: unrecognized arguments: --remote https://github.com/other/perp-desk.git
+usage: python -m unittest [-h] [--visibility {private,public}]
+                          [--authorize-public-repo AUTHORIZE_PUBLIC_REPO]
+python -m unittest: error: argument --visibility: invalid choice: 'auto' (choose from 'private', 'public')
+usage: python -m unittest [-h] [--visibility {private,public}]
+                          [--authorize-public-repo AUTHORIZE_PUBLIC_REPO]
+python -m unittest: error: unrecognized arguments: --force
+ok
+test_scheduler_transition_runs_existing_exporter_with_isolated_metadata (test_review_sync.ReviewSyncTests.test_scheduler_transition_runs_existing_exporter_with_isolated_metadata) ... ok
+test_scheduler_wrapper_is_profile_bound_and_script_only (test_review_sync.ReviewSyncTests.test_scheduler_wrapper_is_profile_bound_and_script_only) ... ok
+test_script_only_public_entrypoint_authorizes_literal_exact_repo (test_review_sync.ReviewSyncTests.test_script_only_public_entrypoint_authorizes_literal_exact_repo) ... ok
+test_secondary_push_url_is_rejected (test_review_sync.ReviewSyncTests.test_secondary_push_url_is_rejected) ... ok
+test_tick_rejects_preexisting_symlinks_before_outside_io (test_review_sync.ReviewSyncTests.test_tick_rejects_preexisting_symlinks_before_outside_io) ... ok
+test_transient_git_lock_disappearance_restarts_complete_inspection (test_review_sync.ReviewSyncTests.test_transient_git_lock_disappearance_restarts_complete_inspection) ... ok
+test_unknown_descendant_history_is_never_published (test_review_sync.ReviewSyncTests.test_unknown_descendant_history_is_never_published) ... ok
+
+----------------------------------------------------------------------
+Ran 42 tests in 290.493s
+
+OK
+{"checked_at": 1791322153.1128862, "files": 1, "fingerprint": "a812047f9f667f31ee585a7f7fe2a35a9876a9ff33676b48ccc4ab1eea80ef31", "last_success_at": 1791322153.1128862, "pending_fingerprint": "a812047f9f667f31ee585a7f7fe2a35a9876a9ff33676b48ccc4ab1eea80ef31", "pending_since": 1791322153.1128862, "sha": "024a61be9ff2ac8ee0b89e637cb0bf99f01d1944", "state": "pushed"}
+{"checked_at": 1791322159.912311, "files": 1, "fingerprint": "a812047f9f667f31ee585a7f7fe2a35a9876a9ff33676b48ccc4ab1eea80ef31", "last_success_at": 1791322159.912311, "pending_fingerprint": "a812047f9f667f31ee585a7f7fe2a35a9876a9ff33676b48ccc4ab1eea80ef31", "pending_since": 1791322153.1128862, "sha": "024a61be9ff2ac8ee0b89e637cb0bf99f01d1944", "state": "unchanged"}
+{"checked_at": 1791322165.3025632, "error": "command failed: gitleaks dir (exit 1)", "files": 1, "fingerprint": "a812047f9f667f31ee585a7f7fe2a35a9876a9ff33676b48ccc4ab1eea80ef31", "last_success_at": 1791322159.912311, "pending_fingerprint": "a812047f9f667f31ee585a7f7fe2a35a9876a9ff33676b48ccc4ab1eea80ef31", "pending_since": 1791322153.1128862, "sha": "024a61be9ff2ac8ee0b89e637cb0bf99f01d1944", "state": "blocked"}
+{"checked_at": 1791322172.8173714, "files": 1, "fingerprint": "a812047f9f667f31ee585a7f7fe2a35a9876a9ff33676b48ccc4ab1eea80ef31", "last_success_at": 1791322172.8173714, "pending_fingerprint": "a812047f9f667f31ee585a7f7fe2a35a9876a9ff33676b48ccc4ab1eea80ef31", "pending_since": 1791322172.8173714, "sha": "e2dab05238970bdc240628e551453932409292cd", "state": "unchanged"}
