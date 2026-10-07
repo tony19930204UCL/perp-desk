@@ -156,37 +156,11 @@ class DiscoveryBoundedUnknownTests(unittest.TestCase):
         self.assertEqual(ranges[0]['scope'],'runner_shared_source')
 
 
-class InflightCapacityEvidenceTests(unittest.TestCase):
-    def test_inflight_peak_inventory_counts_all_open_sqlite_sidecars(self):
-        from issue38_acceptance import inflight_peak_inventory
-        with tempfile.TemporaryDirectory() as td:
-            root=Path(td)
-            (root/'metadata.json').write_text('{"kind":"metadata"}\n')
-            for name in ('one.sqlite3','two.sqlite3'):
-                with sqlite3.connect(root/name) as db:
-                    db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, value TEXT)')
-                    db.execute('INSERT INTO t(value) VALUES(?)',('x',))
-            clean=sum(p.stat().st_size for p in root.rglob('*') if p.is_file())
-            peak=inflight_peak_inventory(root)
-            self.assertEqual(peak['sqlite_files'],2)
-            self.assertEqual(peak['open_connections_at_peak'],2)
-            self.assertEqual(peak['active_write_transactions_at_peak'],2)
-            self.assertTrue(peak['all_sqlite_connections_open'])
-            self.assertGreaterEqual(peak['total_bytes'],clean)
-            self.assertTrue(peak['sqlite_sidecars'])
-            self.assertEqual(peak['total_bytes'],sum(peak['stores'].values()))
-            self.assertIn('metadata.json',peak['stores'])
-
-    def test_declared_valid_profile_capacity_uses_inflight_peak(self):
-        from issue38_acceptance import ENTRY_STOP,materialize_profile
-        profile=materialize_profile('valid')
-        peak=profile['inventory_inflight_peak']
-        self.assertEqual(profile['capacity_basis'],'actual_write_sampled_lower_bound')
-        self.assertTrue(profile['actual_write_samples'])
-        self.assertGreaterEqual(peak['total_bytes'],profile['inventory_after_restart']['total_bytes'])
-        self.assertEqual(peak['open_connections_at_peak'],peak['sqlite_files'])
-        self.assertEqual(peak['active_write_transactions_at_peak'],peak['sqlite_files'])
-        self.assertTrue(peak['all_sqlite_connections_open'])
+class HistoricalInflightProbeContractTests(unittest.TestCase):
+    def test_declared_profiles_no_longer_execute_user_version_probe(self):
+        import inspect
+        from issue38_acceptance import materialize_profile
+        self.assertNotIn('inflight_peak_inventory(root)',inspect.getsource(materialize_profile))
 
 
 class ActualWritePeakTests(unittest.TestCase):
@@ -196,7 +170,7 @@ class ActualWritePeakTests(unittest.TestCase):
         peak=profile['actual_write_peak_sampled_lower_bound']
         samples=profile['actual_write_samples']
         phases={s['phase'] for s in samples}
-        self.assertEqual(profile['capacity_basis'],'actual_write_sampled_lower_bound')
+        self.assertEqual(profile['capacity_basis'],'conservative_transient_upper_bound')
         self.assertIn('raw_after_executemany_before_commit',phases)
         self.assertIn('raw_after_commit_before_vacuum',phases)
         self.assertIn('raw_after_vacuum',phases)
@@ -205,8 +179,9 @@ class ActualWritePeakTests(unittest.TestCase):
         self.assertTrue(any(s['sqlite_sidecars'] for s in samples))
         self.assertTrue(all(s['sqlite_files']>=5 for s in samples))
         self.assertEqual(peak['total_bytes'],max(s['total_bytes'] for s in samples))
-        self.assertEqual(profile['capacity_pass'],peak['total_bytes']<ENTRY_STOP)
-        self.assertEqual(profile['capacity_gate_at_actual_write_peak']['measured_bytes'],peak['total_bytes'])
+        bound=profile['conservative_transient_envelope']
+        self.assertEqual(profile['capacity_pass'],bound['upper_bound_bytes']<ENTRY_STOP)
+        self.assertEqual(profile['capacity_gate_at_conservative_bound']['measured_bytes'],bound['upper_bound_bytes'])
         self.assertIn('heavy_after_boundary_evidence_appends',phases)
         self.assertGreaterEqual(peak['total_bytes'],profile['inventory_after_restart']['total_bytes'])
 

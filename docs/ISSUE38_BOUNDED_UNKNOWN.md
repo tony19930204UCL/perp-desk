@@ -72,12 +72,15 @@ profiles under the unchanged 32 MiB budget and 90% entry gate:
   recovery individually
 
 Both profiles retain 4096 raw events and account for every file in the isolated
-root. Acceptance now records an **inflight whole-root peak** while every SQLite
-store is simultaneously held in an active rollbackable write transaction; WAL,
-SHM, rollback-journal and metadata bytes are counted in the same root total.
-The transactions are rolled back after measurement, so the declared profile data
-and schema are unchanged. Clean-close inventory is reported separately and is
-never substituted for the inflight peak.
+root. Actual-write samples remain genuine lower-bound observations only. Admission
+now uses a separate conservative transient envelope: durable whole-root bytes plus
+a deliberately oversized rollback/commit allowance for every SQLite store, the
+SQLite-documented free-space allowance of up to twice the original database size
+for the shared-feed VACUUM rollover, and an extra copy of non-SQLite metadata for
+atomic replacement. The bound is accepted only when all candidate stores use the
+expected rollback-journal modes; WAL or an unknown mode is INCONCLUSIVE/NO-GO
+rather than guessed. The old user_version inflight probe is historical evidence
+and is no longer executed by the declared acceptance.
 
 The accelerated profile is **same-schema capacity materialization**, not 2,880
 real engine polls. A separate actual SharedFeed/DiscoveryLab lifecycle smoke
@@ -107,12 +110,14 @@ Run the isolated Issue38 engineering acceptance from candidate source:
 python3 lab/issue38_acceptance.py --output issue38-acceptance.json
 ```
 
-Real-public evidence remains separate. The repository's existing executable
-`python3 scripts/public_source_timing_probe.py` probes only `/fapi/v1/time`; it is
-not an all-endpoint pre-activation health gate. `prepare` verifies the ETH public
-reference filters, while continuous source/age/arrival/chronology validity remains
-fail-closed in the runner. Any broader bounded all-source preflight performed by
-the operator is separate evidence and is not implemented here as a new framework.
+Real-public evidence remains separate from accelerated capacity evidence. The
+runner now exposes a rootless pre-activation command that uses the same
+`BinanceDiscoveryClient` and existing validators for exchangeInfo, depth,
+premiumIndex, fundingInfo, finalized fundingRate, aggTrades and closed 1m klines.
+It validates reference filters, source age/arrival/future timestamps, aggTrade
+identity/chronology, funding sequence/interval, and 61 contiguous historical
+closed bars. It constructs no root, lab, feed, broker or research window and
+fails closed with exit 2 plus structured JSON on any source/validation failure.
 HTTP 451 or another transport restriction is BLOCKED external-source evidence,
 not capacity/lifecycle PASS.
 
@@ -149,10 +154,13 @@ Do not construct or bind replacement runtime objects manually. The existing runn
 ### Existing executable entrypoints
 
 ```sh
-# bounded public engineering probe; no private/account endpoint and no strategy-performance claim
+# rootless all-source pre-activation gate; no root/window/account/trading state
+python3 lab/discovery_runner.py --config lab/discovery_config_v2.json preflight
+
+# legacy single-time-endpoint engineering observation
 python3 scripts/public_source_timing_probe.py
 
-# reference/filter preflight only; does not start a research window
+# reference/filter prepare writes only the chosen new root; does not start a research window
 python3 lab/discovery_runner.py --root <NEW_ROOT> --config lab/discovery_config_v2.json prepare
 
 # only this explicit accepted action starts the new immutable forward window
@@ -186,3 +194,13 @@ Preserve the old root/window/history unchanged. A new root does not reopen or ex
 Capacity admission now uses samples taken during the existing accelerated declared materialization itself: raw executemany before commit, after commit before VACUUM, after VACUUM, and causal evidence/range insertion before and after commit. Each sample inventories the entire isolated root, including naturally present SQLite WAL/SHM/rollback-journal files and metadata.
 
 This is deliberately reported as a **sampled lower bound, not an exhaustive transient peak**. Sampling occurs at explicit persistence boundaries; a shorter SQLite/filesystem transient between those positions could be larger. The earlier rollbackable user_version probe remains visible only as diagnostic comparison and is not the admission basis. The declared valid/heavy event counts, rates, outages, retention, 32 MiB budget and 90% entry-stop gate are unchanged. If the sampled lower bound reaches the gate, admission is NOT_FEASIBLE; passing the sampled lower bound does not by itself prove an unobserved upper bound.
+
+
+## Conservative transient capacity result contract (2026-10-07)
+
+The artifact preserves every prior actual-write sample as a lower bound, but
+`capacity_basis` is now `conservative_transient_upper_bound`. The envelope
+covers all five SQLite stores, non-SQLite metadata, rollback/commit sidecar
+allowance and the existing shared-feed VACUUM rollover. A bound at or above the
+unchanged 30,198,988-byte entry-stop is NO-GO. Unsupported journal mode is
+INCONCLUSIVE/NO-GO. Neither case may be relabeled PASS from sampled maxima.

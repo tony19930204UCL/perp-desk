@@ -85,6 +85,16 @@ jobs:
           mkdir -p artifacts/issue-38-bounded-unknown
           python3 lab/issue38_acceptance.py --output artifacts/issue-38-bounded-unknown/acceptance.json
           (cd lab && python3 -m unittest -v tests.test_issue38_bounded_unknown) 2>&1 | tee artifacts/issue-38-bounded-unknown/focused-tests.txt
+      - name: Issue 38 rootless public pre-activation source evidence
+        run: |
+          set +e
+          python3 lab/discovery_runner.py --config lab/discovery_config_v2.json preflight > artifacts/issue-38-bounded-unknown/public-preflight.json
+          code=$?
+          set -e
+          printf '%s\n' "$code" > artifacts/issue-38-bounded-unknown/public-preflight-exit.txt
+          # External public-source blocking is evidence, not a reason to erase engineering CI.
+          # The CLI itself fails closed; the captured exit/result remains in the Issue38 artifact.
+          exit 0
       - name: Upload Issue 38 bounded unknown evidence
         if: ${{ always() && hashFiles('artifacts/issue-38-bounded-unknown/**') != '' }}
         uses: actions/upload-artifact@v4

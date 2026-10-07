@@ -49,6 +49,62 @@ def actual_write_sample(root,phase):
 def _sample(observer,root,phase):
     if observer is not None:observer(actual_write_sample(root,phase))
 
+
+def conservative_transient_envelope(root):
+    """Bound declared-root transient bytes without claiming an observed exhaustive peak.
+
+    This bound is intentionally additive: durable whole-root bytes, a full-page
+    rollback/commit allowance for every SQLite store, SQLite's documented VACUUM
+    free-space allowance for the shared-feed store that actually compacts, and one
+    additional copy of non-SQLite metadata for atomic replacement. It is accepted
+    only for rollback-journal modes used by this candidate; WAL/unknown modes are
+    explicitly inconclusive rather than guessed.
+    """
+    root=Path(root);inventory=file_inventory(root)
+    sqlite_paths=sorted(p for p in root.rglob('*.sqlite3') if p.is_file() and not p.is_symlink())
+    details=[];transaction_allowance=0;journal_modes={};supported=True
+    for path in sqlite_paths:
+        rel=path.relative_to(root).as_posix();size=path.stat().st_size
+        with sqlite3.connect('file:'+str(path)+'?mode=ro',uri=True) as db:
+            page_size=int(db.execute('PRAGMA page_size').fetchone()[0])
+            page_count=int(db.execute('PRAGMA page_count').fetchone()[0])
+            journal_mode=str(db.execute('PRAGMA journal_mode').fetchone()[0]).lower()
+        logical=max(size,page_size*page_count)
+        # For DELETE/TRUNCATE/PERSIST rollback journaling, reserve two full
+        # database images plus 1 MiB/store for page numbers, journal headers,
+        # sector alignment and SQLite sidecar bookkeeping. This deliberately
+        # overbounds the declared transactions instead of estimating a sampled peak.
+        allowance=2*logical+1024*1024
+        transaction_allowance+=allowance;journal_modes[rel]=journal_mode
+        supported=supported and journal_mode in ('delete','truncate','persist')
+        details.append(dict(path=rel,file_bytes=size,page_size=page_size,page_count=page_count,
+                            journal_mode=journal_mode,transaction_commit_allowance_bytes=allowance))
+    shared=root/'shared-feed.sqlite3'
+    shared_bytes=shared.stat().st_size if shared.exists() else 0
+    # SQLite VACUUM documentation states that as much as twice the original
+    # database size is required in free disk space while rebuilding/overwriting.
+    vacuum_allowance=2*shared_bytes
+    non_sqlite_bytes=sum(v for k,v in inventory['stores'].items()
+                         if not k.endswith('.sqlite3') and not k.endswith('-wal')
+                         and not k.endswith('-shm') and not k.endswith('-journal'))
+    metadata_copy_allowance=non_sqlite_bytes
+    upper=inventory['total_bytes']+transaction_allowance+vacuum_allowance+metadata_copy_allowance
+    covers_all=len(sqlite_paths)>=5 and supported
+    return dict(kind='conservative_upper_bound',upper_bound_bytes=upper,
+                durable_root_bytes=inventory['total_bytes'],sqlite_store_count=len(sqlite_paths),
+                sqlite_stores=details,journal_modes=journal_modes,
+                transaction_commit_allowance_bytes=transaction_allowance,
+                shared_feed_vacuum_allowance_bytes=vacuum_allowance,
+                metadata_atomic_copy_allowance_bytes=metadata_copy_allowance,
+                covers_all_sqlite_stores=covers_all,covers_metadata=True,
+                covers_transaction_commit_rollover_compaction=covers_all,
+                bound_supported=covers_all,
+                assumptions=[
+                    'all candidate SQLite stores remain in DELETE/TRUNCATE/PERSIST rollback-journal modes',
+                    'declared transactions cannot dirty more than the materialized database image plus growth already present in the declared profile',
+                    'only shared-feed retention rollover invokes VACUUM in the existing engine path'],
+                vacuum_reference='SQLite VACUUM documentation: up to twice original database size required as free space')
+
 def inflight_peak_inventory(root):
     """Observe whole-root bytes with every SQLite store in an active write transaction.
 
@@ -294,8 +350,11 @@ def materialize_profile(name):
             declared='40 late/invalid aggTrade + book + mark = 42 invalid/min; 30m outage every 6h'
         else:raise ValueError('unknown profile')
         actual_peak=max(actual_samples,key=lambda x:x['total_bytes'])
-        gate=capacity_gate_at_measured_peak(root,actual_peak['total_bytes'])
-        inflight=inflight_peak_inventory(root)
+        bound=conservative_transient_envelope(root)
+        gate=capacity_gate_at_measured_peak(root,bound['upper_bound_bytes'])
+        capacity_status=('PROVEN_WITHIN_GATE' if bound['bound_supported'] and bound['upper_bound_bytes']<ENTRY_STOP
+                         else 'NO_GO_BOUND_EXCEEDS_GATE' if bound['bound_supported']
+                         else 'INCONCLUSIVE_UNSUPPORTED_SQLITE_MODE')
         before=file_inventory(root)
         # Same-root readback is read-only for Issue38 new-schema roots.
         er=CausalEvidence(root/'causal_evidence.sqlite3')
@@ -317,15 +376,16 @@ def materialize_profile(name):
                     actual_write_peak_limitation=('sampling occurs at explicit transaction/commit/compaction boundaries of the '
                         'accelerated declared materialization; shorter filesystem/SQLite transients between sampling points '
                         'may be higher, so this is a lower bound rather than an exhaustive peak'),
-                    inventory_inflight_peak=inflight,
-                    capacity_gate_at_actual_write_peak=gate,
-                    capacity_basis='actual_write_sampled_lower_bound',
+                    conservative_transient_envelope=bound,
+                    capacity_gate_at_conservative_bound=gate,
+                    capacity_basis='conservative_transient_upper_bound',
+                    capacity_status=capacity_status,
                     inventory_before_restart=before,inventory_after_restart=after,
                     restart_readback=dict(raw_retained=feed.snapshot()['retained_events'],
                         evidence_head=er.summary()['head_hash'],
                         unknown_range_rows=er.summary()['unknown_range_rows'],
                         unknown_events_aggregated=er.summary()['unknown_events_aggregated']),
-                    capacity_pass=(actual_peak['total_bytes']<ENTRY_STOP and gate['allows_new_entry']),
+                    capacity_pass=(capacity_status=='PROVEN_WITHIN_GATE' and gate['allows_new_entry']),
                     accelerated_bulk_same_schema=True,engine_poll_cycles=0,
                     real_public_market_claim=False)
 
@@ -424,7 +484,7 @@ def run():
             outage_every_minutes=360,outage_duration_minutes=30),
         out_of_scope_behavior=('no arbitrary-rate/permanent-retention claim; existing 90% storage gate must '
             'halt new entry risk and preserve protective exits when actual bytes exceed the declared envelope'),
-        capacity_measurement='sampled lower bound from actual accelerated materialization write/commit/compaction boundaries; not exhaustive transient peak',
+        capacity_measurement='conservative all-store transient upper envelope is admission basis; sampled actual-write maxima are retained only as lower-bound observations',
         profiles=[valid,heavy],reconstruction=recon,admission=admission,
         public_source_evidence='SEPARATE_BOUNDED_PROBE_REQUIRED; accelerated capacity/lifecycle evidence is not public-source health',
         operator_root_touched=False,new_window_started=False,deployed=False)

@@ -66,6 +66,86 @@ class FixtureClient:
         self.calls.append(dict(endpoint=endpoint,params=dict(params)))
         return receipt
 
+def public_source_preflight(*,client=None,config_path=CONFIG,clock_ms=None):
+    """Rootless bounded validation of every public source required by one runner cycle.
+
+    No DiscoveryRunner/DiscoveryLab/SharedFeed object is constructed, so no root,
+    research state, window, order, account or history can be created or changed.
+    """
+    config=json.loads(Path(config_path).read_text())
+    client=client or BinanceDiscoveryClient()
+    now_fn=clock_ms or (lambda:int(time.time()*1000))
+    fees={'maker':config['fees']['maker'],'taker':config['fees']['taker']}
+    reference=client.get('/fapi/v1/exchangeInfo')
+    spec=instrument(reference,'ETHUSDT','crypto',fees)
+
+    depth=client.get('/fapi/v1/depth',dict(symbol='ETHUSDT',limit=20))
+    book=book_event(depth,'ETHUSDT',config['max_source_age_ms'])
+    mark_receipt=client.get('/fapi/v1/premiumIndex',dict(symbol='ETHUSDT'))
+    mark=mark_event(mark_receipt,'ETHUSDT',config['max_source_age_ms'])
+    observed_mark=receipt_ms(mark_receipt)
+    next_funding=mark_receipt['payload'].get('nextFundingTime')
+    if type(next_funding) is not int or next_funding<=observed_mark:
+        raise ValueError('future nextFundingTime required')
+
+    funding_info=client.get('/fapi/v1/fundingInfo')
+    rows=funding_info.get('payload')
+    if not isinstance(rows,list):raise ValueError('fundingInfo array required')
+    matched=[row for row in rows if row.get('symbol')=='ETHUSDT']
+    if len(matched)>1 or (matched and matched[0].get('fundingIntervalHours')!=8):
+        raise ValueError('unsupported funding interval requires operator review')
+
+    funding=client.get('/fapi/v1/fundingRate',dict(symbol='ETHUSDT',limit=1000))
+    frows=funding.get('payload');fobs=receipt_ms(funding)
+    if not isinstance(frows,list) or len(frows)>=1000:raise ValueError('missing/truncated funding coverage')
+    previous=None
+    for row in frows:
+        ts=row.get('fundingTime')
+        if row.get('symbol')!='ETHUSDT' or type(ts) is not int or ts>fobs or (previous is not None and ts<=previous):
+            raise ValueError('invalid finalized funding sequence')
+        decimal_string(row.get('fundingRate'));decimal_string(row.get('markPrice'),True)
+        previous=ts
+    regular=[row.get('fundingTime') for row in frows if row.get('rateType','Regular')=='Regular']
+    if any(b-a!=28_800_000 for a,b in zip(regular,regular[1:])):
+        raise ValueError('incomplete regular finalized funding sequence')
+
+    agg=client.get('/fapi/v1/aggTrades',dict(symbol='ETHUSDT',limit=1000))
+    arows=agg.get('payload');aobs=receipt_ms(agg)
+    if not isinstance(arows,list) or not arows or len(arows)>1000:raise ValueError('nonempty bounded aggTrade batch required')
+    mapped=[binance_aggtrade_input(row) for row in arows]
+    if any(b['trade_id']!=a['trade_id']+1 for a,b in zip(mapped,mapped[1:])):
+        raise ValueError('aggTrade IDs not contiguous')
+    if any(b['source_ts']<a['source_ts'] for a,b in zip(mapped,mapped[1:])):
+        raise ValueError('aggTrade source chronology regression')
+    if any(not 0<=aobs-row['source_ts']<=config['max_source_age_ms'] for row in mapped):
+        raise ValueError('stale or future aggTrade source timestamp')
+
+    klines=client.get('/fapi/v1/klines',dict(symbol='ETHUSDT',interval='1m',limit=100))
+    kobs=receipt_ms(klines);krows=klines.get('payload')
+    if not isinstance(krows,list):raise ValueError('kline array required')
+    bars=[]
+    for row in krows:
+        if not isinstance(row,list) or len(row)<7 or type(row[0]) is not int or type(row[6]) is not int or row[6]!=row[0]+59_999:
+            raise ValueError('invalid 1m kline')
+        close_ms=row[6]+1
+        if close_ms>kobs:continue
+        for value in row[1:6]: decimal_string(value, value is not row[5])
+        bars.append((row[0],close_ms))
+    if len(bars)<61:raise ValueError('61 contiguous historical warmup bars unavailable')
+    bars=bars[-61:]
+    if any(b[0]!=a[0]+60_000 for a,b in zip(bars,bars[1:])):
+        raise ValueError('historical warmup gap')
+
+    checked=['/fapi/v1/exchangeInfo','/fapi/v1/depth','/fapi/v1/premiumIndex','/fapi/v1/fundingInfo',
+             '/fapi/v1/fundingRate','/fapi/v1/aggTrades','/fapi/v1/klines']
+    return dict(action='preflight',pass=True,classification='PUBLIC_SOURCE_PREACTIVATION_NO_TRADING_STATE',
+                checked_endpoints=checked,instrument=spec,warmup_bars=len(bars),
+                aggtrade_contiguous=True,source_age_valid=True,
+                book_source_age_ms=book['observed_ms']-book['ts_ms'],
+                mark_source_age_ms=mark['observed_ms']-mark['ts_ms'],
+                observed_at_ms=now_fn(),root_touched=False,window_started=False,activated=False,
+                private_endpoint_used=False,orders_created=False)
+
 class DiscoveryRunner:
     def __init__(self,root,*,client=None,clock_ms=None,config_path=CONFIG):
         self.root=Path(root).resolve();self.root.mkdir(parents=True,exist_ok=True)
@@ -509,17 +589,33 @@ def build_runner(args):
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--root',required=True)
+    p.add_argument('--root')
     p.add_argument('--config',type=Path,default=CONFIG,help='immutable discovery config for this root; default remains LAB001')
     p.add_argument('--engineering-fixture',action='store_true')
     p.add_argument('--transport-fixture')
     p.add_argument('--now-ms',type=int)
     sub=p.add_subparsers(dest='command',required=True)
+    sub.add_parser('preflight')
     sub.add_parser('prepare')
     a=sub.add_parser('activate');a.add_argument('--operator-accepted',action='store_true')
     run=sub.add_parser('run');run.add_argument('--once',action='store_true');run.add_argument('--poll-seconds',type=float,default=1.0);run.add_argument('--max-cycles',type=int)
     sub.add_parser('report');sub.add_parser('stop')
     args=p.parse_args(argv)
+    if args.command=='preflight':
+        if args.root is not None:
+            print(json.dumps(dict(action='preflight',pass=False,error_type='ValueError',
+                error='preflight is rootless; omit --root',root_touched=False,window_started=False,activated=False),
+                sort_keys=True,separators=(',',':')))
+            return 2
+        try:
+            result=public_source_preflight(config_path=args.config)
+            print(json.dumps(result,sort_keys=True,separators=(',',':'),default=str));return 0
+        except Exception as exc:
+            print(json.dumps(dict(action='preflight',pass=False,error_type=type(exc).__name__,error=str(exc),
+                root_touched=False,window_started=False,activated=False),sort_keys=True,separators=(',',':')))
+            return 2
+    if not args.root:
+        p.error('--root is required except for preflight')
     runner=build_runner(args)
     lock_fd=None
     if args.command=='run':
