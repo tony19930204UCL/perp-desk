@@ -857,5 +857,48 @@ class PipelineSubprocessTests(unittest.TestCase):
         self.assertNotIn('C:\\',result.stdout)
 
 
+class Lab002IdentityCLITests(unittest.TestCase):
+    def test_public_runner_selects_lab002_config_and_records_identity(self):
+        import subprocess,sys
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'lab002'; fixture=Path(td)/'transport.json'
+            activation=RunnerSubprocessTests()._fixture(fixture)
+            cmd=[sys.executable,str(LAB/'discovery_runner.py'),'--root',str(root),
+                 '--config',str(LAB/'discovery_config_v2.json'),
+                 '--engineering-fixture','--transport-fixture',str(fixture),
+                 '--now-ms',str(activation),'activate','--operator-accepted']
+            result=subprocess.run(cmd,cwd=LAB,capture_output=True,text=True,timeout=30)
+            self.assertEqual(result.returncode,0,result.stderr)
+            state=json.loads((root/'lab_state.json').read_text())
+            self.assertEqual(state['version_id'],'ETH-DISCOVERY-LAB-002')
+
+    def test_legacy_default_identity_is_unchanged_and_config_is_immutable_on_resume(self):
+        import subprocess,sys
+        legacy=json.loads((LAB/'discovery_config_v1.json').read_text())
+        candidate=json.loads((LAB/'discovery_config_v2.json').read_text())
+        self.assertEqual(legacy['version_id'],'ETH-DISCOVERY-LAB-001')
+        self.assertEqual(candidate['version_id'],'ETH-DISCOVERY-LAB-002')
+        self.assertEqual({k:v for k,v in legacy.items() if k!='version_id'},
+                         {k:v for k,v in candidate.items() if k!='version_id'})
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'lab002'; fixture=Path(td)/'transport.json'
+            activation=RunnerSubprocessTests()._fixture(fixture)
+            base=[sys.executable,str(LAB/'discovery_runner.py'),'--root',str(root),
+                  '--config',str(LAB/'discovery_config_v2.json'),
+                  '--engineering-fixture','--transport-fixture',str(fixture)]
+            activated=subprocess.run(base+['--now-ms',str(activation),'activate','--operator-accepted'],
+                                     cwd=LAB,capture_output=True,text=True,timeout=30)
+            self.assertEqual(activated.returncode,0,activated.stderr)
+            resumed=subprocess.run(base+['--now-ms',str(activation+1000),'report'],
+                                   cwd=LAB,capture_output=True,text=True,timeout=30)
+            self.assertEqual(resumed.returncode,0,resumed.stderr)
+            self.assertEqual(json.loads(resumed.stdout)['version_id'],'ETH-DISCOVERY-LAB-002')
+            wrong=[sys.executable,str(LAB/'discovery_runner.py'),'--root',str(root),
+                   '--config',str(LAB/'discovery_config_v1.json'),
+                   '--engineering-fixture','--transport-fixture',str(fixture),
+                   '--now-ms',str(activation+1000),'report']
+            rejected=subprocess.run(wrong,cwd=LAB,capture_output=True,text=True,timeout=30)
+            self.assertNotEqual(rejected.returncode,0)
+
 if __name__=='__main__':
     unittest.main()

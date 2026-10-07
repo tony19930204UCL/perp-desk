@@ -38,7 +38,7 @@ class DiscoveryLab:
         self.root=Path(root).resolve()
         self.root.mkdir(parents=True,exist_ok=True)
         self.config=json.loads(Path(config_path).read_text())
-        if self.config.get('active') is not False or self.config.get('version_id')!='ETH-DISCOVERY-LAB-001':
+        if self.config.get('active') is not False or self.config.get('version_id') not in ('ETH-DISCOVERY-LAB-001','ETH-DISCOVERY-LAB-002'):
             raise ValueError('staged inactive discovery config required')
         if self.config.get('tradfi_enabled') is not False:
             raise ValueError('TradFi must remain disabled')
@@ -57,10 +57,10 @@ class DiscoveryLab:
     def _load_state(self):
         if self.state_path.exists():
             state=json.loads(self.state_path.read_text())
-            if state.get('schema_version')!=1 or state.get('version_id')!='ETH-DISCOVERY-LAB-001':
+            if state.get('schema_version')!=1 or state.get('version_id')!=self.config['version_id']:
                 raise ValueError('discovery state identity mismatch')
             return state
-        state=dict(schema_version=1,version_id='ETH-DISCOVERY-LAB-001',activated=False,
+        state=dict(schema_version=1,version_id=self.config['version_id'],activated=False,
                    start_ms=None,deadline_ms=None,checkpoint_ms=None,
                    coverage={},diagnostics=[],targets={},history=[],latest_book=None,
                    arm=dict(A={},B={},C={}),source_gaps=0,unknown_inputs=0,
@@ -105,7 +105,7 @@ class DiscoveryLab:
             d=self.root/('arm-'+arm.lower());d.mkdir(exist_ok=True)
             self.brokers[arm]=SimBroker(d/'broker.sqlite3',initial_cash=D(self.config['initial_equity_usdt_per_arm']),
                 instruments=[self.instrument],execution=ex,risk=risk,
-                version_id='ETH-DISCOVERY-LAB-001-'+arm,forward_start=self.state['start_ms'],
+                version_id=self.config['version_id']+'-'+arm,forward_start=self.state['start_ms'],
                 compact_seen_events=True)
 
     def close(self):
@@ -149,19 +149,52 @@ class DiscoveryLab:
     def bind_feed(self,feed):
         self.feed=feed;feed.subscribe(self.on_shared_event)
 
+    def _gap_sensitive_state(self,scope):
+        arms=ARMS if scope=='all_arms' else ('B',)
+        for arm in arms:
+            b=self.brokers.get(arm)
+            if b and any((not o['intent']['reduce_only']) and o['status'] in ('PENDING','RESTING')
+                         for o in b.orders.values()):
+                return True
+        return scope in ('all_arms','B_only') and any(
+            r['status'] in ('WAITING','PARTIAL') for r in self._stress_orders().values())
+
+    def _invalid_event_changes_decision(self,event):
+        if event.get('type')!='aggTrade':
+            return False
+        b=self.brokers.get('B')
+        if not b:return False
+        if any((not o['intent']['reduce_only']) and o['status'] in ('PENDING','RESTING')
+               for o in b.orders.values()):
+            return True
+        has_protective=any(o['intent']['reduce_only'] and o['intent']['kind']=='TAKER'
+                           and o['status'] in ('PENDING','RESTING') for o in b.orders.values())
+        if b.positions and not has_protective:
+            return True
+        return any(r['status'] in ('WAITING','PARTIAL') for r in self._stress_orders().values())
+
+    def _bounded_unknown(self,scope,reason_code,now,payload,*,preserve_event=False,key=None):
+        payload=dict(payload,reconstructible_market_payload=False)
+        if preserve_event:
+            return self._evidence(key or ('unknown:'+str(payload.get('event_id'))),
+                                  'source_unknown',now,payload)
+        return self.evidence.record_unknown_range(scope,reason_code,now,payload)
+
     def request_source_gap(self,now,reason):
         """Durably fail closed after a runner-level public-source failure."""
         if type(now) is not int or now<0 or not isinstance(reason,str) or not reason:
             raise ValueError('valid source-gap timestamp/reason required')
-        if not self.state.get('shared_source_gap_open'):
-            self.state['source_gaps']+=1
+        first=not self.state.get('shared_source_gap_open')
+        decision_relevant=first or self._gap_sensitive_state('all_arms')
+        if first:self.state['source_gaps']+=1
         self.state['shared_source_gap_open']=True
         self.state['shared_source_gap_reason']=reason
         self.state['unknown_inputs']+=1
-        self._evidence('runner-source-gap:'+str(now),'source_unknown',now,
-                       dict(event_id='runner-source-gap:'+str(now),type='shared_source_gap',
-                            source_ts=None,trade_id=None,price=None,qty=None,aggressor=None,
-                            reason=reason,reconstructible_market_payload=False))
+        payload=dict(event_id='runner-source-gap:'+str(now),type='shared_source_gap',
+                     source_ts=None,receipt_ts=None,dispatch_ts=now,trade_id=None,
+                     price=None,qty=None,aggressor=None,reason=reason)
+        self._bounded_unknown('runner_shared_source','transport_or_source_gap',now,payload,
+                              preserve_event=decision_relevant,key='runner-source-gap:'+str(now))
         for record in self._stress_orders().values():
             if record['status'] in ('WAITING','PARTIAL'):
                 record['status']='UNKNOWN_SOURCE_GAP'
@@ -188,15 +221,17 @@ class DiscoveryLab:
         """Fail closed only Arm B when public aggTrade coverage is unavailable."""
         if type(now) is not int or now<0 or not isinstance(reason,str) or not reason:
             raise ValueError('valid maker source-gap timestamp/reason required')
-        if not self.state.get('maker_source_gap_open'):
-            self.state['source_gaps']+=1
+        first=not self.state.get('maker_source_gap_open')
+        decision_relevant=first or self._gap_sensitive_state('B_only')
+        if first:self.state['source_gaps']+=1
         self.state['maker_source_gap_open']=True
         self.state['maker_source_gap_reason']=reason
         self.state['unknown_inputs']+=1
-        self._evidence('runner-maker-gap:'+str(now),'source_unknown',now,
-                       dict(event_id='runner-maker-gap:'+str(now),type='aggTrade_transport_gap',
-                            source_ts=None,trade_id=None,price=None,qty=None,aggressor=None,
-                            reason=reason,scope='B_only',reconstructible_market_payload=False))
+        payload=dict(event_id='runner-maker-gap:'+str(now),type='aggTrade_transport_gap',
+                     source_ts=None,receipt_ts=None,dispatch_ts=now,trade_id=None,
+                     price=None,qty=None,aggressor=None,reason=reason,scope='B_only')
+        self._bounded_unknown('runner_maker_source','aggtrade_transport_gap',now,payload,
+                              preserve_event=decision_relevant,key='runner-maker-gap:'+str(now))
         for record in self._stress_orders().values():
             if record['status'] in ('WAITING','PARTIAL'):
                 record['status']='UNKNOWN_SOURCE_GAP'
@@ -367,8 +402,13 @@ class DiscoveryLab:
         self._enforce_entry_stops(event['ts'])
         if event.get('source_valid') is False:
             self.state['unknown_inputs']+=1
-            self._evidence('unknown:'+event['event_id'],'source_unknown',event['ts'],
-                           {k:event.get(k) for k in ('event_id','type','source_ts','trade_id','price','qty','aggressor')})
+            decision_relevant=self._invalid_event_changes_decision(event)
+            unknown={k:event.get(k) for k in ('event_id','type','source_ts','receipt_ts',
+                                               'trade_id','price','qty','aggressor')}
+            unknown.update(dispatch_ts=event['ts'],reason='source_valid_false')
+            self._bounded_unknown('shared_event:'+str(event.get('type')),'source_valid_false',
+                                  event['ts'],unknown,preserve_event=decision_relevant,
+                                  key='unknown:'+event['event_id'])
             if event.get('type')=='aggTrade':
                 self._update_b_stress(event)
                 self.state['source_gaps']+=1
