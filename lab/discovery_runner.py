@@ -138,13 +138,13 @@ def public_source_preflight(*,client=None,config_path=CONFIG,clock_ms=None):
 
     checked=['/fapi/v1/exchangeInfo','/fapi/v1/depth','/fapi/v1/premiumIndex','/fapi/v1/fundingInfo',
              '/fapi/v1/fundingRate','/fapi/v1/aggTrades','/fapi/v1/klines']
-    return dict(action='preflight',pass=True,classification='PUBLIC_SOURCE_PREACTIVATION_NO_TRADING_STATE',
-                checked_endpoints=checked,instrument=spec,warmup_bars=len(bars),
-                aggtrade_contiguous=True,source_age_valid=True,
-                book_source_age_ms=book['observed_ms']-book['ts_ms'],
-                mark_source_age_ms=mark['observed_ms']-mark['ts_ms'],
-                observed_at_ms=now_fn(),root_touched=False,window_started=False,activated=False,
-                private_endpoint_used=False,orders_created=False)
+    return dict({'action':'preflight','pass':True,'classification':'PUBLIC_SOURCE_PREACTIVATION_NO_TRADING_STATE',
+                'checked_endpoints':checked,'instrument':spec,'warmup_bars':len(bars),
+                'aggtrade_contiguous':True,'source_age_valid':True,
+                'book_source_age_ms':book['observed_ms']-book['ts_ms'],
+                'mark_source_age_ms':mark['observed_ms']-mark['ts_ms'],
+                'observed_at_ms':now_fn(),'root_touched':False,'window_started':False,'activated':False,
+                'private_endpoint_used':False,'orders_created':False})
 
 class DiscoveryRunner:
     def __init__(self,root,*,client=None,clock_ms=None,config_path=CONFIG):
@@ -603,16 +603,16 @@ def main(argv=None):
     args=p.parse_args(argv)
     if args.command=='preflight':
         if args.root is not None:
-            print(json.dumps(dict(action='preflight',pass=False,error_type='ValueError',
-                error='preflight is rootless; omit --root',root_touched=False,window_started=False,activated=False),
+            print(json.dumps({'action':'preflight','pass':False,'error_type':'ValueError',
+                'error':'preflight is rootless; omit --root','root_touched':False,'window_started':False,'activated':False},
                 sort_keys=True,separators=(',',':')))
             return 2
         try:
             result=public_source_preflight(config_path=args.config)
             print(json.dumps(result,sort_keys=True,separators=(',',':'),default=str));return 0
         except Exception as exc:
-            print(json.dumps(dict(action='preflight',pass=False,error_type=type(exc).__name__,error=str(exc),
-                root_touched=False,window_started=False,activated=False),sort_keys=True,separators=(',',':')))
+            print(json.dumps({'action':'preflight','pass':False,'error_type':type(exc).__name__,'error':str(exc),
+                'root_touched':False,'window_started':False,'activated':False},sort_keys=True,separators=(',',':')))
             return 2
     if not args.root:
         p.error('--root is required except for preflight')
