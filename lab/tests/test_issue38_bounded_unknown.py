@@ -220,4 +220,85 @@ class ActualWritePeakTests(unittest.TestCase):
         self.assertEqual(profile['workload_count_proof']['expected_raw_total_events'],
                          profile['workload_count_proof']['observed_raw_events_persisted'])
 
+
+class ConservativeEnvelopeContractTests(unittest.TestCase):
+    def test_declared_profiles_use_conservative_upper_bound_not_sampled_lower_bound(self):
+        from issue38_acceptance import ENTRY_STOP,materialize_profile
+        profile=materialize_profile('valid')
+        self.assertEqual(profile['capacity_basis'],'conservative_transient_upper_bound')
+        bound=profile['conservative_transient_envelope']
+        self.assertEqual(bound['kind'],'conservative_upper_bound')
+        self.assertTrue(bound['covers_all_sqlite_stores'])
+        self.assertTrue(bound['covers_metadata'])
+        self.assertTrue(bound['covers_transaction_commit_rollover_compaction'])
+        self.assertGreaterEqual(bound['upper_bound_bytes'],
+                                profile['actual_write_peak_sampled_lower_bound']['total_bytes'])
+        self.assertEqual(profile['capacity_pass'],bound['upper_bound_bytes']<ENTRY_STOP)
+        self.assertIn(profile['capacity_status'],('PROVEN_WITHIN_GATE','NO_GO_BOUND_EXCEEDS_GATE'))
+
+class RootlessSourcePreflightContractTests(unittest.TestCase):
+    def _client(self):
+        from datetime import datetime,timezone
+        now=1_800_000_600_000
+        received=datetime.fromtimestamp(now/1000,timezone.utc).isoformat()
+        class Client:
+            def __init__(self):self.calls=[]
+            def get(self,endpoint,params=None):
+                params=params or {};self.calls.append((endpoint,dict(params)))
+                if endpoint=='/fapi/v1/exchangeInfo':
+                    payload={'symbols':[{'symbol':'ETHUSDT','contractType':'PERPETUAL','status':'TRADING',
+                        'quoteAsset':'USDT','marginAsset':'USDT','filters':[
+                            {'filterType':'PRICE_FILTER','tickSize':'0.01'},
+                            {'filterType':'LOT_SIZE','stepSize':'0.001','minQty':'0.001','maxQty':'100'},
+                            {'filterType':'MARKET_LOT_SIZE','stepSize':'0.001','minQty':'0.001','maxQty':'100'},
+                            {'filterType':'MIN_NOTIONAL','notional':'0.01'}]}]}
+                    return {'endpoint':endpoint,'params':params,'source_timestamp_ms':None,'received_at':received,'payload':payload}
+                if endpoint=='/fapi/v1/depth':
+                    return {'endpoint':endpoint,'params':params,'source_timestamp_ms':now-100,
+                        'received_at':received,'payload':{'bids':[['100','1']],'asks':[['100.10','1']]}}
+                if endpoint=='/fapi/v1/premiumIndex':
+                    return {'endpoint':endpoint,'params':params,'source_timestamp_ms':now-100,
+                        'received_at':received,'payload':{'symbol':'ETHUSDT','markPrice':'100.05',
+                            'nextFundingTime':now+28_800_000}}
+                if endpoint=='/fapi/v1/fundingInfo':
+                    return {'endpoint':endpoint,'params':params,'source_timestamp_ms':None,
+                        'received_at':received,'payload':[]}
+                if endpoint=='/fapi/v1/fundingRate':
+                    return {'endpoint':endpoint,'params':params,'source_timestamp_ms':None,
+                        'received_at':received,'payload':[{'symbol':'ETHUSDT','fundingTime':now-28_800_000,
+                            'fundingRate':'0.0001','markPrice':'100','rateType':'Regular'}]}
+                if endpoint=='/fapi/v1/aggTrades':
+                    return {'endpoint':endpoint,'params':params,'source_timestamp_ms':None,
+                        'received_at':received,'payload':[
+                            {'a':10,'p':'100','q':'0.1','f':10,'l':10,'T':now-200,'m':True},
+                            {'a':11,'p':'100.01','q':'0.1','f':11,'l':11,'T':now-100,'m':False}]}
+                if endpoint=='/fapi/v1/klines':
+                    rows=[]
+                    base=now-62*60_000
+                    for i in range(61):
+                        open_ms=base+i*60_000
+                        rows.append([open_ms,'100','101','99','100','1',open_ms+59_999])
+                    return {'endpoint':endpoint,'params':params,'source_timestamp_ms':None,
+                        'received_at':received,'payload':rows}
+                raise AssertionError(endpoint)
+        return Client(),now
+
+    def test_preflight_is_rootless_all_source_and_fail_closed_contract(self):
+        from discovery_runner import public_source_preflight
+        client,now=self._client()
+        result=public_source_preflight(client=client,config_path=LAB/'discovery_config_v2.json',
+                                       clock_ms=lambda:now)
+        self.assertEqual(result['action'],'preflight')
+        self.assertTrue(result['pass'])
+        self.assertFalse(result['root_touched'])
+        self.assertFalse(result['window_started'])
+        self.assertFalse(result['activated'])
+        endpoints={x[0] for x in client.calls}
+        self.assertEqual(endpoints,{'/fapi/v1/exchangeInfo','/fapi/v1/depth','/fapi/v1/premiumIndex',
+                                    '/fapi/v1/fundingInfo','/fapi/v1/fundingRate',
+                                    '/fapi/v1/aggTrades','/fapi/v1/klines'})
+        self.assertEqual(result['warmup_bars'],61)
+        self.assertTrue(result['aggtrade_contiguous'])
+        self.assertTrue(result['source_age_valid'])
+
 if __name__=='__main__':unittest.main()
