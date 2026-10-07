@@ -628,6 +628,24 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 - 已建立Issue38/fullbody readback，目標未來候選有界且可重建的unknown因果表示，保留每次真正改變交易/資產/風險判斷的必要因果，不能聚合掉maker相關成交或將unknown合成known。固定budget、原immutable因果與已部署PR33/35/策略/門檻保持。由agent決定實作，須declared-range/超範圍安全失效、兩profile全store/WAL與因果/安全重建證據，不能達成就NOT_FEASIBLE。
 - PR37收尾與Issue38新語義分開PR，完整人工轉交附件cache/scratch/pr37-37de668-acceptance/PR37收尾與Issue38完整派工.md。尚待人工轉交，沒有外部executor，不標running或宣稱已派送。
 
+## PR037-PR039-EXACT-HEAD-CI-PLATFORM-PREREQUISITE-BLOCK（2026-10-06）
+
+- PR37新headd3edc7ce7f0e68d22276cd1a0451cedfe773f8ed：runs37494905900/37494912429均completed/failure、attempt2，兩次jobs均runner_id0/steps空。PR39 head5b752c0c6e9611ad11eac5251a545915008f3601：runs37497874775(attempt2)/37497880587(attempt1)同樣pre-runner失敗。平台failure不是已執行test failure；owner account prerequisite annotation私有保存，不發布敏感診斷。main d34191593e1147ffaf2bf255ac4d65c76d40c462/run37493885004亦同症狀，不能僅稱暫時無runner。
+- 378unique/舊artifact11424306363僅PR37舊37de668 head歷史，不替新head驗收。PR39預期386只是未執行inventory，沒有實際unique/新artifact/兩負荷PASS。兩候選均未部署、未merge、未動main/root/窗口/策略/PR33/35，也未重試至綠或改CI/runner/permissions繞gate。
+- PR37新head operator文件確實已讀回40lateagg＋book＋mark負荷與--root ROOT report，bulk/lifecycle證據分開。文件修正確認不等於新head完整綠CI。PR39有界unknown設計僅外部未執行候選，範圍/1776rows/重建與容量結果未由operator接受。
+- PR37 comment6021616054、PR39 comment6021616565 fullbody讀回，以privacy-safe CI prerequisite描述保留成果並停止重複rerun。work兩項blocked真localhost讀回；研究仍34147738/33554432、三臂flat且8hstop_new_entries保持。
+- 需owner確認CI帳戶prerequisite，operator不擅自提高spending/付款、刪artifact、公開repo或架self-hostedrunner。解除後才續既有精確head做一次bounded CI/readback，不重做成果、不替尚未執行的測試編數字。私有證據cache/scratch/pr37-pr39-runner-block。
+
+## 2026-10-06 PR41 公開同步相容部署與發布
+- Owner 已自行將 tony19930204UCL/perp-desk 改 PUBLIC，operator 讀回 strict private=false。正常 mirror job 先 pause／確認無 in-flight，不授權改交易或研究。
+- 初版4a76b041本機40 exporter／2 scanner及後來綠CI只作歷史。父驗收發現 script-only scheduler 不傳 CLI flags，交同Issue40／PR41外部最小補正，不手拼工程。
+- 最終候選9ef5b0c429eb172c3474521484f554bff494cdec，push37535234706／PR37535242467均 exact-head completed/success。42 unique exporter IDs與discovery一致，工程2真gitleaks harness。完整head tar SHA256 3d295ca2e8015fed4c9d0a990f987311a851269e7799ec613a870b556a52ddd8 已獨立核。
+- Baseline main20af4ef6d503c26f81f7e8128b2d6b7883ff2c00 source比對無漂移。備份後安裝5個mapped source/doc/test，完整hash匹配。新public入口只授權exact repo，private-default入口保持；exporter只加literal entrypoint allowlist。7個protected research/broker/UI bytes不變，未重啟研究。
+- 公開入口正常tick先settling，再按原15秒settle政策tick pushed。正常mirror b5d3370cc313df3b5b5663c1597ddc8de04efedc，5 source hashes遠端讀回匹配；publication CI37536003489 completed/success。未merge PR或直接push main。
+- 原job2d2db10436e9只改script為paper_review_sync_public.py，原schedule/workdir/delivery/model/ownership不變。恢復與真正scheduled tick另由operator讀回記錄。證據cache/scratch/public-transition-engineering/operator-{preflight,installation,publication}.json與accepted-ci logs。
+- 公開掃描不是零風險保證；原45hits分類44fixtures、1稽核本機API token未發布，user確認無手動真秘密上傳。PAPER100USDT／已接受name/email不作自動阻擋。原容量停止及尚未驗收PR37/39結果不因同步完成而解除。
+
+
 
 
 

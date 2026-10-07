@@ -119,3 +119,50 @@ per-event facts, copy it over the old root, reset brokers, clear stop state or
 extend a research deadline.
 
 The original frozen root remains untouched throughout.
+
+## Operator candidate handoff
+
+For an accepted candidate, install reviewed source bytes into the existing operator source tree and use a **new, never-activated** namespace `<NEW_ROOT>`. The public repository remains a review mirror; it is not a live deployment directory.
+
+### Existing source-to-local mapping
+
+- `lab/discovery_evidence.py` -> existing operator `lab/discovery_evidence.py`
+- `lab/discovery_lab.py` -> existing operator `lab/discovery_lab.py`
+- `lab/issue38_acceptance.py` -> existing operator `lab/issue38_acceptance.py`
+- `lab/tests/test_issue38_bounded_unknown.py` -> existing operator test path
+- `docs/ISSUE38_BOUNDED_UNKNOWN.md` -> existing review-sync docs source
+- `automation/review_sync.py` corresponds to the existing `repo_sync/review_sync.py` review/export source; it is not trading runtime.
+
+Do not construct or bind replacement runtime objects manually. The existing runner owns those dependencies and gates.
+
+### Existing executable entrypoints
+
+```sh
+# bounded public engineering probe; no private/account endpoint and no strategy-performance claim
+python3 scripts/public_source_timing_probe.py
+
+# reference/filter preflight only; does not start a research window
+python3 lab/discovery_runner.py --root <NEW_ROOT> prepare
+
+# only this explicit accepted action starts the new immutable forward window
+python3 lab/discovery_runner.py --root <NEW_ROOT> activate --operator-accepted
+
+# foreground shared-source run
+python3 lab/discovery_runner.py --root <NEW_ROOT> run --poll-seconds 1
+
+# bounded one-cycle diagnostic
+python3 lab/discovery_runner.py --root <NEW_ROOT> run --once --poll-seconds 1
+
+# existing status/report entrypoint
+python3 lab/discovery_runner.py --root <NEW_ROOT> report
+
+# durable stop request; never resets or extends a window
+python3 lab/discovery_runner.py --root <NEW_ROOT> stop
+
+# engineering-only Issue38 capacity/safety acceptance
+python3 lab/issue38_acceptance.py --output issue38-acceptance.json
+```
+
+### Namespace and rollback
+
+Preserve the old root/window/history unchanged. A new root does not reopen or extend any old window. The fixed 32 MiB envelope includes every store plus SQLite WAL/SHM and metadata whenever present. Rollback is source/process rollback only: stop the candidate, preserve the entire candidate root/evidence, and restore the operator-owned pre-install source backup. Never back-convert `unknown_ranges` into synthetic event facts, copy over the historical root, weaken source/arrival/risk/cost gates, or use GitHub `main` as the deployment tree.
