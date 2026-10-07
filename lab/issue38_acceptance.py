@@ -7,7 +7,7 @@ smoke verifies decision-sensitive unknown preservation, protective behavior and
 same-root restart reconstruction.
 """
 from __future__ import annotations
-import argparse,hashlib,json,sqlite3,tempfile
+import argparse,hashlib,json,sqlite3,tempfile,time
 from collections import defaultdict
 from pathlib import Path
 
@@ -34,9 +34,68 @@ def file_inventory(root):
     for p in sorted(Path(root).rglob('*')):
         if p.is_file() and not p.is_symlink():
             stores[p.relative_to(root).as_posix()]=p.stat().st_size
-    sidecars={k:v for k,v in stores.items() if k.endswith('-wal') or k.endswith('-shm')}
+    sidecars={k:v for k,v in stores.items() if k.endswith('-wal') or k.endswith('-shm') or k.endswith('-journal')}
     return dict(total_bytes=sum(stores.values()),stores=stores,sqlite_sidecars=sidecars,
                 sidecar_bytes=sum(sidecars.values()))
+
+def inflight_peak_inventory(root):
+    """Observe whole-root bytes with every SQLite store in an active write transaction.
+
+    The probe changes only PRAGMA user_version inside uncommitted transactions and
+    rolls every transaction back before returning. It therefore forces the
+    database's configured journal/WAL sidecars to exist without changing durable
+    profile data or schema.
+    """
+    root=Path(root)
+    sqlite_paths=sorted(p for p in root.rglob('*.sqlite3') if p.is_file() and not p.is_symlink())
+    if not sqlite_paths:
+        raise AssertionError('inflight inventory requires SQLite stores')
+    connections=[];samples=[];journal_modes={}
+    start_wall_ns=time.time_ns();start_monotonic_ns=time.monotonic_ns()
+    try:
+        for path in sqlite_paths:
+            db=sqlite3.connect(path)
+            connections.append((path,db))
+            rel=path.relative_to(root).as_posix()
+            journal_modes[rel]=str(db.execute('PRAGMA journal_mode').fetchone()[0])
+            current=int(db.execute('PRAGMA user_version').fetchone()[0])
+            db.execute('BEGIN IMMEDIATE')
+            db.execute('PRAGMA user_version = '+str(current+1))
+            sample=file_inventory(root)
+            sample.update(open_connections=len(connections),
+                          active_write_transactions=len(connections),
+                          observed_wall_ns=time.time_ns(),
+                          observed_monotonic_ns=time.monotonic_ns())
+            samples.append(sample)
+        peak=max(samples,key=lambda x:x['total_bytes'])
+        result=dict(peak)
+        result.update(
+            sqlite_files=len(sqlite_paths),
+            sqlite_paths=[p.relative_to(root).as_posix() for p in sqlite_paths],
+            journal_modes=journal_modes,
+            sample_count=len(samples),
+            open_connections_at_peak=peak['open_connections'],
+            active_write_transactions_at_peak=peak['active_write_transactions'],
+            all_sqlite_connections_open=(peak['open_connections']==len(sqlite_paths)),
+            observation_started_wall_ns=start_wall_ns,
+            observation_started_monotonic_ns=start_monotonic_ns,
+            observation_elapsed_monotonic_ns=time.monotonic_ns()-start_monotonic_ns,
+            probe_write='uncommitted user_version page write; rolled back on every SQLite store')
+        return result
+    finally:
+        for _,db in reversed(connections):
+            try:db.rollback()
+            finally:db.close()
+
+def capacity_gate_at_measured_peak(root,peak_bytes):
+    lab=DiscoveryLab(root,CONFIG,INSTRUMENT,storage_probe=lambda:int(peak_bytes))
+    try:
+        allowed=lab._storage_ok()
+        return dict(actual_discovery_gate=True,measured_bytes=int(peak_bytes),
+                    entry_stop_bytes=ENTRY_STOP,allows_new_entry=bool(allowed),
+                    storage_entry_inhibited=bool(lab.state['storage_entry_inhibited']),
+                    over_entry_stop=(int(peak_bytes)>=ENTRY_STOP))
+    finally:lab.close()
 
 def init_root(root):
     lab=DiscoveryLab(root,CONFIG,INSTRUMENT)
@@ -217,18 +276,30 @@ def materialize_profile(name):
             evidence=bulk_heavy_ranges(root)
             declared='40 late/invalid aggTrade + book + mark = 42 invalid/min; 30m outage every 6h'
         else:raise ValueError('unknown profile')
+        inflight=inflight_peak_inventory(root)
+        gate=capacity_gate_at_measured_peak(root,inflight['total_bytes'])
         before=file_inventory(root)
         # Same-root readback is read-only for Issue38 new-schema roots.
         er=CausalEvidence(root/'causal_evidence.sqlite3')
         feed=SharedFeed(root/'shared-feed.sqlite3',forward_start_ms=START_MS)
         after=file_inventory(root)
+        count_proof=dict(expected_raw_total_events=total,
+                         observed_raw_events_persisted=raw['events_persisted'],
+                         observed_source_invalid=raw['source_invalid'],
+                         unknown_events_aggregated=evidence.get('unknown_events_aggregated',0),
+                         unknown_range_rows=evidence.get('unknown_range_rows',0),
+                         outage_cycles=evidence.get('outage_cycles',0),
+                         repeated_outage_unknowns_aggregated=evidence.get('repeated_outage_unknowns_aggregated',0))
         return dict(profile=name,declared_rate=declared,raw_total_events=total,raw=raw,
-                    causal=evidence,inventory_before_restart=before,inventory_after_restart=after,
+                    causal=evidence,workload_count_proof=count_proof,
+                    inventory_inflight_peak=inflight,capacity_gate_at_inflight_peak=gate,
+                    capacity_basis='inflight_whole_root_peak',
+                    inventory_before_restart=before,inventory_after_restart=after,
                     restart_readback=dict(raw_retained=feed.snapshot()['retained_events'],
                         evidence_head=er.summary()['head_hash'],
                         unknown_range_rows=er.summary()['unknown_range_rows'],
                         unknown_events_aggregated=er.summary()['unknown_events_aggregated']),
-                    capacity_pass=after['total_bytes']<ENTRY_STOP,
+                    capacity_pass=(inflight['total_bytes']<ENTRY_STOP and gate['allows_new_entry']),
                     accelerated_bulk_same_schema=True,engine_poll_cycles=0,
                     real_public_market_claim=False)
 
@@ -327,6 +398,7 @@ def run():
             outage_every_minutes=360,outage_duration_minutes=30),
         out_of_scope_behavior=('no arbitrary-rate/permanent-retention claim; existing 90% storage gate must '
             'halt new entry risk and preserve protective exits when actual bytes exceed the declared envelope'),
+        capacity_measurement='inflight whole-root peak with every SQLite store in an active rollbackable write transaction',
         profiles=[valid,heavy],reconstruction=recon,admission=admission,
         public_source_evidence='SEPARATE_BOUNDED_PROBE_REQUIRED; accelerated capacity/lifecycle evidence is not public-source health',
         operator_root_touched=False,new_window_started=False,deployed=False)
@@ -336,8 +408,23 @@ def validate(result):
     by={x['profile']:x for x in result['profiles']}
     for name in ('valid','heavy'):
         p=by[name]
-        if not p['capacity_pass'] or p['inventory_after_restart']['total_bytes']>=ENTRY_STOP:
-            raise AssertionError(name+' profile exceeds fixed gate')
+        peak=p['inventory_inflight_peak'];gate=p['capacity_gate_at_inflight_peak']
+        if p['capacity_basis']!='inflight_whole_root_peak':
+            raise AssertionError(name+' profile capacity basis is not inflight peak')
+        if (not peak['all_sqlite_connections_open'] or
+                peak['open_connections_at_peak']!=peak['sqlite_files'] or
+                peak['active_write_transactions_at_peak']!=peak['sqlite_files']):
+            raise AssertionError(name+' inflight peak did not hold all SQLite writers open')
+        if not peak['sqlite_sidecars'] or peak['total_bytes']!=sum(peak['stores'].values()):
+            raise AssertionError(name+' inflight sidecars/whole-root accounting missing')
+        if peak['total_bytes']<p['inventory_after_restart']['total_bytes']:
+            raise AssertionError(name+' inflight peak below clean-close inventory')
+        if gate['actual_discovery_gate'] is not True or gate['measured_bytes']!=peak['total_bytes']:
+            raise AssertionError(name+' actual storage gate was not checked at measured peak')
+        if gate['allows_new_entry']!=(peak['total_bytes']<ENTRY_STOP):
+            raise AssertionError(name+' storage gate disagrees with measured peak')
+        if not p['capacity_pass'] or peak['total_bytes']>=ENTRY_STOP:
+            raise AssertionError(name+' profile exceeds fixed gate at inflight peak')
         if p['raw']['retained_events']!=MAX_RAW_EVENTS or p['raw']['events_evicted']<=0:
             raise AssertionError(name+' profile missing raw rollover')
         if p['inventory_after_restart']['sqlite_sidecars']:

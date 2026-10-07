@@ -72,8 +72,12 @@ profiles under the unchanged 32 MiB budget and 90% entry gate:
   recovery individually
 
 Both profiles retain 4096 raw events and account for every file in the isolated
-root, including SQLite sidecars if any. Clean-close WAL/SHM absence is reported
-rather than assumed.
+root. Acceptance now records an **inflight whole-root peak** while every SQLite
+store is simultaneously held in an active rollbackable write transaction; WAL,
+SHM, rollback-journal and metadata bytes are counted in the same root total.
+The transactions are rolled back after measurement, so the declared profile data
+and schema are unchanged. Clean-close inventory is reported separately and is
+never substituted for the inflight peak.
 
 The accelerated profile is **same-schema capacity materialization**, not 2,880
 real engine polls. A separate actual SharedFeed/DiscoveryLab lifecycle smoke
@@ -103,9 +107,14 @@ Run the isolated Issue38 engineering acceptance from candidate source:
 python3 lab/issue38_acceptance.py --output issue38-acceptance.json
 ```
 
-Real-public evidence remains separate. Use the existing bounded public timing
-probe in an environment where it is allowed. HTTP 451 or another transport
-restriction is BLOCKED external-source evidence, not capacity/lifecycle PASS.
+Real-public evidence remains separate. The repository's existing executable
+`python3 scripts/public_source_timing_probe.py` probes only `/fapi/v1/time`; it is
+not an all-endpoint pre-activation health gate. `prepare` verifies the ETH public
+reference filters, while continuous source/age/arrival/chronology validity remains
+fail-closed in the runner. Any broader bounded all-source preflight performed by
+the operator is separate evidence and is not implemented here as a new framework.
+HTTP 451 or another transport restriction is BLOCKED external-source evidence,
+not capacity/lifecycle PASS.
 
 No future research window is started by these commands. A future new root/window
 requires separate operator preregistration and decision.
