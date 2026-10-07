@@ -269,6 +269,7 @@ def bulk_heavy_ranges(root,minutes=WINDOW_MINUTES,observer=None):
                  reconstructible_market_payload=False))
         evidence.append('runner-source-recovered:'+str(rec_ts),'source_recovered',rec_ts,
             dict(event_id='runner-source-recovered:'+str(rec_ts),prior_reason='ARTIFICIAL outage',scope='all_arms'))
+    _sample(observer,root,'heavy_after_boundary_evidence_appends')
     summary=evidence.summary()
     summary['repeated_outage_unknowns_aggregated']=repeated_outage_failures
     summary['outage_cycles']=outage_cycles
