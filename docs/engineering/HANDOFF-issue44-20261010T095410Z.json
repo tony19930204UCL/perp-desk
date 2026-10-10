@@ -4,31 +4,35 @@
   "pr_number": 46,
   "branch": "fix/issue-44-relay-ownership-20261010T095410Z",
   "task_id": "issue44-20261010T095410Z",
-  "instruction_id": "R2-r1",
-  "status": "READY_FOR_REVIEW",
-  "summary": "Fixed CI import path for R2 operator entry and its test module using bare imports and lab sys.path insertion; preserved all 17 tests without logic changes. Exact-head CI pending.",
+  "instruction_id": "R3-r1",
+  "status": "BLOCKED",
+  "summary": "Implemented R3 decision ledger, nine unittest methods and operations runbook. Exact-head CI not yet confirmed. Ledger conservatively refuses a second distinct head without ancestry evidence; integration review needed.",
   "changed_files": [
-    "lab/relay_operator_entry.py",
-    "lab/tests/test_relay_operator_entry.py",
+    "lab/relay_decision_ledger.py",
+    "lab/tests/test_relay_decision_ledger.py",
+    "docs/RELAY_OPERATIONS_RUNBOOK.md",
     "docs/engineering/HANDOFF-issue44-20261010T095410Z.json"
   ],
   "tests": [
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "Executor did not run tests; Hermes reported 357 tests with one import error at prior head a203050244651b6f401912c038663fb6339cbd30. New-head CI pending."
+      "evidence": "No local execution; exact-head CI result not confirmed."
     }
   ],
   "remaining_work": [
-    "Hermes rerun exact CI command at new head and confirm all tests pass.",
-    "Main CIO independently review branch diff and acceptance."
+    "Exact-head CI green required.",
+    "Review head chronology and revision transitions; current implementation refuses new distinct heads, preventing normal rework progress.",
+    "Main CIO independently review allowlisted diff and acceptance."
   ],
-  "source_head_sha": "3796719c464ac2d22967ca6c83e7d20c3e17bb00",
+  "source_head_sha": "c19217efbfa2f3b97bbdc0ecaf41dc1383b8f5af",
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run cd lab && python3 -m unittest discover -s tests on exact new head; verify 17 R2 tests and allowlisted diff.",
-    "if_pass": "Independently accept repair for review; keep draft PR unmerged pending approval.",
-    "if_fail": "Return exact-head CI failure evidence for bounded correction.",
-    "blockers": []
+    "verify_now": "Run exact-head CI and inspect R3 decision ledger semantics and allowlisted diff.",
+    "if_pass": "Review functional gaps before accepting; keep draft PR unmerged.",
+    "if_fail": "Return exact-head failure logs for bounded repair.",
+    "blockers": [
+      "Head ancestry/order cannot be inferred from SHA; current conservative implementation blocks head progression."
+    ]
   }
 }
