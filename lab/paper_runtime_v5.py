@@ -31,6 +31,10 @@ from storage_protection import StorageGuard, load_policy
 D = Decimal
 
 
+class _PaperPublicClient(RuntimeClient):
+    ALLOWED_SYMBOLS = frozenset({'ETHUSDT', 'XAUUSDT', 'BTCUSDT', 'SOLUSDT', 'XRPUSDT'})
+
+
 def _canonical_config_hashes():
     lab = Path(__file__).resolve().parent
     names = ("paper_config_f1h_btcusdt.json", "paper_config_f1h_solusdt.json",
@@ -86,7 +90,7 @@ class PaperRuntime(BaseRuntime):
         self.clock = clock_ms or (lambda: int(time.time() * 1000))
         self.sleep = sleep or time.sleep
         self.monotonic = monotonic or time.monotonic
-        self.client = client or RuntimeClient()
+        self.client = client or _PaperPublicClient()
         self.fixture = fixture
         self.broker = None
         self.db = None
