@@ -122,6 +122,7 @@
     "lab/DASHBOARD_README.md": "f489a36d958546e045d773e112d02b3ad2a777d63bd4f2159ba9b6ad72089615",
     "lab/LEARNING_SPEED_V3.md": "614cd7d306f517a833c8d21aeb46ccb8817561bfafc4cf68fab38338f81a97e6",
     "lab/PAPER_ENTRY_RISK_SIZING.md": "011eedc8ae0a81d0e1a99fab1ae8c8d03c6c6309f7a37ea37f82a8e71448751b",
+    "lab/PAPER_F1H_PREREGISTRATION.md": "5837f2f549dac305353e0ea7a3bba03fde429122f04710b8e4b4d11dceb4635d",
     "lab/PAPER_MARKET_README.md": "3e8f48ab2758d248ca8c6ef4ac3dfbea817a2a0c0cc07f8a225a06037ec6eb81",
     "lab/PAPER_RUNTIME_README.md": "f99bb16ae048daf789c2cc02a093f1e0049344f9c699dc9c7cb5699e2bb6e642",
     "lab/PAPER_V2_README.md": "87664b65ced8f7e59388dcf37c77c466ac160256f9c122a30b9f1bd4a5f6e173",
@@ -287,7 +288,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "fe78e858429ccd702cd035a9c0e3c3d39c427398e54c141f38942f2e9f56058a",
+  "fingerprint": "97cfa902a48a4dcf359866fe38a44ae7f5c71090ab28180a5ae926392bbc198f",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
