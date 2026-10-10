@@ -60,7 +60,7 @@ class CycleTests(unittest.TestCase):
                            decide=lambda u, r: dict(status=self.decision,
                                                     reason="review", evidence="evidence"))
 
-    def run(self, now=None):
+    def cycle_once(self, now=None):
         return cycle.run_cycle(self.config, self.transport, self.github,
                                self.ledger, self.locks, now=now)
 
@@ -74,32 +74,33 @@ class CycleTests(unittest.TestCase):
                          next_step="echo NEVER_EXECUTE"))
 
     def test_chain_exactly_two_sends(self):
-        self.assertEqual(self.run()["status"], "SENT")
-        self.assertEqual(self.run()["status"], "WAITING")
+        self.assertEqual(self.cycle_once()["status"], "SENT")
+        self.assertEqual(self.cycle_once()["status"], "WAITING")
         self.receipt()
-        self.assertEqual(self.run()["status"], "SENT")
+        self.assertEqual(self.cycle_once()["status"], "SENT")
+        self.assertEqual(self.cycle_once()["status"], "WAITING")
         self.receipt("b")
-        self.assertEqual(self.run()["status"], "ALL_DONE")
-        self.assertEqual(self.run()["status"], "ALL_DONE")
+        self.assertEqual(self.cycle_once()["status"], "ALL_DONE")
+        self.assertEqual(self.cycle_once()["status"], "ALL_DONE")
         self.assertEqual(self.transport.calls, 2)
 
     def test_rejected_rework_then_accept(self):
-        self.run()
+        self.cycle_once()
         first = cycle.describe_state(self.ledger)["dispatch"]["job_id"]
         self.receipt(head="headA")
         self.decision = "REJECTED"
-        self.assertEqual(self.run()["status"], "SENT")
+        self.assertEqual(self.cycle_once()["status"], "SENT")
         second = cycle.describe_state(self.ledger)["dispatch"]["job_id"]
         self.assertNotEqual(first, second)
         self.receipt(head="headB")
         self.decision = "ACCEPTED"
-        self.assertEqual(self.run()["status"], "SENT")
+        self.assertEqual(self.cycle_once()["status"], "SENT")
         self.assertEqual(self.transport.calls, 3)
 
     def test_cycle_mutex_busy(self):
         lease = locks.acquire("browser-cycle", self.locks, "other", 120)
         try:
-            self.assertEqual(self.run()["status"], "BUSY")
+            self.assertEqual(self.cycle_once()["status"], "BUSY")
             self.assertEqual(self.transport.calls, 0)
         finally:
             locks.release("browser-cycle", self.locks, "other", lease["token"])
@@ -107,23 +108,23 @@ class CycleTests(unittest.TestCase):
     def test_browser_lock_only_deferred(self):
         lease = locks.acquire("browser", self.locks, "other", 120)
         try:
-            self.assertEqual(self.run()["status"], "DEFERRED")
+            self.assertEqual(self.cycle_once()["status"], "DEFERRED")
             self.assertEqual(self.transport.calls, 0)
         finally:
             locks.release("browser", self.locks, "other", lease["token"])
-        self.assertEqual(self.run()["status"], "SENT")
+        self.assertEqual(self.cycle_once()["status"], "SENT")
 
     def test_same_resource_rejected(self):
         self.config["cycle_resource_id"] = "browser"
         with self.assertRaises(ValueError):
-            self.run()
+            self.cycle_once()
 
     def test_expiry_terminal(self):
-        self.run()
+        self.cycle_once()
         sent_at = cycle.describe_state(self.ledger)["dispatch"]["dispatched_at"]
-        self.assertEqual(self.run(now=sent_at + 20)["status"], "WAITING")
-        self.assertEqual(self.run(now=sent_at + 61)["status"], "EXPIRED_NEEDS_OWNER")
-        self.assertEqual(self.run()["status"], "EXPIRED_NEEDS_OWNER")
+        self.assertEqual(self.cycle_once(now=sent_at + 20)["status"], "WAITING")
+        self.assertEqual(self.cycle_once(now=sent_at + 61)["status"], "EXPIRED_NEEDS_OWNER")
+        self.assertEqual(self.cycle_once()["status"], "EXPIRED_NEEDS_OWNER")
         self.assertEqual(self.transport.calls, 1)
 
     def test_invalid_receipts(self):
@@ -131,25 +132,25 @@ class CycleTests(unittest.TestCase):
             with self.subTest(mutation=mutation):
                 with tempfile.TemporaryDirectory() as tmp:
                     self.ledger = Path(tmp) / "ledger"
-                    self.run()
+                    self.cycle_once()
                     self.receipt()
                     payload = self.github.receipts["a"]["payload"]
                     payload[mutation] = (0 if mutation in ("timestamp", "schema_version")
                                          else "wrong")
-                    self.assertEqual(self.run()["status"], "STOPPED_NEEDS_OWNER")
+                    self.assertEqual(self.cycle_once()["status"], "STOPPED_NEEDS_OWNER")
 
     def test_uncertain_never_resends(self):
         self.transport.fail = True
-        self.assertEqual(self.run()["status"], "UNCERTAIN_NEEDS_OWNER")
+        self.assertEqual(self.cycle_once()["status"], "UNCERTAIN_NEEDS_OWNER")
         for _ in range(3):
-            self.assertEqual(self.run()["status"], "UNCERTAIN_NEEDS_OWNER")
+            self.assertEqual(self.cycle_once()["status"], "UNCERTAIN_NEEDS_OWNER")
         self.assertEqual(self.transport.calls, 1)
 
     def test_presend_deferred_retry(self):
         self.transport.busy = True
-        self.assertEqual(self.run()["status"], "DEFERRED")
+        self.assertEqual(self.cycle_once()["status"], "DEFERRED")
         self.transport.busy = False
-        self.assertEqual(self.run()["status"], "SENT")
+        self.assertEqual(self.cycle_once()["status"], "SENT")
         self.assertEqual(self.transport.calls, 1)
 
     def test_crash_after_intent_no_retry(self):
@@ -159,34 +160,36 @@ class CycleTests(unittest.TestCase):
         cycle.entry.dispatch_once = crash
         try:
             with self.assertRaises(RuntimeError):
-                self.run()
+                self.cycle_once()
         finally:
             cycle.entry.dispatch_once = original
-        self.assertEqual(self.run()["status"], "UNCERTAIN_NEEDS_OWNER")
+        self.assertEqual(self.cycle_once()["status"], "UNCERTAIN_NEEDS_OWNER")
+        self.assertEqual(self.transport.calls, 0)
+        self.assertEqual(self.cycle_once()["status"], "UNCERTAIN_NEEDS_OWNER")
         self.assertEqual(self.transport.calls, 0)
 
     def test_revision_limit(self):
         self.units[0]["max_revisions"] = 0
-        self.run()
+        self.cycle_once()
         self.receipt()
         self.decision = "REJECTED"
-        self.assertEqual(self.run()["status"], "STOPPED_NEEDS_OWNER")
+        self.assertEqual(self.cycle_once()["status"], "STOPPED_NEEDS_OWNER")
         self.assertEqual(self.transport.calls, 1)
 
     def test_decider_exception_releases_mutex(self):
-        self.run()
+        self.cycle_once()
         self.receipt()
         self.config["decide"] = lambda u, r: (_ for _ in ()).throw(RuntimeError("decide"))
         with self.assertRaises(RuntimeError):
-            self.run()
+            self.cycle_once()
         self.assertFalse(locks.inspect("browser-cycle", self.locks)["live"])
 
     def test_remote_text_inert(self):
-        self.run()
+        self.cycle_once()
         target = self.root / "executed"
         self.receipt()
         self.github.receipts["a"]["payload"]["next_step"] = "touch " + str(target)
-        self.run()
+        self.cycle_once()
         self.assertFalse(target.exists())
 
 
