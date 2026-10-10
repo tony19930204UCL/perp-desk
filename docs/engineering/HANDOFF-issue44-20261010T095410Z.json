@@ -4,9 +4,9 @@
   "pr_number": 46,
   "branch": "fix/issue-44-relay-ownership-20261010T095410Z",
   "task_id": "issue44-20261010T095410Z",
-  "instruction_id": "R3-r1",
-  "status": "BLOCKED",
-  "summary": "Implemented R3 decision ledger, nine unittest methods and operations runbook. Exact-head CI not yet confirmed. Ledger conservatively refuses a second distinct head without ancestry evidence; integration review needed.",
+  "instruction_id": "R3-r2",
+  "status": "READY_FOR_REVIEW",
+  "summary": "Repaired R3 with flock-protected per-unit monotonic sequence, new-head rework progression, latest-seq decisions and expanded concurrency tests. Await independent exact-head CI.",
   "changed_files": [
     "lab/relay_decision_ledger.py",
     "lab/tests/test_relay_decision_ledger.py",
@@ -17,22 +17,18 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No local execution; exact-head CI result not confirmed."
+      "evidence": "No local checkout or test execution; Hermes to run full CI at new head."
     }
   ],
   "remaining_work": [
-    "Exact-head CI green required.",
-    "Review head chronology and revision transitions; current implementation refuses new distinct heads, preventing normal rework progress.",
-    "Main CIO independently review allowlisted diff and acceptance."
+    "Hermes exact-head full CI and independent Main CIO review."
   ],
-  "source_head_sha": "c19217efbfa2f3b97bbdc0ecaf41dc1383b8f5af",
+  "source_head_sha": "f4002456ff3ddaf39760549dc8deb7f40a31c907",
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head CI and inspect R3 decision ledger semantics and allowlisted diff.",
-    "if_pass": "Review functional gaps before accepting; keep draft PR unmerged.",
-    "if_fail": "Return exact-head failure logs for bounded repair.",
-    "blockers": [
-      "Head ancestry/order cannot be inferred from SHA; current conservative implementation blocks head progression."
-    ]
+    "verify_now": "Run exact-head full CI and inspect R3 allowlisted diff and multiprocessing test.",
+    "if_pass": "Independently review acceptance; keep draft PR unmerged.",
+    "if_fail": "Return exact-head logs for bounded repair.",
+    "blockers": []
   }
 }
