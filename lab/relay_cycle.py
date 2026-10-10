@@ -109,7 +109,7 @@ def _dispatch(state, unit, config, transport, ledger_dir, now):
 def _cycle(config, transport, github, ledger_dir, now):
     units = config["units"]
     state = describe_state(ledger_dir)
-    if state["status"] == "NEW":
+    if not (Path(ledger_dir) / STATE).exists():
         state = {"version": 1, "index": 0, "completed": [], "revision": 0,
                  "attempt": 0, "dispatch": None}
         _save(ledger_dir, state)
