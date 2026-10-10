@@ -1,0 +1,29 @@
+{
+  "schema_version": 2,
+  "task_id": "relay-20261009T111150Z-776447",
+  "instruction_id": "followup-002",
+  "repository": "tony19930204UCL/perp-desk",
+  "branch": "test-hermes-ab-20261009T111150Z-776447",
+  "pr_number": 45,
+  "status": "READY_FOR_REVIEW",
+  "summary": "relay integration smoke follow-up",
+  "changed_files": [
+    "docs/engineering/HANDOFF-20261009T111150Z-776447.json"
+  ],
+  "tests": [
+    {
+      "command": "none (mailbox smoke only)",
+      "result": "not run",
+      "evidence": "n/a"
+    }
+  ],
+  "remaining_work": [],
+  "source_head_sha": "7ab005a3aed3b009b09f316b5b1248ac80671297",
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Independently verify PR 45 branch head, mailbox schema v2, exact IDs, source_head_sha, and single-file diff; confirm no tests were run.",
+    "if_pass": "Accept relay smoke handoff only; leave draft PR unmerged.",
+    "if_fail": "Reject handoff and request correction on the allowlisted mailbox only.",
+    "blockers": []
+  }
+}
