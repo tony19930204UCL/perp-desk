@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -44,9 +45,7 @@ class Page:
             self.messages = []
             return True
         if expr.startswith('(()=>{if(location.pathname'):
-            self.composer = json.loads(expr.split('insertText', 1)[0].split('TEXTJSON')[-1]) if False else self.composer
-            import re
-            match = re.search(r"insertText',false,(.*?);const norm", expr)
+            match = re.search(r"insertText',false,(.*?)\);const norm", expr, re.DOTALL)
             self.composer = json.loads(match.group(1))
             return True
         if expr == a.DIALOG_JS:
@@ -65,6 +64,15 @@ class AdapterTests(unittest.TestCase):
         values = iter(['', None, True])
         self.assertTrue(a.BrowserTransport(lambda _: next(values), sleep=lambda _: None)._call('x'))
 
+    def test_retry_exception_cause(self):
+        failure = RuntimeError('CDP disconnected')
+        def broken(_):
+            raise failure
+        with self.assertRaises(a.TransportError) as caught:
+            a.BrowserTransport(broken, sleep=lambda _: None)._call('x', tries=3)
+        self.assertIs(caught.exception.__cause__, failure)
+        self.assertIn('RuntimeError: CDP disconnected', str(caught.exception))
+
     def test_retry_exhausted(self):
         with self.assertRaises(a.TransportError):
             a.BrowserTransport(lambda _: None, sleep=lambda _: None)._call('x', tries=3)
@@ -72,35 +80,37 @@ class AdapterTests(unittest.TestCase):
     def test_occupied(self):
         self.page.composer = 'draft'
         with self.assertRaises(a.TransportError):
-            a.BrowserTransport(self.page).send('hello')
+            a.BrowserTransport(self.page, sleep=lambda _: None).send('hello')
         self.assertEqual(self.page.clicks, 0)
 
     def test_busy(self):
         self.page.busy = True
         with self.assertRaises(a.TransportError):
-            a.BrowserTransport(self.page).send('hello')
+            a.BrowserTransport(self.page, sleep=lambda _: None).send('hello')
         self.assertEqual(self.page.clicks, 0)
 
     def test_auth(self):
         self.page.text = 'Log in password'
         with self.assertRaises(a.TransportError):
-            a.BrowserTransport(self.page).send('hello')
+            a.BrowserTransport(self.page, sleep=lambda _: None).send('hello')
         self.assertEqual(self.page.clicks, 0)
 
     def test_approval(self):
         self.page.text = a.CARD
         with self.assertRaises(a.TransportError):
-            a.BrowserTransport(self.page).send('hello')
+            a.BrowserTransport(self.page, sleep=lambda _: None).send('hello')
         self.assertEqual(self.page.clicks, 0)
 
     def test_send_once(self):
-        a.BrowserTransport(self.page).send('hello')
+        prompt = 'quotes " and \\ backslash\nnewline `backtick`'
+        a.BrowserTransport(self.page, sleep=lambda _: None).send(prompt)
+        self.assertEqual(self.page.messages[0], prompt.replace('`', ''))
         self.assertEqual(self.page.clicks, 1)
 
     def test_failed_click_not_retried(self):
         self.page.fail_click = True
         with self.assertRaises(RuntimeError):
-            a.BrowserTransport(self.page).send('hello')
+            a.BrowserTransport(self.page, sleep=lambda _: None).send('hello')
         self.assertEqual(self.page.clicks, 1)
 
     def test_fresh_chat_three_stable(self):
@@ -110,7 +120,7 @@ class AdapterTests(unittest.TestCase):
         self.assertGreaterEqual(self.page.calls.count(a.SNAPSHOT_JS), 5)
 
     def test_original_prompt_and_raw(self):
-        t = a.BrowserTransport(self.page)
+        t = a.BrowserTransport(self.page, sleep=lambda _: None)
         t._sent = 'hello `world`'
         self.page.messages = ['hello world', 'other']
         self.assertEqual(t.user_messages(), ['hello `world`', 'other'])
