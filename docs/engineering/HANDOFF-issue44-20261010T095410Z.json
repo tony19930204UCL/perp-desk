@@ -4,10 +4,11 @@
   "pr_number": 46,
   "branch": "fix/issue-44-relay-ownership-20261010T095410Z",
   "task_id": "issue44-20261010T095410Z",
-  "instruction_id": "R5-r3",
+  "instruction_id": "R5-r4",
   "status": "READY_FOR_REVIEW",
-  "summary": "Fixed only test fixture doubled control-character escapes in normalization and multiline message assertions; added explicit newline presence assertion. Whole test file scanned for doubled newline/carriage-return/tab escapes; none remain. Production unchanged.",
+  "summary": "Escaped three FILL_JS regex/string backslashes so Python does not emit JavaScript-breaking CR/LF. Added mandatory control-character checks for all _JS constants, optional Node syntax validation, and approval allow/deny click-count tests.",
   "changed_files": [
+    "lab/relay_adapters.py",
     "lab/tests/test_relay_adapters.py",
     "docs/engineering/HANDOFF-issue44-20261010T095410Z.json"
   ],
@@ -15,18 +16,23 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "GitHub connector branch-scoped edits only; no local test execution. Hermes to run exact-head CI."
+      "evidence": "GitHub connector edits only; no local checkout or test execution."
+    },
+    {
+      "command": "node -e new Function(...) on each _JS constant",
+      "result": "not run",
+      "evidence": "Added optional Node syntax test; awaiting CI/Hermes."
     }
   ],
   "remaining_work": [
-    "Main CIO independently verify exact-head CI and integrated relay chain."
+    "Main CIO independently run exact-head CI and Node integration probe."
   ],
-  "source_head_sha": "31355734dc9e601ac5259ef86bad4005b8f55f33",
+  "source_head_sha": "896d4f384061eae9c22557fb49fd92ebce782343",
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head CI and verify normalization real newlines and integrated tick chain.",
-    "if_pass": "Independently accept R5-r3; no merge, deploy, or trading authorized.",
-    "if_fail": "Return exact failing head and assertions for bounded repair.",
+    "verify_now": "Run exact-head CI and Node new Function syntax probe on all _JS constants; verify approval click counts.",
+    "if_pass": "Independently accept R5-r4; no merge, deploy or trading authorized.",
+    "if_fail": "Return exact failing head, test output and probe evidence for bounded repair.",
     "blockers": []
   }
 }
