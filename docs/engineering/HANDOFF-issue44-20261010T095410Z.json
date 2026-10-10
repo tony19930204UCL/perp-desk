@@ -4,31 +4,30 @@
   "pr_number": 46,
   "branch": "fix/issue-44-relay-ownership-20261010T095410Z",
   "task_id": "issue44-20261010T095410Z",
-  "instruction_id": "R4-r0",
-  "status": "BLOCKED",
-  "summary": "R4 cannot safely compose the required outer shared resource lock with R2 dispatch_once: R2 unconditionally acquires the identical resource lock and refuses while R4 owns it. R2 has no lock-token reuse or already-owned dispatch API. Releasing the outer lock to call dispatch_once violates the required cycle-wide exclusivity. Per instruction, R1-R3 were not edited; no R4 implementation was attempted.",
+  "instruction_id": "R4-r1",
+  "status": "READY_FOR_REVIEW",
+  "summary": "Implemented separate cycle mutex, durable atomic state, receipt correlation, decision ledger integration, bounded rework, and fail-closed dispatch recovery. Added 13 unittest cases. Not independently tested.",
   "changed_files": [
+    "lab/relay_cycle.py",
+    "lab/tests/test_relay_cycle.py",
     "docs/engineering/HANDOFF-issue44-20261010T095410Z.json"
   ],
   "tests": [
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No test execution; blocked on incompatible R1/R2 lock contract."
+      "evidence": "No local checkout or CI execution performed; tests committed for independent Hermes CI."
     }
   ],
   "remaining_work": [
-    "Authorize a bounded R2 API extension to accept and verify an already-held lock token, or explicitly approve a separate cycle mutex design with distinct resource IDs.",
-    "Implement R4 and >=12 tests after API decision; run exact-head CI."
+    "Run exact-head CI and probe real crash windows, receipt schema compatibility, and lease expiry."
   ],
-  "source_head_sha": "a8e1f10b258a4d1dcb95e120a9675e1f0223401f",
+  "source_head_sha": "acf26271571eb9a2a999af2416c280e29644df00",
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Inspect relay_operator_entry.dispatch_once and relay_resource_lock.acquire: dispatch_once always reacquires resource_id, so holding it in run_cycle guarantees REFUSED_RESOURCE_LOCK.",
-    "if_pass": "Authorize the minimal lock contract adjustment or distinct cycle mutex and issue a new bounded instruction.",
-    "if_fail": "Return an explicit safe composition mechanism preserving exclusive ownership and no double send.",
-    "blockers": [
-      "R2 dispatch_once cannot run under an already-held same-resource R1 lock."
-    ]
+    "verify_now": "Run full unittest discovery at exact head and independently probe cycle mutex, receipt validation, crash recovery and exactly-once send.",
+    "if_pass": "Review and accept R4; no merge or deploy was performed.",
+    "if_fail": "Return exact failing traces for bounded repair.",
+    "blockers": []
   }
 }
