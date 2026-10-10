@@ -165,6 +165,7 @@
     "lab/paper_runtime.py": "7e9a9a21e4dd93a9464429ffbde01e93d54322ee7c8d16ac8234a28f394d3b05",
     "lab/paper_runtime_v2.py": "a0ace2f6136455bfb8064a10fab2aa7e54b8829590b4e81619e098a9e0408334",
     "lab/paper_runtime_v3.py": "3299867303a4c38a6b8d41ea017d9057167191b89f08509c57ebe94a303c0fe8",
+    "lab/paper_runtime_v4.py": "afc9b8a7325f7cbb4ef431eb130d7780bf690abd1244594311ef10a1af2131c0",
     "lab/paper_sizing.py": "b74b5b38141f6dfd2d19bbc5da63d81ccdee93689678b2428606c9dfc07c553e",
     "lab/perp_collector.py": "1392146a1c631506445023f1b88a779a13be2e606162a35f47b027ed349be076",
     "lab/research_dashboard.py": "2d7c690a071216b7d3d7042d0be365fb3ca537d1622d173fc172a128d6edc952",
@@ -172,6 +173,7 @@
     "lab/signals.py": "c1598c372b836cb6d819585e5e8f8fdd947a1562e36954ccd62053fdafe489c1",
     "lab/signals_v2.py": "34bf560e47baf87ad85edc15b77f6c94fc14b90c1efffd19bff0af0139c6cedb",
     "lab/signals_v3.py": "e9e4bc74ea528b0cd566b86415cdf5c391458e8b2dffc9403148509c96a23892",
+    "lab/signals_v4.py": "4f93e39a98ccf61438c8e6e4b9b927ac93e18ef6cc6047a61e4094190d6f2d53",
     "lab/sim_broker.py": "a14b186aa225b4226d9e4131be1b664975da9941ebc3bf046c5f7a93cf40396d",
     "lab/staging/batch_time/README.md": "a0633debb968490dd62696c9bcb450a0988d73b0e037a52cbf175c6144bb9a93",
     "lab/staging/batch_time/brief.py": "2fef164675bb750786d80d573da77e3169a3c79f8b585c2175bedd017d3053eb",
@@ -263,10 +265,12 @@
     "lab/tests/test_paper_market.py": "5434d536fa7b2dbc763dc82800a1d40fe95171b164cf7d01a50338e6ad3a5147",
     "lab/tests/test_paper_presentation.py": "be6d0c4e3fd593ac236c5d08f7599bf4497d66fa451c742c934762dbfd33d094",
     "lab/tests/test_paper_runtime.py": "c47c26aa210f653bc4f257f796b36328dabe8ef1e6ce8356b630c5a2b4ab262d",
+    "lab/tests/test_paper_runtime_v4.py": "a7f7e71d443d4de0226e259a0fced2c9117f3692b1ec3a37ece40e6c07b3227e",
     "lab/tests/test_paper_sizing.py": "d87a708ae360e82fb47daf7ca0513220a0167a9900957f0745aa6052c608400e",
     "lab/tests/test_paper_v2.py": "dc117a80b56951cea3b8867ed3cbfa71a6e087ae65ad89978393c3086918f446",
     "lab/tests/test_research_dashboard.py": "46cb09e1bb82756f8bc5d606f86e6b83273562114c3f35bd0eac16f66a2d4b42",
     "lab/tests/test_signals.py": "ba953c2c5989d9d48affddc0c3451fbe99e1f612389b01073424bb2efbcf03ac",
+    "lab/tests/test_signals_v4.py": "c65fb91129d6123eec7c59c5e11f54bf80f727694a445cb40585e2b6e21312ae",
     "lab/tests/test_sim_broker.py": "26f56fed3cbf84176ee3076eaef304a4fb19978a87566b3fde64df956f06a1c5",
     "lab/tests/test_source_timing_evidence.py": "8ed546cc6bde7d6fd5f38edfa486821ff0d4e39cbb747ea8bc627c5d60cf0873",
     "lab/tests/test_startup_recovery.py": "b858ddae27f2f2bd4a47680cfe9e93de7e3821e1df0d1af779ac4a6ddf882d04",
@@ -283,7 +287,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "a920279306f8908ea7ccc3d108cc1e6fd21d25331f9afb501571a77ea4333e8c",
+  "fingerprint": "7ae5287d2b6a4f0c65da0ce56134599a1f36f7c4b6f36875c376515245747cf9",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
