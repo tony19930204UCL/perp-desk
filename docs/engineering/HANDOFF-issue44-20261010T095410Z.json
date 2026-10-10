@@ -4,11 +4,10 @@
   "pr_number": 46,
   "branch": "fix/issue-44-relay-ownership-20261010T095410Z",
   "task_id": "issue44-20261010T095410Z",
-  "instruction_id": "R5-r2",
+  "instruction_id": "R5-r3",
   "status": "READY_FOR_REVIEW",
-  "summary": "Corrected doubled backslashes in adapter regexes, normalization, JS source and GitHub approval newline search. Added real conversation URL, normalization, approval and chained fresh-home navigation regression assertions.",
+  "summary": "Fixed only test fixture doubled control-character escapes in normalization and multiline message assertions; added explicit newline presence assertion. Whole test file scanned for doubled newline/carriage-return/tab escapes; none remain. Production unchanged.",
   "changed_files": [
-    "lab/relay_adapters.py",
     "lab/tests/test_relay_adapters.py",
     "docs/engineering/HANDOFF-issue44-20261010T095410Z.json"
   ],
@@ -16,18 +15,18 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No executable checkout or test runner used; GitHub connector branch-scoped edits only. Hermes must run exact-head CI."
+      "evidence": "GitHub connector branch-scoped edits only; no local test execution. Hermes to run exact-head CI."
     }
   ],
   "remaining_work": [
-    "Main CIO must independently run exact-head CI and probe integrated chain."
+    "Main CIO independently verify exact-head CI and integrated relay chain."
   ],
-  "source_head_sha": "a972039ae0a903b4254c240cea679e2472677da2",
+  "source_head_sha": "31355734dc9e601ac5259ef86bad4005b8f55f33",
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head CI, real URL route checks, normalization and GitHub card parsing, and two-click ALL_DONE chain.",
-    "if_pass": "Independently accept R5-r2; no merge, deploy or trading authorized.",
-    "if_fail": "Return exact head SHA and failing assertions for bounded repair.",
+    "verify_now": "Run exact-head CI and verify normalization real newlines and integrated tick chain.",
+    "if_pass": "Independently accept R5-r3; no merge, deploy, or trading authorized.",
+    "if_fail": "Return exact failing head and assertions for bounded repair.",
     "blockers": []
   }
 }
