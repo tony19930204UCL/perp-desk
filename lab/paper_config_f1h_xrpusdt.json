@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "mode": "paper",
+  "version_id": "F1H-XRPUSDT-PAPER",
+  "risk_version": "PAPER-RISK-001",
+  "approved": true,
+  "approval_basis": "User explicitly authorized assistant to choose PAPER risk in current session; no live authorization.",
+  "initial_equity_usdt": "100",
+  "max_loss_per_trade_usdt": "1",
+  "max_daily_loss_usdt": "3",
+  "max_effective_exposure_x": "3",
+  "max_positions": 1,
+  "total_loss_limit_usdt": "10",
+  "stop_required": true,
+  "paper_leverage": "3",
+  "strategy": {
+    "symbol": "XRPUSDT",
+    "category": "crypto",
+    "interval_ms": 3600000,
+    "prior_return_samples": 60,
+    "downside_sigma": "1.5",
+    "volume_multiple": "1.2",
+    "stop_distance_fraction": "0.0140",
+    "take_profit_reference": "previous_closed_bar_close",
+    "max_holding_ms": 43200000,
+    "minimum_gross_reward_to_estimated_cost": "2",
+    "execution": "taker_only"
+  },
+  "execution_model": {
+    "latency_ms": 2000,
+    "poll_interval_seconds": 5,
+    "max_source_age_ms": 15000,
+    "gap_exit_after_ms": 60000,
+    "entry_slippage_ticks": 2,
+    "exit_slippage_ticks": 2,
+    "beyond_observed_depth": "reject",
+    "funding": "finalized_public_fundingRate_events_only",
+    "funding_refresh_seconds": 30
+  },
+  "fee_assumptions": {
+    "source": "User supplied AGENTS.md rates, not independently account/VIP verified",
+    "crypto": {
+      "maker": "0.0002",
+      "taker": "0.0005"
+    },
+    "TradFi": {
+      "maker": "0",
+      "taker": "0.0004"
+    }
+  },
+  "tradfi_activation": "disabled_until_verified_session_calendar",
+  "decision": {
+    "reason": "Closed one-hour ETHUSDT bars test whether larger downside moves can clear the unchanged 2x estimated full-cost gate; this is a preregistered hypothesis, not a demonstrated edge. Risk and execution gates remain frozen.",
+    "counterargument": "Shorter moves may never clear the unchanged two-times-full-cost gate. More signals can increase costs and information-driven losses. Thirty round trips may be infeasible within bounded losses.",
+    "evaluation": "New forward window only, 21 days from strategy activation; target 30 complete flat-to-flat episodes, no forced trades. Insufficient samples means unproven. Stop on existing loss limits or integrity faults."
+  },
+  "indicator_bootstrap": {
+    "bars": 61,
+    "source": "public_closed_contiguous_1h",
+    "performance": false,
+    "eligibility": "next_closed_bar_after_persisted_cutoff"
+  },
+  "research": {
+    "target_complete_round_trips": 30,
+    "window_ms": 1814400000,
+    "target_not_guarantee": true
+  }
+}
