@@ -673,3 +673,15 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 
 
 
+
+## H2-PAPER-004 部署（2026-10-10 UTC，紙盤，已啟動，新前瞻窗口）
+
+- 父版本 H1-PAPER-003 放棄。原因與數字見 lab/evidence/h1-family-abandon-decision-20261010.md。1分鐘 ETH taker 均值回歸在 0.1% 來回成本下幾乎不可能成交（同規則 25 小時 58 個信號 0 個過成本門檻）。舊結果保留：100.69 USDT，3 筆成交，1 個完整來回，空倉無掛單，樣本不足，不是優勢證據。
+- 新版只改時間尺度為閉合 1h K 線，規則 60 筆報酬、下跌 1.5σ、成交量 1.2 倍中位數、目標前一根收盤，止損 1.0%，最長持有 12 根，窗口 21 天，審查目標 30 個 flat-to-flat 樣本（預期多半只有 15 到 25 個）。完整預先登記、反方與失效條件見 lab/PAPER_V4_PREREGISTRATION.md。
+- 工程經 relay 交外部 agent，PR 47（draft，非 main）。精確 head /usr/bin/bash。H2-U1 偵測器與 H2-U2 執行環境，兩項均零退回。CI 兩個 run 成功。我另以真實 1500 根 ETH 1h K 線核對偵測器，77 個信號與獨立計算同一批 K 線。公開探測 3 輪 latest_error=null，暖機 61/61。晚到門檻 14999 與 15000ms 接受、15001ms 拒絕。止損 1.000%、名目約 90 USDT、計畫虧損 0.9909、12 小時 max_hold 平倉。
+- 部署檔 SHA256：signals_v4.py ，paper_runtime_v4.py ，paper_config_v4.json 。v1 到 v3、sizing、broker 位元組不變。
+- 儲存政策 shared/storage_policy_v4.json：warning 12 GiB，new_risk limit 16 GiB，min_free 50 GiB。原 1 GiB 在舊引擎約 59 小時就會到（17 MB/小時），21 天窗口會被自己鎖住。不自動刪除證據。
+- 新命名空間 data/paper-v4，本金 100，與舊帳戶分開。狀態檔 shared/paper_v4_live.json。strategy_start 2026-10-10T15:43:33.430Z，deadline 2026-10-31T15:43:33.430Z。
+- 執行方式：systemd 使用者服務 perp-paper-h2.service，崩潰 30 秒後重啟，退出碼 2（儲存保護停止）不重啟。linger 已開，WSL 啟動後自動帶起，但電腦關機或 wsl --shutdown 期間不運作。
+- 尚未做：看板未接 v4、健康監控未納入 v4（health_monitor_config 仍指向舊引擎）、鏡像 main 由 local sync 發布後 PR 47 才關閉。DNS 在 WSL 已改固定 1.1.1.1 與 8.8.8.8，18 分鐘驗證 0 失敗，仍屬短樣本。
+- 沒有宣稱任何優勢。沒有實盤。
