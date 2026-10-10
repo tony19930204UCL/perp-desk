@@ -60,6 +60,43 @@ class AdapterTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
 
+    def test_js_constants_no_control_chars(self):
+        for name, value in vars(a).items():
+            if not name.endswith('_JS') or not isinstance(value, str):
+                continue
+            with self.subTest(js=name):
+                code = value.replace('PATHJSON', json.dumps('/')).replace(
+                    'TEXTJSON', json.dumps('sample'))
+                self.assertFalse(any(ch in code for ch in '\\r\\n\\t'),
+                                 name + ' contains a control character')
+
+    def test_js_constants_parse_with_node_if_available(self):
+        import shutil
+        import subprocess
+        node = shutil.which('node')
+        if node is None:
+            self.skipTest('node executable unavailable; mandatory control-character test still runs')
+        for name, value in vars(a).items():
+            if not name.endswith('_JS') or not isinstance(value, str):
+                continue
+            code = value.replace('PATHJSON', json.dumps('/')).replace(
+                'TEXTJSON', json.dumps('sample'))
+            with self.subTest(js=name):
+                check = subprocess.run(
+                    [node, '-e', 'new Function(' + json.dumps(code) + ')'],
+                    capture_output=True, text=True)
+                self.assertEqual(check.returncode, 0, check.stderr)
+
+    def test_approval_ghp_thirty_letters_never_clicks(self):
+        result = self.approval(content='ghp_' + 'A' * 30)
+        self.assertFalse(result['clicked'])
+        self.assertEqual(self.page.calls.count(a.ALLOW_JS), 0)
+
+    def test_approval_harmless_file_clicks_once(self):
+        result = self.approval(content='print("safe")')
+        self.assertTrue(result['clicked'])
+        self.assertEqual(self.page.calls.count(a.ALLOW_JS), 1)
+
     def test_real_routes(self):
         transport = a.BrowserTransport(self.page, sleep=lambda _: None)
         for url in ('https://chatgpt.com/', 'https://chatgpt.com/c/abc123'):
