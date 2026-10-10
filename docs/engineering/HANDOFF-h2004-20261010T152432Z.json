@@ -1,1 +1,34 @@
-{"placeholder": true, "task": "h2004-20261010T152432Z"}
+{
+  "schema_version": 2,
+  "task_id": "h2004-20261010T152432Z",
+  "instruction_id": "H2-U1-r0",
+  "repository": "tony19930204UCL/perp-desk",
+  "branch": "feat/paper-h2-004-1h-20261010T152432Z",
+  "pr_number": 47,
+  "source_head_sha": "b55076590e18d6f325159d1803d2ae5cd865a3e8",
+  "status": "READY_FOR_REVIEW",
+  "summary": "Implemented 1h detector inheriting v3 contracts and 14 deterministic unittest methods; exact-head CI not yet verified.",
+  "changed_files": [
+    "lab/signals_v4.py",
+    "lab/tests/test_signals_v4.py",
+    "docs/engineering/HANDOFF-h2004-20261010T152432Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "not run",
+      "evidence": "No execution environment used; GitHub workflow lookup for test head returned zero runs."
+    }
+  ],
+  "remaining_work": [
+    "Run exact-head CI including exporter contract and inspect results",
+    "Independent acceptance by Main CIO"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Run exact-head CI and confirm exporter and 14 detector tests; inspect PR 47 diff.",
+    "if_pass": "Accept H2-U1 and proceed to next bounded unit.",
+    "if_fail": "Return exact failure evidence for repair; do not merge.",
+    "blockers": []
+  }
+}
