@@ -174,9 +174,9 @@
     "lab/paper_runtime_v2.py": "a0ace2f6136455bfb8064a10fab2aa7e54b8829590b4e81619e098a9e0408334",
     "lab/paper_runtime_v3.py": "3299867303a4c38a6b8d41ea017d9057167191b89f08509c57ebe94a303c0fe8",
     "lab/paper_runtime_v4.py": "afc9b8a7325f7cbb4ef431eb130d7780bf690abd1244594311ef10a1af2131c0",
-    "lab/paper_runtime_v5.py": "52307d7e1e8711812708dab5accebf62590a42b5650da0b8eee59d305a863d17",
+    "lab/paper_runtime_v5.py": "8de9b7ea9d5262bf649f093626699e51aa36ee3532d2611599b28e1e4b941c65",
     "lab/paper_sizing.py": "b74b5b38141f6dfd2d19bbc5da63d81ccdee93689678b2428606c9dfc07c553e",
-    "lab/perp_collector.py": "1392146a1c631506445023f1b88a779a13be2e606162a35f47b027ed349be076",
+    "lab/perp_collector.py": "7b24ed5ace9ee9e45b5d7d8fa9d6907b5a037aeddc6e6af51346c19a9a947940",
     "lab/research_dashboard.py": "2d7c690a071216b7d3d7042d0be365fb3ca537d1622d173fc172a128d6edc952",
     "lab/research_dashboard_config.example.json": "9f6ab572b274c240f42a98a8beb723e75e296a4478f66252a7d7f4a063c015f4",
     "lab/signals.py": "c1598c372b836cb6d819585e5e8f8fdd947a1562e36954ccd62053fdafe489c1",
@@ -280,6 +280,7 @@
     "lab/tests/test_paper_runtime_v5.py": "9145a7e83190bc8ff323564edd0512ab9a25db36685793de7c123cc7ebfdc55d",
     "lab/tests/test_paper_sizing.py": "d87a708ae360e82fb47daf7ca0513220a0167a9900957f0745aa6052c608400e",
     "lab/tests/test_paper_v2.py": "dc117a80b56951cea3b8867ed3cbfa71a6e087ae65ad89978393c3086918f446",
+    "lab/tests/test_perp_collector_f1h_symbols.py": "0f6b7be835f823c942d5e0ef4fbd6a7c7873e7853f555e6a6508a4c6c792d47a",
     "lab/tests/test_research_dashboard.py": "46cb09e1bb82756f8bc5d606f86e6b83273562114c3f35bd0eac16f66a2d4b42",
     "lab/tests/test_signals.py": "ba953c2c5989d9d48affddc0c3451fbe99e1f612389b01073424bb2efbcf03ac",
     "lab/tests/test_signals_v4.py": "c65fb91129d6123eec7c59c5e11f54bf80f727694a445cb40585e2b6e21312ae",
@@ -300,7 +301,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "0756de637f4b674606a1582e83b818a174e080c709832cbde449687a9c2a7a46",
+  "fingerprint": "8eaec06b0776e6ca8571b0fcfb45aa1d5d3df72580b98f271c4cffd200694df5",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
