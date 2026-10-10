@@ -1,12 +1,15 @@
 """Tests for fail-closed relay operator dispatch."""
 import json
+import sys
 import tempfile
 import time
 import unittest
 from pathlib import Path
 
-from lab import relay_operator_entry as entry
-from lab import relay_resource_lock as lock
+LAB = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(LAB))
+import relay_operator_entry as entry
+import relay_resource_lock as lock
 
 
 class FakeTransport:
