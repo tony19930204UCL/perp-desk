@@ -12,14 +12,14 @@ from urllib.parse import quote
 import relay_cycle
 
 SNAPSHOT_JS = 'JSON.stringify({url:location.href,text:document.body.innerText,user_messages:[...document.querySelectorAll(\'[data-user-message-bubble] .whitespace-pre-wrap,[data-message-author-role="user"] .whitespace-pre-wrap\')].map(e=>e.innerText),composer_text:[...document.querySelectorAll(\'#prompt-textarea,[contenteditable="true"][role="textbox"]\')].filter(e=>e.getClientRects().length).map(e=>e.innerText).join(""),busy:[...document.querySelectorAll(\'button\')].some(e=>e.getClientRects().length&&(/^(停止|停止回應|Stop|Stop generating)$/i.test(e.getAttribute(\'aria-label\')||\'\')||e.getAttribute(\'data-testid\')===\'stop-button\')),buttons:[...document.querySelectorAll(\'button\')].map(e=>({text:e.innerText,aria:e.getAttribute(\'aria-label\')}))})'
-FILL_JS = '(()=>{if(location.pathname!==PATHJSON)throw Error(\'Wrong chat\');const c=[...document.querySelectorAll(\'#prompt-textarea,[contenteditable="true"][role="textbox"]\')].filter(e=>e.getClientRects().length);if(c.length!==1)throw Error(\'Composer missing or ambiguous\');const e=c[0];if(e.innerText.trim())throw Error(\'Composer occupied\');e.focus();document.execCommand(\'insertText\',false,TEXTJSON);const norm=t=>t.replace(/\\r/g,\'\').replace(/\\n{2,}/g,\'\\n\').trim();if(norm(e.innerText)!==norm(TEXTJSON))throw Error(\'Composer mismatch\');return true})()'
+FILL_JS = '(()=>{if(location.pathname!==PATHJSON)throw Error(\'Wrong chat\');const c=[...document.querySelectorAll(\'#prompt-textarea,[contenteditable="true"][role="textbox"]\')].filter(e=>e.getClientRects().length);if(c.length!==1)throw Error(\'Composer missing or ambiguous\');const e=c[0];if(e.innerText.trim())throw Error(\'Composer occupied\');e.focus();document.execCommand(\'insertText\',false,TEXTJSON);const norm=t=>t.replace(/\r/g,\'\').replace(/\n{2,}/g,\'\n\').trim();if(norm(e.innerText)!==norm(TEXTJSON))throw Error(\'Composer mismatch\');return true})()'
 SEND_JS = '(()=>{const b=[...document.querySelectorAll("button[data-testid=send-button],button[aria-label=傳送提示詞],button[aria-label=傳送訊息],button[aria-label=傳送]")].filter(e=>e.getClientRects().length);if(b.length!==1||b[0].disabled)throw Error("Send button unavailable");b[0].click();return true})()'
 DETAILS_JS = '(()=>{const b=[...document.querySelectorAll("button")].filter(e=>e.innerText==="查看詳細資訊");if(b.length!==1)throw Error("Ambiguous details");b[0].click();return true})()'
 DIALOG_JS = 'JSON.stringify([...document.querySelectorAll("[role=dialog]")].map(e=>e.innerText))'
 CLOSE_JS = '(()=>{const b=[...document.querySelectorAll("button")].find(e=>e.innerText==="關閉對話框");if(b)b.click();return true})()'
 ALLOW_JS = '(()=>{const b=[...document.querySelectorAll("button")].filter(e=>e.innerText.startsWith("允許一次"));if(b.length!==1)throw Error("Ambiguous approval");b[0].click();return true})()'
 CARD = '要允許 ChatGPT 使用 GitHub 嗎？'
-SECRET = re.compile(r'sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|PRIVATE KEY|api_key\\s*[:=]', re.I)
+SECRET = re.compile(r'sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|PRIVATE KEY|api_key\s*[:=]', re.I)
 
 
 class TransportError(RuntimeError):
@@ -68,7 +68,7 @@ class BrowserTransport:
         auth = bool(re.search(r'verify you are human', text, re.I) or
                     (re.search(r'Log in|Sign up|登入|註冊', text, re.I) and
                      re.search(r'password|welcome|密碼|歡迎', text, re.I)))
-        return dict(route_ok=url == self.chat_home or bool(re.fullmatch(r'https://chatgpt\\.com/c/[^/?#]+', url)),
+        return dict(route_ok=url == self.chat_home or bool(re.fullmatch(r'https://chatgpt\.com/c/[^/?#]+', url)),
                     composer_empty=not s.get('composer_text', '').strip(),
                     busy=bool(s.get('busy')), auth_required=auth,
                     inline_approval_present=CARD in text)
@@ -96,7 +96,7 @@ class BrowserTransport:
 
     @staticmethod
     def _norm(value):
-        return re.sub(r'\\n{2,}', '\\n', value.replace('\\r', '').replace('`', '')).strip()
+        return re.sub(r'\n{2,}', '\n', value.replace('\r', '').replace('`', '')).strip()
 
     def user_messages(self):
         bubbles = self.snapshot().get('user_messages', [])
@@ -116,7 +116,7 @@ def approve_github_card(cdp, repo, branch, allowed_paths, details_wait=1.0, slee
         dialogs = _parsed(_retry(cdp, DIALOG_JS, sleep))
         operations = []
         for dialog in dialogs:
-            for match in re.finditer('call_tool\\n', dialog):
+            for match in re.finditer('call_tool\n', dialog):
                 operation, _ = json.JSONDecoder().raw_decode(dialog[match.end():].lstrip())
                 operations.append(operation)
         if len(operations) != 1:
