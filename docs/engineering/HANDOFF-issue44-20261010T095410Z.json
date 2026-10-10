@@ -4,31 +4,31 @@
   "pr_number": 46,
   "branch": "fix/issue-44-relay-ownership-20261010T095410Z",
   "task_id": "issue44-20261010T095410Z",
-  "instruction_id": "R3-r2",
-  "status": "READY_FOR_REVIEW",
-  "summary": "Repaired R3 with flock-protected per-unit monotonic sequence, new-head rework progression, latest-seq decisions and expanded concurrency tests. Await independent exact-head CI.",
+  "instruction_id": "R4-r0",
+  "status": "BLOCKED",
+  "summary": "R4 cannot safely compose the required outer shared resource lock with R2 dispatch_once: R2 unconditionally acquires the identical resource lock and refuses while R4 owns it. R2 has no lock-token reuse or already-owned dispatch API. Releasing the outer lock to call dispatch_once violates the required cycle-wide exclusivity. Per instruction, R1-R3 were not edited; no R4 implementation was attempted.",
   "changed_files": [
-    "lab/relay_decision_ledger.py",
-    "lab/tests/test_relay_decision_ledger.py",
-    "docs/RELAY_OPERATIONS_RUNBOOK.md",
     "docs/engineering/HANDOFF-issue44-20261010T095410Z.json"
   ],
   "tests": [
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No local checkout or test execution; Hermes to run full CI at new head."
+      "evidence": "No test execution; blocked on incompatible R1/R2 lock contract."
     }
   ],
   "remaining_work": [
-    "Hermes exact-head full CI and independent Main CIO review."
+    "Authorize a bounded R2 API extension to accept and verify an already-held lock token, or explicitly approve a separate cycle mutex design with distinct resource IDs.",
+    "Implement R4 and >=12 tests after API decision; run exact-head CI."
   ],
-  "source_head_sha": "f4002456ff3ddaf39760549dc8deb7f40a31c907",
+  "source_head_sha": "a8e1f10b258a4d1dcb95e120a9675e1f0223401f",
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head full CI and inspect R3 allowlisted diff and multiprocessing test.",
-    "if_pass": "Independently review acceptance; keep draft PR unmerged.",
-    "if_fail": "Return exact-head logs for bounded repair.",
-    "blockers": []
+    "verify_now": "Inspect relay_operator_entry.dispatch_once and relay_resource_lock.acquire: dispatch_once always reacquires resource_id, so holding it in run_cycle guarantees REFUSED_RESOURCE_LOCK.",
+    "if_pass": "Authorize the minimal lock contract adjustment or distinct cycle mutex and issue a new bounded instruction.",
+    "if_fail": "Return an explicit safe composition mechanism preserving exclusive ownership and no double send.",
+    "blockers": [
+      "R2 dispatch_once cannot run under an already-held same-resource R1 lock."
+    ]
   }
 }
