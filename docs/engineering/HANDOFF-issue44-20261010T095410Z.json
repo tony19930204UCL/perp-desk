@@ -4,9 +4,9 @@
   "pr_number": 46,
   "branch": "fix/issue-44-relay-ownership-20261010T095410Z",
   "task_id": "issue44-20261010T095410Z",
-  "instruction_id": "R5-r0",
+  "instruction_id": "R5-r1",
   "status": "READY_FOR_REVIEW",
-  "summary": "Implemented injected browser, GitHub receipt, approval, decision and tick adapters with 29 fake-based unittest methods; CI and behavior not executed.",
+  "summary": "Repaired fake FILL_JS JSON extraction to exclude execCommand closing parenthesis, removed dead expression, disabled test sleeps, added special-character prompt and chained retry exception assertions. Production change limited to _retry preserving the last CDP exception as TransportError cause and message; no FILL_JS or send behavior changed.",
   "changed_files": [
     "lab/relay_adapters.py",
     "lab/tests/test_relay_adapters.py",
@@ -16,18 +16,18 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "GitHub branch-scoped update_file only; no test execution performed."
+      "evidence": "No executable checkout or CI run in this session; GitHub branch-scoped file updates only. Prior Hermes exact-head failures were supplied by operator, not claimed as new execution."
     }
   ],
   "remaining_work": [
-    "Run exact-head CI and independent end-to-end fake browser chain probes; repair any failures before acceptance."
+    "Main CIO must run exact-head CI and independent integrated behavior probes."
   ],
-  "source_head_sha": "f9fbf95ea0d70d261b7ba2243e30280410a8048d",
+  "source_head_sha": "3eee8829f07fe9030c642ebd5e7f5feab7713aac",
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head CI, inspect JS constants and verify 2-unit tick chain, approval allow-once scope, retry and no-resend behavior.",
-    "if_pass": "Review for R5 acceptance without merge or deployment.",
-    "if_fail": "Return exact CI failures for bounded repair.",
+    "verify_now": "Run exact-head CI and verify special-character FILL, exactly-once send and failing click, fresh-chat stability, retry exception chaining, and two-send ALL_DONE tick chain.",
+    "if_pass": "Independently review R5-r1 for acceptance; no merge/deploy/trading authorized.",
+    "if_fail": "Return exact failing assertions and head SHA for bounded repair.",
     "blockers": []
   }
 }
