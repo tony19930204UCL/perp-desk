@@ -1,36 +1,40 @@
 {
   "schema_version": 2,
   "task_id": "f1h-20261010T172103Z",
-  "instruction_id": "F1H-E0-r0",
+  "instruction_id": "F1H-U1-r0",
+  "repo": "tony19930204UCL/perp-desk",
+  "pr_number": 48,
+  "branch": "feat/paper-f1h-20261010T172103Z",
   "status": "READY_FOR_REVIEW",
-  "summary": "Extended root-level paper config JSON export allowlist and added ten regression tests; CI pending.",
-  "source_head_sha": "fb420f1a33104e911ac213ce461260d3353a295a",
+  "summary": "Implemented registration-bound 1h v5 detector and 15 deterministic tests including v4 differential, multi-symbol IDs, warmup, gap, receipt and bar validation. CI pending.",
+  "source_head_sha": "0f3a15295c0485c81cbdf53e5364ea15cbadd553",
   "changed_files": [
-    "automation/review_sync.py",
-    "automation/tests/test_review_sync_config_allowlist.py",
+    "lab/signals_v5.py",
+    "lab/tests/test_signals_v5.py",
     "docs/engineering/HANDOFF-f1h-20261010T172103Z.json"
   ],
   "tests": [
     {
-      "command": "python3 -m unittest discover -s automation/tests",
-      "result": "not run",
-      "evidence": "No local execution; awaiting exact-head CI."
-    },
-    {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No local execution; awaiting exact-head CI."
+      "evidence": "GitHub connector edits only; no local test execution."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "not run",
+      "evidence": "Awaiting exact-head CI."
     }
   ],
   "remaining_work": [
-    "Run exact-head CI and confirm exporter and isolated paper suite pass.",
-    "Verify diff against main changes only the intended allowlist expression."
+    "Run exact-head CI and inspect v5 differential and exporter checks.",
+    "Independently verify symbol-specific receipt parity and PR diff."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Inspect exact-head CI and verify diff/allowlist scope.",
-    "if_pass": "Accept F1H-E0 for independent review; do not merge or deploy automatically.",
-    "if_fail": "Return exact failing log and head SHA for bounded repair.",
+    "verify_now": "Run both exact-head CI suites and check only three authorized files changed in this unit.",
+    "if_pass": "Accept F1H-U1 for independent review; do not merge or deploy.",
+    "if_fail": "Return failing logs and head SHA for bounded repair.",
     "blockers": []
-  }
+  },
+  "blockers": []
 }
