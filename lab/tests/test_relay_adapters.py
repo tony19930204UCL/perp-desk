@@ -72,9 +72,11 @@ class AdapterTests(unittest.TestCase):
 
     def test_normalization_and_original_multiline(self):
         transport = a.BrowserTransport(self.page, sleep=lambda _: None)
-        self.assertEqual(transport._norm('a\\n\\n\\nb\\r' + '`'), 'a\\nb')
-        transport._sent = 'a\\nb `code`'
-        self.page.messages = ['a\\n\\nb code']
+        sample = 'a\n\n\nb\r' + '`'
+        self.assertIn('\n', sample)
+        self.assertEqual(transport._norm(sample), 'a\nb')
+        transport._sent = 'a\nb `code`'
+        self.page.messages = ['a\n\nb code']
         self.assertEqual(transport.user_messages(), [transport._sent])
 
     def test_approval_real_newline(self):
