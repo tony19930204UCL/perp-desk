@@ -1,1 +1,34 @@
-{"schema_version":1,"status":"PLACEHOLDER_NOT_A_HANDBACK"}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 46,
+  "branch": "fix/issue-44-relay-ownership-20261010T095410Z",
+  "task_id": "issue44-20261010T095410Z",
+  "instruction_id": "R1-r0",
+  "status": "READY_FOR_REVIEW",
+  "summary": "Implemented cross-process exclusive relay resource lease lock and ten unittest cases; CI verification pending.",
+  "changed_files": [
+    "lab/relay_resource_lock.py",
+    "lab/tests/test_relay_resource_lock.py",
+    "docs/engineering/HANDOFF-issue44-20261010T095410Z.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s lab/tests -p test_relay_resource_lock.py",
+      "result": "not run",
+      "evidence": "No local execution performed; no GitHub workflow runs returned for pre-mailbox commit 0ca25cc4f8b622e49795b3a2fc70a33462477537."
+    }
+  ],
+  "remaining_work": [
+    "Run CI at exact post-mailbox head and independently review race/lease semantics.",
+    "Verify PR diff contains only the three R1 allowlisted files."
+  ],
+  "source_head_sha": "0ca25cc4f8b622e49795b3a2fc70a33462477537",
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Verify exact-head CI, ten tests and allowlisted PR diff; independently assess ownership semantics.",
+    "if_pass": "Accept R1 for review only; retain draft PR and do not merge without separate approval.",
+    "if_fail": "Return failing CI evidence and request a bounded corrective instruction.",
+    "blockers": []
+  }
+}
