@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from lab import relay_resource_lock
+import relay_resource_lock
 
 
 class RelayError(RuntimeError):
