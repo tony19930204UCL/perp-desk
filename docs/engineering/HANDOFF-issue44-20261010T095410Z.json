@@ -4,9 +4,9 @@
   "pr_number": 46,
   "branch": "fix/issue-44-relay-ownership-20261010T095410Z",
   "task_id": "issue44-20261010T095410Z",
-  "instruction_id": "R5-r1",
+  "instruction_id": "R5-r2",
   "status": "READY_FOR_REVIEW",
-  "summary": "Repaired fake FILL_JS JSON extraction to exclude execCommand closing parenthesis, removed dead expression, disabled test sleeps, added special-character prompt and chained retry exception assertions. Production change limited to _retry preserving the last CDP exception as TransportError cause and message; no FILL_JS or send behavior changed.",
+  "summary": "Corrected doubled backslashes in adapter regexes, normalization, JS source and GitHub approval newline search. Added real conversation URL, normalization, approval and chained fresh-home navigation regression assertions.",
   "changed_files": [
     "lab/relay_adapters.py",
     "lab/tests/test_relay_adapters.py",
@@ -16,18 +16,18 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No executable checkout or CI run in this session; GitHub branch-scoped file updates only. Prior Hermes exact-head failures were supplied by operator, not claimed as new execution."
+      "evidence": "No executable checkout or test runner used; GitHub connector branch-scoped edits only. Hermes must run exact-head CI."
     }
   ],
   "remaining_work": [
-    "Main CIO must run exact-head CI and independent integrated behavior probes."
+    "Main CIO must independently run exact-head CI and probe integrated chain."
   ],
-  "source_head_sha": "3eee8829f07fe9030c642ebd5e7f5feab7713aac",
+  "source_head_sha": "a972039ae0a903b4254c240cea679e2472677da2",
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head CI and verify special-character FILL, exactly-once send and failing click, fresh-chat stability, retry exception chaining, and two-send ALL_DONE tick chain.",
-    "if_pass": "Independently review R5-r1 for acceptance; no merge/deploy/trading authorized.",
-    "if_fail": "Return exact failing assertions and head SHA for bounded repair.",
+    "verify_now": "Run exact-head CI, real URL route checks, normalization and GitHub card parsing, and two-click ALL_DONE chain.",
+    "if_pass": "Independently accept R5-r2; no merge, deploy or trading authorized.",
+    "if_fail": "Return exact head SHA and failing assertions for bounded repair.",
     "blockers": []
   }
 }
