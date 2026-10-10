@@ -151,7 +151,13 @@ def _cycle(config, transport, github, ledger_dir, now):
                 or not decision.get("evidence")):
             raise ValueError("invalid decision")
         previous = decisions._records(Path(ledger_dir) / "decisions", unit["unit_id"])
-        result = decisions.record_decision(
+        matching = [r for r in previous if r["head_sha"] == receipt["head_sha"] and r["mailbox_blob"] == receipt["blob_sha"]]
+        if matching:
+            result = matching[-1]
+            if result["status"] != decision["status"] or result["reason"] != decision["reason"] or result["evidence"] != decision["evidence"]:
+                raise ValueError("conflicting replayed decision")
+        else:
+            result = decisions.record_decision(
             Path(ledger_dir) / "decisions", unit["unit_id"],
             receipt["head_sha"], receipt["blob_sha"], decision["status"],
             decision["reason"], decision["evidence"],
