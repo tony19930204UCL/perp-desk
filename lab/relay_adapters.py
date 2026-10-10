@@ -31,15 +31,19 @@ def _parsed(value):
 
 
 def _retry(cdp, expression, sleep=time.sleep, tries=6, delay=2.0):
+    last_exc = None
     for attempt in range(tries):
         try:
             value = cdp(expression)
             if value is not None and value != '' and value != [] and value != {}:
                 return value
-        except Exception:
-            pass
+        except Exception as exc:
+            last_exc = exc
         if attempt + 1 < tries:
             sleep(delay)
+    if last_exc is not None:
+        raise TransportError('CDP unavailable or empty; last exception: ' +
+                             type(last_exc).__name__ + ': ' + str(last_exc)) from last_exc
     raise TransportError('CDP unavailable or empty')
 
 
