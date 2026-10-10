@@ -1,34 +1,41 @@
 {
   "schema_version": 2,
   "task_id": "h2004-20261010T152432Z",
-  "instruction_id": "H2-U1-r0",
+  "instruction_id": "H2-U2-r0",
   "repository": "tony19930204UCL/perp-desk",
   "branch": "feat/paper-h2-004-1h-20261010T152432Z",
   "pr_number": 47,
-  "source_head_sha": "b55076590e18d6f325159d1803d2ae5cd865a3e8",
+  "source_head_sha": "675c70b8e06a63382cbd8f97d615e5d97a7b93b8",
   "status": "READY_FOR_REVIEW",
-  "summary": "Implemented 1h detector inheriting v3 contracts and 14 deterministic unittest methods; exact-head CI not yet verified.",
+  "summary": "Implemented isolated H2 one-hour paper runtime, immutable 21-day configuration and 16 offline unittest methods. Exact-head CI not run; independent verification required.",
   "changed_files": [
-    "lab/signals_v4.py",
-    "lab/tests/test_signals_v4.py",
+    "lab/paper_config_v4.json",
+    "lab/paper_runtime_v4.py",
+    "lab/tests/test_paper_runtime_v4.py",
     "docs/engineering/HANDOFF-h2004-20261010T152432Z.json"
   ],
   "tests": [
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No execution environment used; GitHub workflow lookup for test head returned zero runs."
+      "evidence": "GitHub file edits only; no CI execution or result observed."
+    },
+    {
+      "command": "Exporter contract",
+      "result": "not run",
+      "evidence": "Exact-head exporter CI not executed or observed."
     }
   ],
   "remaining_work": [
-    "Run exact-head CI including exporter contract and inspect results",
-    "Independent acceptance by Main CIO"
+    "Run exact-head full lab unittest suite and exporter contract; repair any failures.",
+    "Independently verify signal admission boundaries, max-hold exit behavior and v3 regression; current tests do not directly exercise every requested behavior.",
+    "Main CIO independent acceptance."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head CI and confirm exporter and 14 detector tests; inspect PR 47 diff.",
-    "if_pass": "Accept H2-U1 and proceed to next bounded unit.",
-    "if_fail": "Return exact failure evidence for repair; do not merge.",
+    "verify_now": "Run exact-head CI including exporter and all lab tests; inspect 1h warmup, 15s late gate, 2x cost gate, 12h exit, config hash and v3 isolation.",
+    "if_pass": "Review H2-U2 for independent acceptance; no automatic merge, deployment or trading.",
+    "if_fail": "Return exact failing command and traceback for bounded repair; do not merge.",
     "blockers": []
   }
 }
