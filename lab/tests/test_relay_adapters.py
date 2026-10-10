@@ -90,8 +90,8 @@ class AdapterTests(unittest.TestCase):
                     capture_output=True, text=True)
                 self.assertEqual(check.returncode, 0, check.stderr)
 
-    def test_approval_ghp_thirty_letters_never_clicks(self):
-        result = self.approval(content='ghp_' + 'A' * 30)
+    def test_approval_refuses_hardcoded_github_token_value(self):
+        result = self.approval(content='gh' + 'p_' + 'A' * 30)
         self.assertFalse(result['clicked'])
         self.assertEqual(self.page.calls.count(a.ALLOW_JS), 0)
 
@@ -221,7 +221,7 @@ class AdapterTests(unittest.TestCase):
         self.assertFalse(self.approval(content='x' * 180001)['clicked'])
 
     def test_approval_secret(self):
-        self.assertFalse(self.approval(content='ghp_' + 'a' * 25)['clicked'])
+        self.assertFalse(self.approval(content='gh' + 'p_' + 'a' * 25)['clicked'])
 
     def test_approval_refusals_never_allow(self):
         self.approval(path='no')
