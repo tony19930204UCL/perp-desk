@@ -4,30 +4,30 @@
   "pr_number": 46,
   "branch": "fix/issue-44-relay-ownership-20261010T095410Z",
   "task_id": "issue44-20261010T095410Z",
-  "instruction_id": "R4-r2",
+  "instruction_id": "R5-r0",
   "status": "READY_FOR_REVIEW",
-  "summary": "Fixed persisted cycle state KeyError by checking state-file existence; renamed unittest helper to cycle_once to avoid TestCase.run override; strengthened WAITING chain and crash no-resend assertions. Tests not executed.",
+  "summary": "Implemented injected browser, GitHub receipt, approval, decision and tick adapters with 29 fake-based unittest methods; CI and behavior not executed.",
   "changed_files": [
-    "lab/relay_cycle.py",
-    "lab/tests/test_relay_cycle.py",
+    "lab/relay_adapters.py",
+    "lab/tests/test_relay_adapters.py",
     "docs/engineering/HANDOFF-issue44-20261010T095410Z.json"
   ],
   "tests": [
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "GitHub branch-scoped file updates only; no test execution performed."
+      "evidence": "GitHub branch-scoped update_file only; no test execution performed."
     }
   ],
   "remaining_work": [
-    "Hermes to run full exact-head CI and validate behavior."
+    "Run exact-head CI and independent end-to-end fake browser chain probes; repair any failures before acceptance."
   ],
-  "source_head_sha": "e7a0fbbb5ea1c5e7de7be00febb5a1f8548bfc6b",
+  "source_head_sha": "f9fbf95ea0d70d261b7ba2243e30280410a8048d",
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head full unittest discovery and independently probe two sends, ALL_DONE, crash no resend and mutex behavior.",
-    "if_pass": "Review R4-r2 for acceptance; no merge or deployment performed.",
-    "if_fail": "Return exact failure traces for bounded repair.",
+    "verify_now": "Run exact-head CI, inspect JS constants and verify 2-unit tick chain, approval allow-once scope, retry and no-resend behavior.",
+    "if_pass": "Review for R5 acceptance without merge or deployment.",
+    "if_fail": "Return exact CI failures for bounded repair.",
     "blockers": []
   }
 }
