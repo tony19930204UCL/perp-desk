@@ -61,13 +61,16 @@ class AdapterTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
 
     def test_js_constants_no_control_chars(self):
+        CONTROLS = ('\r', '\n', '\t')
+        self.assertTrue(any(ch in 'abc\nxyz' for ch in CONTROLS))
+        self.assertFalse(any(ch in 'abc xyz rnt' for ch in CONTROLS))
         for name, value in vars(a).items():
             if not name.endswith('_JS') or not isinstance(value, str):
                 continue
             with self.subTest(js=name):
                 code = value.replace('PATHJSON', json.dumps('/')).replace(
                     'TEXTJSON', json.dumps('sample'))
-                self.assertFalse(any(ch in code for ch in '\\r\\n\\t'),
+                self.assertFalse(any(ch in code for ch in CONTROLS),
                                  name + ' contains a control character')
 
     def test_js_constants_parse_with_node_if_available(self):
