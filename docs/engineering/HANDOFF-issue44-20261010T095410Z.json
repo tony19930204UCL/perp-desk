@@ -4,9 +4,9 @@
   "pr_number": 46,
   "branch": "fix/issue-44-relay-ownership-20261010T095410Z",
   "task_id": "issue44-20261010T095410Z",
-  "instruction_id": "R4-r1",
+  "instruction_id": "R4-r2",
   "status": "READY_FOR_REVIEW",
-  "summary": "Implemented separate cycle mutex, durable atomic state, receipt correlation, decision ledger integration, bounded rework, and fail-closed dispatch recovery. Added 13 unittest cases. Not independently tested.",
+  "summary": "Fixed persisted cycle state KeyError by checking state-file existence; renamed unittest helper to cycle_once to avoid TestCase.run override; strengthened WAITING chain and crash no-resend assertions. Tests not executed.",
   "changed_files": [
     "lab/relay_cycle.py",
     "lab/tests/test_relay_cycle.py",
@@ -16,18 +16,18 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No local checkout or CI execution performed; tests committed for independent Hermes CI."
+      "evidence": "GitHub branch-scoped file updates only; no test execution performed."
     }
   ],
   "remaining_work": [
-    "Run exact-head CI and probe real crash windows, receipt schema compatibility, and lease expiry."
+    "Hermes to run full exact-head CI and validate behavior."
   ],
-  "source_head_sha": "acf26271571eb9a2a999af2416c280e29644df00",
+  "source_head_sha": "e7a0fbbb5ea1c5e7de7be00febb5a1f8548bfc6b",
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run full unittest discovery at exact head and independently probe cycle mutex, receipt validation, crash recovery and exactly-once send.",
-    "if_pass": "Review and accept R4; no merge or deploy was performed.",
-    "if_fail": "Return exact failing traces for bounded repair.",
+    "verify_now": "Run exact-head full unittest discovery and independently probe two sends, ALL_DONE, crash no resend and mutex behavior.",
+    "if_pass": "Review R4-r2 for acceptance; no merge or deployment performed.",
+    "if_fail": "Return exact failure traces for bounded repair.",
     "blockers": []
   }
 }
