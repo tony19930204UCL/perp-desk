@@ -60,6 +60,26 @@ class AdapterTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
 
+    def test_real_routes(self):
+        transport = a.BrowserTransport(self.page, sleep=lambda _: None)
+        for url in ('https://chatgpt.com/', 'https://chatgpt.com/c/abc123'):
+            self.page.url = url
+            self.assertTrue(transport.observe()['route_ok'], url)
+        for url in ('https://chatgpt.com/settings', 'https://evil.com/c/abc',
+                    'https://chatgpt.com/c/abc/extra'):
+            self.page.url = url
+            self.assertFalse(transport.observe()['route_ok'], url)
+
+    def test_normalization_and_original_multiline(self):
+        transport = a.BrowserTransport(self.page, sleep=lambda _: None)
+        self.assertEqual(transport._norm('a\\n\\n\\nb\\r' + '`'), 'a\\nb')
+        transport._sent = 'a\\nb `code`'
+        self.page.messages = ['a\\n\\nb code']
+        self.assertEqual(transport.user_messages(), [transport._sent])
+
+    def test_approval_real_newline(self):
+        self.assertTrue(self.approval()['clicked'])
+
     def test_retry_empty(self):
         values = iter(['', None, True])
         self.assertTrue(a.BrowserTransport(lambda _: next(values), sleep=lambda _: None)._call('x'))
@@ -226,7 +246,9 @@ class AdapterTests(unittest.TestCase):
         pending = a.tick(config, self.page, gh)
         self.assertEqual(pending['status'], 'AWAITING_OPERATOR_DECISION')
         self.decision()
+        self.assertEqual(self.page.url, 'https://chatgpt.com/c/abc')
         self.assertEqual(a.tick(config, self.page, gh)['status'], 'SENT')
+        self.assertTrue(any(call.startswith('(()=>{location.href=') for call in self.page.calls))
         self.assertEqual(a.tick(config, self.page, gh)['status'], 'AWAITING_OPERATOR_DECISION')
         (self.root / 'b.head.blob.json').write_text((self.root / 'a.head.blob.json').read_text())
         self.assertEqual(a.tick(config, self.page, gh)['status'], 'ALL_DONE')
