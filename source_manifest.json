@@ -266,7 +266,6 @@
     "lab/tests/test_paper_market.py": "5434d536fa7b2dbc763dc82800a1d40fe95171b164cf7d01a50338e6ad3a5147",
     "lab/tests/test_paper_presentation.py": "be6d0c4e3fd593ac236c5d08f7599bf4497d66fa451c742c934762dbfd33d094",
     "lab/tests/test_paper_runtime.py": "c47c26aa210f653bc4f257f796b36328dabe8ef1e6ce8356b630c5a2b4ab262d",
-    "lab/tests/test_paper_runtime_v4.py": "a7f7e71d443d4de0226e259a0fced2c9117f3692b1ec3a37ece40e6c07b3227e",
     "lab/tests/test_paper_sizing.py": "d87a708ae360e82fb47daf7ca0513220a0167a9900957f0745aa6052c608400e",
     "lab/tests/test_paper_v2.py": "dc117a80b56951cea3b8867ed3cbfa71a6e087ae65ad89978393c3086918f446",
     "lab/tests/test_research_dashboard.py": "46cb09e1bb82756f8bc5d606f86e6b83273562114c3f35bd0eac16f66a2d4b42",
@@ -288,7 +287,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "97cfa902a48a4dcf359866fe38a44ae7f5c71090ab28180a5ae926392bbc198f",
+  "fingerprint": "91be2488e2bb6cc0013f4349bcc2b45013e55286a30cd117663b3d81e3621bfc",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
