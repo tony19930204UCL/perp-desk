@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from paper_market import receipt_ms, decimal_string
+import signals_v2
 from signals_v2 import canonical
 from signals_v4 import Detector as HourDetector
 
@@ -57,8 +58,8 @@ class Detector(HourDetector):
                            **{key: Decimal(decimal_string(row[index], key != 'volume'))
                               for key, index in [('open', 1), ('high', 2), ('low', 3),
                                                  ('close', 4), ('volume', 5)]})
-                result = super()._process(
-                    bar, now=datetime.fromtimestamp(now_ms / 1000, timezone.utc))
+                result = super(signals_v2.Detector, self)._process(
+                    bar, now=datetime.fromtimestamp(now_ms / 1000, timezone.utc), session=None)
                 if result['diagnostic'] != 'warmup' or result['intent'] is not None:
                     raise ValueError('invalid bootstrap bar')
                 bars.append(bar)
