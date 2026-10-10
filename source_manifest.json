@@ -4,8 +4,9 @@
     ".gitignore": "e49fe1b585b7bfea6a86ae02f17b24a0cefc3f01b55300f481e6e1f37c791632",
     "AGENTS.md": "4cb6f42aa5ec4263567a7dec156b86784ccc522d8a675572b62d23f711193525",
     "README.md": "29ca1ff35eaea818ea049842bc2640413bb8163037329b4c478390895b056a28",
-    "automation/review_sync.py": "db18eea6a7e27a9ab67aaa6c7eab3f13eeac8d13ef7970dc4a3795dd969c4eb3",
+    "automation/review_sync.py": "d4fbb67a3fd72be97a885915a810f485b3c79f66618228f0d5b7af188aff17a5",
     "automation/tests/test_review_sync.py": "a5af21cad54122eb58be698de35aac28e7dcc9cea10f5547bcbc81fa8fa64795",
+    "automation/tests/test_review_sync_config_allowlist.py": "04538008e6b19680e7da7f97c8ef537f91f3ea154f42d5a0f1e9131ce7bf3e6a",
     "context/AGENTS.md": "93a258d9d681b264bcfc08f8f4e9063e7a2eaf8f39d77465d9969088b9bbd22d",
     "context/OPERATING_AGREEMENT.md": "b340382e6dbfa64defb007ffac3a6dcbe875abcf7172b93c78849b72ede62b0a",
     "context/open_questions.md": "7247519ae062622c0c33a645a3be2569e1e7132773a2e850186099adfd1f31b0",
@@ -162,6 +163,7 @@
     "lab/paper_config.json": "ee5aad2ee390985ad5046587af18782cfe50c7575388255e954b40e43f5bb026",
     "lab/paper_config_v2.json": "dd1aa331f86df0892190dc4e06bb96a8b2086a605352e96702063dbc91879c96",
     "lab/paper_config_v3.json": "622b8de7d554d36ae77f913944746c8c32b5ea00e59e8385fe5716553fe6a069",
+    "lab/paper_config_v4.json": "e27b4b4b05ec66a2a88b9d4dd4eb502dd0bc329d87003346da55707ee0a7405c",
     "lab/paper_market.py": "31867ad2cb50c98847f24a92e1a7facafc366c02073384973bf56a5aba0e9ad8",
     "lab/paper_migrate_v3.py": "8d246b1db15d1a7437df616b9cdd15471eeaf908601323e65bf8397b4cbc6e65",
     "lab/paper_runtime.py": "7e9a9a21e4dd93a9464429ffbde01e93d54322ee7c8d16ac8234a28f394d3b05",
@@ -288,7 +290,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "2937e09044aaf8ccc6fc8055752b7329ce273dbc8cda09166822eab4a04878d7",
+  "fingerprint": "b086fbb7e5ea9a7fe378a5affd44dd5a9433c59340fe460230648b6c94238259",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
