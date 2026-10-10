@@ -1,1 +1,36 @@
-{"placeholder": true, "task": "f1h-20261010T172103Z"}
+{
+  "schema_version": 2,
+  "task_id": "f1h-20261010T172103Z",
+  "instruction_id": "F1H-E0-r0",
+  "status": "READY_FOR_REVIEW",
+  "summary": "Extended root-level paper config JSON export allowlist and added ten regression tests; CI pending.",
+  "source_head_sha": "fb420f1a33104e911ac213ce461260d3353a295a",
+  "changed_files": [
+    "automation/review_sync.py",
+    "automation/tests/test_review_sync_config_allowlist.py",
+    "docs/engineering/HANDOFF-f1h-20261010T172103Z.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "not run",
+      "evidence": "No local execution; awaiting exact-head CI."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "not run",
+      "evidence": "No local execution; awaiting exact-head CI."
+    }
+  ],
+  "remaining_work": [
+    "Run exact-head CI and confirm exporter and isolated paper suite pass.",
+    "Verify diff against main changes only the intended allowlist expression."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Inspect exact-head CI and verify diff/allowlist scope.",
+    "if_pass": "Accept F1H-E0 for independent review; do not merge or deploy automatically.",
+    "if_fail": "Return exact failing log and head SHA for bounded repair.",
+    "blockers": []
+  }
+}
