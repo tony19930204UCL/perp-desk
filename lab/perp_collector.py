@@ -27,6 +27,7 @@ class PublicClient:
     ALLOWED = {'/fapi/v1/exchangeInfo': set(), '/fapi/v1/ticker/bookTicker': {'symbol'},
                '/fapi/v1/premiumIndex': {'symbol'}, '/fapi/v1/depth': {'symbol', 'limit'},
                '/fapi/v1/klines': {'symbol', 'interval', 'limit', 'startTime', 'endTime'}}
+    ALLOWED_SYMBOLS = frozenset({'ETHUSDT', 'XAUUSDT'})
 
     def __init__(self, opener=urlopen, sleep=time.sleep, clock=utc_now, on_error=None,
                  monotonic=time.monotonic, wall_ms=None):
@@ -50,7 +51,7 @@ class PublicClient:
         timing = timing or (lambda event: None)
         if endpoint not in self.ALLOWED or not set(params).issubset(self.ALLOWED[endpoint]):
             raise ValueError('only allowlisted public market-data GETs permitted')
-        if 'symbol' in params and params['symbol'] not in {'ETHUSDT', 'XAUUSDT'}:
+        if 'symbol' in params and params['symbol'] not in self.ALLOWED_SYMBOLS:
             raise ValueError('unsupported observation symbol')
         url = self.BASE + endpoint + ('?' + urlencode(params) if params else '')
         request = Request(url, headers={'User-Agent': 'ShadowPublicObserver/1.0', 'Cache-Control': 'no-cache'}, method='GET')
