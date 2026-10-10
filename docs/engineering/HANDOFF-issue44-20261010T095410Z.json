@@ -4,9 +4,9 @@
   "pr_number": 46,
   "branch": "fix/issue-44-relay-ownership-20261010T095410Z",
   "task_id": "issue44-20261010T095410Z",
-  "instruction_id": "R2-r0",
+  "instruction_id": "R2-r1",
   "status": "READY_FOR_REVIEW",
-  "summary": "Implemented relay operator single-send entry and 17 unittest methods; exact-head CI and independent review pending.",
+  "summary": "Fixed CI import path for R2 operator entry and its test module using bare imports and lab sys.path insertion; preserved all 17 tests without logic changes. Exact-head CI pending.",
   "changed_files": [
     "lab/relay_operator_entry.py",
     "lab/tests/test_relay_operator_entry.py",
@@ -14,21 +14,21 @@
   ],
   "tests": [
     {
-      "command": "python3 -m unittest discover -s lab/tests -p test_relay_operator_entry.py",
+      "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No test execution performed; CI not verified at exact head."
+      "evidence": "Executor did not run tests; Hermes reported 357 tests with one import error at prior head a203050244651b6f401912c038663fb6339cbd30. New-head CI pending."
     }
   ],
   "remaining_work": [
-    "Run exact-head CI and verify 17 tests pass.",
-    "Independently review lease expiry and crash-safe intent persistence; verify PR diff is allowlisted."
+    "Hermes rerun exact CI command at new head and confirm all tests pass.",
+    "Main CIO independently review branch diff and acceptance."
   ],
-  "source_head_sha": "c2f560e8f5526b347d5f62950b199ddc3df1a310",
+  "source_head_sha": "3796719c464ac2d22967ca6c83e7d20c3e17bb00",
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Verify exact-head CI, 17 unittest cases, and PR diff; assess fail-closed semantics and lease races.",
-    "if_pass": "Accept R2 for independent review only; keep PR draft and do not merge without approval.",
-    "if_fail": "Return failing CI evidence for bounded correction.",
+    "verify_now": "Run cd lab && python3 -m unittest discover -s tests on exact new head; verify 17 R2 tests and allowlisted diff.",
+    "if_pass": "Independently accept repair for review; keep draft PR unmerged pending approval.",
+    "if_fail": "Return exact-head CI failure evidence for bounded correction.",
     "blockers": []
   }
 }
