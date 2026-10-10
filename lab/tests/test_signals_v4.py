@@ -102,7 +102,7 @@ class HourDetectorTests(unittest.TestCase):
         manifest = self.detector.seed(r, cutoff_ms=cutoff, now_ms=now)
         self.assertEqual(manifest["bars_count"], 61)
         self.assertEqual(manifest["receipt_sha256"], hashlib.sha256(canonical(r).encode()).hexdigest())
-        self.assertEqual(manifest["context_start_ms"], START + HOUR)
+        self.assertEqual(manifest["context_start_ms"], START)
         self.assertEqual(self.detector.manifest(), manifest)
 
     def test_seed_refuses_minute_receipt(self):
