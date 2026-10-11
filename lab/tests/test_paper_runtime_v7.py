@@ -54,7 +54,25 @@ class RuntimeTests(unittest.TestCase):
                             fixture=True)
 
     def offline(self, runtime, history, future):
-        runtime.reference = lambda: {}
+        runtime.reference = lambda: {
+            "payload": {
+                "symbols": [{
+                    "symbol": runtime.symbol,
+                    "contractType": "PERPETUAL",
+                    "status": "TRADING",
+                    "quoteAsset": "USDT",
+                    "marginAsset": "USDT",
+                    "filters": [
+                        {"filterType": "PRICE_FILTER", "tickSize": "0.01"},
+                        {"filterType": "LOT_SIZE", "stepSize": "0.001",
+                         "minQty": "0.001", "maxQty": "100000"},
+                        {"filterType": "MARKET_LOT_SIZE", "stepSize": "0.001",
+                         "minQty": "0.001", "maxQty": "100000"},
+                        {"filterType": "MIN_NOTIONAL", "notional": "5"},
+                    ],
+                }],
+            },
+        }
         runtime.funding = lambda spec: None
         runtime.collect_markets = lambda ref: ([], {})
         runtime.validate_sources = lambda *a, **kw: None
@@ -197,7 +215,7 @@ class RuntimeTests(unittest.TestCase):
         history = rows(data["close"][:60], data["ts"][0] + 1 - DAY)
         future = rows(data["close"][60:count], data["ts"][60] + 1 - DAY)
         root = self.base / symbol
-        r = self.runtime(symbol, root, now=data["ts"][60] + 1)
+        r = self.runtime(symbol, root, now=data["ts"][59] + 1)
         try:
             self.offline(r, history, future)
             r.bootstrap()
@@ -237,7 +255,7 @@ class RuntimeTests(unittest.TestCase):
     def test_main_once(self):
         r = self.runtime()
         r.poll = r.snapshot
-        status = self.base / "status.json"
+        status = self.base / "t1_status_test.json"
         with patch("paper_runtime_v7.PaperRuntime", return_value=r):
             self.assertEqual(main(["--once", "--state-dir", str(self.base / "cli"),
                                    "--status", str(status)]), 0)
