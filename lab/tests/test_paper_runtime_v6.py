@@ -160,5 +160,40 @@ class W1RuntimeTests(unittest.TestCase):
         self.assertGreater(loss, Decimal("1"))
 
 
+    def test_main_once_publishes_status(self):
+        from unittest.mock import patch
+        from paper_runtime_v6 import main
+        status = Path(self.tmp.name) / "status.json"
+        root = Path(self.tmp.name) / "cli"
+        runtime = self.runtime(root=root)
+        runtime.poll = lambda: {"latest_error": None, "storage_protection": {}}
+        with patch("paper_runtime_v6.PaperRuntime", return_value=runtime):
+            self.assertEqual(main(["--once", "--state-dir", str(root),
+                                   "--status", str(status),
+                                   "--config", str(self.config("btcusdt"))]), 0)
+        self.assertTrue(status.exists())
+        self.assertIsNone(json.loads(status.read_text())["latest_error"])
+
+    def test_symbol_sizing_planned_loss(self):
+        spec = dict(tick_size="0.01", qty_step="0.001", market_qty_step="0.001",
+                    min_qty="0.001", max_qty="100", min_notional="5",
+                    taker_fee="0.0005")
+        for symbol in self.symbols:
+            with self.subTest(symbol=symbol):
+                data = json.loads(self.config(symbol).read_text())
+                result = size_long(data, spec, equity="100", bid="99.99",
+                                   ask="100", target="110")
+                self.assertEqual(result["status"], "accepted")
+                loss = Decimal(result["qty"]) * Decimal(result["planned_loss_per_unit"])
+                self.assertGreater(loss, Decimal("1"))
+                self.assertLessEqual(loss, Decimal("2"))
+
+    def test_snapshot_risk_version(self):
+        r = self.runtime()
+        self.addCleanup(r.close)
+        snapshot = r.snapshot()
+        expected = json.loads(self.config("btcusdt").read_text())["risk_version"]
+        self.assertEqual(snapshot["risk_version"], expected)
+
 if __name__ == "__main__":
     unittest.main()
