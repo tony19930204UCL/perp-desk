@@ -1,1 +1,41 @@
-{"placeholder": true}
+{
+  "schema_version": 2,
+  "task_id": "e1-20261011T120026Z",
+  "instruction_id": "E1-U1-r0",
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 50,
+  "branch": "feat/live-prep-e1-20261011T120026Z",
+  "status": "WAITING_CI",
+  "summary": "Implemented offline execution contract, idempotent state machine, SimBroker wrapper and deterministic tests. CI and integration acceptance remain unverified.",
+  "source_head_sha": "41d25670891c78a4e4f53f6152bce3089e290c04",
+  "changed_files": [
+    "lab/execution_interface.py",
+    "lab/sim_broker_adapter.py",
+    "lab/tests/test_execution_contract.py",
+    "lab/tests/test_sim_broker_adapter.py",
+    "docs/engineering/HANDOFF-e1-20261011T120026Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "not run",
+      "evidence": "GitHub file connector does not execute Python or CI."
+    }
+  ],
+  "remaining_work": [
+    "Run exact-head CI and fix any failures within allowlist",
+    "Verify all lifecycle transitions including partial fill and restart recovery",
+    "Independent audit of risk gates and existing-file byte identity"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Check exact-head CI for PR 50 and review only allowlisted files.",
+    "if_pass": "Perform independent integration acceptance and approve only after missing cases are verified.",
+    "if_fail": "Return failing test evidence for bounded repair.",
+    "blockers": []
+  },
+  "blockers": [
+    "CI not executed or verified",
+    "Some acceptance cases are not covered by integration tests"
+  ]
+}
