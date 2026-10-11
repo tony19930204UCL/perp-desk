@@ -1,14 +1,15 @@
 {
   "schema_version": 2,
   "task_id": "t1-20261011T125818Z",
-  "instruction_id": "T1-U2B1-r2",
+  "instruction_id": "T1-U2B2-r0",
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 51,
   "branch": "feat/paper-t1-20261011T125818Z",
   "status": "WAITING_CI",
-  "summary": "Repaired only T1-U2B1's 18-test offline suite. offline() now returns a valid symbol-specific /exchangeInfo-style receipt with required filters; _golden() starts after history bar 59 closes; CLI once test publishes to non-reserved t1_status_test.json. Manually followed seven previously failing test paths against unchanged v7, paper_market.instrument, TrendDetector and v2.publish. No runtime change, order submission, deploy or merge.",
-  "source_head_sha": "a28ebfdf2944a74bee4d079b6a3086d22d344d5b",
+  "summary": "Implemented T1 v7 bounded entry routing and rule-only reduce-only exits. New entries use trend_sizing and v5-style risk-limited taker BUY intents with 600000ms expiry, durable status/audit and broker order-ID recovery. Exit decisions submit reduce-only taker SELL, retry rejected/canceled orders using distinct persistent retry IDs, and do not take profit/max-hold. Added 15 contract test methods without replacing the prior U2B1 tests. The full-history BTCUSDT/XRPUSDT position-and-round-trip acceptance remains unverified and is not claimed: the frozen 100 USDT risk configuration, funding feed and stop simulation can reject entries independently of the reference Donchian state. No deployment, merge or live trading.",
+  "source_head_sha": "0daf1a2fceb513ef169792e3fbdd38a858534002",
   "changed_files": [
+    "lab/paper_runtime_v7.py",
     "lab/tests/test_paper_runtime_v7.py",
     "docs/engineering/HANDOFF-t1-20261011T125818Z.json"
   ],
@@ -16,30 +17,26 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests -p 'test_paper_runtime_v7.py'",
       "result": "not run",
-      "evidence": "No Python execution via GitHub connector; earlier Hermes result on pre-repair c96a0b9 was 18 tests / 7 errors and does NOT attest this new commit. Post-commit GitHub fetch verified all 18 test methods and the three substitutions."
+      "evidence": "GitHub connector cannot execute Python; 15 new unittest methods committed as 0daf1a2fceb513ef169792e3fbdd38a858534002. No pass asserted."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "Full exact-head CI was not executed in this connector session; Main CIO must run and accept it."
+      "evidence": "GitHub Actions workflow run 38172992964 was queued at source head 0daf1a2fceb513ef169792e3fbdd38a858534002 when checked; no success/failure result."
     }
   ],
   "remaining_work": [
-    "Run focused test_paper_runtime_v7.py and full unittest discovery at exact-head CI; no new result is asserted.",
-    "Manual trace: test_unarmed_entry_then_exit_arms passes valid reference to instrument, bootstraps 60 bars, then processes 110/50; exit arms without creating decisions.",
-    "Manual trace: test_gap_void_stops bootstraps through bar 99 and rejects the first new bar at day 101 versus cursor day 100.",
-    "Manual trace: test_reject_void_stops has malformed close_time_ms; _bar rejection becomes invalid daily bar and permanently voids the window.",
-    "Manual trace: test_btc_golden aligns cutoff to ts[59]+1, accepts bars 0..59, then processes future aligned daily bars and compares recorded transitions.",
-    "Manual trace: test_xrp_golden follows the same correctly aligned bootstrap/decision path with its symbol-specific exchangeInfo receipt.",
-    "Manual trace: test_restart_each_bar_100 persists cursor/detector across restarts, replays only unprocessed bars, and checks unique decision IDs.",
-    "Manual trace: test_main_once patches poll to snapshot and publishes once to t1_status_test.json, avoiding v2.publish's reserved status.json rejection.",
-    "T1-U2B2 is responsible for any execution; v7 remains detection-only and order-disabled."
+    "Run focused v7 suite and exact-head full suite at CI, capture tracebacks and reconcile any failures; the submitted code has not been executed in this session.",
+    "Add full-runtime BTCUSDT and XRPUSDT golden-execution tests checking daily open positions and complete round trips. Existing U2B1 golden tests only validate the detected decision stream, not fills.",
+    "Resolve the incompatibility of comparing reference idealized positions against executable positions under frozen initial_equity_usdt=100, exchange lot sizes, simulated stop execution and finite loss limits without altering production configurations or disabling risk protections.",
+    "Confirm broker exit retry semantics for final rejected, expired and partially filled orders through executable tests and exact-head review.",
+    "Confirm all older U2B1 tests still pass; exercise full source validation and broker delivery rather than only injected offline markets."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "At commit a28ebfdf2944a74bee4d079b6a3086d22d344d5b run focused 18-test suite and full CI on PR 51, and inspect two-file repair diff; check runtime v7 unchanged.",
-    "if_pass": "Independently accept T1-U2B1 detection-only v7 repair, then proceed with separate T1-U2B2.",
-    "if_fail": "Return exact-head test traceback and failing test name; change only files explicitly allowed by follow-up instructions.",
+    "verify_now": "At source commit 0daf1a2fceb513ef169792e3fbdd38a858534002 inspect v7 and 15 new tests, run focused and full Python unittest CI, verify no changes outside v7 and its tests prior to this mailbox; CI run 38172992964 was queued.",
+    "if_pass": "Validate order-routing behavior and separately complete BTCUSDT/XRPUSDT fill-level golden replay acceptance before accepting T1-U2B2.",
+    "if_fail": "Return exact-head traceback and failing test names; repair only v7 and test_paper_runtime_v7.py.",
     "blockers": []
   },
   "blockers": []
