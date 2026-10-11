@@ -95,9 +95,15 @@ class TrendSizingTests(unittest.TestCase):
     def test_market_step_lcm(self):
         c, i, b = fixture('BTCUSDT')
         i['market_qty_step'] = '0.003'
+        b['equity'] = '1000'
         r = size_trend_long(c, i, **b)
         self.assertEqual(r['status'], 'accepted')
         self.assertEqual(D(r['qty']) % D('0.003'), 0)
+        b['equity'] = '100'
+        rejected = size_trend_long(c, i, **b)
+        self.assertEqual(rejected['status'], 'rejected')
+        self.assertEqual(rejected['status'],
+                         size_long(c, i, **b, target='1000000')['status'])
 
     def test_config_exact_changes(self):
         base = json.loads((LAB / 'paper_config_f1h_btcusdt.json').read_text())
