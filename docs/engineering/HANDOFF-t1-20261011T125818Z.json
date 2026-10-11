@@ -1,13 +1,13 @@
 {
   "schema_version": 2,
   "task_id": "t1-20261011T125818Z",
-  "instruction_id": "T1-U2A-r3",
+  "instruction_id": "T1-U2A-r4",
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 51,
   "branch": "feat/paper-t1-20261011T125818Z",
   "status": "WAITING_CI",
-  "summary": "Corrected BTCUSDT market-step LCM test affordability: equity 1000 accepts a quantity divisible by 0.003; equity 100 rejects and matches paper_sizing.size_long status with a far target. Production sizing and four configs unchanged.",
-  "source_head_sha": "f2e2057723f4cad8875609cf84fed5daa83402ef",
+  "summary": "Updated only test_market_step_lcm: ETHUSDT equity 100 with market step 0.003 accepts qty 0.039 and matches paper sizing; BTCUSDT equity 100 and 1000 reject and match paper sizing. No production or config changes.",
+  "source_head_sha": "67339de0de3f0b6976fe6e9d15a38405b73543b0",
   "changed_files": [
     "lab/tests/test_trend_sizing.py",
     "docs/engineering/HANDOFF-t1-20261011T125818Z.json"
@@ -16,18 +16,18 @@
     {
       "command": "cd lab && python3 -m unittest tests.test_trend_sizing",
       "result": "not run",
-      "evidence": "No test execution in this repair; Hermes reported 14/15 passing at b45f849811c20bf4b1f345e49b2a470217fcf692, with only test_market_step_lcm failing. Await exact-head CI."
+      "evidence": "GitHub connector file edits only; no test runner executed. Hermes reported prior failure at head 9599e897f60bce7001ced78f9d0427829203f73c. Await exact-head CI."
     }
   ],
   "remaining_work": [
-    "Run exact-head CI and confirm all 15 trend sizing tests pass",
-    "Main CIO independently verify both market-step affordability cases"
+    "Run exact-head CI and verify all 15 trend sizing tests pass",
+    "Main CIO independently verify ETH accepted quantity 0.039 and BTC rejection at both equities"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head CI on PR 51 after mailbox commit; verify all 15 sizing tests pass and only test plus mailbox changed.",
-    "if_pass": "Independently accept T1-U2A-r3 repair.",
-    "if_fail": "Return exact failing assertion for bounded test-only repair; keep implementation and four configs pinned.",
+    "verify_now": "Run exact-head CI on PR 51 after mailbox commit; verify all 15 sizing tests and only the test and mailbox changed.",
+    "if_pass": "Independently accept T1-U2A-r4 repair.",
+    "if_fail": "Return exact failing assertion for bounded test-only repair; leave implementation and configs unchanged.",
     "blockers": []
   },
   "blockers": []
