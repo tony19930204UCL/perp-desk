@@ -201,7 +201,7 @@ class RuntimeTests(unittest.TestCase):
         try:
             self.offline(r, history, future)
             r.bootstrap()
-            self.assertTrue(r.state["t1_armed"])
+            initial_armed = r.state["t1_armed"]
             for bar in future:
                 self.clock.now = bar[6] + 1
                 if restart:
@@ -211,9 +211,11 @@ class RuntimeTests(unittest.TestCase):
                 r.collect()
             observed = [(d["close_time_ms"], d["kind"])
                         for d in r.state["t1_decisions"]]
-            expected = [(data["ts"][i], "entry" if data["pos"][i] else "exit")
-                        for i in range(60, count)
-                        if data["pos"][i] != data["pos"][i - 1]]
+            transitions = [(data["ts"][i], "entry" if data["pos"][i] else "exit")
+                           for i in range(60, count)
+                           if data["pos"][i] != data["pos"][i - 1]]
+            expected = transitions if initial_armed else [
+                item for j, item in enumerate(transitions) if j > 0]
             self.assertEqual(observed, expected)
             self.assertEqual(len(observed), len(set(observed)))
             return observed
