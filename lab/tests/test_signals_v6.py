@@ -46,7 +46,9 @@ class ConfigurableDetectorTests(unittest.TestCase):
 
     def detector(self, cls=V6, **kwargs):
         self.serial += 1
-        return cls(Path(self.tmp.name) / f'{self.serial}.sqlite3',
+        directory = Path(self.tmp.name) / str(self.serial)
+        directory.mkdir(parents=True, exist_ok=True)
+        return cls(directory / 'store.sqlite3',
                    'V6-TEST', datetime.fromtimestamp(START / 1000, timezone.utc),
                    {'ETHUSDT': 'crypto'}, **kwargs)
 
@@ -57,6 +59,11 @@ class ConfigurableDetectorTests(unittest.TestCase):
 
     def warm(self, detector):
         return [self.feed(detector, bar(i)) for i in range(61)]
+
+    def test_detector_context_isolation(self):
+        first, second = self.detector(), self.detector()
+        self.assertNotEqual(first.path.parent, second.path.parent)
+        self.assertNotEqual(first.context_path, second.context_path)
 
     def test_default_thresholds(self):
         d = self.detector()
