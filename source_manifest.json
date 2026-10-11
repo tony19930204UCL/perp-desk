@@ -10,7 +10,7 @@
     "context/AGENTS.md": "93a258d9d681b264bcfc08f8f4e9063e7a2eaf8f39d77465d9969088b9bbd22d",
     "context/OPERATING_AGREEMENT.md": "b340382e6dbfa64defb007ffac3a6dcbe875abcf7172b93c78849b72ede62b0a",
     "context/open_questions.md": "7247519ae062622c0c33a645a3be2569e1e7132773a2e850186099adfd1f31b0",
-    "context/versions.md": "a175dc2aa04d6357cd25cb4c2e1f17ab3b9efa7bee7341031dbaa16a7ebdf7c0",
+    "context/versions.md": "d340c20a784be07f022f55ed195c5004181792073ffae4ee145e34d79cfb94b5",
     "docs/AI_REVIEW_GUIDE.md": "208dbc2c8fc70f34ffcba27034b0a7c4c531992c6800bf4f3f069183a7c8c47d",
     "docs/ARCHITECTURE.md": "fbc1ac897a7640545ce764975539e204f8288a478640dbc7de0b946d487df634",
     "docs/AUTO_SYNC.md": "f0239318a852f483d353fb4d38e3cf8e815b9658dabb955d8c1ed6002faf0bd2",
@@ -124,11 +124,11 @@
     "lab/LEARNING_SPEED_V3.md": "614cd7d306f517a833c8d21aeb46ccb8817561bfafc4cf68fab38338f81a97e6",
     "lab/LIVE_PREP_DESIGN.md": "dc75e46800d2809b1628c5e35557f19d7211af74decf75fd3630355a37b5db1b",
     "lab/PAPER_ENTRY_RISK_SIZING.md": "011eedc8ae0a81d0e1a99fab1ae8c8d03c6c6309f7a37ea37f82a8e71448751b",
-    "lab/PAPER_F1H_PREREGISTRATION.md": "2ca28a28c205153e935b9bbdc445ea621d8eefdb73da99eb960165202feef87d",
+    "lab/PAPER_F1H_PREREGISTRATION.md": "c6326d251c80051b745a6c6bdf369876f9205680921b3acf207785dc421feb67",
     "lab/PAPER_MARKET_README.md": "3e8f48ab2758d248ca8c6ef4ac3dfbea817a2a0c0cc07f8a225a06037ec6eb81",
     "lab/PAPER_RUNTIME_README.md": "f99bb16ae048daf789c2cc02a093f1e0049344f9c699dc9c7cb5699e2bb6e642",
     "lab/PAPER_V2_README.md": "87664b65ced8f7e59388dcf37c77c466ac160256f9c122a30b9f1bd4a5f6e173",
-    "lab/PAPER_V4_PREREGISTRATION.md": "31a2b5314ae99dab5a8d8ff215bd59e56fa2d53861b5ceb5e6a3360762f4dc0a",
+    "lab/PAPER_V4_PREREGISTRATION.md": "db552f8a4238915b1107b4d78151204ab3ab565760a523d38a73d481f94413dc",
     "lab/PARENT_DEPLOY_V3.md": "755b0e7393da14cc4435266d1f7d2d705730cf8fc9b391ecd6f3cd70053c3642",
     "lab/PROPOSED_VERSIONS_APPENDIX.md": "2a16b72aaf98a90f6218e649b8095b64b384d0d707e12e6c2dbbf84256983d36",
     "lab/SIGNALS_README.md": "7835c465093294ad9eee45552757ba960d8d23526cf903fa9b8b3414ea8eac54",
@@ -301,7 +301,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "6a16ea4084f76c5d792ae53c5d72002e6701b579e551b59595f05f70d740b959",
+  "fingerprint": "a5626663f3361340fa4c2e2bdbe5a8466a04c2a2d60e3c2625c3f8f02e3669ce",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
