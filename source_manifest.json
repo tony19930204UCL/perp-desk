@@ -10,7 +10,7 @@
     "context/AGENTS.md": "93a258d9d681b264bcfc08f8f4e9063e7a2eaf8f39d77465d9969088b9bbd22d",
     "context/OPERATING_AGREEMENT.md": "b340382e6dbfa64defb007ffac3a6dcbe875abcf7172b93c78849b72ede62b0a",
     "context/open_questions.md": "7247519ae062622c0c33a645a3be2569e1e7132773a2e850186099adfd1f31b0",
-    "context/versions.md": "d340c20a784be07f022f55ed195c5004181792073ffae4ee145e34d79cfb94b5",
+    "context/versions.md": "450e5b49100176a5b24e6413a56d0456a8b270c2593bce4261f272bf2b767ab8",
     "docs/AI_REVIEW_GUIDE.md": "208dbc2c8fc70f34ffcba27034b0a7c4c531992c6800bf4f3f069183a7c8c47d",
     "docs/ARCHITECTURE.md": "fbc1ac897a7640545ce764975539e204f8288a478640dbc7de0b946d487df634",
     "docs/AUTO_SYNC.md": "f0239318a852f483d353fb4d38e3cf8e815b9658dabb955d8c1ed6002faf0bd2",
@@ -127,6 +127,7 @@
     "lab/PAPER_F1H_PREREGISTRATION.md": "c6326d251c80051b745a6c6bdf369876f9205680921b3acf207785dc421feb67",
     "lab/PAPER_MARKET_README.md": "3e8f48ab2758d248ca8c6ef4ac3dfbea817a2a0c0cc07f8a225a06037ec6eb81",
     "lab/PAPER_RUNTIME_README.md": "f99bb16ae048daf789c2cc02a093f1e0049344f9c699dc9c7cb5699e2bb6e642",
+    "lab/PAPER_T1_PREREGISTRATION.md": "204b43ee354d9afb6b4ac3f54bcb7493400955990c2d56841507e701d8086036",
     "lab/PAPER_V2_README.md": "87664b65ced8f7e59388dcf37c77c466ac160256f9c122a30b9f1bd4a5f6e173",
     "lab/PAPER_V4_PREREGISTRATION.md": "db552f8a4238915b1107b4d78151204ab3ab565760a523d38a73d481f94413dc",
     "lab/PAPER_WIDE_PREREGISTRATION.md": "7f5e49af5c38427ac3399da27fa0c24d7adc961c0d4587587be44ab26053e764",
@@ -311,7 +312,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "2b14aa597a00551e807422792b6cfb2b2626983c5055bd4410f129c0e078450c",
+  "fingerprint": "94538ba7c3bf137a38e89a1826effdb8605d1b8444a19c1fa9bf70aaf3ae4fb5",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
