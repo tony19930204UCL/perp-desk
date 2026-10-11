@@ -184,6 +184,43 @@ class RuntimeTests(unittest.TestCase):
         finally:
             r.close()
 
+    def test_snapshot_bootstrap_ready(self):
+        r = self.runtime()
+        try:
+            self.offline(r, rows([100] * 60, 40 * DAY), [])
+            r.bootstrap()
+            snap = r.snapshot()
+            self.assertNotIn("fresh_forward_warmup", snap["blockers"])
+            self.assertEqual(snap["engine"]["status"], "running")
+            self.assertEqual(snap["engine"]["warmup_required"], 60)
+            self.assertEqual(snap["versions"][0]["status"], "observing")
+            self.assertEqual(snap["runtime_state"], "observing")
+            self.assertTrue(snap["paper_trading_enabled"])
+        finally:
+            r.close()
+
+    def test_snapshot_before_bootstrap_is_warmup(self):
+        r = self.runtime()
+        try:
+            self.offline(r, rows([100] * 60, 40 * DAY), [])
+            snap = r.snapshot()
+            self.assertIn("fresh_forward_warmup", snap["blockers"])
+            self.assertEqual(snap["engine"]["status"], "warmup")
+            self.assertFalse(snap["paper_trading_enabled"])
+        finally:
+            r.close()
+
+    def test_snapshot_window_void_halts(self):
+        r, spec = self.prepared()
+        try:
+            r.state["window_void"] = True
+            snap = r.snapshot()
+            self.assertEqual(snap["engine"]["status"], "halted")
+            self.assertIn("window_void", snap["blockers"])
+            self.assertFalse(snap["paper_trading_enabled"])
+        finally:
+            r.close()
+
     def test_gap_void_stops(self):
         r = self.runtime()
         try:
