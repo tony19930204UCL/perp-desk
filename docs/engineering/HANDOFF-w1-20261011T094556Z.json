@@ -1,15 +1,14 @@
 {
   "schema_version": 2,
   "task_id": "w1-20261011T094556Z",
-  "instruction_id": "W1-U1-r0",
+  "instruction_id": "W1-U1-r1",
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 49,
   "branch": "feat/paper-w1-20261011T094556Z",
-  "status": "IMPLEMENTED_UNVERIFIED",
-  "summary": "Implemented configurable v6 instance thresholds and 16 deterministic unittest methods; CI not executed.",
-  "source_head_sha": "98e4825ac59b9b53dfa370e52c1abee41b7cb382",
+  "status": "WAITING_CI",
+  "summary": "Repaired differential detector test input aliasing by deep-copying each shared bar before feeding either detector; production v6 unchanged. Exact-head CI pending.",
+  "source_head_sha": "3a7685895b1d6d915c0ef4b46be87c62d3c25542",
   "changed_files": [
-    "lab/signals_v6.py",
     "lab/tests/test_signals_v6.py",
     "docs/engineering/HANDOFF-w1-20261011T094556Z.json"
   ],
@@ -17,22 +16,19 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "GitHub file editing integration does not execute repository commands; independent CI verification required."
+      "evidence": "GitHub connector cannot execute repository tests; previous head ebec0a1 failed 1 of 16 v6 tests due to shared mutable bar input, per repair report. Await exact-head CI."
     }
   ],
   "remaining_work": [
-    "Run exact-head unittest CI and verify all checks green",
-    "Review changed-file allowlist and confirm v1-v5 unchanged",
-    "Confirm no other lab code paths depend on class-level thresholds"
+    "Run exact-head CI and verify v6 differential comparison passes",
+    "Independent acceptance review; verify only allowlisted test and mailbox changed in this repair"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head CI and review v6 differential, threshold, and seed tests.",
-    "if_pass": "Accept W1-U1 after independent review of changed-file scope.",
-    "if_fail": "Report failing traceback and request bounded repair.",
+    "verify_now": "Run exact-head CI on PR 49 and verify differential seeded warm-up, diagnostics and intents.",
+    "if_pass": "Review diff and accept W1-U1 if all checks green.",
+    "if_fail": "Provide exact-head failure trace for bounded repair.",
     "blockers": []
   },
-  "blockers": [
-    "No execution capability for repository CI in current GitHub integration."
-  ]
+  "blockers": []
 }
