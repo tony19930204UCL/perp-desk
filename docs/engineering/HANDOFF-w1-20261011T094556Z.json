@@ -1,13 +1,13 @@
 {
   "schema_version": 2,
   "task_id": "w1-20261011T094556Z",
-  "instruction_id": "W1-U1-r1",
+  "instruction_id": "W1-U1-r2",
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 49,
   "branch": "feat/paper-w1-20261011T094556Z",
   "status": "WAITING_CI",
-  "summary": "Repaired differential detector test input aliasing by deep-copying each shared bar before feeding either detector; production v6 unchanged. Exact-head CI pending.",
-  "source_head_sha": "3a7685895b1d6d915c0ef4b46be87c62d3c25542",
+  "summary": "Isolated each test detector in its own directory so indicator_context.sqlite3 cannot be shared; added strict context-path isolation regression test. Retained deepcopy and all existing assertions; production unchanged. Await exact-head CI.",
+  "source_head_sha": "32d9e6bc083cfa8a67b4c80a16dc95cf5bfaf8f7",
   "changed_files": [
     "lab/tests/test_signals_v6.py",
     "docs/engineering/HANDOFF-w1-20261011T094556Z.json"
@@ -16,18 +16,18 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "GitHub connector cannot execute repository tests; previous head ebec0a1 failed 1 of 16 v6 tests due to shared mutable bar input, per repair report. Await exact-head CI."
+      "evidence": "GitHub connector edits only; no local unittest execution. Prior exact-head report at 19f1ba19a3c030d32425ab820248972792d0c87f: 15/16 passed, differential test failed due to shared indicator context."
     }
   ],
   "remaining_work": [
-    "Run exact-head CI and verify v6 differential comparison passes",
-    "Independent acceptance review; verify only allowlisted test and mailbox changed in this repair"
+    "Run exact-head CI after mailbox commit and confirm all v6 tests pass",
+    "Main CIO independent acceptance review"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head CI on PR 49 and verify differential seeded warm-up, diagnostics and intents.",
-    "if_pass": "Review diff and accept W1-U1 if all checks green.",
-    "if_fail": "Provide exact-head failure trace for bounded repair.",
+    "verify_now": "Run exact-head CI on PR 49; verify seeded v5/v6 differential diagnostics and new context isolation test.",
+    "if_pass": "Review bounded diff and accept W1-U1.",
+    "if_fail": "Return exact-head failure evidence for bounded follow-up.",
     "blockers": []
   },
   "blockers": []
