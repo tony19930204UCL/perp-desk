@@ -345,6 +345,21 @@ class PaperRuntime(v5.PaperRuntime):
             detector_position=self.detector.position,
             pending_decisions=sum(d["status"] == "new"
                                   for d in self.state["t1_decisions"]))
+        if self.state["window_void"]:
+            result["engine"]["status"] = "halted"
+            if "window_void" not in result["blockers"]:
+                result["blockers"].append("window_void")
+        elif (self.state["warmup"] >= 60 and not self.state["latest_error"]
+              and not self.risk_blockers()):
+            result["blockers"] = [
+                blocker for blocker in result["blockers"]
+                if blocker != "fresh_forward_warmup"
+            ]
+            result["engine"]["status"] = "running"
+            result["engine"]["warmup_required"] = 60
+            result["versions"][0]["status"] = "observing"
+            if "runtime_state" in result:
+                result["runtime_state"] = "observing"
         result["paper_trading_enabled"] = bool(
             self.state["t1_armed"] and not self.state["window_void"]
             and self.state["warmup"] >= 60 and not self.state["latest_error"]
