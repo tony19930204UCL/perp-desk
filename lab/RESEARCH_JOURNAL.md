@@ -178,3 +178,9 @@ lab/RESEARCH_JOURNAL.md，lab/journal/scorecards.jsonl，lab/PAPER_WIDE_PREREGIS
 - 結果：T1-U2B 派出後工程端 14 秒內回覆『實作未完成、沒寫任何檔』，沒有 commit、沒更新交接檔。監看程式只看交接檔狀態，持續回報 INCOMPLETE_HANDBACK 約 2 小時（帳本顯示已派工、handle alive），我沒有回頭讀聊天
 - 判定：單元太大（兩次整包皆失敗）。拆成 U2B1 骨架與 U2B2 執行。監看程式新增偵測：連續 8 次未完整交付且聊天閒置就停下並標示 ENGINEER_IDLE_NO_HANDBACK。教訓：handle alive 不等於有進展，派工後要看分支是否有新提交
 - 關聯：skills/relay-backlog-operator/scripts/relay-drive.py
+
+## J-0019 [decision] T1-U2B1 驗收通過，派 T1-U2B2
+- 時間：2026-10-11 20:34 UTC
+- 結果：U2B1 在 High 模式下交付；r1 有 7 個測試錯誤（三個測試缺陷，我診斷並在本機副本驗證）；r2 修復後乾淨複製 18 項 OK、CI 綠、ETH 與 SOL 完整黃金歷史一致
+- 判定：兩次失敗的根因是工程端聊天停在 Instant 模式加上單元過大，不是策略或引擎設計問題。派工前把聊天模型調到 High
+- 關聯：relay-t1-20261011T125818Z
