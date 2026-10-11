@@ -1,18 +1,14 @@
 {
   "schema_version": 2,
   "task_id": "w1-20261011T094556Z",
-  "instruction_id": "W1-U2-r0",
+  "instruction_id": "W1-U2-r1",
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 49,
   "branch": "feat/paper-w1-20261011T094556Z",
   "status": "WAITING_CI",
-  "summary": "Added four byte-pinned W1 configs, thin F1H runtime subclass with configured v6 detector, and 17 offline regression methods. Frozen production files unchanged. Risk sizing reads W1 values directly. Broker leverage/margin and complete scenario acceptance remain unverified.",
-  "source_head_sha": "2d3ba35f14d443fb2b32163d85453ca34f820308",
+  "summary": "Added v6 CLI main with W1 default config, F1H publish/canonical reuse and leverage-model caveat. Added offline CLI, per-symbol sizing and snapshot risk-version tests. Daily/total broker loss rejection integration tests remain outstanding.",
+  "source_head_sha": "12806c2218590c4e0a557c55bc7ba77ecd4284cb",
   "changed_files": [
-    "lab/paper_config_w1_ethusdt.json",
-    "lab/paper_config_w1_btcusdt.json",
-    "lab/paper_config_w1_solusdt.json",
-    "lab/paper_config_w1_xrpusdt.json",
     "lab/paper_runtime_v6.py",
     "lab/tests/test_paper_runtime_v6.py",
     "docs/engineering/HANDOFF-w1-20261011T094556Z.json"
@@ -21,22 +17,22 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "GitHub connector only; no Python test runner or exact-head CI executed."
+      "evidence": "No test execution performed in this repair; prior 17 passing tests and green CI apply only to earlier head e4a24f04c79864287ba3433ed37f17d36f8bdb39."
     }
   ],
   "remaining_work": [
-    "Run exact-head CI and repair any failures within allowlist",
-    "Add scripted differential, bar routing, daily/total loss, broker margin/liquidation, max-hold and per-symbol sizing integration coverage",
-    "Verify snapshot total loss reporting and leverage behavior"
+    "Add direct broker daily and total loss rejection tests with fixed instruments and injected clock",
+    "Run exact-head CI and repair any failures",
+    "Independently verify all four config hashes unchanged"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head CI and independently inspect broker margin, total loss blocking, 1h klines and missing scripted integration scenarios.",
-    "if_pass": "Review coverage gaps before accepting W1-U2.",
-    "if_fail": "Return exact-head failing test output for bounded repair.",
+    "verify_now": "Run exact-head CI and check W1 CLI, per-symbol sizing, snapshot risk_version and broker daily/total loss coverage.",
+    "if_pass": "Require missing risk_daily_loss and risk_total_loss tests before acceptance.",
+    "if_fail": "Return exact-head failure logs for bounded repair.",
     "blockers": []
   },
   "blockers": [
-    "Full required scenario integration coverage and broker leverage/liquidation evidence not established; CI not run."
+    "Daily and total loss rejection tests requested by W1-U2-r1 are not implemented."
   ]
 }
