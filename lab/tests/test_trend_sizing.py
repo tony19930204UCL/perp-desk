@@ -12,10 +12,10 @@ from paper_sizing import size_long
 from trend_sizing import size_trend_long
 
 FILTERS = {
-    'BTCUSDT': ('0.1', '0.001', '0.001', '100', '65000', '64999.9'),
-    'ETHUSDT': ('0.01', '0.001', '0.001', '20', '3200', '3199.99'),
-    'SOLUSDT': ('0.01', '1', '1', '5', '150', '149.99'),
-    'XRPUSDT': ('0.0001', '0.1', '0.1', '5', '2.5', '2.4999'),
+    'BTCUSDT': ('0.10', '0.001', '0.001', '50', '83000.1', '83000.0'),
+    'ETHUSDT': ('0.01', '0.001', '0.001', '20', '2505.01', '2505.00'),
+    'SOLUSDT': ('0.0100', '0.01', '0.01', '5', '110.01', '110.00'),
+    'XRPUSDT': ('0.0001', '0.1', '0.1', '5', '1.4021', '1.4020'),
 }
 
 
@@ -61,13 +61,13 @@ class TrendSizingTests(unittest.TestCase):
 
     def test_below_min_qty(self):
         c, i, b = fixture('BTCUSDT')
-        i['min_qty'] = '100'
+        b['equity'] = '0.01'
         self.assertEqual(size_trend_long(c, i, **b)['reason'],
                          size_long(c, i, **b, target='100000')['reason'])
 
     def test_below_min_notional(self):
         c, i, b = fixture('BTCUSDT')
-        i['min_notional'] = '1000'
+        i['min_notional'] = '1000000'
         self.assertEqual(size_trend_long(c, i, **b)['reason'],
                          size_long(c, i, **b, target='100000')['reason'])
 
@@ -116,7 +116,9 @@ class TrendSizingTests(unittest.TestCase):
                 expected['research']['window_ms'] = 15552000000
                 self.assertEqual(actual, expected)
                 self.assertEqual(list(actual), list(expected))
-                self.assertEqual(list(actual['strategy']), list(expected['strategy']))
+                self.assertEqual(
+                    [key for key in actual['strategy'] if key not in ('entry_lookback', 'exit_lookback')],
+                    list(base['strategy']))
 
     def test_config_risk_limits(self):
         for symbol in FILTERS:
