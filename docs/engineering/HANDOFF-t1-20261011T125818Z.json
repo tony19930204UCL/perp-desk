@@ -1,33 +1,35 @@
 {
   "schema_version": 2,
   "task_id": "t1-20261011T125818Z",
-  "instruction_id": "T1-U2A-r4",
+  "instruction_id": "T1-U2B1-r1",
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 51,
   "branch": "feat/paper-t1-20261011T125818Z",
   "status": "WAITING_CI",
-  "summary": "Updated only test_market_step_lcm: ETHUSDT equity 100 with market step 0.003 accepts qty 0.039 and matches paper sizing; BTCUSDT equity 100 and 1000 reject and match paper sizing. No production or config changes.",
-  "source_head_sha": "67339de0de3f0b6976fe6e9d15a38405b73543b0",
+  "summary": "Implemented v7 daily trend detector runtime, isolated v5 hourly signal recovery, durable 60-day bootstrap/decisions, gap/reject invalidation, no-order routing and candidate snapshots. Added 18 offline unittest methods including golden and restart checks; execution is deferred to T1-U2B2.",
+  "source_head_sha": "d34b73e47001fcdec80c51898ca2ad70d8aeddea",
   "changed_files": [
-    "lab/tests/test_trend_sizing.py",
+    "lab/paper_runtime_v7.py",
+    "lab/tests/test_paper_runtime_v7.py",
     "docs/engineering/HANDOFF-t1-20261011T125818Z.json"
   ],
   "tests": [
     {
-      "command": "cd lab && python3 -m unittest tests.test_trend_sizing",
+      "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "GitHub connector file edits only; no test runner executed. Hermes reported prior failure at head 9599e897f60bce7001ced78f9d0427829203f73c. Await exact-head CI."
+      "evidence": "Only GitHub fetch_file/update_file connector used; no Python test runner or exact-head CI execution available in this turn."
     }
   ],
   "remaining_work": [
-    "Run exact-head CI and verify all 15 trend sizing tests pass",
-    "Main CIO independently verify ETH accepted quantity 0.039 and BTC rejection at both equities"
+    "Run full unittest discovery in exact-head CI and fix any exact failures in v7/test_v7 only",
+    "Independently check full BTCUSDT and XRPUSDT GOLDEN transitions, restart after each of 100 bars, window_void persistence, and disabled order routing",
+    "T1-U2B2 implements execution; this unit intentionally never places orders"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head CI on PR 51 after mailbox commit; verify all 15 sizing tests and only the test and mailbox changed.",
-    "if_pass": "Independently accept T1-U2A-r4 repair.",
-    "if_fail": "Return exact failing assertion for bounded test-only repair; leave implementation and configs unchanged.",
+    "verify_now": "Run exact-head PR 51 CI and inspect golden/restart tests and three-file-only diff; confirm no v1-v6/config modifications.",
+    "if_pass": "Independently accept T1-U2B1 detection-only runtime before delegating T1-U2B2.",
+    "if_fail": "Return concrete failing test traceback and line; patch only lab/paper_runtime_v7.py or lab/tests/test_paper_runtime_v7.py.",
     "blockers": []
   },
   "blockers": []
