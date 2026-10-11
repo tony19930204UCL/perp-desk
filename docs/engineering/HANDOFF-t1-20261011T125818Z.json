@@ -1,1 +1,35 @@
-{"placeholder": true}
+{
+  "schema_version": 2,
+  "task_id": "t1-20261011T125818Z",
+  "instruction_id": "T1-U1-r0",
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 51,
+  "branch": "feat/paper-t1-20261011T125818Z",
+  "status": "WAITING_CI",
+  "summary": "Implemented pure Decimal daily Donchian detector with JSON state, strict contiguous UTC bars, duplicate handling, gap latch and explicit resync; added 20 unittest methods including four-symbol golden replay.",
+  "source_head_sha": "9d8e85b9c99c290092eb0a08db95314b151e7310",
+  "changed_files": [
+    "lab/trend_signals.py",
+    "lab/tests/test_trend_signals.py",
+    "docs/engineering/HANDOFF-t1-20261011T125818Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "not run",
+      "evidence": "GitHub connector edits only; no suite execution performed"
+    }
+  ],
+  "remaining_work": [
+    "Run exact-head CI and verify golden replay and all existing tests",
+    "Independent acceptance review"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Check exact-head CI for PR 51, four-symbol golden replay, allowlist and mailbox.",
+    "if_pass": "Review independently and decide acceptance.",
+    "if_fail": "Inspect CI failure and request bounded repair.",
+    "blockers": []
+  },
+  "blockers": []
+}
