@@ -1,13 +1,13 @@
 {
   "schema_version": 2,
   "task_id": "t1-20261011T125818Z",
-  "instruction_id": "T1-U2B2-r0",
+  "instruction_id": "T1-U2B2-r1",
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 51,
   "branch": "feat/paper-t1-20261011T125818Z",
   "status": "WAITING_CI",
-  "summary": "Implemented T1 v7 bounded entry routing and rule-only reduce-only exits. New entries use trend_sizing and v5-style risk-limited taker BUY intents with 600000ms expiry, durable status/audit and broker order-ID recovery. Exit decisions submit reduce-only taker SELL, retry rejected/canceled orders using distinct persistent retry IDs, and do not take profit/max-hold. Added 15 contract test methods without replacing the prior U2B1 tests. The full-history BTCUSDT/XRPUSDT position-and-round-trip acceptance remains unverified and is not claimed: the frozen 100 USDT risk configuration, funding feed and stop simulation can reject entries independently of the reference Donchian state. No deployment, merge or live trading.",
-  "source_head_sha": "0daf1a2fceb513ef169792e3fbdd38a858534002",
+  "summary": "Corrected only T1 v7 snapshot status projection: ready after 60 closed daily bootstrap bars (running/observing, warmup_required=60, no fresh_forward_warmup), preserves pre-bootstrap warmup, and marks window_void snapshots halted with window_void blocker and PAPER disabled. Added three snapshot regression methods; existing order routing, exit policy, bootstrap, and collect remain unchanged. Hermes previously reported 33 tests green and a 2040-day probe; these external results were not rerun in this session. No merge, deploy, or trading.",
+  "source_head_sha": "16c82efc6efd888998c27262b8091f401db52c66",
   "changed_files": [
     "lab/paper_runtime_v7.py",
     "lab/tests/test_paper_runtime_v7.py",
@@ -17,26 +17,24 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests -p 'test_paper_runtime_v7.py'",
       "result": "not run",
-      "evidence": "GitHub connector cannot execute Python; 15 new unittest methods committed as 0daf1a2fceb513ef169792e3fbdd38a858534002. No pass asserted."
+      "evidence": "GitHub connector provides repository file mutations and CI inspection, not a Python execution environment. Three new snapshot methods committed at 16c82efc6efd888998c27262b8091f401db52c66; no pass claimed."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "GitHub Actions workflow run 38172992964 was queued at source head 0daf1a2fceb513ef169792e3fbdd38a858534002 when checked; no success/failure result."
+      "evidence": "At pre-mailbox source head 16c82efc6efd888998c27262b8091f401db52c66, GitHub workflow runs and combined commit statuses both returned empty lists; exact-head CI not yet verified in this session."
     }
   ],
   "remaining_work": [
-    "Run focused v7 suite and exact-head full suite at CI, capture tracebacks and reconcile any failures; the submitted code has not been executed in this session.",
-    "Add full-runtime BTCUSDT and XRPUSDT golden-execution tests checking daily open positions and complete round trips. Existing U2B1 golden tests only validate the detected decision stream, not fills.",
-    "Resolve the incompatibility of comparing reference idealized positions against executable positions under frozen initial_equity_usdt=100, exchange lot sizes, simulated stop execution and finite loss limits without altering production configurations or disabling risk protections.",
-    "Confirm broker exit retry semantics for final rejected, expired and partially filled orders through executable tests and exact-head review.",
-    "Confirm all older U2B1 tests still pass; exercise full source validation and broker delivery rather than only injected offline markets."
+    "Run focused v7 suite at exact source head and verify all 36 v7 tests including three new snapshot regressions.",
+    "Run full CI and confirm every existing test remains green, plus snapshot schema and runtime state invariants.",
+    "Main CIO independently review source commit and reconcile external Hermes golden-probe evidence, including disaster-stop exception."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "At source commit 0daf1a2fceb513ef169792e3fbdd38a858534002 inspect v7 and 15 new tests, run focused and full Python unittest CI, verify no changes outside v7 and its tests prior to this mailbox; CI run 38172992964 was queued.",
-    "if_pass": "Validate order-routing behavior and separately complete BTCUSDT/XRPUSDT fill-level golden replay acceptance before accepting T1-U2B2.",
-    "if_fail": "Return exact-head traceback and failing test names; repair only v7 and test_paper_runtime_v7.py.",
+    "verify_now": "Review pre-mailbox source 16c82efc6efd888998c27262b8091f401db52c66 and check only v7 snapshot plus three new v7 tests changed; run cd lab && python3 -m unittest discover -s tests -p 'test_paper_runtime_v7.py' and cd lab && python3 -m unittest discover -s tests on exact head.",
+    "if_pass": "Accept T1-U2B2-r1 snapshot repair after independent exact-head CI and Hermes replay evidence review; no deployment or trading authorized.",
+    "if_fail": "Return exact-head failed test names and tracebacks for bounded repair of snapshot and three tests.",
     "blockers": []
   },
   "blockers": []
