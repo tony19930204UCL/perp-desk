@@ -1,38 +1,33 @@
 {
   "schema_version": 2,
   "task_id": "t1-20261011T125818Z",
-  "instruction_id": "T1-U2A-r1",
+  "instruction_id": "T1-U2A-r2",
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 51,
   "branch": "feat/paper-t1-20261011T125818Z",
   "status": "WAITING_CI",
-  "summary": "Implemented target-free trend sizing, four T1 daily paper configurations, and 15 offline unittest methods. Exact-head CI not verified.",
-  "source_head_sha": "d6ba6e24137bf0b175f6cb711b69849c500918d5",
+  "summary": "Repaired T1 sizing tests with real USDT-M filters and realistic books; adjusted rejection fixtures and verified config assertions preserve F1H key order excluding two added strategy keys. Production sizing and four configs unchanged.",
+  "source_head_sha": "a7b262033d11abcfd0e4c6886c4202288cdc3ac6",
   "changed_files": [
-    "lab/trend_sizing.py",
     "lab/tests/test_trend_sizing.py",
-    "lab/paper_config_t1_btcusdt.json",
-    "lab/paper_config_t1_ethusdt.json",
-    "lab/paper_config_t1_solusdt.json",
-    "lab/paper_config_t1_xrpusdt.json",
     "docs/engineering/HANDOFF-t1-20261011T125818Z.json"
   ],
   "tests": [
     {
-      "command": "cd lab && python3 -m unittest discover -s tests",
+      "command": "cd lab && python3 -m unittest tests.test_trend_sizing",
       "result": "not run",
-      "evidence": "GitHub connector file updates only; no test execution available."
+      "evidence": "GitHub connector edits only; Hermes previously reported 15 tests with 8 failures at f0b1b65f23a422a58f26a334a87f5d24888a26c4. No post-repair execution."
     }
   ],
   "remaining_work": [
-    "Run suite and exact-head CI; investigate any failures",
-    "Independently verify config equivalence and only allowlisted changes"
+    "Run exact-head CI and lab/tests/test_trend_sizing.py (15 tests)",
+    "Independently verify accepted books, rejection cases, config equality and key order"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Inspect PR 51 exact-head CI and differential results.",
-    "if_pass": "Independently accept T1-U2A sizing and config unit only.",
-    "if_fail": "Request bounded repair of failing files without touching frozen runtime.",
+    "verify_now": "Run exact-head CI for PR 51; confirm 15 trend sizing tests pass and inspect only the two changed files.",
+    "if_pass": "Independently accept T1-U2A-r2 test repair.",
+    "if_fail": "Return failing assertions and request bounded test-only repair; keep sizing implementation and four configs pinned.",
     "blockers": []
   },
   "blockers": []
