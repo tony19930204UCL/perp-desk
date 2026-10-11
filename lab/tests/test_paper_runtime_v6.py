@@ -163,10 +163,10 @@ class W1RuntimeTests(unittest.TestCase):
     def test_main_once_publishes_status(self):
         from unittest.mock import patch
         from paper_runtime_v6 import main
-        status = Path(self.tmp.name) / "status.json"
+        status = Path(self.tmp.name) / "paper_w1_status.json"
         root = Path(self.tmp.name) / "cli"
         runtime = self.runtime(root=root)
-        runtime.poll = lambda: {"latest_error": None, "storage_protection": {}}
+        runtime.poll = runtime.snapshot
         with patch("paper_runtime_v6.PaperRuntime", return_value=runtime):
             self.assertEqual(main(["--once", "--state-dir", str(root),
                                    "--status", str(status),
@@ -193,7 +193,7 @@ class W1RuntimeTests(unittest.TestCase):
         self.addCleanup(r.close)
         snapshot = r.snapshot()
         expected = json.loads(self.config("btcusdt").read_text())["risk_version"]
-        self.assertEqual(snapshot["risk_version"], expected)
+        self.assertEqual(snapshot["risk"]["risk_version"], expected)
 
 if __name__ == "__main__":
     unittest.main()
