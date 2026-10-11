@@ -1,35 +1,45 @@
 {
   "schema_version": 2,
   "task_id": "t1-20261011T125818Z",
-  "instruction_id": "T1-U2B1-r1",
+  "instruction_id": "T1-U2B1-r2",
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 51,
   "branch": "feat/paper-t1-20261011T125818Z",
   "status": "WAITING_CI",
-  "summary": "Implemented v7 daily trend detector runtime, isolated v5 hourly signal recovery, durable 60-day bootstrap/decisions, gap/reject invalidation, no-order routing and candidate snapshots. Added 18 offline unittest methods including golden and restart checks; execution is deferred to T1-U2B2.",
-  "source_head_sha": "d34b73e47001fcdec80c51898ca2ad70d8aeddea",
+  "summary": "Repaired only T1-U2B1's 18-test offline suite. offline() now returns a valid symbol-specific /exchangeInfo-style receipt with required filters; _golden() starts after history bar 59 closes; CLI once test publishes to non-reserved t1_status_test.json. Manually followed seven previously failing test paths against unchanged v7, paper_market.instrument, TrendDetector and v2.publish. No runtime change, order submission, deploy or merge.",
+  "source_head_sha": "a28ebfdf2944a74bee4d079b6a3086d22d344d5b",
   "changed_files": [
-    "lab/paper_runtime_v7.py",
     "lab/tests/test_paper_runtime_v7.py",
     "docs/engineering/HANDOFF-t1-20261011T125818Z.json"
   ],
   "tests": [
     {
+      "command": "cd lab && python3 -m unittest discover -s tests -p 'test_paper_runtime_v7.py'",
+      "result": "not run",
+      "evidence": "No Python execution via GitHub connector; earlier Hermes result on pre-repair c96a0b9 was 18 tests / 7 errors and does NOT attest this new commit. Post-commit GitHub fetch verified all 18 test methods and the three substitutions."
+    },
+    {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "Only GitHub fetch_file/update_file connector used; no Python test runner or exact-head CI execution available in this turn."
+      "evidence": "Full exact-head CI was not executed in this connector session; Main CIO must run and accept it."
     }
   ],
   "remaining_work": [
-    "Run full unittest discovery in exact-head CI and fix any exact failures in v7/test_v7 only",
-    "Independently check full BTCUSDT and XRPUSDT GOLDEN transitions, restart after each of 100 bars, window_void persistence, and disabled order routing",
-    "T1-U2B2 implements execution; this unit intentionally never places orders"
+    "Run focused test_paper_runtime_v7.py and full unittest discovery at exact-head CI; no new result is asserted.",
+    "Manual trace: test_unarmed_entry_then_exit_arms passes valid reference to instrument, bootstraps 60 bars, then processes 110/50; exit arms without creating decisions.",
+    "Manual trace: test_gap_void_stops bootstraps through bar 99 and rejects the first new bar at day 101 versus cursor day 100.",
+    "Manual trace: test_reject_void_stops has malformed close_time_ms; _bar rejection becomes invalid daily bar and permanently voids the window.",
+    "Manual trace: test_btc_golden aligns cutoff to ts[59]+1, accepts bars 0..59, then processes future aligned daily bars and compares recorded transitions.",
+    "Manual trace: test_xrp_golden follows the same correctly aligned bootstrap/decision path with its symbol-specific exchangeInfo receipt.",
+    "Manual trace: test_restart_each_bar_100 persists cursor/detector across restarts, replays only unprocessed bars, and checks unique decision IDs.",
+    "Manual trace: test_main_once patches poll to snapshot and publishes once to t1_status_test.json, avoiding v2.publish's reserved status.json rejection.",
+    "T1-U2B2 is responsible for any execution; v7 remains detection-only and order-disabled."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head PR 51 CI and inspect golden/restart tests and three-file-only diff; confirm no v1-v6/config modifications.",
-    "if_pass": "Independently accept T1-U2B1 detection-only runtime before delegating T1-U2B2.",
-    "if_fail": "Return concrete failing test traceback and line; patch only lab/paper_runtime_v7.py or lab/tests/test_paper_runtime_v7.py.",
+    "verify_now": "At commit a28ebfdf2944a74bee4d079b6a3086d22d344d5b run focused 18-test suite and full CI on PR 51, and inspect two-file repair diff; check runtime v7 unchanged.",
+    "if_pass": "Independently accept T1-U2B1 detection-only v7 repair, then proceed with separate T1-U2B2.",
+    "if_fail": "Return exact-head test traceback and failing test name; change only files explicitly allowed by follow-up instructions.",
     "blockers": []
   },
   "blockers": []
