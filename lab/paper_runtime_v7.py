@@ -1,4 +1,4 @@
-"""T1 daily trend PAPER detector runtime; decisions only, no order routing."""
+"""T1 daily trend PAPER runtime with durable, rule-only order routing."""
 import argparse
 import hashlib
 import time
@@ -6,6 +6,7 @@ from pathlib import Path
 
 import paper_runtime_v5 as v5
 from trend_signals import TrendDetector
+from trend_sizing import size_trend_long
 
 D = v5.D
 
@@ -25,6 +26,7 @@ class PaperRuntime(v5.PaperRuntime):
         "paper_runtime_v7.py", "trend_signals.py", "trend_sizing.py")
     INTERVAL_MS = 86400000
     INTERVAL_NAME = "1d"
+    ENTRY_WINDOW_MS = 600000
 
     def __init__(self, root, config_path, **kwargs):
         def configured_detector(store_path, version_id, forward_start, symbols):
@@ -213,12 +215,119 @@ class PaperRuntime(v5.PaperRuntime):
             self.state["t1_decisions"].append(item)
             self.audit(dict(type="t1_decision", decision=item))
 
+    def _routing_result(self, decision, status, reason):
+        """Persist one auditable routing outcome after broker's durable submit."""
+        decision["status"] = status
+        decision["reason"] = reason
+        self.audit(dict(type="t1_order_routing", decision_id=decision["id"],
+                        status=status, reason=reason))
+        self.save()
+
+    def _route_exit(self, decision, now):
+        """Keep a rule-based close active, independent of entry risk gates."""
+        if self.broker is None:
+            return
+        position = self.broker.positions.get(self.symbol)
+        if not position:
+            if decision["status"] == "new":
+                self._routing_result(decision, "void_no_position", "void_no_position")
+            elif decision["status"] == "submitted":
+                self._routing_result(decision, "filled", "position_flat")
+            return
+        prefix = "order:" + decision["id"]
+        orders = [o for key, o in self.broker.orders.items()
+                  if key == prefix or key.startswith(prefix + ":retry:")]
+        active = [o for o in orders if o["status"] in ("PENDING", "RESTING")]
+        if active:
+            if decision["status"] != "submitted":
+                self._routing_result(decision, "submitted", "recovered_existing_exit")
+            return
+        # A rejected/canceled exit does not retire the rule: the next cycle
+        # may retry it under a distinct durable id. Never duplicate an order id.
+        if orders:
+            suffix = ":retry:" + str(len(orders))
+            intent_id = decision["id"] + suffix
+        else:
+            intent_id = decision["id"]
+        existing = self.broker.orders.get("order:" + intent_id)
+        if existing is not None:
+            self._routing_result(decision, "submitted", "recovered_existing_exit")
+            return
+        s = self.broker.instruments[self.symbol]
+        if self.storage_guard:
+            self.storage_guard.require_exit_cycle("T1 rule-based reduce-only exit")
+        order = self.broker.submit(v5.Intent(
+            intent_id, self.symbol, "SELL", abs(D(position["qty"])), None,
+            max(now, self.broker.last_ts), s.quantity_step, s.tick,
+            s.min_notional, s.max_quantity, "TAKER", True))
+        status = "submitted" if order["status"] in ("PENDING", "RESTING") else "new"
+        self._routing_result(decision, status, order["reason"] or order["status"])
+
     def route_signals(self, spec):
-        """No orders; T1-U2B2 implements decision execution."""
+        """Process persistent daily entry/exit decisions without hourly signals."""
+        if not self.state["t1_decisions"]:
+            return None
+        now = self.clock()
+        # Exits are unconditional risk reduction: they take precedence and
+        # remain executable even after the research entry window closes.
+        for decision in self.state["t1_decisions"]:
+            if decision["kind"] == "exit" and decision["status"] in ("new", "submitted"):
+                self._route_exit(decision, now)
+        for decision in self.state["t1_decisions"]:
+            if decision["kind"] != "entry" or decision["status"] != "new":
+                continue
+            if self.broker and "order:" + decision["id"] in self.broker.orders:
+                self._routing_result(decision, "submitted", "recovered_existing_entry")
+                continue
+            if now - decision["close_time_ms"] > self.ENTRY_WINDOW_MS:
+                self._routing_result(decision, "rejected", "late_closed_bar_signal")
+                continue
+            if self.state["t1_armed"] is not True:
+                reason = "t1_unarmed"
+            elif self.state["window_void"]:
+                reason = "window_void"
+            elif self.broker is None:
+                reason = "broker_unavailable"
+            elif self.broker.positions:
+                reason = "single_position_or_pending"
+            elif any(o["status"] in ("PENDING", "RESTING")
+                     for o in self.broker.orders.values()):
+                reason = "single_position_or_pending"
+            else:
+                blockers = self.risk_blockers()
+                reason = ",".join(blockers) if blockers else None
+            if reason:
+                self._routing_result(decision, "rejected", reason)
+                continue
+            market = next((m for m in self.state["markets"]
+                           if m["symbol"] == self.symbol), None)
+            if market is None:
+                self._routing_result(decision, "rejected", "validated_market_missing")
+                continue
+            result = size_trend_long(
+                self.config, spec, equity=str(self.broker.equity),
+                bid=market["bid"], ask=market["ask"])
+            if result["status"] != "accepted":
+                self._routing_result(decision, "rejected", result["reason"])
+                continue
+            s = self.broker.instruments[self.symbol]
+            order = self.broker.submit(v5.Intent(
+                decision["id"], self.symbol, "BUY", D(result["qty"]),
+                D(result["stop_price"]), now, s.quantity_step, s.tick,
+                s.min_notional, s.max_quantity, "TAKER", False,
+                expires_ts=now + self.ENTRY_WINDOW_MS, risk_limited=True,
+                risk_quantity_step=D(result["execution_qty_step"])))
+            self._routing_result(
+                decision, "submitted" if order["status"] == "PENDING" else "rejected",
+                order["reason"] or order["status"])
         return None
 
     def exit_policy(self, now, mark):
-        """No take-profit or max-hold; T1-U2B2 implements decision execution."""
+        """No take-profit, max-hold, or synthetic gap exit for T1."""
+        if self.broker:
+            for decision in self.state["t1_decisions"]:
+                if decision["kind"] == "exit" and decision["status"] in ("new", "submitted"):
+                    self._route_exit(decision, now)
         return None
 
     def handle_gap(self):
@@ -236,8 +345,10 @@ class PaperRuntime(v5.PaperRuntime):
             detector_position=self.detector.position,
             pending_decisions=sum(d["status"] == "new"
                                   for d in self.state["t1_decisions"]))
-        # Detection-only candidates cannot submit paper orders.
-        result["paper_trading_enabled"] = False
+        result["paper_trading_enabled"] = bool(
+            self.state["t1_armed"] and not self.state["window_void"]
+            and self.state["warmup"] >= 60 and not self.state["latest_error"]
+            and not self.risk_blockers())
         return result
 
 
