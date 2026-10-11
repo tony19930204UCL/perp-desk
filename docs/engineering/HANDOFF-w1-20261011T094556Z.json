@@ -1,1 +1,38 @@
-{"placeholder": true}
+{
+  "schema_version": 2,
+  "task_id": "w1-20261011T094556Z",
+  "instruction_id": "W1-U1-r0",
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 49,
+  "branch": "feat/paper-w1-20261011T094556Z",
+  "status": "IMPLEMENTED_UNVERIFIED",
+  "summary": "Implemented configurable v6 instance thresholds and 16 deterministic unittest methods; CI not executed.",
+  "source_head_sha": "98e4825ac59b9b53dfa370e52c1abee41b7cb382",
+  "changed_files": [
+    "lab/signals_v6.py",
+    "lab/tests/test_signals_v6.py",
+    "docs/engineering/HANDOFF-w1-20261011T094556Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "not run",
+      "evidence": "GitHub file editing integration does not execute repository commands; independent CI verification required."
+    }
+  ],
+  "remaining_work": [
+    "Run exact-head unittest CI and verify all checks green",
+    "Review changed-file allowlist and confirm v1-v5 unchanged",
+    "Confirm no other lab code paths depend on class-level thresholds"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Run exact-head CI and review v6 differential, threshold, and seed tests.",
+    "if_pass": "Accept W1-U1 after independent review of changed-file scope.",
+    "if_fail": "Report failing traceback and request bounded repair.",
+    "blockers": []
+  },
+  "blockers": [
+    "No execution capability for repository CI in current GitHub integration."
+  ]
+}
