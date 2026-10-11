@@ -1,38 +1,39 @@
 {
   "schema_version": 2,
   "task_id": "t1-20261011T125818Z",
-  "instruction_id": "T1-U2-r0",
+  "instruction_id": "T1-U2A-r1",
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 51,
   "branch": "feat/paper-t1-20261011T125818Z",
-  "status": "BLOCKED",
-  "summary": "T1-U2 not implemented. Inspected existing v5/v6 runtime, TrendDetector, sizing and F1H reference config. The existing size_long requires a target and 2x reward gate, incompatible with trend exits; v5 is bound to hourly signal storage and holding rules. No production or test files modified.",
-  "source_head_sha": null,
+  "status": "WAITING_CI",
+  "summary": "Implemented target-free trend sizing, four T1 daily paper configurations, and 15 offline unittest methods. Exact-head CI not verified.",
+  "source_head_sha": "d6ba6e24137bf0b175f6cb711b69849c500918d5",
   "changed_files": [
+    "lab/trend_sizing.py",
+    "lab/tests/test_trend_sizing.py",
+    "lab/paper_config_t1_btcusdt.json",
+    "lab/paper_config_t1_ethusdt.json",
+    "lab/paper_config_t1_solusdt.json",
+    "lab/paper_config_t1_xrpusdt.json",
     "docs/engineering/HANDOFF-t1-20261011T125818Z.json"
   ],
   "tests": [
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No suite execution performed; GitHub connector inspection only."
+      "evidence": "GitHub connector file updates only; no test execution available."
     }
   ],
   "remaining_work": [
-    "Implement T1 daily runtime and four immutable configurations",
-    "Implement at least 16 offline unittest methods covering entry, exit, stop, restart, gaps and CLI",
-    "Pin exact configuration hashes, run exact-head CI, verify existing files unchanged"
+    "Run suite and exact-head CI; investigate any failures",
+    "Independently verify config equivalence and only allowlisted changes"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "T1-U2 is incomplete; do not accept PR 51 as T1-U2 complete.",
-    "if_pass": "After implementation, independently review exact-head CI and risk behavior.",
-    "if_fail": "Request bounded follow-up implementation and CI repair.",
-    "blockers": [
-      "Daily runtime and tests remain unimplemented"
-    ]
+    "verify_now": "Inspect PR 51 exact-head CI and differential results.",
+    "if_pass": "Independently accept T1-U2A sizing and config unit only.",
+    "if_fail": "Request bounded repair of failing files without touching frozen runtime.",
+    "blockers": []
   },
-  "blockers": [
-    "Unable to complete and validate the required multi-file implementation in this turn."
-  ]
+  "blockers": []
 }
