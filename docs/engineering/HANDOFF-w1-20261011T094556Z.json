@@ -1,34 +1,42 @@
 {
   "schema_version": 2,
   "task_id": "w1-20261011T094556Z",
-  "instruction_id": "W1-U1-r2",
+  "instruction_id": "W1-U2-r0",
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 49,
   "branch": "feat/paper-w1-20261011T094556Z",
   "status": "WAITING_CI",
-  "summary": "Isolated each test detector in its own directory so indicator_context.sqlite3 cannot be shared; added strict context-path isolation regression test. Retained deepcopy and all existing assertions; production unchanged. Await exact-head CI.",
-  "source_head_sha": "32d9e6bc083cfa8a67b4c80a16dc95cf5bfaf8f7",
+  "summary": "Added four byte-pinned W1 configs, thin F1H runtime subclass with configured v6 detector, and 17 offline regression methods. Frozen production files unchanged. Risk sizing reads W1 values directly. Broker leverage/margin and complete scenario acceptance remain unverified.",
+  "source_head_sha": "2d3ba35f14d443fb2b32163d85453ca34f820308",
   "changed_files": [
-    "lab/tests/test_signals_v6.py",
+    "lab/paper_config_w1_ethusdt.json",
+    "lab/paper_config_w1_btcusdt.json",
+    "lab/paper_config_w1_solusdt.json",
+    "lab/paper_config_w1_xrpusdt.json",
+    "lab/paper_runtime_v6.py",
+    "lab/tests/test_paper_runtime_v6.py",
     "docs/engineering/HANDOFF-w1-20261011T094556Z.json"
   ],
   "tests": [
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "GitHub connector edits only; no local unittest execution. Prior exact-head report at 19f1ba19a3c030d32425ab820248972792d0c87f: 15/16 passed, differential test failed due to shared indicator context."
+      "evidence": "GitHub connector only; no Python test runner or exact-head CI executed."
     }
   ],
   "remaining_work": [
-    "Run exact-head CI after mailbox commit and confirm all v6 tests pass",
-    "Main CIO independent acceptance review"
+    "Run exact-head CI and repair any failures within allowlist",
+    "Add scripted differential, bar routing, daily/total loss, broker margin/liquidation, max-hold and per-symbol sizing integration coverage",
+    "Verify snapshot total loss reporting and leverage behavior"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head CI on PR 49; verify seeded v5/v6 differential diagnostics and new context isolation test.",
-    "if_pass": "Review bounded diff and accept W1-U1.",
-    "if_fail": "Return exact-head failure evidence for bounded follow-up.",
+    "verify_now": "Run exact-head CI and independently inspect broker margin, total loss blocking, 1h klines and missing scripted integration scenarios.",
+    "if_pass": "Review coverage gaps before accepting W1-U2.",
+    "if_fail": "Return exact-head failing test output for bounded repair.",
     "blockers": []
   },
-  "blockers": []
+  "blockers": [
+    "Full required scenario integration coverage and broker leverage/liquidation evidence not established; CI not run."
+  ]
 }
