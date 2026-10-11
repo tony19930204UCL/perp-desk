@@ -5,6 +5,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from decimal import Decimal
+from trend_sizing import size_trend_long
 from unittest.mock import patch
 
 LAB = Path(__file__).resolve().parents[1]
@@ -251,6 +253,238 @@ class RuntimeTests(unittest.TestCase):
         restarted = self._golden("XRPUSDT", restart=True, limit=160)
         self.assertIsInstance(baseline, list)
         self.assertIsInstance(restarted, list)
+
+
+    def prepared(self, symbol="BTCUSDT", price="100"):
+        """Use the existing exchange-info helper, with a real offline SimBroker."""
+        r = self.runtime(symbol)
+        self.offline(r, rows([Decimal(price)] * 60, 40 * DAY), [])
+        from paper_market import instrument
+        spec = instrument(r.reference(), symbol, "crypto",
+                          r.config["fee_assumptions"]["crypto"])
+        r.ensure_broker(spec)
+        r.state["t1_armed"] = True
+        r.state["warmup"] = 60
+        # The book source remains the existing validated-market contract.
+        r.state["markets"] = [dict(symbol=symbol, bid=price,
+                                    ask=str(Decimal(price) + Decimal("0.01")))]
+        r.broker.marks[symbol] = price
+        r.broker.funding_status[symbol] = dict(complete=True,
+                                              valid_until_ts=self.clock.now + 10 * DAY)
+        r.broker._save()
+        return r, spec
+
+    def decision(self, r, kind="entry", age=5000):
+        stamp = self.clock.now - age
+        item = dict(id="t1:%s:%s:%s" % (r.symbol, stamp, kind),
+                    kind=kind, close_time_ms=stamp, close="100",
+                    status="new")
+        r.state["t1_decisions"].append(item)
+        r.save()
+        return item
+
+    def test_entry_submits_taker_with_stop(self):
+        r, spec = self.prepared()
+        try:
+            d = self.decision(r)
+            expected = size_trend_long(r.config, spec,
+                                       equity=str(r.broker.equity),
+                                       bid="100", ask="100.01")
+            self.assertEqual(expected["status"], "accepted")
+            r.route_signals(spec)
+            order = r.broker.orders["order:" + d["id"]]
+            self.assertEqual(d["status"], "submitted")
+            self.assertEqual(order["intent"]["side"], "BUY")
+            self.assertEqual(order["intent"]["kind"], "TAKER")
+            self.assertTrue(order["intent"]["risk_limited"])
+            self.assertEqual(Decimal(order["intent"]["stop"]),
+                             Decimal(expected["stop_price"]))
+            self.assertEqual(order["intent"]["expires_ts"],
+                             self.clock.now + r.ENTRY_WINDOW_MS)
+        finally:
+            r.close()
+
+    def test_entry_is_idempotent_in_same_process(self):
+        r, spec = self.prepared()
+        try:
+            self.decision(r)
+            r.route_signals(spec)
+            r.route_signals(spec)
+            self.assertEqual(len(r.broker.orders), 1)
+        finally:
+            r.close()
+
+    def test_restart_after_submit_before_fill(self):
+        r, spec = self.prepared()
+        try:
+            d = self.decision(r)
+            r.route_signals(spec)
+            ident = d["id"]
+        finally:
+            r.close()
+        reopened = self.runtime()
+        try:
+            self.offline(reopened, rows([100] * 60, 40 * DAY), [])
+            reopened.state["markets"] = [dict(symbol="BTCUSDT", bid="100", ask="100.01")]
+            reopened.state["t1_decisions"][0]["status"] = "new"
+            reopened.route_signals(spec)
+            self.assertEqual(list(reopened.broker.orders), ["order:" + ident])
+            self.assertEqual(reopened.state["t1_decisions"][0]["status"], "submitted")
+        finally:
+            reopened.close()
+
+    def test_late_entry_does_not_catch_up(self):
+        r, spec = self.prepared()
+        try:
+            d = self.decision(r, age=r.ENTRY_WINDOW_MS + 1)
+            r.route_signals(spec)
+            self.assertEqual((d["status"], d["reason"]),
+                             ("rejected", "late_closed_bar_signal"))
+            self.clock.now += 300000
+            r.route_signals(spec)
+            self.assertFalse(r.broker.orders)
+        finally:
+            r.close()
+
+    def test_unarmed_entry_rejected(self):
+        r, spec = self.prepared()
+        try:
+            d = self.decision(r)
+            r.state["t1_armed"] = False
+            r.route_signals(spec)
+            self.assertEqual(d["reason"], "t1_unarmed")
+            self.assertFalse(r.broker.orders)
+        finally:
+            r.close()
+
+    def test_window_void_blocks_entry(self):
+        r, spec = self.prepared()
+        try:
+            d = self.decision(r)
+            r.state["window_void"] = True
+            r.route_signals(spec)
+            self.assertEqual(d["reason"], "window_void")
+            self.assertFalse(r.broker.orders)
+        finally:
+            r.close()
+
+    def test_risk_blocker_rejects_entry(self):
+        r, spec = self.prepared()
+        try:
+            d = self.decision(r)
+            r.risk_blockers = lambda: ["risk_daily_loss"]
+            r.route_signals(spec)
+            self.assertEqual(d["reason"], "risk_daily_loss")
+            self.assertFalse(r.broker.orders)
+        finally:
+            r.close()
+
+    def test_sizing_rejection_recorded(self):
+        r, spec = self.prepared()
+        try:
+            d = self.decision(r)
+            r.state["markets"][0]["ask"] = "100"
+            r.route_signals(spec)
+            self.assertEqual(d["reason"], "crossed_or_locked_book")
+            self.assertEqual(d["status"], "rejected")
+        finally:
+            r.close()
+
+    def test_pending_entry_blocks_another_entry(self):
+        r, spec = self.prepared()
+        try:
+            self.decision(r)
+            r.route_signals(spec)
+            second = self.decision(r, age=4000)
+            r.route_signals(spec)
+            self.assertEqual(second["reason"], "single_position_or_pending")
+            self.assertEqual(len(r.broker.orders), 1)
+        finally:
+            r.close()
+
+    def test_exit_without_position_is_void(self):
+        r, spec = self.prepared()
+        try:
+            d = self.decision(r, "exit")
+            r.exit_policy(self.clock.now, "100")
+            self.assertEqual(d["status"], "void_no_position")
+            self.assertFalse(r.broker.orders)
+        finally:
+            r.close()
+
+    def test_exit_reduce_only_and_not_duplicated(self):
+        r, spec = self.prepared()
+        try:
+            r.broker.positions[r.symbol] = dict(qty="0.1", entry="100",
+                                                stop="85", opened_ts=self.clock.now)
+            r.broker._save()
+            d = self.decision(r, "exit")
+            r.exit_policy(self.clock.now, "100")
+            r.exit_policy(self.clock.now + 1, "100")
+            order = r.broker.orders["order:" + d["id"]]
+            self.assertEqual(d["status"], "submitted")
+            self.assertEqual(order["intent"]["side"], "SELL")
+            self.assertTrue(order["intent"]["reduce_only"])
+            self.assertEqual(Decimal(order["intent"]["qty"]), Decimal("0.1"))
+            self.assertEqual(len(r.broker.orders), 1)
+        finally:
+            r.close()
+
+    def test_exit_retries_after_rejected_order(self):
+        r, spec = self.prepared()
+        try:
+            r.broker.positions[r.symbol] = dict(qty="0.1", entry="100",
+                                                stop="85", opened_ts=self.clock.now)
+            r.broker._save()
+            d = self.decision(r, "exit")
+            r.exit_policy(self.clock.now, "100")
+            original = r.broker.orders["order:" + d["id"]]
+            original["status"] = "REJECTED"
+            r.broker._save()
+            r.exit_policy(self.clock.now + 1, "100")
+            self.assertEqual(len(r.broker.orders), 2)
+            self.assertIn("order:" + d["id"] + ":retry:1", r.broker.orders)
+        finally:
+            r.close()
+
+    def test_holding_400_days_never_take_profit_or_max_hold(self):
+        r, spec = self.prepared()
+        try:
+            r.broker.positions[r.symbol] = dict(qty="0.1", entry="100",
+                                                stop="85", opened_ts=self.clock.now)
+            r.broker._save()
+            r.exit_policy(self.clock.now + 400 * DAY, "100000")
+            self.assertIn(r.symbol, r.broker.positions)
+            self.assertFalse(r.broker.orders)
+        finally:
+            r.close()
+
+    def test_void_window_keeps_position_and_stop(self):
+        r, spec = self.prepared()
+        try:
+            r.broker.positions[r.symbol] = dict(qty="0.1", entry="100",
+                                                stop="85", opened_ts=self.clock.now)
+            r.broker._save()
+            d = self.decision(r)
+            r.state["window_void"] = True
+            r.route_signals(spec)
+            self.assertEqual(d["status"], "rejected")
+            self.assertEqual(r.broker.positions[r.symbol]["stop"], "85")
+            self.assertFalse(r.broker.orders)
+        finally:
+            r.close()
+
+    def test_entry_while_position_exists_rejected(self):
+        r, spec = self.prepared()
+        try:
+            r.broker.positions[r.symbol] = dict(qty="0.1", entry="100",
+                                                stop="85", opened_ts=self.clock.now)
+            r.broker._save()
+            d = self.decision(r)
+            r.route_signals(spec)
+            self.assertEqual(d["reason"], "single_position_or_pending")
+        finally:
+            r.close()
 
     def test_main_once(self):
         r = self.runtime()
