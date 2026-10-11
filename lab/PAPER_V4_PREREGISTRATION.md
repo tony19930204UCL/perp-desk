@@ -47,3 +47,10 @@ ETHUSDT, long only, closed **1h** bars. Entry signal when the closed bar return 
 
 ## Engineering boundary
 - Engineering needed: a 1h detector and runtime/config variant on the existing H1 contracts, with the late closed bar gate, kline seeding, source age gates and max hold expressed for 1h bars. Coding goes through the relay to an external agent in a non-main branch and PR. The operator defines outcome and acceptance only.
+
+## 窗口 1 作廢記錄（2026-10-11 約 08:00 UTC，我依上方作廢條件自己判定）
+- 作廢條件：來源錯誤超過 5% 輪詢。實測：成功決策週期 4153、輪詢錯誤 900，整體 17.8%。分小時：第 0 到 5 小時 0 到 4%，第 6 小時 15%，第 9 小時起 28 到 37%。
+- 原因：本機（WSL 虛擬機）時鐘不穩。外部三個獨立時間來源（Binance 期貨、Binance 現貨、Cloudflare）彼此一致，本機相對它們呈鋸齒形偏差，最大約 3.5 秒；同樣睡 30 秒，單調時鐘走 30.0 秒，牆上時鐘走 33.6 秒。引擎的「來源時間領先本機超過 2000 毫秒就失敗即關閉」規則因此頻繁觸發。確切成因未知（Windows 的 w32time 服務為停止，WSL 內有 Hyper-V 校時與 timesyncd 兩套機制，偏差約 10 小時前開始變大）。
+- 窗口內容：0 信號、0 成交、空倉、無掛單。沒有任何證據被丟棄。
+- 處理：窗口 1 的資料目錄與狀態檔原樣封存，不刪、不拼接。時鐘驗證通過後以不變的設定（雜湊 e27b4b4b…）開窗口 2，21 天，起點為新服務首次成功輪詢。F1H 三臂等同處理：時鐘驗證通過前不開窗口。
+- 這個結果也說明我當初把錯誤率門檻當成「不太可能發生」的條件是低估了環境風險。以後開窗口前必須先過時鐘檢查（scripts/clock_check.py）。
