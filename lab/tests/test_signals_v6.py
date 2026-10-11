@@ -1,4 +1,5 @@
 """Offline v6 threshold, differential, and bootstrap regression tests."""
+import copy
 import sys
 import tempfile
 import unittest
@@ -76,7 +77,8 @@ class ConfigurableDetectorTests(unittest.TestCase):
         for i in range(61, 65):
             item = bar(i, price='90' if i == 61 else '100',
                        volume='13' if i == 61 else '10')
-            self.assertEqual(self.feed(old, item), self.feed(new, item))
+            self.assertEqual(self.feed(old, copy.deepcopy(item)),
+                             self.feed(new, copy.deepcopy(item)))
 
     def test_loose_triggers_but_default_does_not(self):
         loose = self.detector(downside_sigma='0.75', volume_multiple='1.0')
@@ -84,8 +86,8 @@ class ConfigurableDetectorTests(unittest.TestCase):
         self.warm(loose)
         self.warm(default)
         item = bar(61, price='90', volume='11')
-        self.assertEqual(self.feed(loose, item)['diagnostic'], 'research_intent')
-        self.assertEqual(self.feed(default, item)['diagnostic'], 'no_signal')
+        self.assertEqual(self.feed(loose, copy.deepcopy(item))['diagnostic'], 'research_intent')
+        self.assertEqual(self.feed(default, copy.deepcopy(item))['diagnostic'], 'no_signal')
 
     def test_intent_threshold_features_configured(self):
         d = self.detector(downside_sigma='0.75', volume_multiple='1.0')
