@@ -4,10 +4,10 @@
   "pr_number": 53,
   "branch": "feat/execution-state-e2-20261012T103735Z",
   "task_id": "e2-20261012T103735Z",
-  "instruction_id": "E2-U1-r0",
+  "instruction_id": "E2-U1-r1",
   "status": "WAITING_CI",
-  "source_head_sha": "62f0c49e6b1ee52ce35347e1a0276c3553734108",
-  "summary": "Implemented isolated SQLite intent reservation and forward-only event checkpoints with strict JSON/Decimal fields, OrderState.apply replay, namespace/version validation, reopen recovery and no broker integration. Initial local prototype passed 19 synthetic focused tests; final GitHub source is a separately written revision and has not been executed locally. No cross-database atomicity is claimed.",
+  "source_head_sha": "35ea5d3e7c21f6c1d264bfc3e5ec144b43042d74",
+  "summary": "Repair of E2-U1 SQLite fail-closed schema validation: check exact table column names/types/NOT NULL/PK flags and states-to-intents foreign key (including SQLite TEXT PRIMARY KEY notnull=0 compatibility). Added four real-SQLite missing-constraint regression tests, including duplicate conflicting intent identities. No API change, migrations, adapter integration, broker changes, or cross-database atomicity.",
   "changed_files": [
     "lab/execution_state_store.py",
     "lab/tests/test_execution_state_store.py",
@@ -16,36 +16,41 @@
   "tests": [
     {
       "command": "cd lab && python3 -m unittest discover -s tests -p test_execution_state_store.py -v",
-      "result": "NOT_RUN_ON_FINAL_GITHUB_HEAD",
-      "evidence": "A local prototype passed 19/19 focused tests; final committed module/tests differ from that prototype and need exact-head verification."
+      "result": "NOT_RUN",
+      "evidence": "Not executed against this repair head. Main previously reported 18 focused tests passing at prior SHA 0696a8da930286726b94f3d1f1c7b66cfbbaa609; does not validate this change."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "NOT_RUN",
-      "evidence": "Full repository tree unavailable in isolated local test setup."
+      "evidence": "Not executed against this repair head. Main previously reported 519 full-discovery tests passing at prior SHA 0696a8da930286726b94f3d1f1c7b66cfbbaa609."
     },
     {
-      "command": "GitHub Actions pull_request workflow at source head",
-      "result": "QUEUED",
-      "evidence": "Run 38239267974 PAPER review tests was queued, conclusion null when checked; no exact-head green claim."
+      "command": "SQLite PRAGMA table_info/foreign_key_list on intact CREATE TABLE statements",
+      "result": "PASS",
+      "evidence": "Local Python sqlite3 check: id TEXT PRIMARY KEY yields (type=TEXT,notnull=0,pk=1), data TEXT NOT NULL yields notnull=1, and states.id foreign key resolves to intents.id with NO ACTION actions."
     },
     {
-      "command": "GitHub Actions push workflow at source head",
+      "command": "GitHub Actions pull_request at source head 35ea5d3e7c21f6c1d264bfc3e5ec144b43042d74",
+      "result": "IN_PROGRESS",
+      "evidence": "Workflow PAPER review tests run 38241661692 showed status in_progress and conclusion null when checked."
+    },
+    {
+      "command": "GitHub Actions push at source head 35ea5d3e7c21f6c1d264bfc3e5ec144b43042d74",
       "result": "NOT_VERIFIED",
-      "evidence": "No push-triggered run confirmation available from connector."
+      "evidence": "Exact-head push success has not been established."
     }
   ],
   "remaining_work": [
-    "Main independently run exact-head focused and full discovery and verify both push and pull_request CI.",
-    "Main independently prove exact checkpoint/event Decimal preservation, rejection of conflict and rollback, schema fail-closed behavior and E1 unchanged.",
-    "U2 adapter integration is explicitly NOT implemented; design reserve-before-submit and broker reconciliation without blind resends.",
-    "Store transactions are local to its SQLite database and not atomic with SimBroker SQLite."
+    "Main independently run focused and full tests at final handoff head and verify both push and pull_request CI against exact head.",
+    "Main reproduce structurally incompatible schemas (missing PK/NOT NULL/FK, duplicate conflicting IDs), and reconfirm valid store recovery, checkpoint monotonicity, Decimal fidelity, and E1 unchanged.",
+    "U2 adapter integration NOT implemented: define durable reserve-before-submit, restart broker reconciliation without blind resends.",
+    "Separate store and SimBroker databases do not provide cross-database atomicity."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Independently clone exact PR 53 head, run focused and full suite, check both exact-head push and pull_request CI, inspect forward-only semantics and allowlist diff against 50903d98ab14e0d90ace7a565872c4d819707e5a.",
-    "if_pass": "Accept bounded E2-U1 storage seam only, then define bounded E2-U2 adapter integration with durable reserve-before-submit, restart reconciliation with broker ledger and no blind resends.",
-    "if_fail": "Return exact failing command, trace, and SHA for bounded repair without touching E1 or other files.",
+    "verify_now": "Independently clone exact draft PR 53 head, run focused and full test discovery, verify both push and pull_request CI on matching SHA, test altered-schema fail-closed reproduction and valid-store behavior, and confirm only allowlist files differ from stacked E1 base.",
+    "if_pass": "Accept E2-U1 storage repair only; define bounded U2 integrating reserve-before-submit and broker reconciliation without blind resends.",
+    "if_fail": "Return exact failing head SHA, command, traceback and schema variant for bounded repair within three-file allowlist.",
     "blockers": []
   }
 }
