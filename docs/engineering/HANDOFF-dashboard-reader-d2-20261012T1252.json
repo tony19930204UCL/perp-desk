@@ -1,1 +1,45 @@
-{"placeholder":true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 55,
+  "branch": "feat/dashboard-reader-d2-20261012T1252",
+  "task_id": "dashboard-reader-d2-20261012T1252",
+  "instruction_id": "D2-U2A-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "2fc2c586baefd95651d5bc2dc6dcee44184d4f66",
+  "summary": "Implemented explicit read-only bounded local scorecard/journal JSONL and ledger JSON sources with strict UTF-8, completed-line selection, no scorecard fallback, sanitized diagnostics, ledger projection and UTC due normalization. Frozen model and other files untouched; 18 synthetic unittest cases added.",
+  "changed_files": [
+    "lab/dashboard_v2_reader.py",
+    "lab/tests/test_dashboard_v2_reader.py",
+    "docs/engineering/HANDOFF-dashboard-reader-d2-20261012T1252.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "Not executed locally; independent exact-head clean-clone validation required."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "NOT_RUN",
+      "evidence": "Not executed locally; independent exact-head clean-clone validation required."
+    },
+    {
+      "command": "GitHub Actions PAPER review tests on source head 2fc2c586baefd95651d5bc2dc6dcee44184d4f66",
+      "result": "IN_PROGRESS",
+      "evidence": "Workflow run 38252434329; isolated-tests in progress at time of mailbox preparation. No success claimed."
+    }
+  ],
+  "remaining_work": [
+    "Main CIO: run focused tests and independent synthetic filesystem probes in clean clone against final mailbox head.",
+    "Main CIO: verify exact-head push and pull_request CI conclusions (both events), immutable source paths, only three allowed files, and no runtime data.",
+    "Dashboard HTTP server, UI, independent health proof, T1, quotes and equity curves remain future units."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Inspect final branch head, run all requested tests plus independent bounded I/O corruption and privacy probes; check exact-head push and pull_request CI.",
+    "if_pass": "Accept only D2-U2A local reader unit when all tests and both event CI succeed; do not claim complete dashboard.",
+    "if_fail": "Return a specific failing assertion or CI/job evidence for bounded repair on same branch.",
+    "blockers": []
+  }
+}
