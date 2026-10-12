@@ -377,3 +377,9 @@ C-0037派工承諾完成（不代表E2產品完成），E2-U2的交付與驗收�
 - 時間：2026-10-12 12:47 UTC
 
 第一次操作員探針把限價type寫成limit，E1只接受post_only_limit，且focused unittest未切到clone/lab。這是操作員錯誤，不是交付缺陷。已用正確type重跑四個SQLite探針通過。
+
+## J-0055 [decision] C-0056 PR54 r1獨立驗收通過，釋放單一工程通道
+- 時間：2026-10-12 12:49 UTC
+- 關聯：cache/scratch/relay-e2-u2-20261012T1142/verdict-r1.json
+
+先讀auto_accept PASS，未重跑全套539。focused16通過，四個真實SQLite探針通過（reservation-only零send、broker已填單checkpoint前崩潰、真partial .4重啟後final1、broker身份衝突只讀拒絕）。精確HEAD兩事件CI成功、三檔白名單、source至report僅mailbox、draft未合併。E2離線seam scoped接受，不部署。C-0050的reader/server拆小續派。
