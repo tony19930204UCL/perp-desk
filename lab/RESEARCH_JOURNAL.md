@@ -673,3 +673,8 @@ C-0064通過後立即接續C-0050，stacked branch由PR57精確頭2fc76a23建立
 - 判定：證據不足：樣本只有 26 天且期間偏多頭，無法判斷。這份資料不是清算熱力圖，也沒有清算事件紀錄
 - 下一步：累積到 60 天以上再重測；若要真正的清算熱力圖需要付費資料或另外解決清算串流的連線
 - 腳本：cache/scratch/research/positioning_first_look.py（sha256 前 12 碼 dd085aa3afd6，可重現：?）
+
+## J-0102 [observation] Coinglass 熱力圖頁面可行性檢查，並留下一個關不掉的 Chrome
+- 時間：2026-10-12 23:43 UTC
+- 結果：BTC 24 小時 Model 1 熱力圖免登入可看，畫布 935x615 可用 toDataURL 讀出像素。獨立腳本（browser-harness CLI）連不上瀏覽器；Windows Chrome 的除錯埠從 WSL 連不到。我為測試用 PowerShell 啟動了無頭 Chrome（埠 19300、獨立空白設定檔），之後 Stop-Process、taskkill、Process.Kill 皆回存取被拒，無法關閉，仍有 2 個程序
+- 判定：熱力圖自動歸檔暫緩。殘留的無頭 Chrome 只監聽本機 127.0.0.1:19300、沒有載入頁面，需使用者在工作管理員結束，或重開 Windows
