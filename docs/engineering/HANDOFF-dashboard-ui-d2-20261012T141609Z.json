@@ -1,1 +1,58 @@
-{"placeholder": true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 57,
+  "branch": "feat/dashboard-ui-d2-20261012T141609Z",
+  "task_id": "dashboard-ui-d2-20261012T141609Z",
+  "instruction_id": "D2-U3A-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "edfe1c31a6ee6170952a946e645209dfa0055a1e",
+  "summary": "Delivered static Taiwan Traditional Chinese responsive read-only observer UI and dependency-free DOM renderer. API-only /api/dashboard no-store refresh; monotonic request identifiers prevent late overwrite; invalid, network, HTTP and JSON failures clear all prior values to unknown. Numeric counts remain integer-only, fractional days have concise display and exact title, and monetary exact strings are preserved in tooltips without numeric coercion. Fresh scorecard never asserts independent service/clock/scheduler health. Hostile source text enters textContent only. T1, quotes and equity curves explicitly lack sources. Added 15 deterministic unittest methods executing JS with Node DOM fake. No server, engine, main, deployment or trading changes.",
+  "changed_files": [
+    "lab/dashboard_v2.html",
+    "lab/dashboard_v2_ui.js",
+    "lab/tests/test_dashboard_v2_ui.py",
+    "docs/engineering/HANDOFF-dashboard-ui-d2-20261012T141609Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p 'test_dashboard_v2_ui.py' -v",
+      "result": "NOT_RUN",
+      "evidence": "No exact-head local checkout or executable Node/Python CI environment available through GitHub connector; 15 deterministic test methods committed, not claimed as passed."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "NOT_RUN",
+      "evidence": "No local exact-head run performed."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No local exact-head full lab run performed."
+    },
+    {
+      "command": "GitHub Actions exact-head push and pull_request checks",
+      "result": "NOT_RUN",
+      "evidence": "At source head edfe1c31a6ee6170952a946e645209dfa0055a1e, pull_request workflow run 38262564769 was in_progress; no pass evidence and push run not confirmed. Mailbox commit will change head, so rerun and recheck both events at new exact head."
+    },
+    {
+      "command": "GitHub compare c9149fd6a151a61acfdf61a64a0187e15a434a23...edfe1c31a6ee6170952a946e645209dfa0055a1e",
+      "result": "PASS",
+      "evidence": "GitHub compare ahead 7, behind 0; only four allowlisted paths differ from accepted PR56 parent, including mailbox placeholder. PR main-based diff includes inherited stacked files and does not represent unit write scope."
+    }
+  ],
+  "remaining_work": [
+    "Main CIO: run both requested unittest commands and focused Node-backed tests at final exact head; repair only allowlisted files on failure.",
+    "Main CIO: confirm both exact-head push and pull_request workflow conclusions success; mailbox changes head after source commit.",
+    "Operator: render real fixture in browser at 1280px desktop and 390px mobile, capture screenshots; verify tooltips, no horizontal overflow/overlap and hostile strings remain inert.",
+    "Operator: verify HTTP/status/JSON/invalid-shape failure clearing, race ordering and no outbound requests.",
+    "Static assets are not served by accepted API server; serving integration belongs to next bounded unit. No independent health, T1, market data or curves available."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Verify final PR57 head and diff against accepted PR56 c9149fd6a151a61acfdf61a64a0187e15a434a23, execute lab and automation suites, inspect exact-head push and pull_request runs, and independently browser-probe 1280/390 screenshots, DOM safety and refresh races.",
+    "if_pass": "Accept static UI D2-U3A only; plan separate serving integration. Do not merge or deploy in this task.",
+    "if_fail": "Return precise failing test, console error, screenshot, or exact-head CI evidence for bounded four-file repair.",
+    "blockers": []
+  }
+}
