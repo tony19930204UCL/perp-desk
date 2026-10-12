@@ -275,3 +275,19 @@ D2-U1-r1交接對上active instruction，PR52精確HEAD 670be32e92917b86ae948b71
 - 時間：2026-10-12 10:40 UTC
 - 結果：監督迴圈原設計只看有沒有做與下一步，實際上 prompt 讓它做驗收判斷。改法：交付後由無模型的 auto_accept.py 先跑 accept_unit.py，模型只讀結果。負責人迴圈保持每日，每次最多 2 個實驗，journal.py 新增 prediction 類型與實驗閘門（需有腳本檔、數字、樣本與期間、支持/推翻/證據不足結論）
 - 判定：不降頻；以機械閘門擋空話
+
+## J-0036 [mistake] D2-U1驗收verdict錯把範圍外待辦列入本job
+- 時間：2026-10-12 10:46 UTC
+
+第一次queue verdict因ACCEPTANCE_NEXT_ACTION_REQUIRED失敗，set-e阻止帳本done及續派。本job只有D2-U1且白名單不含reader/server/UI。我把verdict remaining_work限定本job已完成範圍，範圍外缺口保留main-review與roadmap，重跑queue得到ALL_DONE後才結案。
+
+## J-0037 [decision] C-0047驗收接受D2-U1，E2接工程通道
+- 時間：2026-10-12 10:46 UTC
+
+PR52精確HEAD670be32e，lab509測試705秒OK、Exporter52與focused25測試OK、實際8臂探針PASS，兩種CI成功，HEAD/blob-bound verdict ACCEPTED_SCOPE，queue ALL_DONE。看板僅模型完成，reader/server/UI仍缺。C-0037阻擋解除，本輪轉派PR53 E2-U1 store小單元，不改PR52白名單。遠端main本輪外部由PR base325cc933前進至458a4899，本操作沒有main寫入。
+
+## J-0038 [decision] E2-U1 PR53已實際續派並由C-0049監看
+- 時間：2026-10-12 10:47 UTC
+- 關聯：PR53,C-0049,C-0037,C-0050
+
+同一E1分支HEAD50903d98疊出PR53，小单元只允許store、測試與mailbox三檔，既有E1及broker凍結。三次High預檢成功，E2-U1-r0以EXACT_RENDERED_USER_BUBBLE確認送出，C-0049 pid722930監看120步首行WAITING已讀回。C-0037 blocker改指C-0049（E2 adapter integration仍缺），看板範圍外reader/server/UI另以C-0050等待同一工程通道。未碰main、實盤或其他profile。
