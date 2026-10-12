@@ -95,13 +95,69 @@ class DashboardV2ModelTests(unittest.TestCase):
 
     def test_invalid_and_boolean_counts(self):
         a = arm()
-        a.update(signals=True, blocked=-1, fills=1.2, days_in='1')
+        a.update(signals=True, blocked=-1, fills=1.2, open_positions='1')
         result = build(score(a))
         self.assertEqual(result['scorecard_state'], 'known')
-        for name in ('signals', 'blocked', 'fills', 'days_in'):
+        for name in ('signals', 'blocked', 'fills', 'open_positions'):
             self.assertIsNone(result['arms'][0][name])
         self.assertEqual(result['arms'][0]['days_left'], 0)
         self.assertTrue(result['reasons'])
+
+    def test_fractional_days_preserved_without_rounding(self):
+        a = arm()
+        a.update(days_in=1.07, days_left=19.93)
+        result = build(score(a))
+        self.assertEqual(result['scorecard_state'], 'known')
+        self.assertEqual(result['arms'][0]['days_in'], 1.07)
+        self.assertEqual(result['arms'][0]['days_left'], 19.93)
+        self.assertNotIn('第1臂 days_in 無效', result['reasons'])
+        self.assertNotIn('第1臂 days_left 無效', result['reasons'])
+
+    def test_days_accept_zero_integers_and_exact_decimal_strings(self):
+        for elapsed, remaining in ((0, 0), (7, 21),
+                                   ('1.070', '19.930'), ('0', '0')):
+            with self.subTest(elapsed=elapsed, remaining=remaining):
+                a = arm()
+                a.update(days_in=elapsed, days_left=remaining)
+                result = build(score(a))
+                row = result['arms'][0]
+                for name, original in (('days_in', elapsed),
+                                       ('days_left', remaining)):
+                    self.assertEqual(row[name], original)
+                    self.assertIs(type(row[name]), type(original))
+                    self.assertNotIn(f'第1臂 {name} 無效', result['reasons'])
+
+    def test_invalid_days_become_field_specific_unknown(self):
+        invalid = (True, False, -1, -0.1, float('nan'),
+                   float('inf'), float('-inf'), 'NaN', 'Infinity',
+                   '-0.01', 'not-a-day', '', None, [], {})
+        for name in ('days_in', 'days_left'):
+            for value in invalid:
+                with self.subTest(name=name, value=repr(value)):
+                    a = arm()
+                    a[name] = value
+                    result = build(score(a))
+                    self.assertEqual(result['scorecard_state'], 'known')
+                    self.assertIsNone(result['arms'][0][name])
+                    counterpart = 'days_left' if name == 'days_in' else 'days_in'
+                    self.assertEqual(result['arms'][0][counterpart], 0)
+                    self.assertIn(f'第1臂 {name} 無效', result['reasons'])
+                    json.dumps(result, allow_nan=False)
+
+    def test_true_counts_still_reject_fraction_bool_and_string(self):
+        names = ('signals', 'blocked', 'fills', 'round_trips',
+                 'open_positions', 'feed_errors', 'feed_gaps')
+        for name in names:
+            for value in (1.25, True, '2'):
+                with self.subTest(name=name, value=value):
+                    a = arm()
+                    a.update(days_in=1.07, days_left=19.93)
+                    a[name] = value
+                    result = build(score(a))
+                    self.assertIsNone(result['arms'][0][name])
+                    self.assertIn(f'第1臂 {name} 無效', result['reasons'])
+                    self.assertEqual(result['arms'][0]['days_in'], 1.07)
+                    self.assertEqual(result['arms'][0]['days_left'], 19.93)
 
     def test_nonfinite_money_and_numeric_types(self):
         a = arm()
