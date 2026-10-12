@@ -4,53 +4,52 @@
   "pr_number": 54,
   "branch": "feat/execution-adapter-e2-20261012T1142",
   "task_id": "e2-u2-20261012T1142",
-  "instruction_id": "E2-U2-r0",
+  "instruction_id": "E2-U2-r1",
   "status": "WAITING_CI",
-  "source_head_sha": "758ce58b8ed8d251b56335fb6a8f2fc894d36210",
-  "summary": "Offline durable adapter reserves before sending, restores checkpoints, verifies persisted broker intent and reconciles read-only without blind retries. Added 16 deterministic test methods with isolated real SQLite fixtures. Independent acceptance not claimed.",
+  "source_head_sha": "27223d3c5388958ae54ff8493526678dcd59c4dd",
+  "summary": "Test-only repair of stale decision timestamp: after book ts111, blocked entry decision ts112 remains broker-risk REJECTED; protective SELL reduce_only decision ts112 is ACCEPTED, and subsequent eligible book ts123 must produce FILLED quantity 1. Added caller-owned teardown for all broker/store SQLite pairs including reopened handles; production adapter unchanged. Main acceptance pending.",
   "changed_files": [
-    "lab/durable_sim_broker_adapter.py",
     "lab/tests/test_durable_sim_broker_adapter.py",
     "docs/engineering/HANDOFF-e2-u2-20261012T1142.json"
   ],
   "tests": [
     {
-      "command": "cd lab && python3 -m unittest discover -s tests",
+      "command": "cd lab && python3 -m unittest discover -s tests -p test_durable_sim_broker_adapter.py -v",
       "result": "not run",
-      "evidence": "No local repository execution; PR workflow queued at pre-mailbox source head, not a passing test result."
+      "evidence": "No local repository available for executable focused run; existing operator exact-head r0 execution reported 16 tests with 1 error before this repair. No new pass claimed."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "not run",
+      "evidence": "No local repository execution. Prior r0 full lab workflow failed; repair requires fresh exact-head verification."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests",
       "result": "not run",
-      "evidence": "No local repository execution; exporter verification pending."
+      "evidence": "No local repository execution; exporter must be checked by CI."
     },
     {
-      "command": "GitHub Actions PAPER review tests at 758ce58b8ed8d251b56335fb6a8f2fc894d36210",
-      "result": "queued",
-      "evidence": "workflow_run=38244745281 status=queued conclusion=null as queried before mailbox."
-    },
-    {
-      "command": "GitHub compare accepted PR53 178de067ce0010cd9bc0de580030b4bd1871ddec...758ce58b8ed8d251b56335fb6a8f2fc894d36210",
-      "result": "verified",
-      "evidence": "Only the three allowlisted files appear, 5 commits ahead, zero behind."
-    },
-    {
-      "command": "Independent crash/restart probe",
+      "command": "GitHub Actions push and pull_request CI for pre-mailbox source head 27223d3c5388958ae54ff8493526678dcd59c4dd",
       "result": "not run",
-      "evidence": "Main must run an independent real SQLite restart/crash probe and verify zero blind resends."
+      "evidence": "At inspection no pull_request-triggered workflow runs were returned for pre-mailbox source commit; exact new-head push and pull_request CI remain to be verified after mailbox commit."
+    },
+    {
+      "command": "Independent real SQLite crash/restart and protective-exit probe",
+      "result": "not run",
+      "evidence": "Operator's earlier r0 independent SQLite probe found blocked ts112 REJECTED and protective SELL ts112 ACCEPTED then FILLED at book ts123; no new independent r1 probe claimed."
     }
   ],
   "remaining_work": [
-    "Wait for exact-head push and pull_request CI after mailbox commit.",
-    "Run focused and full lab test discovery and automation exporter tests.",
-    "Main independent broker/store restart, crash-only reservation and post-commit exception probe.",
-    "Audit partial-fill and terminal-state recovery against real broker event sequences."
+    "Verify post-mailbox exact-head push and pull_request CI both succeed; retain draft status until Main accepts.",
+    "Run focused 16 tests, full lab discovery, and automation exporter command in an actual repository checkout.",
+    "Main CIO independently verify real SQLite reserved-only and broker-committed crash/restart, missing-order UNKNOWN_OUTCOME with zero blind resends, conflicting intent behavior, and protective exit FILLED qty 1.",
+    "Confirm scoped diff contains only the repaired test and schema-v2 mailbox, with lab/durable_sim_broker_adapter.py and all frozen code byte-identical."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Check only three-file anchored diff, exact-head push and pull_request CI, focused/full lab and exporter evidence, and independent real SQLite crash/restart probe.",
-    "if_pass": "Review PR54 and proceed via Main's acceptance process; no merge or deployment performed by this task.",
-    "if_fail": "Keep draft PR54, report exact test or invariant defect and return bounded repair instructions.",
+    "verify_now": "Inspect exact post-mailbox HEAD and scope; require both push and pull_request CI successes, focused/full lab/exporter evidence, and independent SQLite crash/restart/protective exit probes.",
+    "if_pass": "Main may independently accept PR54 following invariant and scoped-diff audit. No merge, trading, or deployment in this repair.",
+    "if_fail": "Leave PR54 draft and unaccepted; return exact failing check, traceback, and narrowly scoped repair instructions.",
     "blockers": []
   }
 }
