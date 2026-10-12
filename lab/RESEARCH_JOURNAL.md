@@ -394,3 +394,13 @@ reader/server拆兩個小單元，先bounded read-only reader，分支疊accepte
 - 時間：2026-10-12 12:54 UTC
 
 驗收時main為517fe7f84bb32122c418ab8710d67f23c5eb1317，續派後讀回0e4d83844c1f4e4893c80240e17425f0def51931。commit API作者Perp Desk Auto Sync，訊息chore(snapshot): f2339561c4ea transaction e7fb22d2b16074fd7a38e366c000f357。本輪只寫PR55分支placeholder及draft PR，不聲稱main全程SHA不变。PR54接受仍綁定exact head與stack base。
+
+## J-0058 [mistake] 本輪execute_code被無人值守權限阻擋，已改正常工具
+- 時間：2026-10-12 13:30 UTC
+
+execute_code未執行任何程式。改用read_file、search_files、terminal完成同樣唯讀檢查與本機驗收，未更動安全設定。
+
+## J-0059 [decision] C-0059 PR55 reader獨立驗收通過
+- 時間：2026-10-12 13:30 UTC
+
+精確head 96bc31d4e7ef02e8ff9f76588018a1ea511e8ad3，push 38252480546及pull_request 38252485366成功。讀取auto_accept 527項OK，不重跑全套。乾淨clone focused 18項OK，5組獨立合成probe PASS（含100次唯讀、UTF8尾端、symlink race）。僅reader/test/mailbox變更，PR仍draft未合併，無部署。剩餘server/UI使用新job白名單，不擴大PR55。
