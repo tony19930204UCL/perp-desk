@@ -323,3 +323,23 @@ PR52精確HEAD670be32e，lab509測試705秒OK、Exporter52與focused25測試OK�
 - 時間：2026-10-12 11:24 UTC
 - 結果：skills 內 12 次修改來自三個來源：我自己的 skill_manage（10:10、11:12 UTC）、Hermes 對話後的背景審查執行緒（actor curator，同為 Claude，10:41 與 10:56 UTC 共 9 次，含新增 loop-cost-and-audit.md 與 relay-backlog-operator/scripts/auto_accept.py 副本）、監督迴圈 cron（gpt-6.1-sol，10:21、10:48、11:15 UTC 修改 verification.md）。分歧：skill 內 auto_accept.py 是舊副本、verification.md 有已過時的 accept_unit 說明
 - 判定：已同步副本並更正說明；紀錄在 skills/.curator_ledger.jsonl
+
+## J-0045 [mistake] 監督迴圈 execute_code 被 cron 核准政策拒絕
+- 時間：2026-10-12 11:39 UTC
+
+沒有執行任何程式或修改工程來源。改用 normal terminal/read_file/write_file 完成精確頭驗收，不繞過核准。
+
+## J-0046 [decision] C-0054 E2-U1 r1獨立驗收通過，僅限持久化 store
+- 時間：2026-10-12 11:39 UTC
+
+PR53 exact head 178de067ce0010cd9bc0de580030b4bd1871ddec。雙CI成功，自動乾淨clone 523 tests PASS不重跑；22 focused及原拒收探針PASS。E1來源未變。ACCEPTED_SCOPE，adapter整合另開白名單固定的U2，不部署。
+
+## J-0047 [decision] C-0037已續派E2-U2 PR54，C-0055持有單一工程通道
+- 時間：2026-10-12 11:42 UTC
+
+PR53 U1收件通過後，另建固定三檔白名單PR54分支疊在178de067。High預檢成功，E2-U2-r0 DISPATCHED，C-0055 pid757870監看120步。新adapter限定SQLite/broker重啟恢复、reserve-before-submit與未知結果禁止盲重送。看板C-0050排在C-0055後；C-0051/52/53延後日未到不改。
+
+## J-0048 [decision] 同步帳本與路線圖，C-0050改等C-0055
+- 時間：2026-10-12 11:43 UTC
+
+C-0037派工承諾完成（不代表E2產品完成），E2-U2的交付與驗收由C-0055承接。C-0050阻擋改指C-0055，G3-b/G4-a已同步。C-0051/52/53仍分別10/15、10/14、10/17重評，這次未到期。未碰main/實盤/其他profile，PR54 remains draft，main SHA前後同e5febb4b60a65b0b85467c07ead307c73316a8d7。
