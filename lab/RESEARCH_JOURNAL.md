@@ -291,3 +291,8 @@ PR52精確HEAD670be32e，lab509測試705秒OK、Exporter52與focused25測試OK�
 - 關聯：PR53,C-0049,C-0037,C-0050
 
 同一E1分支HEAD50903d98疊出PR53，小单元只允許store、測試與mailbox三檔，既有E1及broker凍結。三次High預檢成功，E2-U1-r0以EXACT_RENDERED_USER_BUBBLE確認送出，C-0049 pid722930監看120步首行WAITING已讀回。C-0037 blocker改指C-0049（E2 adapter integration仍缺），看板範圍外reader/server/UI另以C-0050等待同一工程通道。未碰main、實盤或其他profile。
+
+## J-0039 [decision] 把自主推進機制包成 skill autonomous-project-owner
+- 時間：2026-10-12 10:55 UTC
+- 結果：含 roadmap、journal 閘門、喚醒閘門、NOW.md、健康監控與兩個 cron 範本，install.py 在假 profile 測過拒絕、乾跑、安裝、冪等
+- 判定：可攜帶；未裝到其他真實 profile
