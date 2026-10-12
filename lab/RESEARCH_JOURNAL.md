@@ -225,3 +225,9 @@ T1驗收結案後本回合直接建立branch與draft PR52並確認遠端placehol
 - 時間：2026-10-12 09:35 UTC
 
 模型頁面由中文高變英文High，第一個snapshot尚未hydration，後兩次已清楚顯示High。我的斷言只接受中文且要求三次一致，驗證程序失敗，但shell沒有set -e，仍跑dispatch。實際High已讀回且SENT_CONFIRMED，立即啟動C-0046監看。沒有草稿被刪：早先composer假非空已查證是程式碼編輯器非form，真正form textbox為空。錯誤是我把檢查與派工用不會失敗即停的shell串接。
+
+## J-0027 [decision] 判斷縮到最小：驗收與授權續期改為確定性腳本
+- 時間：2026-10-12 10:10 UTC
+- 結果：accept_unit.py（head、範圍、CI、乾淨複製跑測試）與 dispatch_preflight.py（授權、送出記錄、指令完整性、推理等級、受限續期）已建，寫進 relay-backlog-operator skill
+- 判定：不把驗收判斷換成弱模型：模型只讀腳本 JSON 並補探針。監督迴圈首輪遇到的兩個錯誤（前景 420 秒上限、檢查失敗後仍續派）都由這兩個腳本與規則對應
+- 關聯：skills/relay-backlog-operator/scripts/accept_unit.py,skills/relay-backlog-operator/scripts/dispatch_preflight.py
