@@ -21,8 +21,16 @@ class DurableTests(unittest.TestCase):
         self.p = Path(self.tmp.name)
         self.brokers = []
         self.stores = []
+        self.addCleanup(self.close_connections)
         self.risk = RiskContract(True, 'ARTIFICIAL', D('30'), D('40'), D('10'),
                                  2, D('60'), True)
+
+    def close_connections(self):
+        # Caller owns the broker and store, including connections from reopen().
+        for store in reversed(self.stores):
+            store.close()
+        for broker in reversed(self.brokers):
+            broker.close()
 
     def pair(self, name='a', *, approved=True, hook=None):
         settings = InstrumentSettings('TEST', D('.0002'), D('.0005'),
@@ -54,8 +62,8 @@ class DurableTests(unittest.TestCase):
                                symbol='TEST', ts=100, complete=True,
                                valid_until_ts=1000000))
 
-    def book(self, a, suffix='book', asks=None, bids=None):
-        a.broker.on_event(dict(type='book', event_id=suffix, symbol='TEST', ts=111,
+    def book(self, a, suffix='book', asks=None, bids=None, *, ts=111):
+        a.broker.on_event(dict(type='book', event_id=suffix, symbol='TEST', ts=ts,
                                asks=asks or [['100', '10']],
                                bids=bids or [['99', '10']]))
 
@@ -234,12 +242,17 @@ class DurableTests(unittest.TestCase):
             a.submit(self.intent('invalid', protective=True))
         a.submit(i)
         self.book(a)
+        self.assertEqual(a.query(i.intent_id).state, 'FILLED')
         a.broker.risk = RiskContract()
-        blocked = self.intent('blocked')
+        blocked = self.intent('blocked', created_ts=112)
         self.assertEqual(a.submit(blocked).state, 'REJECTED')
         exit_i = Intent('exit', 'TEST', 'SELL', 'market', D('1'), True,
                         None, True, 112)
         self.assertEqual(a.submit(exit_i).state, 'ACCEPTED')
+        self.book(a, 'exit-book', ts=123)
+        exit_state = a.query(exit_i.intent_id)
+        self.assertEqual(exit_state.state, 'FILLED')
+        self.assertEqual(exit_state.filled_qty, D('1'))
 
     def test_differential_normal_fills_and_cash(self):
         a = self.pair('durable')
