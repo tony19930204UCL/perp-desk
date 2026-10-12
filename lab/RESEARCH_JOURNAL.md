@@ -318,3 +318,8 @@ PR52精確HEAD670be32e，lab509測試705秒OK、Exporter52與focused25測試OK�
 - 關聯：cache/scratch/relay-e2-20261012T103735Z/send_E2-U1-r1.json
 
 三次preflight讀回High（高），r1 DISPATCH_CONFIRMED，立即登記120步watcher C-0054。r0 C-0049以缺陷證據drop，C-0037與C-0050依賴改指C-0054，兩項沒有偷跑或宣称完成。不擴白名單，不碰main或部署。
+
+## J-0044 [observation] 技能被背景程序修改：來源查明並修正兩處分歧
+- 時間：2026-10-12 11:24 UTC
+- 結果：skills 內 12 次修改來自三個來源：我自己的 skill_manage（10:10、11:12 UTC）、Hermes 對話後的背景審查執行緒（actor curator，同為 Claude，10:41 與 10:56 UTC 共 9 次，含新增 loop-cost-and-audit.md 與 relay-backlog-operator/scripts/auto_accept.py 副本）、監督迴圈 cron（gpt-6.1-sol，10:21、10:48、11:15 UTC 修改 verification.md）。分歧：skill 內 auto_accept.py 是舊副本、verification.md 有已過時的 accept_unit 說明
+- 判定：已同步副本並更正說明；紀錄在 skills/.curator_ledger.jsonl
