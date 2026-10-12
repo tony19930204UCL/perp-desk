@@ -214,6 +214,10 @@ class RuntimeTests(unittest.TestCase):
         r, spec = self.prepared()
         try:
             r.state["window_void"] = True
+            r.state["markets"] = [dict(
+                symbol="BTCUSDT", category="crypto", bid="100", ask="100.01",
+                mark_price="100", source_timestamps_ms={
+                    "bookTicker": 1, "depth5": 1, "premiumIndex": 1})]
             snap = r.snapshot()
             self.assertEqual(snap["engine"]["status"], "halted")
             self.assertIn("window_void", snap["blockers"])
