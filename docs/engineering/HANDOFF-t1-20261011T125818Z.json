@@ -1,15 +1,14 @@
 {
   "schema_version": 2,
   "task_id": "t1-20261011T125818Z",
-  "instruction_id": "T1-U2B2-r1",
+  "instruction_id": "T1-U2B2-r2",
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 51,
   "branch": "feat/paper-t1-20261011T125818Z",
   "status": "WAITING_CI",
-  "summary": "Corrected only T1 v7 snapshot status projection: ready after 60 closed daily bootstrap bars (running/observing, warmup_required=60, no fresh_forward_warmup), preserves pre-bootstrap warmup, and marks window_void snapshots halted with window_void blocker and PAPER disabled. Added three snapshot regression methods; existing order routing, exit policy, bootstrap, and collect remain unchanged. Hermes previously reported 33 tests green and a 2040-day probe; these external results were not rerun in this session. No merge, deploy, or trading.",
-  "source_head_sha": "16c82efc6efd888998c27262b8091f401db52c66",
+  "summary": "Fixed only test_snapshot_window_void_halts by supplying a fully validated crypto market (BTCUSDT, decimal bid/ask/mark, source timestamps) immediately before snapshot; prepared() and runtime unchanged. Commit diff verified that only this test was modified. Hermes reported previous exact-head clean-clone/CI run of 36 tests with 35 passed and 1 error; Hermes scratch fix reportedly passed four snapshot tests, but this new source head has not yet been run or accepted independently. No merge, deploy, or trading.",
+  "source_head_sha": "e0627b0518024bba913784065ed53884aa7a7af5",
   "changed_files": [
-    "lab/paper_runtime_v7.py",
     "lab/tests/test_paper_runtime_v7.py",
     "docs/engineering/HANDOFF-t1-20261011T125818Z.json"
   ],
@@ -17,24 +16,24 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests -p 'test_paper_runtime_v7.py'",
       "result": "not run",
-      "evidence": "GitHub connector provides repository file mutations and CI inspection, not a Python execution environment. Three new snapshot methods committed at 16c82efc6efd888998c27262b8091f401db52c66; no pass claimed."
+      "evidence": "No Python execution by this GitHub-only editing session. Hermes independently reported all four snapshot tests passed on a scratch copy with exactly this fixture correction; that is not an exact-head run."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "At pre-mailbox source head 16c82efc6efd888998c27262b8091f401db52c66, GitHub workflow runs and combined commit statuses both returned empty lists; exact-head CI not yet verified in this session."
+      "evidence": "Hermes reported 36 tests at previous head 9ff3d931a99dd2e437774e53ff9fccdc969fca34 with 35 ok and one error in test_snapshot_window_void_halts. At new pre-mailbox source head e0627b0518024bba913784065ed53884aa7a7af5, GitHub commit workflow runs and combined status checks returned empty lists; no exact-head CI result yet."
     }
   ],
   "remaining_work": [
-    "Run focused v7 suite at exact source head and verify all 36 v7 tests including three new snapshot regressions.",
-    "Run full CI and confirm every existing test remains green, plus snapshot schema and runtime state invariants.",
-    "Main CIO independently review source commit and reconcile external Hermes golden-probe evidence, including disaster-stop exception."
+    "Run focused v7 test suite on exact source head and confirm all 36 v7 tests, including snapshot window_void.",
+    "Run full CI on exact source head; confirm no other regression.",
+    "Main CIO independently validate source diff and accept or reject PR 51; no deployment or trading."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review pre-mailbox source 16c82efc6efd888998c27262b8091f401db52c66 and check only v7 snapshot plus three new v7 tests changed; run cd lab && python3 -m unittest discover -s tests -p 'test_paper_runtime_v7.py' and cd lab && python3 -m unittest discover -s tests on exact head.",
-    "if_pass": "Accept T1-U2B2-r1 snapshot repair after independent exact-head CI and Hermes replay evidence review; no deployment or trading authorized.",
-    "if_fail": "Return exact-head failed test names and tracebacks for bounded repair of snapshot and three tests.",
+    "verify_now": "Review test-only source commit e0627b0518024bba913784065ed53884aa7a7af5 and mailbox, confirm only test_snapshot_window_void_halts market fixture changed; run focused v7 suite and full cd lab && python3 -m unittest discover -s tests on exact head.",
+    "if_pass": "Accept T1-U2B2-r2 after independent CI review; preserve draft PR 51 until Main approval. No merge, deploy, or trading.",
+    "if_fail": "Report exact-head failing test names and traceback; constrain repair to named allowlist and avoid runtime changes without evidence.",
     "blockers": []
   },
   "blockers": []
