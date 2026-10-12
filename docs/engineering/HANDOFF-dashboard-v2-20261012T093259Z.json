@@ -1,1 +1,46 @@
-{"placeholder":true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 52,
+  "branch": "feat/dashboard-v2-20261012T093259Z",
+  "task_id": "dashboard-v2-20261012T093259Z",
+  "instruction_id": "D2-U1-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "3741a143e9651f9d52749e5b1665098a1e6006f2",
+  "summary": "Implemented pure read-only model projecting dynamic scorecard arms, exact decimal text and HALF_UP display, per-field unknowns, fail-closed stale/future/duplicate validation, filtered journal and commitment fields, and health states that never infer liveness. Added 21 deterministic synthetic offline unit tests; CI verification pending.",
+  "changed_files": [
+    "lab/dashboard_v2_model.py",
+    "lab/tests/test_dashboard_v2_model.py",
+    "docs/engineering/HANDOFF-dashboard-v2-20261012T093259Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "not run locally; GitHub Actions in progress",
+      "evidence": "PAPER review tests run 38231173615 at source head 3741a143e9651f9d52749e5b1665098a1e6006f2 was in_progress at last check; no result claimed."
+    },
+    {
+      "command": "independent offline synthetic probe",
+      "result": "not run",
+      "evidence": "Deterministic synthetic cases encoded in 21 unittest methods; independent acceptance remains with Main CIO."
+    },
+    {
+      "command": "PR 52 scoped diff",
+      "result": "verified",
+      "evidence": "GitHub list_pr_changed_filenames returned only the three allowlisted paths."
+    }
+  ],
+  "remaining_work": [
+    "Verify complete unittest discovery and independently probe exact raw/display, unknowns, no mutation, and absent liveness on final PR head.",
+    "Verify exact-head PR and pull_request CI events after mailbox commit.",
+    "D2-U2 local data reader and HTTP server remain unimplemented.",
+    "D2-U3 presentation/UI remains unimplemented."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Inspect PR 52 final head and both exact-head CI runs; run cd lab && python3 -m unittest discover -s tests -v and an independent synthetic nonmutation/unknown/precision probe.",
+    "if_pass": "Accept bounded D2-U1 model only and schedule U2 reader/server and U3 UI separately.",
+    "if_fail": "Keep PR draft, record failing exact-head command and test case; repair only the named allowlist files.",
+    "blockers": []
+  }
+}
