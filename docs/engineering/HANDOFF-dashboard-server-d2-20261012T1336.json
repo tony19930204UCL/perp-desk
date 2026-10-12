@@ -1,1 +1,51 @@
-{"placeholder":true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 56,
+  "branch": "feat/dashboard-server-d2-20261012T1336",
+  "task_id": "dashboard-server-d2-20261012T1336",
+  "instruction_id": "D2-U2B-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "2a5d4b6ae65c3f81f384c87f024b22a0999f9f38",
+  "summary": "Implemented synchronous localhost-only GET/HEAD JSON wrapper over accepted reader, strict raw-target route matching, 405 read-only method policy, fixed sanitized Chinese errors, finite socket timeout, no CORS, CLI validation and graceful KeyboardInterrupt close. Added 22 synthetic loopback HTTP unittest methods; no deployment or service actions.",
+  "changed_files": [
+    "lab/dashboard_v2_server.py",
+    "lab/tests/test_dashboard_v2_server.py",
+    "docs/engineering/HANDOFF-dashboard-server-d2-20261012T1336.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p 'test_dashboard_v2_server.py' -v",
+      "result": "PASS",
+      "evidence": "22 tests OK in 0.326s in isolated local scratch tree containing the branch-equivalent server/tests and copied accepted reader/model. First run identified leading // normalization defect; fixed and reran successfully. Not an exact-head GitHub checkout."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "Full lab suite not executed in exact-head checkout."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "NOT_RUN",
+      "evidence": "Automation suite not executed in exact-head checkout."
+    },
+    {
+      "command": "GitHub Actions exact-head push and pull_request checks",
+      "result": "NOT_RUN",
+      "evidence": "No pull_request workflow runs returned when checking source head 2a5d4b6ae65c3f81f384c87f024b22a0999f9f38; neither event's success confirmed."
+    }
+  ],
+  "remaining_work": [
+    "Main CIO: execute both required CI commands in a clean clone at final mailbox head.",
+    "Main CIO: require both push and pull_request exact-head CI green, run independent local socket tests and verify only the three allowlisted paths changed.",
+    "Operator: verify raw route, 404/405, sanitized 500 recovery, HEAD without response body, 100 GET source byte identity, no runtime data or credential leakage.",
+    "UI, quotes, independent health proof, T1, curves and deployment are out of scope."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Inspect final PR56 head and run exact-head push and pull_request CI, full lab/automation suites and independent real-loopback socket probes.",
+    "if_pass": "Accept D2-U2B server unit only when both event checks and scoped acceptance probes pass; no merge or deployment by this task.",
+    "if_fail": "Return exact failing test or CI evidence for bounded same-branch repair.",
+    "blockers": []
+  }
+}
