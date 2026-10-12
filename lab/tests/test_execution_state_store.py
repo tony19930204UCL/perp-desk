@@ -183,6 +183,59 @@ class StoreTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.db()
 
+    def test_missing_primary_key_rejects_conflicting_identity(self):
+        with self.db() as store:
+            store.reserve(self.intent)
+        with sqlite3.connect(self.path) as raw:
+            raw.execute('PRAGMA foreign_keys=OFF')
+            raw.execute('DROP TABLE states')
+            raw.execute('ALTER TABLE intents RENAME TO old_intents')
+            raw.execute('CREATE TABLE intents(id TEXT, data TEXT)')
+            raw.execute('INSERT INTO intents SELECT id, data FROM old_intents')
+            raw.execute('DROP TABLE old_intents')
+            raw.execute('CREATE TABLE states(id TEXT, data TEXT)')
+            from execution_state_store import encode, pack
+            raw.execute('INSERT INTO intents VALUES (?, ?)',
+                        (self.intent.intent_id,
+                         encode(pack(replace(self.intent, side='SELL')))))
+            self.assertEqual(raw.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
+            self.assertEqual(raw.execute('PRAGMA foreign_key_check').fetchall(), [])
+        with self.assertRaises(ValueError):
+            self.db()
+        with sqlite3.connect(self.path) as raw:
+            self.assertEqual(raw.execute('SELECT COUNT(*) FROM intents').fetchone()[0], 2)
+
+    def test_missing_not_null_constraint_rejected(self):
+        with self.db():
+            pass
+        with sqlite3.connect(self.path) as raw:
+            raw.execute('DROP TABLE states')
+            raw.execute('DROP TABLE intents')
+            raw.execute('CREATE TABLE intents(id TEXT PRIMARY KEY, data TEXT)')
+            raw.execute('CREATE TABLE states(id TEXT PRIMARY KEY REFERENCES intents(id), data TEXT NOT NULL)')
+        with self.assertRaises(ValueError):
+            self.db()
+
+    def test_missing_states_foreign_key_rejected(self):
+        with self.db():
+            pass
+        with sqlite3.connect(self.path) as raw:
+            raw.execute('DROP TABLE states')
+            raw.execute('CREATE TABLE states(id TEXT PRIMARY KEY, data TEXT NOT NULL)')
+        with self.assertRaises(ValueError):
+            self.db()
+
+    def test_missing_meta_not_null_rejected(self):
+        with self.db():
+            pass
+        with sqlite3.connect(self.path) as raw:
+            raw.execute('ALTER TABLE meta RENAME TO prior_meta')
+            raw.execute('CREATE TABLE meta(namespace TEXT)')
+            raw.execute('INSERT INTO meta SELECT namespace FROM prior_meta')
+            raw.execute('DROP TABLE prior_meta')
+        with self.assertRaises(ValueError):
+            self.db()
+
     def test_precision_optional_fields_and_nonmutation(self):
         intent = replace(self.intent, qty=D('3.00000000000001'), stop_price=None,
                          limit_price=None, queue_ahead_qty=None, expires_ts=None)
