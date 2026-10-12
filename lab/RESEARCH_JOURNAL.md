@@ -372,3 +372,8 @@ C-0037派工承諾完成（不代表E2產品完成），E2-U2的交付與驗收�
 - 時間：2026-10-12 12:36 UTC
 - 結果：commitment-ledger 12.8KB（外掛程式加 CLI，單獨可用），autonomous-project-owner 12.2KB（方法加迴圈，依賴 ledger）。監督迴圈 cron 載入 relay-backlog-operator、chatgpt-engineering-relay、commitment-ledger 三個 skill，合併會把方法論文字加進每次醒來的起始上下文（約 3.1 萬 token）。owner 的 install.py 新增 --with-ledger，一個指令同時裝兩者並複製 skill 本體，假 profile 測過拒絕、乾跑、安裝、冪等
 - 判定：分開比較好；使用者要的是只交付一個，由安裝腳本達成
+
+## J-0054 [mistake] PR54驗收探針啟動參數錯誤已修正
+- 時間：2026-10-12 12:47 UTC
+
+第一次操作員探針把限價type寫成limit，E1只接受post_only_limit，且focused unittest未切到clone/lab。這是操作員錯誤，不是交付缺陷。已用正確type重跑四個SQLite探針通過。
