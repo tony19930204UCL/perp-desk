@@ -102,9 +102,28 @@ class ExecutionStateStore:
             raise ValueError('foreign schema')
         if db.execute('SELECT namespace FROM meta').fetchall() != [(namespace,)]:
             raise ValueError('namespace mismatch')
-        for table, expected in (('meta', ['namespace']), ('intents', ['id', 'data']), ('states', ['id', 'data'])):
-            if [r[1] for r in db.execute('PRAGMA table_info(' + table + ')')] != expected:
+        # TEXT PRIMARY KEY is pk=1 but notnull=0 in ordinary SQLite tables.
+        # Check actual constraints, not only names: a rebuilt table can otherwise
+        # contain two conflicting rows for the same intent id.
+        columns = {
+            'meta': [('namespace', 'TEXT', 1, 0)],
+            'intents': [('id', 'TEXT', 0, 1), ('data', 'TEXT', 1, 0)],
+            'states': [('id', 'TEXT', 0, 1), ('data', 'TEXT', 1, 0)],
+        }
+        for table, expected in columns.items():
+            found = [(r[1], r[2], r[3], r[5]) for r in db.execute(
+                'PRAGMA table_info(' + table + ')')]
+            if found != expected:
                 raise ValueError('schema mismatch')
+        foreign_keys = {
+            'meta': [],
+            'intents': [],
+            'states': [(0, 0, 'intents', 'id', 'id',
+                        'NO ACTION', 'NO ACTION', 'NONE')],
+        }
+        for table, expected in foreign_keys.items():
+            if list(db.execute('PRAGMA foreign_key_list(' + table + ')')) != expected:
+                raise ValueError('schema foreign key mismatch')
         if db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok' or db.execute('PRAGMA foreign_key_check').fetchone():
             raise ValueError('database corruption')
         for key, raw in db.execute('SELECT id,data FROM intents'):
