@@ -124,7 +124,7 @@
     "lab/DASHBOARD_V2_SPEC.md": "52504a42235f9745c4ccb4850d209043a6d2a7ef2dc012033b34d651ac1d755e",
     "lab/LEARNING_SPEED_V3.md": "614cd7d306f517a833c8d21aeb46ccb8817561bfafc4cf68fab38338f81a97e6",
     "lab/LIVE_PREP_DESIGN.md": "dc75e46800d2809b1628c5e35557f19d7211af74decf75fd3630355a37b5db1b",
-    "lab/NOW.md": "7206e91d474cd131513d9e91d2e1d430ea1580a4e7ea2e2ea926118efd13478f",
+    "lab/NOW.md": "5e5930161d53be1ddaa01f6b0a037830ca88db5160e7e14d556413e3cebecc0a",
     "lab/PAPER_ENTRY_RISK_SIZING.md": "011eedc8ae0a81d0e1a99fab1ae8c8d03c6c6309f7a37ea37f82a8e71448751b",
     "lab/PAPER_F1H_PREREGISTRATION.md": "c6326d251c80051b745a6c6bdf369876f9205680921b3acf207785dc421feb67",
     "lab/PAPER_MARKET_README.md": "3e8f48ab2758d248ca8c6ef4ac3dfbea817a2a0c0cc07f8a225a06037ec6eb81",
@@ -322,7 +322,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "00c5eb823b7bcc96c6144c355fc2317566db00e40a19d9815f227ee7eda9bfd1",
+  "fingerprint": "c223b6d0761e9dfa2e9b3dcdcb7f645c92098eba0b6ca408245507faccccf2f8",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
