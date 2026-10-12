@@ -296,3 +296,25 @@ PR52精確HEAD670be32e，lab509測試705秒OK、Exporter52與focused25測試OK�
 - 時間：2026-10-12 10:55 UTC
 - 結果：含 roadmap、journal 閘門、喚醒閘門、NOW.md、健康監控與兩個 cron 範本，install.py 在假 profile 測過拒絕、乾跑、安裝、冪等
 - 判定：可攜帶；未裝到其他真實 profile
+
+## J-0040 [mistake] 自動驗收兩個缺陷：疊層分支範圍基準錯、CI 未跑完就定案為 FAIL
+- 時間：2026-10-12 11:12 UTC
+- 結果：E2-U1 的 auto_accept 結果列出疊層分支上其他單元的檔案（用 PR base=main 當基準），且在 pull_request CI 仍 in_progress 時就寫成 FAIL 並凍結
+- 判定：已修：範圍基準改為該 job 交接檔第一次提交的父提交；CI 未完成回 PENDING_CI，auto_accept 3 分鐘後自動重跑，喚醒閘門不叫醒模型。舊結果改名保留
+
+## J-0041 [decision] C-0049獨立驗收拒收E2-U1：SQLite結構約束缺漏被接受
+- 時間：2026-10-12 11:13 UTC
+- 關聯：cache/scratch/relay-e2-20261012T103735Z/main-review-r0.json
+
+已先讀auto_accept，519項完整測試OK不重跑。乾淨gh clone精確HEAD，focused18項OK，unknown/partial/final與rollback探針PASS。移除PK與FK但保留欄位名，加入同ID衝突BUY/SELL兩列，重開仍接受並只讀第一列，check僅驗欄位名為實測根因。auto_accept範圍FAIL是stacked基底誤用main，不是越權修改。返工限原三檔，E2不部署。
+
+## J-0042 [mistake] 監督工具調用兩項失敗，未改動工程來源
+- 時間：2026-10-12 11:13 UTC
+
+誤讀scripts/accept_unit.py不存在，正確在skill scripts。execute_code被cron安全規則拒絕且tool_calls_made=0，改用正常read/write/terminal工具完成驗收證據與verdict。不改安全設定。
+
+## J-0043 [decision] E2-U1 r1已續派，C-0054持有單一工程通道
+- 時間：2026-10-12 11:15 UTC
+- 關聯：cache/scratch/relay-e2-20261012T103735Z/send_E2-U1-r1.json
+
+三次preflight讀回High（高），r1 DISPATCH_CONFIRMED，立即登記120步watcher C-0054。r0 C-0049以缺陷證據drop，C-0037與C-0050依賴改指C-0054，兩項沒有偷跑或宣称完成。不擴白名單，不碰main或部署。
