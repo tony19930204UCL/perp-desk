@@ -259,3 +259,19 @@ queue_runner回DISPATCHED/DISPATCH_CONFIRMED。C-0047正式啟動120-step watche
 - 時間：2026-10-12 10:22 UTC
 - 結果：12 個排程中 7 個不呼叫模型（腳本）。呼叫模型的有 4 個：監督迴圈、每日負責人迴圈、每週檢討，加上舊的 operator-followthrough（已暫停）。這些排程用 gpt-6.1-sol 經 openai-codex。近 24 小時實測：監督迴圈 2 個 session 52 次呼叫約 406 萬輸入 token（377 萬快取）、2.2 萬輸出；每日迴圈 1 個 session 17 次約 132 萬輸入；每週檢討 1 個 session 13 次約 124 萬輸入。舊 operator-followthrough 於 10-10 因 Codex 額度用完（429，retry after 302991s）失敗，每分鐘排程且仍啟用，已暫停
 - 判定：目前用量由閘門控制，實際取決於工程單元數量。額度用完時監督迴圈會失敗，由 supervisor-health 通知使用者
+
+## J-0033 [decision] C-0047獨立驗收與E2小單元備妥
+- 時間：2026-10-12 10:38 UTC
+- 關聯：PR52,PR53,proc_6e0076faebaf
+
+D2-U1-r1交接對上active instruction，PR52精確HEAD 670be32e92917b86ae948b7133e39961f1e2bdb5，push及pull_request CI成功，乾淨clone focused25測試與Exporter52測試OK，獨立8臂實際scorecard及型別邊界探針PASS。accept_unit完整lab測試仍在proc_6e0076faebaf執行，不提前接受。E2拆成持久化store與後續adapter integration，本回合已建立疊在E1 HEAD50903d98的draft PR53及三個惰性placeholder，僅準備，尚未派工。
+
+## J-0034 [mistake] 本輪驗收輔助命令工作目錄錯誤已修正
+- 時間：2026-10-12 10:38 UTC
+
+兩次相對路徑在乾淨clone內錯指scripts/arm_scorecard.py與probe-r1.py，沒有執行到目標。我已改讀本profile絕對來源與以絕對路徑跑探針，probe PASS。ChatGPT模型預檢讀none是頁面在settings/usage而非任務聊天室，僅讀URL與模型按鈕metadata後導回active_instruction的授權URL，讀回高且idle，預檢通過。execute_code因無人值守安全限制被拒，未執行，改用正常terminal工具完成讀取。
+
+## J-0035 [decision] 回答使用者：監督迴圈職責；學習加速但加實質內容閘門
+- 時間：2026-10-12 10:40 UTC
+- 結果：監督迴圈原設計只看有沒有做與下一步，實際上 prompt 讓它做驗收判斷。改法：交付後由無模型的 auto_accept.py 先跑 accept_unit.py，模型只讀結果。負責人迴圈保持每日，每次最多 2 個實驗，journal.py 新增 prediction 類型與實驗閘門（需有腳本檔、數字、樣本與期間、支持/推翻/證據不足結論）
+- 判定：不降頻；以機械閘門擋空話
