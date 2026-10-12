@@ -1,14 +1,21 @@
-"""Synchronous loopback-only JSON transport for the read-only dashboard v2."""
+"""Synchronous loopback-only transport for the read-only dashboard v2."""
 import argparse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import os
+from pathlib import Path
 import time
 
 from dashboard_v2_reader import read_dashboard
 
 
 _ROUTE = '/api/dashboard'
+_ASSET_DIR = Path(__file__).resolve().parent
+_STATIC_ROUTES = {
+    '/': ('dashboard_v2.html', 'text/html; charset=utf-8'),
+    '/dashboard_v2.html': ('dashboard_v2.html', 'text/html; charset=utf-8'),
+    '/dashboard_v2_ui.js': ('dashboard_v2_ui.js', 'application/javascript; charset=utf-8'),
+}
 _ERRORS = {
     400: '{"error":"請求無效"}'.encode('utf-8'),
     404: '{"error":"找不到資源"}'.encode('utf-8'),
@@ -25,6 +32,11 @@ def _absolute_path(value):
     if not isinstance(path, str) or not os.path.isabs(path) or '\x00' in path:
         raise ValueError('來源路徑必須是絕對路徑')
     return path
+
+
+def _read_asset(filename):
+    # The caller chooses only a literal, module-relative allowlisted filename.
+    return (_ASSET_DIR / filename).read_bytes()
 
 
 class _LoopbackHTTPServer(HTTPServer):
@@ -66,10 +78,11 @@ def create_server(*, scorecard_path, journal_path, ledger_path, port=0,
         def log_message(self, format, *args):
             pass
 
-        def _respond(self, status, payload, *, head=False, allow=False):
+        def _respond(self, status, payload, *, head=False, allow=False,
+                     content_type='application/json; charset=utf-8'):
             self.close_connection = True
             self.send_response(status)
-            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Type', content_type)
             self.send_header('Content-Length', str(len(payload)))
             self.send_header('Cache-Control', 'no-store')
             self.send_header('X-Content-Type-Options', 'nosniff')
@@ -86,21 +99,33 @@ def create_server(*, scorecard_path, journal_path, ledger_path, port=0,
                           head=self.command == 'HEAD', allow=status == 405)
 
         def _read(self, *, head):
-            # http.server normalizes leading //; check the original target too.
+            # BaseHTTPRequestHandler normalizes leading //; require exact raw
+            # request target as well as the parsed path for every route.
             target = self.raw_requestline.split()[1]
-            if self.path != _ROUTE or target != b'/api/dashboard':
+            if self.path == _ROUTE and target == b'/api/dashboard':
+                try:
+                    result = read_dashboard(scorecard, journal, ledger,
+                                            now_ms=clock(), max_age_ms=age,
+                                            max_bytes=limit)
+                    payload = json.dumps(result, ensure_ascii=False,
+                                         allow_nan=False, separators=(',', ':')).encode('utf-8')
+                except Exception:
+                    self._respond(500, _ERRORS[500], head=head)
+                    return
+                self._respond(200, payload, head=head)
+                return
+
+            asset = _STATIC_ROUTES.get(self.path)
+            if asset is None or target != self.path.encode('ascii'):
                 self._respond(404, _ERRORS[404], head=head)
                 return
+            filename, content_type = asset
             try:
-                result = read_dashboard(scorecard, journal, ledger,
-                                        now_ms=clock(), max_age_ms=age,
-                                        max_bytes=limit)
-                payload = json.dumps(result, ensure_ascii=False,
-                                     allow_nan=False, separators=(',', ':')).encode('utf-8')
-            except Exception:
+                payload = _read_asset(filename)
+            except OSError:
                 self._respond(500, _ERRORS[500], head=head)
                 return
-            self._respond(200, payload, head=head)
+            self._respond(200, payload, head=head, content_type=content_type)
 
         def do_GET(self):
             self._read(head=False)
