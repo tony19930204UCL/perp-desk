@@ -1,7 +1,7 @@
-# NOW (generated 2026-10-12 15:11 UTC, do not edit)
+# NOW (generated 2026-10-12 15:25 UTC, do not edit)
 
 ## Needs a decision now (wake gate)
-VERIFY C-0063 handle=finished 小幣是否落後大幣：抓 8 個中小型幣 180 天 1 分鐘線並重做領先落後檢定，結果寫入 lead_lag_small_result.txt
+VERIFY C-0064 handle=finished D2-U3A PR57 r1真實來源enum與判定文字返工，高推理已確認送出，120步監看與獨立驗收（不部署） auto_accept=PASS file=/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/relay-dashboard-ui-d2-20261012T141609Z/auto_accept-C-0064.json
 round 165909
 
 ## Ledger: items not finished
@@ -19,7 +19,6 @@ C-0053 OPEN       [C-0053 未派工:我選擇延後（不是阻擋）重評:10-1
 C-0057 DISPATCHED [C-0057 已派工 cron:93f4f9882e43 驗收:cmd 到期:10-14 14:27] | handle=alive | T1 四臂開窗驗證：四個服務 active、狀態檔產生、時鐘檢查通過、第一輪記分卡出現 T1 紙盤成績（需先重啟 WSL 載入新服務）
 C-0058 OPEN       [C-0058 未派工:等 user:請你在 Windows PowerShell 執行 wsl --shutdown，再重新開啟 WSL（Tele] | handle=- | 重啟 WSL 載入 T1 四個新服務單元（我已寫好單元與連結，不能自己 daemon-reload，會弄斷 systemctl --user
 C-0062 DISPATCHED [C-0062 已派工 cron:fa25edbf3834 驗收:manual 到期:10-22 16:30] | handle=alive | 入場邏輯研究（G2-h）：由每日負責人迴圈每天最多兩個實驗往下做，結果進研究日誌
-C-0063 DISPATCHED [C-0063 已派工 pid:869328 驗收:file_exists 到期:10-12 18:38] | handle=finished | 小幣是否落後大幣：抓 8 個中小型幣 180 天 1 分鐘線並重做領先落後檢定，結果寫入 lead_lag_small_result.txt
 C-0064 DISPATCHED [C-0064 已派工 pid:882430 驗收:manual 到期:10-12 19:58] | handle=finished | D2-U3A PR57 r1真實來源enum與判定文字返工，高推理已確認送出，120步監看與獨立驗收（不部署）
 
 ## Roadmap: active and ready
@@ -29,29 +28,29 @@ ACTIVE / READY:
  - G2-e T1 四臂以 systemd 服務開窗（180 天） | next: 已部署檔案與單元（accepted head b1c5d92），等使用者 wsl --shutdown 載入服務；載入後四臂自動啟動，驗證項目會叫醒監督迴圈
  - READY G2-f 量測掛單成交率，判斷 1 分鐘暴衝能否用掛單做 | next: 寫量測腳本，對 4 幣記錄掛單 60 秒內成交比例與逆選擇
  - READY G2-g 空頭擁擠做多假說（資金費率極端 5%） | next: 等 W1 與 T1 前瞻資料，重評日 10-18
- - G4-a 看板 v2（規格 lab/DASHBOARD_V2_SPEC.md） | next: PR57 D2-U3A r0 CI成功但實際producer瀏覽器顯示decision/DISPATCHED未知及判定文字丟失，REVISE r1 High已確認送出，C-0064監看120步。D2-U3B C-0050等C-0064驗收，未派工，不部署。
+ - G4-a 看板 v2（規格 lab/DASHBOARD_V2_SPEC.md） | next: PR57 r1 D2-U3A已交付REVIEW_REQUIRED，確定性auto_accept正在執行（PID888498），獨立驗收未結案。C-0050 D2-U3B仍等C-0064驗收，未派工，不部署。
  - G2-h 入場邏輯研究：從 1 小時掃描的空結果往外找（4h 到日線、掛單成本、資金費率） | next: 每次迴圈挑一個：(a) 4h 與日線特徵掃描用非重疊樣本與區塊自助法 (b) 抓幣安資金費率歷史測極端值 (c) 配合 G2-f 掛單成交率重算成本門檻
 
 ## Project numbers (arm_scorecard.py)
-SCORECARD 2026-10-12T15:11:14Z UTC
-F1H-BTCUSDT-PAPER      第1.28天(剩19.72) 信號6 擋2 成交7 來回3 淨損益-0.61 手續費0.29 最大回撤1.30 持倉1 輪詢錯誤9
-F1H-SOLUSDT-PAPER      第1.28天(剩19.72) 信號3 擋1 成交3 來回1 淨損益-0.89 手續費0.11 最大回撤1.23 持倉1 輪詢錯誤3
-F1H-XRPUSDT-PAPER      第1.28天(剩19.72) 信號2 擋0 成交3 來回1 淨損益-0.91 手續費0.10 最大回撤1.25 持倉1 輪詢錯誤5
-H2-PAPER-004           第1.28天(剩19.72) 信號5 擋2 成交5 來回2 淨損益-0.89 手續費0.22 最大回撤1.90 持倉1 輪詢錯誤10
-W1-BTCUSDT-PAPER       第1.05天(剩19.95) 信號9 擋5 成交7 來回3 淨損益-1.19 手續費0.63 最大回撤2.78 持倉1 輪詢錯誤9
-W1-ETHUSDT-PAPER       第1.05天(剩19.95) 信號9 擋6 成交5 來回2 淨損益-1.94 手續費0.44 最大回撤3.80 持倉1 輪詢錯誤5
-W1-SOLUSDT-PAPER       第1.05天(剩19.95) 信號8 擋3 成交9 來回4 淨損益-4.63 手續費0.69 最大回撤5.25 持倉1 輪詢錯誤10
-W1-XRPUSDT-PAPER       第1.05天(剩19.95) 信號9 擋6 成交5 來回2 淨損益-2.20 手續費0.33 最大回撤2.97 持倉1 輪詢錯誤8
+SCORECARD 2026-10-12T15:25:14Z UTC
+F1H-BTCUSDT-PAPER      第1.29天(剩19.71) 信號6 擋2 成交7 來回3 淨損益-0.57 手續費0.29 最大回撤1.30 持倉1 輪詢錯誤9
+F1H-SOLUSDT-PAPER      第1.29天(剩19.71) 信號3 擋1 成交3 來回1 淨損益-0.87 手續費0.11 最大回撤1.23 持倉1 輪詢錯誤3
+F1H-XRPUSDT-PAPER      第1.29天(剩19.71) 信號2 擋0 成交3 來回1 淨損益-0.85 手續費0.10 最大回撤1.25 持倉1 輪詢錯誤5
+H2-PAPER-004           第1.29天(剩19.71) 信號5 擋2 成交5 來回2 淨損益-0.90 手續費0.22 最大回撤1.90 持倉1 輪詢錯誤10
+W1-BTCUSDT-PAPER       第1.06天(剩19.94) 信號9 擋5 成交7 來回3 淨損益-1.08 手續費0.63 最大回撤2.78 持倉1 輪詢錯誤9
+W1-ETHUSDT-PAPER       第1.06天(剩19.94) 信號9 擋6 成交5 來回2 淨損益-1.79 手續費0.44 最大回撤3.80 持倉1 輪詢錯誤5
+W1-SOLUSDT-PAPER       第1.06天(剩19.94) 信號8 擋3 成交9 來回4 淨損益-4.63 手續費0.69 最大回撤5.25 持倉1 輪詢錯誤10
+W1-XRPUSDT-PAPER       第1.06天(剩19.94) 信號9 擋6 成交5 來回2 淨損益-2.13 手續費0.33 最大回撤2.97 持倉1 輪詢錯誤8
 T1 影子（規則狀態，不是紙盤成績）：BTC flat | ETH flat | SOL flat | XRP flat
 TRIGGERS: none
 
 ## Last 6 journal entries
-J-0075 2026-10-12 [observation] 預測對帳 J-0073 | 我對ATR追蹤『勝率較高』的直覺錯了，追蹤停損在趨勢策略反而更常被洗出
-J-0076 2026-10-12 [prediction] 大幣領先小幣的延後效應（1 分鐘與 15 分鐘） | 預測：相鄰分鐘的跨幣報酬相關在落後 1 分鐘有統計上顯著的正值（相關約 0.02 到 0.08），但 BTC 極端 1 分鐘急動後，山寨幣之後 1 到 5 分鐘的同向平均毛報酬 <
-J-0077 2026-10-12 [experiment] 大幣領先小幣：BTC 與 ETH 對 ETH SOL XRP 的 1 分鐘與 15 分鐘領先落後 | 推翻：四個大型幣之間在 1 分鐘以上的尺度沒有可交易的領先落後，價格在一分鐘內就同步反映。更小的幣另測
 J-0078 2026-10-12 [decision] D2-U3A PR57獨立瀏覽器驗收退回：真實enum未映射 | 
 J-0079 2026-10-12 [mistake] PR57返工派工在COMPOSER_INTENT中斷，已唯讀確認未送出並重新載入恢復 | 
-J-0080 2026-10-12 [decision] PR57 r1已確認送出並接續監看，C-0064取代C-0061 |
+J-0080 2026-10-12 [decision] PR57 r1已確認送出並接續監看，C-0064取代C-0061 | 
+J-0081 2026-10-12 [decision] 監督迴圈C-0063驗收完成，C-0064仍由確定性驗收持有 | 
+J-0082 2026-10-12 [experiment] C-0063 小幣領先落後結果重現與資料驗收 | 證據不足：不支持BTC急動後以分鐘級追小幣能覆蓋成本，因此不開這個交易臂。不是嚴格統計上不存在延遲效應，事件重疊、未區塊自助法及多重檢定，14bp是研究假設不是實際成交成本。
+J-0083 2026-10-12 [mistake] 本回合研究日誌初次寫入被驗證器拒絕，已補記 |
 
 ## Engineering job env files
 none

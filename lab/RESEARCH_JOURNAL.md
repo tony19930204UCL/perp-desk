@@ -552,3 +552,27 @@ C-0063已由帳本file_exists自動結案，本回合另驗10份資料完整性�
 - 關聯：C-0063,cache/scratch/research/lead_lag_small_verification.json
 
 第一次experiment verdict沒有以支持、推翻或證據不足起頭，journal拒絕該條目。後續命令仍執行，帳本已結案但研究條目當時未寫入。本回合補記合法verdict並保留這個錯誤，不把第一次寫入當成功。
+
+## J-0084 [mistake] C-0064探針初次使用錯誤工作目錄
+- 時間：2026-10-12 15:27 UTC
+- 關聯：C-0064
+
+我將profile相對路徑放在clone/lab執行，探針及git diff未執行，focused UI17測試實際通過。已改回profile目錄重跑探針，沒有把前次exit0当作探針完成。
+
+## J-0085 [mistake] C-0064驗收工具限制及淺clone診斷
+- 時間：2026-10-12 15:28 UTC
+- 關聯：C-0064
+
+本機clone為depth1，git diff舊source SHA失敗，改以GitHub精確source..head比較。execute_code被cron安全規則拒絕且未執行，使用正常工具完成證據檔與sha256，不修改核准設定。auto_accept把NOT_RUN誤判為claims_tests_not_run=false，實際工程端未跑測試，獨立566測試及17focused與瀏覽器已跑。
+
+## J-0086 [decision] C-0064 PR57 r1静態UI獨立驗收通過，轉D2-U3B
+- 時間：2026-10-12 15:29 UTC
+- 關聯：C-0064,C-0050,PR57
+
+採用auto_accept已完成乾淨clone566測試，不重跑全套。另跑17 focused與真實build_model Chromium1280/390探針，decision/DISPATCHED/自由判定文字與惡意literal正確，無溢出，失敗清空與race通過。精確頭2fc76a23 push38267363221及PR38267370509綠。source至head只有mailbox。queue verdict ALL_DONE。main已由建立時afbfa264變為3fab333c，非本次寫入，未宣稱main不變。C-0050解除依賴，現在建立獨立白名單serving seam小單元，不部署。
+
+## J-0087 [decision] D2-U3B PR58已實送，高推理120步監看C-0065承接
+- 時間：2026-10-12 15:33 UTC
+- 關聯：C-0064,C-0050,C-0065,PR57,PR58
+
+C-0064通過後立即接續C-0050，stacked branch由PR57精確頭2fc76a23建立。新增inert test及mailbox占位，PR58 draft已讀回，僅server、新serving tests、mailbox三檔寫入白名單。High高連續三次預檢，queue DISPATCHED D2-U3B-r0，C-0065 pid902746立即登記120步監看。C-0050以被真實派工取代結案，不是假驗收完成。交付後驗固定raw target、HEAD/405/API兼容及真實server瀏覽器端到端，無main/部署/實盤/其他profile變更。C-0051/52/53重評未到，不變更。C-0058仍是既有WSL重啟人為阻擋，不在本次工程操作內解除。
