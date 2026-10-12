@@ -367,3 +367,8 @@ C-0037派工承諾完成（不代表E2產品完成），E2-U2的交付與驗收�
 - 結果：U2B2 於 11:31 驗收結案，之後 G2-e（部署 T1）只存在路線圖，沒有帳本項目。喚醒閘門只讀帳本，監督迴圈在閘門為空時回『無待處理』，路線圖 lint 的警告只有每日 21:00 的負責人迴圈會讀。我也在驗收當下沒有為部署登記項目
 - 判定：已修：喚醒閘門加入路線圖 lint 問題（輸出 START roadmap: …），新增測試，共 10 項通過。屬 autonomous-project-owner 的設計缺口，非帳本或派工 skill 的錯
 - 關聯：scripts/ledger_wake.py
+
+## J-0053 [decision] ledger 與 owner 兩個 skill 維持分開，安裝合成一條指令
+- 時間：2026-10-12 12:36 UTC
+- 結果：commitment-ledger 12.8KB（外掛程式加 CLI，單獨可用），autonomous-project-owner 12.2KB（方法加迴圈，依賴 ledger）。監督迴圈 cron 載入 relay-backlog-operator、chatgpt-engineering-relay、commitment-ledger 三個 skill，合併會把方法論文字加進每次醒來的起始上下文（約 3.1 萬 token）。owner 的 install.py 新增 --with-ledger，一個指令同時裝兩者並複製 skill 本體，假 profile 測過拒絕、乾跑、安裝、冪等
+- 判定：分開比較好；使用者要的是只交付一個，由安裝腳本達成
