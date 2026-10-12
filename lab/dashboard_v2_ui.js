@@ -35,9 +35,11 @@
   const plain = value => ({display:value, exact:null});
   const enums = {
     OPEN:'未結', IN_PROGRESS:'進行中', PENDING:'待處理', BLOCKED:'受阻',
-    VERIFIED:'已驗證', DROPPED:'已撤銷', PASS:'通過', FAIL:'未通過',
-    CONFIRMED:'已確認', REJECTED:'已拒絕', OBSERVATION:'觀察',
-    EXPERIMENT:'實驗', DECISION:'決策', PREDICTION:'預測',
+    VERIFIED:'已驗證', DROPPED:'已撤銷', DISPATCHED:'已派工',
+    PASS:'通過', FAIL:'未通過', CONFIRMED:'已確認', REJECTED:'已拒絕',
+    OBSERVATION:'觀察', EXPERIMENT:'實驗', DECISION:'決策',
+    PREDICTION:'預測', decision:'決策', experiment:'實驗',
+    observation:'觀察', prediction:'預測', mistake:'失誤',
     known:'新鮮', unknown:'未知'
   };
   const enumText = value => typeof value === 'string' && Object.hasOwn(enums,value) ? enums[value] : '未知';
@@ -104,7 +106,7 @@
       const item = node('article',undefined,journal);
       item.className = 'entry';
       node('h3',text(j.title),item);
-      node('p',enumText(j.kind)+' · 判定：'+enumText(j.verdict)+' · '+text(j.at),item);
+      node('p',enumText(j.kind)+' · 判定：'+text(j.verdict)+' · '+text(j.at),item);
       const details = node('details',undefined,item);
       node('summary','查看全文 · '+text(j.id),details);
       node('p',text(j.body),details);
