@@ -122,7 +122,7 @@
     "lab/COLLECTOR_README.md": "339230d3ba6edc81ac92ce0c21755d9e1447146bd5019f4dc08a2abdd1fa841b",
     "lab/DASHBOARD_README.md": "f489a36d958546e045d773e112d02b3ad2a777d63bd4f2159ba9b6ad72089615",
     "lab/DASHBOARD_V2_SPEC.md": "52504a42235f9745c4ccb4850d209043a6d2a7ef2dc012033b34d651ac1d755e",
-    "lab/IDEAS.md": "ec35a372c2db8bf9f1cf316d3c62fd0e89b892f03e616a6f33e2bbe85c07fdd4",
+    "lab/IDEAS.md": "7bb271848357049deb8476cf7d5cb5ee384a6d114f1ea308749f3753cff4989d",
     "lab/LEARNING_SPEED_V3.md": "614cd7d306f517a833c8d21aeb46ccb8817561bfafc4cf68fab38338f81a97e6",
     "lab/LIVE_PREP_DESIGN.md": "dc75e46800d2809b1628c5e35557f19d7211af74decf75fd3630355a37b5db1b",
     "lab/NOW.md": "e2ed1e36addfce96ab9114c437a06861898caf88631d51c216e5d5fa001f7eb0",
@@ -136,7 +136,7 @@
     "lab/PAPER_WIDE_PREREGISTRATION.md": "12ea5ea90fc76e5dab65e2a8b0823a8bd007ab7be1f5d78b79b37c16e5a642b4",
     "lab/PARENT_DEPLOY_V3.md": "755b0e7393da14cc4435266d1f7d2d705730cf8fc9b391ecd6f3cd70053c3642",
     "lab/PROPOSED_VERSIONS_APPENDIX.md": "2a16b72aaf98a90f6218e649b8095b64b384d0d707e12e6c2dbbf84256983d36",
-    "lab/RESEARCH_JOURNAL.md": "227f540302af8782eb8029988e22b14547e9d675e0bed3c9cfb36ed7f5a76667",
+    "lab/RESEARCH_JOURNAL.md": "f5b3c0c6d4d2d2c6b0184daf433c22128b869736c41d7c9b78af4e49d5b82e17",
     "lab/SIGNALS_README.md": "7835c465093294ad9eee45552757ba960d8d23526cf903fa9b8b3414ea8eac54",
     "lab/SIM_BROKER_README.md": "691b60fecbebc803676748906efb581cef9947c1a29a7f297937a108dd08ce73",
     "lab/accept_learning_v3.py": "2853c08276d3be871e1041714ab152ea70db4adf2a478ce21384b40f7762588a",
@@ -323,7 +323,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "7161996cb2313711c5295a4b169f3b94e1e2f5ba7fc44c33d860dc458c245e65",
+  "fingerprint": "09fd1129acbe9adba4aaed98d67457f8fdebc89ce822462e3c8becc8ef0ebd80",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
