@@ -208,3 +208,9 @@ lab/RESEARCH_JOURNAL.md，lab/journal/scorecards.jsonl，lab/PAPER_WIDE_PREREGIS
 - 時間：2026-10-12 09:12 UTC
 
 timeout=600仍由工具420秒中止，沒有測試結論。改登記長測試執行handle，不把點號或CI綠燈當本機完成。
+
+## J-0024 [decision] 監督迴圈首輪實戰通過，T1-U2B2 r2工程驗收完成
+- 時間：2026-10-12 09:31 UTC
+- 關聯：cache/scratch/relay-t1-20261011T125818Z/main-review-T1-U2B2-r2.json
+
+無人催促，C-0040本回合驗收結案。精確HEAD b1c5d9279506123bfb2939f795e71f3455368d78，gh乾淨複製，Exporter52與lab572全部OK，兩種CI事件成功，cold/ready/void快照正確，r2只變測試與交接。queue返回ALL_DONE。main長測試期間由Perp Desk Auto Sync更新，非本輪修改。尚未部署，不碰實盤。C-0033解除阻擋，優先做看板v2第一單元資料模型（不一次派整頁）。
