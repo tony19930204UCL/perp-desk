@@ -349,3 +349,9 @@ C-0037派工承諾完成（不代表E2產品完成），E2-U2的交付與驗收�
 - 關聯：cache/scratch/relay-e2-u2-20261012T1142/main-review-r0.json
 
 已先讀auto_accept FAIL，沒有重跑589秒完整測試。精確head 7500b8c4兩種CI皆失敗，focused 16測試有1錯。獨立雙adapter實驗均證實ts100落後已處理ts111，改用ts112時新開倉REJECTED、protective退出ACCEPTED，ts123真實成交qty1。判斷是測試fixture錯誤，不是broker/adapter錯誤。返工僅修測試與交接，不部署，不放寬白名單。C-0051/52/53仍未到重評日，維持原延後。
+
+## J-0050 [decision] PR54 E2-U2 r1已續派，C-0056接管單一工程通道
+- 時間：2026-10-12 12:11 UTC
+- 關聯：cache/scratch/relay-e2-u2-20261012T1142/verdict-r0.json
+
+派工前High多次一致讀回，REVISE後r1送出CONFIRMED、EXACT_RENDERED_USER_BUBBLE，chat 6accce2a-0078-83ed-ac5b-8ada488575ed。C-0056 pid774773登記120步監看，首行WAITING INCOMPLETE_HANDBACK已讀回。C-0055 drop（拒收不是驗收通過），C-0050 blocker改C-0056，roadmap同步。沒有部署與main變更。
