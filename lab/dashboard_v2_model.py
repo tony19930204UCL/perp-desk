@@ -9,8 +9,9 @@ import math
 
 
 MONEY = ('pnl', 'fees', 'max_dd', 'loss_limit')
-COUNTS = ('days_in', 'days_left', 'signals', 'blocked', 'fills',
-          'round_trips', 'open_positions', 'feed_errors', 'feed_gaps')
+DAYS = ('days_in', 'days_left')
+COUNTS = ('signals', 'blocked', 'fills', 'round_trips',
+          'open_positions', 'feed_errors', 'feed_gaps')
 OTHER_NUMBERS = ('stale_min',)
 JOURNAL_FIELDS = ('id', 'at', 'kind', 'title', 'body', 'verdict')
 COMMITMENT_FIELDS = ('id', 'text', 'state', 'due')
@@ -62,7 +63,7 @@ def _nonnegative_number(value):
 
 def _unknown_arm(identifier=None):
     row = {'arm': identifier}
-    row.update({name: None for name in COUNTS + OTHER_NUMBERS})
+    row.update({name: None for name in DAYS + COUNTS + OTHER_NUMBERS})
     row.update({name: {'exact': None, 'display': '未知'} for name in MONEY})
     return row
 
@@ -76,6 +77,10 @@ def _project_arm(source, index, reasons):
         identifier = None
         reasons.append(f'第{index}臂識別碼無效')
     row = _unknown_arm(identifier)
+    for name in DAYS:
+        row[name] = _nonnegative_number(source.get(name))
+        if row[name] is None:
+            reasons.append(f'第{index}臂 {name} 無效')
     for name in COUNTS:
         value = source.get(name)
         if type(value) is int and value >= 0:
