@@ -54,7 +54,38 @@ const descendants = (node,tag) => {
 };
 (async () => {
   const test = process.argv[2];
-  if(test==='render') {
+  if(test==='projected') {
+    const projected=JSON.parse(fs.readFileSync(0,'utf8'));
+    const hostile='</script><img onerror=evil()>';
+    assert.equal(projected.journal.length,5);
+    assert.equal(projected.commitments.length,2);
+    assert.equal(window.renderDashboard(projected),true);
+    for(const s of ['決策','實驗','觀察','預測','失誤','驗收待定',
+                    '判定：未知','判定：PASS',hostile])
+      assert(text('journal').includes(s),s);
+    assert(!text('journal').includes('判定：通過'));
+    assert(text('commitments').includes('C-OPEN · 未結'));
+    assert(text('commitments').includes('C-DISPATCHED · 已派工'));
+    assert(!text('commitments').includes('C-VERIFIED'));
+    assert(!text('commitments').includes('C-DROPPED'));
+    assert.equal(descendants(ids.journal,'img').length,0);
+    assert.equal(descendants(ids.journal,'script').length,0);
+    projected.journal[0].kind='not-a-known-kind';
+    projected.commitments[0].state='not-a-known-state';
+    window.renderDashboard(projected);
+    assert(text('journal').includes('未知 · 判定：'));
+    assert(text('commitments').includes('C-OPEN · 未知'));
+  } else if(test==='enum_states') {
+    model.commitments=['OPEN','DISPATCHED','VERIFIED','DROPPED','other'].map(
+      (state,i)=>({id:'STATE-'+i,state,due:'due',text:'task'}));
+    model.journal=[{id:'old',kind:'DECISION',title:'舊案',
+      verdict:'PASS',body:'body',at:'date'}];
+    window.renderDashboard(model);
+    for(const s of ['STATE-0 · 未結','STATE-1 · 已派工',
+                    'STATE-2 · 已驗證','STATE-3 · 已撤銷','STATE-4 · 未知'])
+      assert(text('commitments').includes(s),s);
+    assert(text('journal').includes('決策 · 判定：PASS'));
+  } else if(test==='render') {
     assert.equal(window.renderDashboard(model),true);
     for(const s of ['A','1.07','19.93','123.12','0.00','-1.01','3','5'])
       assert(text('arms').includes(s),s);
@@ -152,9 +183,10 @@ const descendants = (node,tag) => {
 
 
 class DashboardV2UITests(unittest.TestCase):
-    def run_case(self, case):
+    def run_case(self, case, payload=None):
         completed = subprocess.run(
             ['node', '-e', HARNESS, str(JS), case],
+            input=json.dumps(payload, ensure_ascii=False) if payload is not None else None,
             capture_output=True, text=True, timeout=10, check=False)
         self.assertEqual(completed.returncode, 0,
                          f'{case}: {completed.stderr}\n{completed.stdout}')
@@ -167,6 +199,34 @@ class DashboardV2UITests(unittest.TestCase):
     def test_hostile_text_literal(self): self.run_case('hostile')
     def test_latest_five_details(self): self.run_case('journal')
     def test_open_commitments(self): self.run_case('commitments')
+    def test_enum_states_and_legacy_kind(self): self.run_case('enum_states')
+
+    def test_build_model_projection_in_real_renderer(self):
+        from datetime import datetime
+        from dashboard_v2_model import build_model
+
+        stamp = '2026-10-12T12:00:00+00:00'
+        hostile = '</script><img onerror=evil()>'
+        kinds = ['decision', 'experiment', 'observation', 'prediction', 'mistake']
+        verdicts = ['驗收待定', hostile, None, 'PASS', '需復核']
+        journal = [
+            {'id': f'J-{i}', 'at': stamp, 'kind': kind,
+             'title': f'研究{i}', 'body': f'正文{i}', 'verdict': verdicts[i]}
+            for i, kind in enumerate(kinds)
+        ]
+        ledger = {'items': [
+            {'id': f'C-{state}', 'state': state, 'due': stamp, 'text': '待辦'}
+            for state in ('OPEN', 'DISPATCHED', 'VERIFIED', 'DROPPED')
+        ]}
+        projected = build_model(
+            {'at': stamp, 'arms': []}, journal, ledger,
+            now_ms=int(datetime.fromisoformat(stamp).timestamp() * 1000),
+            max_age_ms=60000)
+        self.assertEqual(projected['scorecard_state'], 'known')
+        self.assertEqual([c['state'] for c in projected['commitments']],
+                         ['OPEN', 'DISPATCHED'])
+        self.assertEqual(projected['journal'][2]['verdict'], None)
+        self.run_case('projected', projected)
     def test_invalid_model_clears(self): self.run_case('invalid')
     def test_failed_status_clears(self): self.run_case('fail')
     def test_failed_json_clears(self): self.run_case('jsonerror')
