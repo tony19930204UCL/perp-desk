@@ -1,1 +1,66 @@
-<!-- Engineering placeholder -->
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>紙盤觀察台 v2｜唯讀</title>
+<style>
+:root { color-scheme: light; font-family: system-ui, "Noto Sans TC", sans-serif; background:#f4f6f9; color:#17263d; }
+* { box-sizing:border-box; }
+body { margin:0; min-width:0; }
+main { width:min(100%, 1280px); margin:auto; padding:clamp(12px,2.5vw,30px); }
+header { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+h1 { font-size:clamp(1.35rem,2.6vw,2rem); margin:0; }
+h2 { font-size:1.12rem; margin:0 0 12px; }
+p { margin:6px 0; }
+button { border:1px solid #344d72; background:#fff; color:#173257; padding:9px 16px; border-radius:9px; font:inherit; cursor:pointer; }
+button:focus-visible { outline:3px solid #307ac3; outline-offset:2px; }
+.muted { color:#52657f; font-size:.88rem; }
+.notice { border-left:4px solid #c58a19; padding:10px 14px; background:#fff8e9; margin-top:14px; }
+section { margin-top:18px; }
+.panel { background:#fff; border:1px solid #dbe2ec; border-radius:12px; padding:16px; box-shadow:0 2px 9px #1b33500c; min-width:0; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,265px),1fr)); gap:12px; }
+.health { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:12px; }
+.health > div { border-radius:9px; background:#edf2f8; padding:11px; min-width:0; }
+.health strong { display:block; font-size:1.12rem; }
+.health small { display:block; color:#52657f; }
+dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px 12px; margin:12px 0 0; }
+dl > div { min-width:0; padding-top:7px; border-top:1px solid #edf1f6; }
+dt { color:#52657f; font-size:.8rem; }
+dd { margin:4px 0 0; font-weight:650; font-variant-numeric:tabular-nums; }
+article h3 { font-size:1rem; margin:0 0 8px; }
+article + article { margin-top:10px; }
+.entry { border-top:1px solid #e1e7ef; padding:12px 0; }
+.entry:first-child { border-top:0; }
+details { margin-top:7px; }
+summary { cursor:pointer; color:#1c518b; }
+#reasons { margin:8px 0 0; padding-left:22px; }
+#reasons li { margin:3px 0; }
+#arms, #journal, #commitments, .health, dd, .entry, .panel { overflow-wrap:anywhere; word-break:break-word; }
+footer { margin:24px 0; color:#52657f; }
+@media(max-width:600px) {
+ .health { grid-template-columns:1fr; }
+ .panel { padding:13px; }
+ dl { gap:8px; }
+}
+</style>
+<script src="dashboard_v2_ui.js" defer></script>
+</head>
+<body>
+<main>
+<header><div><h1>紙盤觀察台 v2</h1><p class="muted">唯讀 · 資料不等於系統存活證明</p></div><button id="refresh" type="button">重新讀取</button></header>
+<section class="panel" aria-labelledby="conclusion-title">
+<h2 id="conclusion-title">觀察結論與健康證據</h2>
+<p id="overall" role="status" aria-live="polite">未知</p>
+<div id="health" class="health" aria-label="獨立健康證據"><div>服務存活：未知</div><div>時鐘：未知</div><div>排程：未知</div></div>
+</section>
+<section class="panel" aria-labelledby="score-title"><h2 id="score-title">記分卡</h2><p id="freshness" aria-live="polite">未知</p><ul id="reasons"><li>尚未讀取</li></ul></section>
+<section aria-labelledby="arms-title"><h2 id="arms-title">跨臂成績</h2><div id="arms" class="grid" aria-live="polite">未知</div></section>
+<section class="panel" aria-labelledby="journal-title"><h2 id="journal-title">研究日誌 · 最新五筆</h2><div id="journal">未知</div></section>
+<section class="panel" aria-labelledby="commitments-title"><h2 id="commitments-title">未結承諾</h2><div id="commitments">未知</div></section>
+<p class="notice">T1 規則、行情、權益曲線：未提供來源，不是 0；不顯示交易操作。</p>
+<footer>僅展示 /api/dashboard 的唯讀資料。頁面不提供寫入或交易功能。</footer>
+</main>
+</body>
+</html>
