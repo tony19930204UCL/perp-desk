@@ -231,3 +231,31 @@ T1驗收結案後本回合直接建立branch與draft PR52並確認遠端placehol
 - 結果：accept_unit.py（head、範圍、CI、乾淨複製跑測試）與 dispatch_preflight.py（授權、送出記錄、指令完整性、推理等級、受限續期）已建，寫進 relay-backlog-operator skill
 - 判定：不把驗收判斷換成弱模型：模型只讀腳本 JSON 並補探針。監督迴圈首輪遇到的兩個錯誤（前景 420 秒上限、檢查失敗後仍續派）都由這兩個腳本與規則對應
 - 關聯：skills/relay-backlog-operator/scripts/accept_unit.py,skills/relay-backlog-operator/scripts/dispatch_preflight.py
+
+## J-0028 [mistake] D2-U1分數天數被丟棄，原派工未明確區分天數與計數
+- 時間：2026-10-12 10:19 UTC
+- 關聯：cache/scratch/relay-dashboard-v2-20261012T093259Z/main-review-D2-U1-r0.json
+
+精確head f9eedf3乾淨clone與21項測試通過，push/PR CI皆綠。獨立探針1.07/19.93回傳null，根因COUNTS包含days_in/days_left。本機來源計算為round(...,2)。原派工分類含糊是我的責任。完整suite被工具420秒上限中止，沒有宣稱通過。bridge初次誤用action，已改用op並三次確認High。
+
+## J-0029 [decision] D2-U1 r0退回單一小修
+- 時間：2026-10-12 10:19 UTC
+
+只修day quantity分類與回歸測試，白名單/認證期限不變。C-0043與C-0044延後到10/14尚未到期維持原決策。E2 C-0037繼續等單一通道的修復驗收。
+
+## J-0030 [decision] D2-U1 r1已續派並交給C-0047監看
+- 時間：2026-10-12 10:20 UTC
+- 關聯：C-0047,PR52
+
+queue_runner回DISPATCHED/DISPATCH_CONFIRMED。C-0047正式啟動120-step watcher pid701622。C-0046以返工取代drop，非驗收通過。C-0037阻擋改指C-0047。C-0043/C-0044重評仍10/14，不提前擴增通道。
+
+## J-0031 [observation] 本輪期間C-0043/C-0044帳本已被另一執行更新為VERIFIED
+- 時間：2026-10-12 10:21 UTC
+- 關聯：C-0043,C-0044,C-0047
+
+收尾讀回兩項state=VERIFIED，evidence記錄accept_unit.py快速驗收與dispatch_preflight.py四情境及真High檢查。不是本輪完成或驗收，不冒領成果。J-0029/J-0030延後描述反映操作當時狀態，現在以帳本最新state為準。本輪只處理D2-U1返工與C-0037依賴改指。
+
+## J-0032 [observation] 排程的模型用量盤點
+- 時間：2026-10-12 10:22 UTC
+- 結果：12 個排程中 7 個不呼叫模型（腳本）。呼叫模型的有 4 個：監督迴圈、每日負責人迴圈、每週檢討，加上舊的 operator-followthrough（已暫停）。這些排程用 gpt-6.1-sol 經 openai-codex。近 24 小時實測：監督迴圈 2 個 session 52 次呼叫約 406 萬輸入 token（377 萬快取）、2.2 萬輸出；每日迴圈 1 個 session 17 次約 132 萬輸入；每週檢討 1 個 session 13 次約 124 萬輸入。舊 operator-followthrough 於 10-10 因 Codex 額度用完（429，retry after 302991s）失敗，每分鐘排程且仍啟用，已暫停
+- 判定：目前用量由閘門控制，實際取決於工程單元數量。額度用完時監督迴圈會失敗，由 supervisor-health 通知使用者
