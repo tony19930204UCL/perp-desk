@@ -355,3 +355,9 @@ C-0037派工承諾完成（不代表E2產品完成），E2-U2的交付與驗收�
 - 關聯：cache/scratch/relay-e2-u2-20261012T1142/verdict-r0.json
 
 派工前High多次一致讀回，REVISE後r1送出CONFIRMED、EXACT_RENDERED_USER_BUBBLE，chat 6accce2a-0078-83ed-ac5b-8ada488575ed。C-0056 pid774773登記120步監看，首行WAITING INCOMPLETE_HANDBACK已讀回。C-0055 drop（拒收不是驗收通過），C-0050 blocker改C-0056，roadmap同步。沒有部署與main變更。
+
+## J-0051 [decision] 部署 T1 四臂檔案與服務單元（未啟動），等 WSL 重啟
+- 時間：2026-10-12 12:27 UTC
+- 結果：只複製 accepted head b1c5d9279506 的 7 個檔案（runtime_v7、trend_signals、trend_sizing、4 個設定），其餘相依檔與已部署版本逐位元相同。ETH --once 冒煙測試：狀態 running、無阻擋、現金 100。時鐘檢查通過（偏差 96 ms）。寫 4 個單元與 default.target.wants 連結，沒有 daemon-reload，沒有啟動。看門程式加入 T1，狀態檔出現後才監控
+- 判定：G2-e 在 U2B2 驗收後閒置約 2 小時無人持有，是路線圖 lint 抓到的缺口
+- 關聯：lab/paper_runtime_v7.py,lab/paper_config_t1_ethusdt.json
