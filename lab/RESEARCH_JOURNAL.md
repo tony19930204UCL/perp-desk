@@ -521,3 +521,14 @@ C-0051重評10/15、C-0052重評10/14、C-0053重評10/17皆未到期，維持�
 - 關聯：C-0061,PR57
 
 精確head a6cd2d920bafd1a6efe09a43e16acffcc9dee6dd，push38262672697與pull_request38262678945成功。使用乾淨clone的build_model產生fixture，實際Chromium在1280/390均無水平溢位，精確金額提示/失敗清空/競態/注入防護通過。但來源kind=decision及帳本state=DISPATCHED被顯示未知。JS enum表只有大寫DECISION與IN_PROGRESS，實際producer原樣保留kind/state。證據operator-browser-result.json。auto_accept已自行執行中，不重跑相同全套。保持四檔白名單，只退回enum映射與真實producer回歸測試，不部署。
+
+## J-0079 [mistake] PR57返工派工在COMPOSER_INTENT中斷，已唯讀確認未送出並重新載入恢復
+- 時間：2026-10-12 14:58 UTC
+
+step --verdict已記錄REVISE，但advance因CDP TRANSPORT_FAILED中斷。send r1狀態只有COMPOSER_INTENT，沒有SEND_INTENT或UNKNOWN；唯讀snapshot在首頁、user_messages空、composer空，顯示無法載入帳戶。按重新載入後三次首頁快照恢復且高推理、沒有訊息送出。保留原send記錄後用advance續送，不重記verdict。不推測配額banner是原因。auto_accept已結束FAIL(564tests)，四行tail未包含失敗名稱，原因未知，不能稱全套成功；另 focused UI15tests全通過，仍有獨立瀏覽器缺陷所以維持REVISE。
+
+## J-0080 [decision] PR57 r1已確認送出並接續監看，C-0064取代C-0061
+- 時間：2026-10-12 15:00 UTC
+- 關聯：C-0064,C-0050,J-0078,J-0079
+
+COMPOSER_INTENT預送中斷已留存，重新載入恢復後High/高連續確認，profile_runner advance r1取得DISPATCH_CONFIRMED與EXACT_RENDERED_USER_BUBBLE。立即commit CLI啟動120步watcher C-0064 pid882430，已讀第一行WAITING INCOMPLETE_HANDBACK。backlog attempts=1 ACTIVE已同步，C-0061 drop並寫superseding證據，C-0050 blocked_by改C-0064，G4-a更新。C-0051/52/53延後重評日未到，不變。C-0058仍等既有使用者WSL重啟，不觸碰。auto_accept r0 FAIL但完整失敗原因未保存，focused UI15tests PASS，不誤稱驗收通過。沒有部署、merge或main寫入。
