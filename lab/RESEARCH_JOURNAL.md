@@ -214,3 +214,14 @@ timeout=600仍由工具420秒中止，沒有測試結論。改登記長測試執
 - 關聯：cache/scratch/relay-t1-20261011T125818Z/main-review-T1-U2B2-r2.json
 
 無人催促，C-0040本回合驗收結案。精確HEAD b1c5d9279506123bfb2939f795e71f3455368d78，gh乾淨複製，Exporter52與lab572全部OK，兩種CI事件成功，cold/ready/void快照正確，r2只變測試與交接。queue返回ALL_DONE。main長測試期間由Perp Desk Auto Sync更新，非本輪修改。尚未部署，不碰實盤。C-0033解除阻擋，優先做看板v2第一單元資料模型（不一次派整頁）。
+
+## J-0025 [decision] C-0033看板v2第一單元已派，C-0037改等C-0046
+- 時間：2026-10-12 09:35 UTC
+- 關聯：cache/scratch/relay-dashboard-v2-20261012T093259Z/plan.json
+
+T1驗收結案後本回合直接建立branch與draft PR52並確認遠端placeholder及PR讀回。只派D2-U1純資料模型與測試，不一次派整個看板。High英文顯示兩次一致，空編輯框，已確認送出，帳本C-0046以120步監看。C-0037單一工程通道阻擋改指C-0046，E2未派。C-0043及C-0044重評日尚未到，保留延後。
+
+## J-0026 [mistake] 派工前斷言失敗後shell仍續派
+- 時間：2026-10-12 09:35 UTC
+
+模型頁面由中文高變英文High，第一個snapshot尚未hydration，後兩次已清楚顯示High。我的斷言只接受中文且要求三次一致，驗證程序失敗，但shell沒有set -e，仍跑dispatch。實際High已讀回且SENT_CONFIRMED，立即啟動C-0046監看。沒有草稿被刪：早先composer假非空已查證是程式碼編輯器非form，真正form textbox為空。錯誤是我把檢查與派工用不會失敗即停的shell串接。
