@@ -588,3 +588,10 @@ C-0064通過後立即接續C-0050，stacked branch由PR57精確頭2fc76a23建立
 - 關聯：C-0065,C-0066,PR58,cache/scratch/relay-dashboard-serving-d2-20261012T152945Z/main-review-C0065.json
 
 先讀auto_accept FAIL不重跑584項全套。精確head双CI都在PAPER isolated suite失敗，CI日誌確認唯一根路由舊測試衝突。乾淨clone聚焦40項1失敗，獨立raw HTTP確認根與別名200、exact asset、//404。write allowlist與parent diff一致。BLOCKED verdict已寫入並queue_runner回傳BLOCKED_OWNER，C0065 drop，C0066登記user阻擋。沒有工程程序在跑，未觸main、部署或實盤。C0051/C0052/C0053仍在原10/15、10/14、10/17重評日前，C0058仍等使用者重啟WSL，未假稱處理完成。
+
+## J-0090 [prediction] 4h與日線動能尾部：固定32項非重疊探索
+- 時間：2026-10-12 19:04 UTC
+- 問題：承接G2-h與J0071，放慢尺度後能否覆蓋14bp成本，而不是市場漂移或重疊樣本假象
+- 結果：預測32項中通過數為0（信心70%）。通過需前後半扣14bp淨均值均>0、後半至少3幣各n>=20且淨均值>0、後半扣漂移淨值的共同週區塊bootstrap 20000次單側Bonferroni下界>0。尺度4h與1d，各用1或6根過去報酬訓練前半10/90分位凍結，持有4h/24h或1d/5d，延遲15分鐘，同幣同測試不重疊。預測後半扣漂移最佳淨均值<30bp（信心60%）。
+- 下一步：2026-10-12 本輪跑完後對帳
+- 關聯：G2-h,J-0071,C-0062
