@@ -414,3 +414,13 @@ execute_code未執行任何程式。改用read_file、search_files、terminal完
 - 時間：2026-10-12 13:37 UTC
 
 C-0051重評10/15，C-0052重評10/14，C-0053重評10/17，均未到期，本輪不改。C-0058仍是使用者WSL重啟阻擋，無冒充完成。C-0050只保留未派工UI，等正在監看的C-0060 HTTP server交付驗收。
+
+## J-0062 [mistake] PR56驗收指令相對路徑錯誤已修正
+- 時間：2026-10-12 14:13 UTC
+
+我在clone/lab工作目錄重複帶cache/scratch前綴，兩個git diff失敗。改在clone根目錄重跑成功，未據失敗輸出做判定。22項focused tests通過。
+
+## J-0063 [decision] C-0060 PR56 HTTP JSON server獨立驗收通過
+- 時間：2026-10-12 14:14 UTC
+
+先讀auto_accept PASS，不重跑549項。重查精確head雙CI、draft未合併、白名單，clone跑22 focused tests與自己的真socket探針。100 GET來源hash和mtime不變、最大8.62ms，idle socket2.003秒退出，404/405/HEAD/500恢復通過。只驗收server，不部署。C-0050 UI阻擋解除，本輪拆成靜態UI與serving seam兩小單元。
