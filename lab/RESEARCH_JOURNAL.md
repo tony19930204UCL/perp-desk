@@ -532,3 +532,23 @@ step --verdict已記錄REVISE，但advance因CDP TRANSPORT_FAILED中斷。send r
 - 關聯：C-0064,C-0050,J-0078,J-0079
 
 COMPOSER_INTENT預送中斷已留存，重新載入恢復後High/高連續確認，profile_runner advance r1取得DISPATCH_CONFIRMED與EXACT_RENDERED_USER_BUBBLE。立即commit CLI啟動120步watcher C-0064 pid882430，已讀第一行WAITING INCOMPLETE_HANDBACK。backlog attempts=1 ACTIVE已同步，C-0061 drop並寫superseding證據，C-0050 blocked_by改C-0064，G4-a更新。C-0051/52/53延後重評日未到，不變。C-0058仍等既有使用者WSL重啟，不觸碰。auto_accept r0 FAIL但完整失敗原因未保存，focused UI15tests PASS，不誤稱驗收通過。沒有部署、merge或main寫入。
+
+## J-0081 [decision] 監督迴圈C-0063驗收完成，C-0064仍由確定性驗收持有
+- 時間：2026-10-12 15:13 UTC
+- 關聯：commitments/runs/C-0064.log,cache/scratch/relay-dashboard-ui-d2-20261012T141609Z/auto_accept-C-0064.running,cache/scratch/research/lead_lag_small_verification.json
+
+C-0063已由帳本file_exists自動結案，本回合另驗10份資料完整性並重現原結果。C-0064 watcher末端REVIEW_REQUIRED，r1 packet head2fc76a23a8f8c174e29a673437bb92dfc7210c8f，instruction D2-U3A-r1。auto_accept-C-0064.json尚不存在，PID888498 accept_unit.py仍在真實執行且未逾25分鐘。依skill不重跑相同乾淨suite、不提前判定通過或返工、不開第二工程通道。C-0050保持等C-0064。C-0051/52/53延後未到期，C-0058原使用者重啟阻擋未解除，本回合不重提要求。
+
+## J-0082 [experiment] C-0063 小幣領先落後結果重現與資料驗收
+- 時間：2026-10-12 15:14 UTC
+- 資料：10幣各259201根1分鐘線，8個中小幣均齊備。共同257738根（約179日），時間序列唯一且無分鐘缺口。實際計算BTC領先，ETH為跟隨對照。
+- 結果：使用已存來源重跑exit0，結果檔逐位元一致。8幣32組全期間事件毛報酬最大4.8bp，扣假設14bp為-9.2bp。延後2分鐘毛報酬介於-4.0及-0.7bp。BTC極端事件910筆，切半602/308。
+- 判定：證據不足：不支持BTC急動後以分鐘級追小幣能覆蓋成本，因此不開這個交易臂。不是嚴格統計上不存在延遲效應，事件重疊、未區塊自助法及多重檢定，14bp是研究假設不是實際成交成本。
+- 關聯：C-0063,J-0076,J-0077,cache/scratch/research/lead_lag_small_verification.json
+- 腳本：cache/scratch/research/lead_lag_small.py（sha256 前 12 碼 77b5f7f08691，可重現：yes）
+
+## J-0083 [mistake] 本回合研究日誌初次寫入被驗證器拒絕，已補記
+- 時間：2026-10-12 15:14 UTC
+- 關聯：C-0063,cache/scratch/research/lead_lag_small_verification.json
+
+第一次experiment verdict沒有以支持、推翻或證據不足起頭，journal拒絕該條目。後續命令仍執行，帳本已結案但研究條目當時未寫入。本回合補記合法verdict並保留這個錯誤，不把第一次寫入當成功。
