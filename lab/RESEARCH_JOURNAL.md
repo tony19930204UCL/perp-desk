@@ -383,3 +383,14 @@ C-0037派工承諾完成（不代表E2產品完成），E2-U2的交付與驗收�
 - 關聯：cache/scratch/relay-e2-u2-20261012T1142/verdict-r1.json
 
 先讀auto_accept PASS，未重跑全套539。focused16通過，四個真實SQLite探針通過（reservation-only零send、broker已填單checkpoint前崩潰、真partial .4重啟後final1、broker身份衝突只讀拒絕）。精確HEAD兩事件CI成功、三檔白名單、source至report僅mailbox、draft未合併。E2離線seam scoped接受，不部署。C-0050的reader/server拆小續派。
+
+## J-0056 [decision] C-0050解除PR54阻擋後直接續派D2-U2A reader PR55
+- 時間：2026-10-12 12:54 UTC
+- 關聯：cache/scratch/relay-dashboard-reader-d2-20261012T1252
+
+reader/server拆兩個小單元，先bounded read-only reader，分支疊accepted PR52 head670be32，新job三檔白名單沒有放寬舊job。三次模型高hydrated讀回一致，預檢通過，DISPATCHED D2-U2A-r0。C-0059登記120步監看，C-0050剩餘server/UI改等C-0059。沒有部署或main變更。C-0051/52/53重評日未到維持原決定，C-0058仍是真實WSL重啟使用者前提，未擅自重啟。
+
+## J-0057 [observation] 本輪main由獨立Auto Sync推進，非工程relay改寫
+- 時間：2026-10-12 12:54 UTC
+
+驗收時main為517fe7f84bb32122c418ab8710d67f23c5eb1317，續派後讀回0e4d83844c1f4e4893c80240e17425f0def51931。commit API作者Perp Desk Auto Sync，訊息chore(snapshot): f2339561c4ea transaction e7fb22d2b16074fd7a38e366c000f357。本輪只寫PR55分支placeholder及draft PR，不聲稱main全程SHA不变。PR54接受仍綁定exact head與stack base。
