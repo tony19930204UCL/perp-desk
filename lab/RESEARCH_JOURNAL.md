@@ -343,3 +343,9 @@ PR53 U1收件通過後，另建固定三檔白名單PR54分支疊在178de067。H
 - 時間：2026-10-12 11:43 UTC
 
 C-0037派工承諾完成（不代表E2產品完成），E2-U2的交付與驗收由C-0055承接。C-0050阻擋改指C-0055，G3-b/G4-a已同步。C-0051/52/53仍分別10/15、10/14、10/17重評，這次未到期。未碰main/實盤/其他profile，PR54 remains draft，main SHA前後同e5febb4b60a65b0b85467c07ead307c73316a8d7。
+
+## J-0049 [decision] C-0055 PR54 r0拒收：保護出場測試使用過期決策時間
+- 時間：2026-10-12 12:09 UTC
+- 關聯：cache/scratch/relay-e2-u2-20261012T1142/main-review-r0.json
+
+已先讀auto_accept FAIL，沒有重跑589秒完整測試。精確head 7500b8c4兩種CI皆失敗，focused 16測試有1錯。獨立雙adapter實驗均證實ts100落後已處理ts111，改用ts112時新開倉REJECTED、protective退出ACCEPTED，ts123真實成交qty1。判斷是測試fixture錯誤，不是broker/adapter錯誤。返工僅修測試與交接，不部署，不放寬白名單。C-0051/52/53仍未到重評日，維持原延後。
