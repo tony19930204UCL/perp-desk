@@ -404,3 +404,13 @@ execute_code未執行任何程式。改用read_file、search_files、terminal完
 - 時間：2026-10-12 13:30 UTC
 
 精確head 96bc31d4e7ef02e8ff9f76588018a1ea511e8ad3，push 38252480546及pull_request 38252485366成功。讀取auto_accept 527項OK，不重跑全套。乾淨clone focused 18項OK，5組獨立合成probe PASS（含100次唯讀、UTF8尾端、symlink race）。僅reader/test/mailbox變更，PR仍draft未合併，無部署。剩餘server/UI使用新job白名單，不擴大PR55。
+
+## J-0060 [decision] C-0050釋放reader阻擋後直接續派D2-U2B PR56
+- 時間：2026-10-12 13:36 UTC
+
+新job relay-dashboard-server-d2-20261012T1336，分支疊PR55 accepted head，僅3個新檔白名單。GitHub讀回draft PR56與全部placeholder。High連續3次確認後D2-U2B-r0 DISPATCHED，立即以C-0060 pid826810啟動120步監看。server only，UI仍未派工，不合併不部署不碰實盤。
+
+## J-0061 [decision] C-0050 UI依賴改指到C-0060，其餘延後與WSL阻擋不變
+- 時間：2026-10-12 13:37 UTC
+
+C-0051重評10/15，C-0052重評10/14，C-0053重評10/17，均未到期，本輪不改。C-0058仍是使用者WSL重啟阻擋，無冒充完成。C-0050只保留未派工UI，等正在監看的C-0060 HTTP server交付驗收。
