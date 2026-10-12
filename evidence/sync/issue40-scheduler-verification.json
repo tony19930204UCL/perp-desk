@@ -1,0 +1,174 @@
+{
+  "baseline_ci": {
+    "attempt": 2,
+    "conclusion": "success",
+    "historical_not_new_head_evidence": true,
+    "run_id": 37532292873
+  },
+  "baseline_head": "4a76b041541d50bcefdd5db205bd4110afcbb80e",
+  "constraints": {
+    "hosted_workflow_changed": false,
+    "main_cron_visibility_live_changed": false,
+    "paper_suite_run": false,
+    "publication_gates_changed": false
+  },
+  "deploy_mapping": {
+    "automation/review_sync.py": "repo_sync/review_sync.py",
+    "automation/tests/test_review_sync.py": "repo_sync/tests/test_review_sync.py",
+    "docs/AUTO_SYNC.md": "repo_sync/docs/docs/AUTO_SYNC.md",
+    "scripts/paper_review_sync.py": "scripts/paper_review_sync.py",
+    "scripts/paper_review_sync_public.py": "scripts/paper_review_sync_public.py"
+  },
+  "deployment": "NOT_DEPLOYED",
+  "engineering_real_scanner_harness_sha256": "27bf534e5feaeaf923543540db93dae42b3799b6e59697271968afa97e2ea0ec",
+  "evidence_sha256": {
+    "issue40-scheduler-allowlist-green.txt": "de8e1a85af63e0beb5a7a011a3cf7b632279554880d507f7601de573d5cf0df1",
+    "issue40-scheduler-allowlist-red.txt": "bf5264c4da1b13929b9bb873b0e0810f2e1f22852762bf97681bd1314f79de0f",
+    "issue40-scheduler-entry-green.txt": "ad46eb331e7fbcf940af25b95e9bff95f4d2fe13c66a5560ed91f5cc41be701b",
+    "issue40-scheduler-entry-red.txt": "f6019b6f6f8c6651161287fb79977701f9acd7b8f648c25704f152f2a915d67b",
+    "issue40-scheduler-full-exporter.txt": "253348edeabe6be15629805106816c906370f253893e9f997f8d30b346ce7eb5",
+    "issue40-scheduler-real-scanner.txt": "38b80627d1e0797d53aed6ab8749bf8db108689a2f458c87d96ab0e733552831"
+  },
+  "issue": 40,
+  "local_exporter_tests": {
+    "actual_ids": [
+      "test_review_sync.ReviewSyncTests.test_allowlisted_framework_only_no_runtime_or_credentials",
+      "test_review_sync.ReviewSyncTests.test_atomic_mirror_provenance_deletes_only_owned_files",
+      "test_review_sync.ReviewSyncTests.test_cli_runs_real_private_metadata_and_secret_scanner",
+      "test_review_sync.ReviewSyncTests.test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment",
+      "test_review_sync.ReviewSyncTests.test_crash_after_commit_recovers_only_exact_transaction_commit",
+      "test_review_sync.ReviewSyncTests.test_docs_reject_nonallowlisted_names_before_read",
+      "test_review_sync.ReviewSyncTests.test_entire_outgoing_tree_must_match_snapshot_bytes",
+      "test_review_sync.ReviewSyncTests.test_erroneous_python_is_exported_as_raw_review_evidence",
+      "test_review_sync.ReviewSyncTests.test_exact_reviewed_lab_failure_evidence_is_exported",
+      "test_review_sync.ReviewSyncTests.test_existing_git_execution_config_is_rejected_before_scan",
+      "test_review_sync.ReviewSyncTests.test_existing_hook_files_never_execute",
+      "test_review_sync.ReviewSyncTests.test_export_rejects_symlinks_secrets_binary_and_oversize",
+      "test_review_sync.ReviewSyncTests.test_exporter_owned_staged_commit_failure_retries_but_unknown_stage_blocks",
+      "test_review_sync.ReviewSyncTests.test_filesystem_roots_and_manifest_symlinks_fail_before_io",
+      "test_review_sync.ReviewSyncTests.test_flattened_evidence_collisions_fail_closed",
+      "test_review_sync.ReviewSyncTests.test_framework_docs_automation_and_evidence_are_exported_without_status",
+      "test_review_sync.ReviewSyncTests.test_git_directory_symlinks_rejected_before_config_read",
+      "test_review_sync.ReviewSyncTests.test_git_uses_only_fixed_official_github_credential_helper",
+      "test_review_sync.ReviewSyncTests.test_group_writable_git_entries_fail_before_scanner_or_hooks",
+      "test_review_sync.ReviewSyncTests.test_inherited_git_environment_cannot_redirect_or_execute",
+      "test_review_sync.ReviewSyncTests.test_mirror_parent_swap_before_read_or_delete_never_follows_symlink",
+      "test_review_sync.ReviewSyncTests.test_pathspec_magic_is_staged_literally",
+      "test_review_sync.ReviewSyncTests.test_persistent_git_tree_churn_is_bounded_and_blocked",
+      "test_review_sync.ReviewSyncTests.test_production_url_is_bound_before_metadata_or_network",
+      "test_review_sync.ReviewSyncTests.test_public_cli_and_scheduler_require_exact_opt_in",
+      "test_review_sync.ReviewSyncTests.test_public_collection_omits_personal_account_context_but_keeps_review_rules",
+      "test_review_sync.ReviewSyncTests.test_public_fetches_all_remote_refs_before_security_scan",
+      "test_review_sync.ReviewSyncTests.test_public_metadata_is_strict_and_identity_precedes_side_effects",
+      "test_review_sync.ReviewSyncTests.test_public_mode_requires_exact_explicit_authorization_and_private_default",
+      "test_review_sync.ReviewSyncTests.test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips",
+      "test_review_sync.ReviewSyncTests.test_real_git_push_no_change_and_remote_divergence_fail_closed",
+      "test_review_sync.ReviewSyncTests.test_scanner_failure_new_unstaged_file_removed_next_snapshot_converges",
+      "test_review_sync.ReviewSyncTests.test_scanner_failure_preserves_deletions_for_retry",
+      "test_review_sync.ReviewSyncTests.test_scheduled_tick_debounces_records_failures_and_recovers",
+      "test_review_sync.ReviewSyncTests.test_scheduler_public_transition_is_explicit_and_exact_target",
+      "test_review_sync.ReviewSyncTests.test_scheduler_transition_runs_existing_exporter_with_isolated_metadata",
+      "test_review_sync.ReviewSyncTests.test_scheduler_wrapper_is_profile_bound_and_script_only",
+      "test_review_sync.ReviewSyncTests.test_script_only_public_entrypoint_authorizes_literal_exact_repo",
+      "test_review_sync.ReviewSyncTests.test_secondary_push_url_is_rejected",
+      "test_review_sync.ReviewSyncTests.test_tick_rejects_preexisting_symlinks_before_outside_io",
+      "test_review_sync.ReviewSyncTests.test_transient_git_lock_disappearance_restarts_complete_inspection",
+      "test_review_sync.ReviewSyncTests.test_unknown_descendant_history_is_never_published"
+    ],
+    "count": 42,
+    "exit": 0,
+    "expected_ids": [
+      "test_review_sync.ReviewSyncTests.test_allowlisted_framework_only_no_runtime_or_credentials",
+      "test_review_sync.ReviewSyncTests.test_atomic_mirror_provenance_deletes_only_owned_files",
+      "test_review_sync.ReviewSyncTests.test_cli_runs_real_private_metadata_and_secret_scanner",
+      "test_review_sync.ReviewSyncTests.test_cli_scanner_policy_cannot_be_overridden_by_export_or_environment",
+      "test_review_sync.ReviewSyncTests.test_crash_after_commit_recovers_only_exact_transaction_commit",
+      "test_review_sync.ReviewSyncTests.test_docs_reject_nonallowlisted_names_before_read",
+      "test_review_sync.ReviewSyncTests.test_entire_outgoing_tree_must_match_snapshot_bytes",
+      "test_review_sync.ReviewSyncTests.test_erroneous_python_is_exported_as_raw_review_evidence",
+      "test_review_sync.ReviewSyncTests.test_exact_reviewed_lab_failure_evidence_is_exported",
+      "test_review_sync.ReviewSyncTests.test_existing_git_execution_config_is_rejected_before_scan",
+      "test_review_sync.ReviewSyncTests.test_existing_hook_files_never_execute",
+      "test_review_sync.ReviewSyncTests.test_export_rejects_symlinks_secrets_binary_and_oversize",
+      "test_review_sync.ReviewSyncTests.test_exporter_owned_staged_commit_failure_retries_but_unknown_stage_blocks",
+      "test_review_sync.ReviewSyncTests.test_filesystem_roots_and_manifest_symlinks_fail_before_io",
+      "test_review_sync.ReviewSyncTests.test_flattened_evidence_collisions_fail_closed",
+      "test_review_sync.ReviewSyncTests.test_framework_docs_automation_and_evidence_are_exported_without_status",
+      "test_review_sync.ReviewSyncTests.test_git_directory_symlinks_rejected_before_config_read",
+      "test_review_sync.ReviewSyncTests.test_git_uses_only_fixed_official_github_credential_helper",
+      "test_review_sync.ReviewSyncTests.test_group_writable_git_entries_fail_before_scanner_or_hooks",
+      "test_review_sync.ReviewSyncTests.test_inherited_git_environment_cannot_redirect_or_execute",
+      "test_review_sync.ReviewSyncTests.test_mirror_parent_swap_before_read_or_delete_never_follows_symlink",
+      "test_review_sync.ReviewSyncTests.test_pathspec_magic_is_staged_literally",
+      "test_review_sync.ReviewSyncTests.test_persistent_git_tree_churn_is_bounded_and_blocked",
+      "test_review_sync.ReviewSyncTests.test_production_url_is_bound_before_metadata_or_network",
+      "test_review_sync.ReviewSyncTests.test_public_cli_and_scheduler_require_exact_opt_in",
+      "test_review_sync.ReviewSyncTests.test_public_collection_omits_personal_account_context_but_keeps_review_rules",
+      "test_review_sync.ReviewSyncTests.test_public_fetches_all_remote_refs_before_security_scan",
+      "test_review_sync.ReviewSyncTests.test_public_metadata_is_strict_and_identity_precedes_side_effects",
+      "test_review_sync.ReviewSyncTests.test_public_mode_requires_exact_explicit_authorization_and_private_default",
+      "test_review_sync.ReviewSyncTests.test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips",
+      "test_review_sync.ReviewSyncTests.test_real_git_push_no_change_and_remote_divergence_fail_closed",
+      "test_review_sync.ReviewSyncTests.test_scanner_failure_new_unstaged_file_removed_next_snapshot_converges",
+      "test_review_sync.ReviewSyncTests.test_scanner_failure_preserves_deletions_for_retry",
+      "test_review_sync.ReviewSyncTests.test_scheduled_tick_debounces_records_failures_and_recovers",
+      "test_review_sync.ReviewSyncTests.test_scheduler_public_transition_is_explicit_and_exact_target",
+      "test_review_sync.ReviewSyncTests.test_scheduler_transition_runs_existing_exporter_with_isolated_metadata",
+      "test_review_sync.ReviewSyncTests.test_scheduler_wrapper_is_profile_bound_and_script_only",
+      "test_review_sync.ReviewSyncTests.test_script_only_public_entrypoint_authorizes_literal_exact_repo",
+      "test_review_sync.ReviewSyncTests.test_secondary_push_url_is_rejected",
+      "test_review_sync.ReviewSyncTests.test_tick_rejects_preexisting_symlinks_before_outside_io",
+      "test_review_sync.ReviewSyncTests.test_transient_git_lock_disappearance_restarts_complete_inspection",
+      "test_review_sync.ReviewSyncTests.test_unknown_descendant_history_is_never_published"
+    ],
+    "skips": 0
+  },
+  "pr": 41,
+  "raw_local_evidence_sha256": {
+    "scheduler-allowlist-green.txt": "de8e1a85af63e0beb5a7a011a3cf7b632279554880d507f7601de573d5cf0df1",
+    "scheduler-allowlist-red.txt": "c28d06a5427a44db419489d69bf5eb705c9750cf97eb13127e96e5885c8a3975",
+    "scheduler-entry-green.txt": "ad46eb331e7fbcf940af25b95e9bff95f4d2fe13c66a5560ed91f5cc41be701b",
+    "scheduler-entry-red.txt": "3b7aa2586219607ad04a77b91fdb485a07144b8773e7b3f267cc35e8104148e9",
+    "scheduler-full-exporter.txt": "253348edeabe6be15629805106816c906370f253893e9f997f8d30b346ce7eb5",
+    "scheduler-real-scanner.txt": "38b80627d1e0797d53aed6ab8749bf8db108689a2f458c87d96ab0e733552831"
+  },
+  "real_scanner": {
+    "actual_ids": [
+      "__main__.Issue40RealScannerTests.test_real_scanner_private_public_and_private_rollback",
+      "__main__.Issue40RealScannerTests.test_real_scanner_synthetic_secret_blocks_without_remote_commit"
+    ],
+    "count": 2,
+    "exit": 0,
+    "public_script_executed_as_main_without_cli_flags": true,
+    "synthetic_fixture_only": true,
+    "version": "8.30.1"
+  },
+  "regressions": {
+    "entrypoint": {
+      "green_exit": 0,
+      "red_exit": 1
+    },
+    "exact_allowlist": {
+      "green_exit": 0,
+      "red_exit": 1
+    }
+  },
+  "scheduler": {
+    "dependencies": [
+      "scripts/paper_review_sync.py",
+      "repo_sync/review_sync.py"
+    ],
+    "export_allowlist_addition": "scripts/paper_review_sync_public.py",
+    "literal_authorization": "tony19930204UCL/perp-desk",
+    "script_arguments": [],
+    "script_relative": "scripts/paper_review_sync_public.py"
+  },
+  "source_sha256": {
+    ".github/workflows/ci.yml": "701f82e9b074cbf395d642972e49675363e3d576f4a478fdbb19921fb43bac25",
+    "automation/review_sync.py": "429bb3db8b81f04dbbf82e5487c7dd2c076cbd3738f5be91291b3d64caa00923",
+    "automation/tests/test_review_sync.py": "a5af21cad54122eb58be698de35aac28e7dcc9cea10f5547bcbc81fa8fa64795",
+    "docs/AUTO_SYNC.md": "f0239318a852f483d353fb4d38e3cf8e815b9658dabb955d8c1ed6002faf0bd2",
+    "scripts/paper_review_sync.py": "8622647983ae04b4244a37ed3fed4ef09f8c00ed7ca60ff9f5838ab2fc402619",
+    "scripts/paper_review_sync_public.py": "752d3d22ff08d7e4ddda6dee2f1a71bfe843251eb46326690774add8a4d2acfc"
+  }
+}

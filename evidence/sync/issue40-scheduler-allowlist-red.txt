@@ -1,0 +1,18 @@
+test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips (automation.tests.test_review_sync.ReviewSyncTests.test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips) ... FAIL
+
+======================================================================
+FAIL: test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips (automation.tests.test_review_sync.ReviewSyncTests.test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<engineering-repo>/automation/tests/test_review_sync.py", line 141, in test_public_scheduler_entry_export_allowlist_is_exact_and_roundtrips
+    self.assertEqual(set(files),{'scripts/'+name for name in names},
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     'only the two literal scheduler paths may be exported')
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Items in the second set but not the first:
+'scripts/paper_review_sync_public.py' : only the two literal scheduler paths may be exported
+
+----------------------------------------------------------------------
+Ran 1 test in 0.006s
+
+FAILED (failures=1)

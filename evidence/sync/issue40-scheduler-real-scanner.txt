@@ -1,0 +1,16 @@
+test_real_scanner_private_public_and_private_rollback (__main__.Issue40RealScannerTests.test_real_scanner_private_public_and_private_rollback) ... {"diagnostic_state": "blocked", "error": "remote must be the exact authorized public repository"}
+{"diagnostic_state": "blocked", "error": "remote must be the exact authorized private repository"}
+{"diagnostic_state": "blocked", "error": "remote must be the exact authorized public repository"}
+{"diagnostic_state": "blocked", "error": "remote must be the exact authorized public repository"}
+{"diagnostic_state": "blocked", "error": "remote must be the exact authorized public repository"}
+{"diagnostic_state": "blocked", "error": "remote must be the exact authorized public repository"}
+{"diagnostic_state": "blocked", "error": "remote must be the exact authorized public repository"}
+ok
+test_real_scanner_synthetic_secret_blocks_without_remote_commit (__main__.Issue40RealScannerTests.test_real_scanner_synthetic_secret_blocks_without_remote_commit) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 30.547s
+
+OK
+{"scanner_calls": [["dir", 0], ["dir", 0], ["git", 0], ["dir", 0], ["git", 0], ["dir", 0], ["git", 0], ["dir", 0], ["git", 0], ["dir", 0], ["git", 0]], "fixture_only": true}
+{"synthetic_secret": "scanner rejected", "remote_commit": false}
