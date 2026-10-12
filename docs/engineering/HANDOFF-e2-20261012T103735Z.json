@@ -1,1 +1,51 @@
-{"placeholder":true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 53,
+  "branch": "feat/execution-state-e2-20261012T103735Z",
+  "task_id": "e2-20261012T103735Z",
+  "instruction_id": "E2-U1-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "62f0c49e6b1ee52ce35347e1a0276c3553734108",
+  "summary": "Implemented isolated SQLite intent reservation and forward-only event checkpoints with strict JSON/Decimal fields, OrderState.apply replay, namespace/version validation, reopen recovery and no broker integration. Initial local prototype passed 19 synthetic focused tests; final GitHub source is a separately written revision and has not been executed locally. No cross-database atomicity is claimed.",
+  "changed_files": [
+    "lab/execution_state_store.py",
+    "lab/tests/test_execution_state_store.py",
+    "docs/engineering/HANDOFF-e2-20261012T103735Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p test_execution_state_store.py -v",
+      "result": "NOT_RUN_ON_FINAL_GITHUB_HEAD",
+      "evidence": "A local prototype passed 19/19 focused tests; final committed module/tests differ from that prototype and need exact-head verification."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "NOT_RUN",
+      "evidence": "Full repository tree unavailable in isolated local test setup."
+    },
+    {
+      "command": "GitHub Actions pull_request workflow at source head",
+      "result": "QUEUED",
+      "evidence": "Run 38239267974 PAPER review tests was queued, conclusion null when checked; no exact-head green claim."
+    },
+    {
+      "command": "GitHub Actions push workflow at source head",
+      "result": "NOT_VERIFIED",
+      "evidence": "No push-triggered run confirmation available from connector."
+    }
+  ],
+  "remaining_work": [
+    "Main independently run exact-head focused and full discovery and verify both push and pull_request CI.",
+    "Main independently prove exact checkpoint/event Decimal preservation, rejection of conflict and rollback, schema fail-closed behavior and E1 unchanged.",
+    "U2 adapter integration is explicitly NOT implemented; design reserve-before-submit and broker reconciliation without blind resends.",
+    "Store transactions are local to its SQLite database and not atomic with SimBroker SQLite."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Independently clone exact PR 53 head, run focused and full suite, check both exact-head push and pull_request CI, inspect forward-only semantics and allowlist diff against 50903d98ab14e0d90ace7a565872c4d819707e5a.",
+    "if_pass": "Accept bounded E2-U1 storage seam only, then define bounded E2-U2 adapter integration with durable reserve-before-submit, restart reconciliation with broker ledger and no blind resends.",
+    "if_fail": "Return exact failing command, trace, and SHA for bounded repair without touching E1 or other files.",
+    "blockers": []
+  }
+}
