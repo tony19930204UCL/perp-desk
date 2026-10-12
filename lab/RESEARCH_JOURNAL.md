@@ -515,3 +515,9 @@ C-0051重評10/15、C-0052重評10/14、C-0053重評10/17皆未到期，維持�
 - 判定：推翻：四個大型幣之間在 1 分鐘以上的尺度沒有可交易的領先落後，價格在一分鐘內就同步反映。更小的幣另測
 - 下一步：等 8 個中小型幣的結果（C-0063）
 - 腳本：cache/scratch/research/lead_lag.py（sha256 前 12 碼 facd8021a53a，可重現：?）
+
+## J-0078 [decision] D2-U3A PR57獨立瀏覽器驗收退回：真實enum未映射
+- 時間：2026-10-12 14:54 UTC
+- 關聯：C-0061,PR57
+
+精確head a6cd2d920bafd1a6efe09a43e16acffcc9dee6dd，push38262672697與pull_request38262678945成功。使用乾淨clone的build_model產生fixture，實際Chromium在1280/390均無水平溢位，精確金額提示/失敗清空/競態/注入防護通過。但來源kind=decision及帳本state=DISPATCHED被顯示未知。JS enum表只有大寫DECISION與IN_PROGRESS，實際producer原樣保留kind/state。證據operator-browser-result.json。auto_accept已自行執行中，不重跑相同全套。保持四檔白名單，只退回enum映射與真實producer回歸測試，不部署。
