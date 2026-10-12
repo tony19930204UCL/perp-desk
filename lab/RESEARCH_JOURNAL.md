@@ -576,3 +576,15 @@ C-0063已由帳本file_exists自動結案，本回合另驗10份資料完整性�
 - 關聯：C-0064,C-0050,C-0065,PR57,PR58
 
 C-0064通過後立即接續C-0050，stacked branch由PR57精確頭2fc76a23建立。新增inert test及mailbox占位，PR58 draft已讀回，僅server、新serving tests、mailbox三檔寫入白名單。High高連續三次預檢，queue DISPATCHED D2-U3B-r0，C-0065 pid902746立即登記120步監看。C-0050以被真實派工取代結案，不是假驗收完成。交付後驗固定raw target、HEAD/405/API兼容及真實server瀏覽器端到端，無main/部署/實盤/其他profile變更。C-0051/52/53重評未到，不變更。C-0058仍是既有WSL重啟人為阻擋，不在本次工程操作內解除。
+
+## J-0088 [mistake] C0065派工規格互斥與驗收格式漏欄
+- 時間：2026-10-12 15:58 UTC
+- 關聯：C-0065,PR58,cache/scratch/relay-dashboard-serving-d2-20261012T152945Z/main-review-C0065.json
+
+我的指令要求GET /為HTML200，卻凍結斷言/為404的舊測試。乾淨副本40項聚焦測試只有此項失敗，精確head雙CI失敗。工程端沒有越界修改舊測試，責任在我的規格。BLOCKED verdict第一次漏remaining_work.release_condition/evidence_paths被拒，讀驗證器後補齊。execute_code被cron權限拒絕，改用正常允許工具，未更改安全設定。
+
+## J-0089 [decision] C0065 PR58驗收拒收，轉C0066具體授權阻擋
+- 時間：2026-10-12 15:59 UTC
+- 關聯：C-0065,C-0066,PR58,cache/scratch/relay-dashboard-serving-d2-20261012T152945Z/main-review-C0065.json
+
+先讀auto_accept FAIL不重跑584項全套。精確head双CI都在PAPER isolated suite失敗，CI日誌確認唯一根路由舊測試衝突。乾淨clone聚焦40項1失敗，獨立raw HTTP確認根與別名200、exact asset、//404。write allowlist與parent diff一致。BLOCKED verdict已寫入並queue_runner回傳BLOCKED_OWNER，C0065 drop，C0066登記user阻擋。沒有工程程序在跑，未觸main、部署或實盤。C0051/C0052/C0053仍在原10/15、10/14、10/17重評日前，C0058仍等使用者重啟WSL，未假稱處理完成。

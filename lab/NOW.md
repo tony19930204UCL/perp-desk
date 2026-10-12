@@ -1,7 +1,8 @@
-# NOW (generated 2026-10-12 15:44 UTC, do not edit)
+# NOW (generated 2026-10-12 15:55 UTC, do not edit)
 
 ## Needs a decision now (wake gate)
-nothing
+VERIFY C-0065 handle=finished D2-U3B PR58固定靜態資產serving seam，高推理已確認送出，120步監看與獨立端到端驗收（不部署） auto_accept=FAIL file=/home/chihcheng/.hermes/profiles/perp-desk/cache/scratch/relay-dashboard-serving-d2-20261012T152945Z/auto_accept-C-0065.json
+round 165909
 
 ## Ledger: items not finished
 C-0003 DISPATCHED [C-0003 已派工 cron:93f4f9882e43 驗收:manual 到期:11-01 10:18] | handle=alive | H2 與 F1H 四臂分小時錯誤率檢查
@@ -30,15 +31,15 @@ ACTIVE / READY:
  - G2-h 入場邏輯研究：從 1 小時掃描的空結果往外找（4h 到日線、掛單成本、資金費率） | next: 每次迴圈挑一個：(a) 4h 與日線特徵掃描用非重疊樣本與區塊自助法 (b) 抓幣安資金費率歷史測極端值 (c) 配合 G2-f 掛單成交率重算成本門檻
 
 ## Project numbers (arm_scorecard.py)
-SCORECARD 2026-10-12T15:44:13Z UTC
-F1H-BTCUSDT-PAPER      第1.3天(剩19.7) 信號6 擋2 成交7 來回3 淨損益-0.55 手續費0.29 最大回撤1.30 持倉1 輪詢錯誤9
-F1H-SOLUSDT-PAPER      第1.3天(剩19.7) 信號3 擋1 成交3 來回1 淨損益-0.96 手續費0.11 最大回撤1.23 持倉1 輪詢錯誤3
-F1H-XRPUSDT-PAPER      第1.3天(剩19.7) 信號2 擋0 成交3 來回1 淨損益-0.91 手續費0.10 最大回撤1.25 持倉1 輪詢錯誤5
-H2-PAPER-004           第1.3天(剩19.7) 信號5 擋2 成交5 來回2 淨損益-0.89 手續費0.22 最大回撤1.90 持倉1 輪詢錯誤10
-W1-BTCUSDT-PAPER       第1.07天(剩19.93) 信號9 擋5 成交7 來回3 淨損益-1.02 手續費0.63 最大回撤2.78 持倉1 輪詢錯誤9
-W1-ETHUSDT-PAPER       第1.07天(剩19.93) 信號9 擋6 成交5 來回2 淨損益-1.79 手續費0.44 最大回撤3.80 持倉1 輪詢錯誤5
-W1-SOLUSDT-PAPER       第1.07天(剩19.93) 信號8 擋3 成交9 來回4 淨損益-4.80 手續費0.69 最大回撤5.25 持倉1 輪詢錯誤10
-W1-XRPUSDT-PAPER       第1.07天(剩19.93) 信號9 擋6 成交5 來回2 淨損益-2.24 手續費0.33 最大回撤2.97 持倉1 輪詢錯誤8
+SCORECARD 2026-10-12T15:55:14Z UTC
+F1H-BTCUSDT-PAPER      第1.31天(剩19.69) 信號6 擋2 成交7 來回3 淨損益-0.54 手續費0.29 最大回撤1.30 持倉1 輪詢錯誤9
+F1H-SOLUSDT-PAPER      第1.31天(剩19.69) 信號3 擋1 成交3 來回1 淨損益-0.94 手續費0.11 最大回撤1.23 持倉1 輪詢錯誤3
+F1H-XRPUSDT-PAPER      第1.31天(剩19.69) 信號2 擋0 成交3 來回1 淨損益-0.87 手續費0.10 最大回撤1.25 持倉1 輪詢錯誤5
+H2-PAPER-004           第1.31天(剩19.69) 信號5 擋2 成交5 來回2 淨損益-0.83 手續費0.22 最大回撤1.90 持倉1 輪詢錯誤10
+W1-BTCUSDT-PAPER       第1.08天(剩19.92) 信號9 擋5 成交7 來回3 淨損益-0.99 手續費0.63 最大回撤2.78 持倉1 輪詢錯誤9
+W1-ETHUSDT-PAPER       第1.08天(剩19.92) 信號9 擋6 成交5 來回2 淨損益-1.68 手續費0.44 最大回撤3.80 持倉1 輪詢錯誤5
+W1-SOLUSDT-PAPER       第1.08天(剩19.92) 信號8 擋3 成交9 來回4 淨損益-4.77 手續費0.69 最大回撤5.25 持倉1 輪詢錯誤10
+W1-XRPUSDT-PAPER       第1.08天(剩19.92) 信號9 擋6 成交5 來回2 淨損益-2.17 手續費0.33 最大回撤2.97 持倉1 輪詢錯誤8
 T1 影子（規則狀態，不是紙盤成績）：BTC flat | ETH flat | SOL flat | XRP flat
 TRIGGERS: none
 
