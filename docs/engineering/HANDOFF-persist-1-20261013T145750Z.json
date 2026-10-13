@@ -4,10 +4,10 @@
   "pr_number": 59,
   "branch": "feat/persist-1-20261013T145750Z",
   "task_id": "persist-1-20261013T145750Z",
-  "instruction_id": "P1-r0",
+  "instruction_id": "P1-r1",
   "status": "WAITING_CI",
-  "source_head_sha": "6cb41806bbf93b357577acff3732db4e260161ed",
-  "summary": "P1 only: sim_seen_events primary-key event digest table; atomically migrate full-event or digest legacy singleton history after frozen metadata check; keep digest-only memory; event singleton write and history INSERT share transaction; restore event memory on failure; preserve non-event save semantics. Added 15 isolated regression methods. No deployment, services or trading.",
+  "source_head_sha": "7f49ee637bf0a9944bb404adc89b72b8e46bc507",
+  "summary": "P1-r1 repairs: sim_seen_events schema now strictly requires digest TEXT NOT NULL while allowing SQLite's implicit TEXT PRIMARY KEY nullable metadata; durable rows remain SHA256 digests only, while compact_seen_events=False retains newly processed normalized event dicts for frozen consumers. New persistence tests use JSON canonical comparisons for submit/reopen Decimal-to-string serialization, and assert flag-compatible fresh memory. Migration/event rollback logic and all unscoped production behavior untouched. No merge, deployment, trading, or service action.",
   "changed_files": [
     "lab/sim_broker.py",
     "lab/tests/test_sim_broker_persistence.py",
@@ -15,31 +15,40 @@
   ],
   "tests": [
     {
+      "command": "cd lab && python3 -m unittest -v tests.test_sim_broker_persistence",
+      "result": "not run",
+      "evidence": "No repository checkout was accessible in execution container; GitHub connector provided file reads and writes, not an executable checkout."
+    },
+    {
+      "command": "cd lab && python3 -m unittest -v tests.test_batch_time tests.test_paper_v2",
+      "result": "not run",
+      "evidence": "Frozen compatibility cases were examined in GitHub source only; execution unavailable."
+    },
+    {
       "command": "python3 -m unittest discover -s automation/tests",
       "result": "not run",
-      "evidence": "No repository shell or local checkout was available through connected GitHub integration."
+      "evidence": "Local checkout unavailable; no fabricated execution."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No local execution performed; GitHub Actions PAPER isolated suite not yet completed at mailbox write."
+      "evidence": "Local checkout unavailable; no fabricated execution."
     },
     {
-      "command": "GitHub Actions PAPER review tests #38433957581 at source head 6cb41806bbf93b357577acff3732db4e260161ed",
-      "result": "in_progress",
-      "evidence": "GitHub Actions job isolated-tests #115423016454, exporter contract in progress when checked; no pass claim."
+      "command": "GitHub Actions workflow runs for source HEAD 7f49ee637bf0a9944bb404adc89b72b8e46bc507",
+      "result": "not run",
+      "evidence": "GitHub commit workflow-run query returned zero pull-request-triggered runs at time of mailbox preparation; no exact-head CI success is claimed."
     }
   ],
   "remaining_work": [
-    "Main independently rerun focused persistence suite and both exact-head CI commands; inspect SQLite migration and event rollback directly.",
-    "Observe completion of pending CI and fix any failures before accepting P1.",
-    "P2 differential/performance evidence (40k-event write volume) is separately scoped, not accepted by this mailbox."
+    "Main to run focused persistence, frozen integration and both exact-head CI discovery commands; verify trigger-injected migration/event rollback, digest-only SQLite history and metadata preservation.",
+    "P2 performance/differential evidence remains separate and is not claimed."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review exact source-head diff and run test_sim_broker_persistence plus existing broker tests and both CI discovery commands; probe trigger-injected mid-migration and event INSERT failure in real SQLite.",
-    "if_pass": "Independently accept bounded P1 only; keep PR draft and plan P2 separately.",
-    "if_fail": "Return exact failing assertion or SQLite trace for bounded repair on same branch; do not merge/deploy.",
+    "verify_now": "Independently inspect source HEAD 7f49ee637bf0a9944bb404adc89b72b8e46bc507, run persistence tests, test_batch_time, test_paper_v2 and both CI discovery commands. Probe NULL digest schema refusal and SQLite atomic migration and event failure/retry.",
+    "if_pass": "Accept bounded P1-r1 only; retain draft PR and arrange separate P2 investigation.",
+    "if_fail": "Return concrete exact-head trace and failed assertion for bounded same-branch repair; do not merge or deploy.",
     "blockers": []
   }
 }
