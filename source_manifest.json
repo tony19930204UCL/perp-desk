@@ -136,7 +136,7 @@
     "lab/PAPER_WIDE_PREREGISTRATION.md": "12ea5ea90fc76e5dab65e2a8b0823a8bd007ab7be1f5d78b79b37c16e5a642b4",
     "lab/PARENT_DEPLOY_V3.md": "755b0e7393da14cc4435266d1f7d2d705730cf8fc9b391ecd6f3cd70053c3642",
     "lab/PROPOSED_VERSIONS_APPENDIX.md": "2a16b72aaf98a90f6218e649b8095b64b384d0d707e12e6c2dbbf84256983d36",
-    "lab/RESEARCH_JOURNAL.md": "faaece48a3849f5eb9dc9344618f0c973e3c59774ab5dacb1ceb2de980705af9",
+    "lab/RESEARCH_JOURNAL.md": "547cc836b333174b2d9db45c35f1dfe25004f302022b0099e4dfd5ca02b001ba",
     "lab/SIGNALS_README.md": "7835c465093294ad9eee45552757ba960d8d23526cf903fa9b8b3414ea8eac54",
     "lab/SIM_BROKER_README.md": "691b60fecbebc803676748906efb581cef9947c1a29a7f297937a108dd08ce73",
     "lab/TRADE_REVIEW.md": "2c9c4259794ed6fb5914b85b062cee13d897d68528cf38cb9c1f055f1d5bedfa",
@@ -325,7 +325,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "0adcacebbba73fc79589088ee685384a858f0ee69ec058bcc0b6adf51779c04e",
+  "fingerprint": "addb4ac7a0dec66dd1c39e6bf26eb7e3b02d2ec2b449f804730c3268643645da",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }

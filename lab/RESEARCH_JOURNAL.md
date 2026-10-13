@@ -697,3 +697,8 @@ C-0064通過後立即接續C-0050，stacked branch由PR57精確頭2fc76a23建立
 - 判定：支持：固定間隔心跳的大多數回合沒有新東西，成本由回合數決定而不是由開口次數決定，所以需要先靠腳本把不必要的回合擋掉或降低每回合上下文
 - 下一步：待使用者選方案
 - 腳本：scripts/heartbeat_gate.py（sha256 前 12 碼 158c5cdff1e2，可重現：?）
+
+## J-0106 [observation] 12 個紙盤程序合計約 4 TB/天磁碟寫入的原因
+- 時間：2026-10-13 14:26 UTC
+- 結果：量測：30 秒窗口內 12 個服務合計寫入 45.5 MB/s（每個 2.7 到 5.4 MB/s，約每秒 700 到 1300 次寫入呼叫），換算約 3.9 TB/天。W1-ETH 的 broker.sqlite3 54 MB，其中單一列 sim_broker_state 的 JSON 27.1 MB，幾乎全是 seen_events（42542 筆，每筆含完整盤口快照）；runtime.sqlite3 791 MB（audit 142075 列、749 MB）。檔案以 20ms 輪詢看到 broker 與 runtime 每 20 秒各約 16 次提交，journal_mode=delete、synchronous=FULL。在副本上對 27 MB 的列只改 40 位元組再提交，量到每次提交寫入 18.1 MB
+- 判定：支持使用者的觀察：整份狀態被反覆重寫。sim_broker.py 已有 compact_seen_events 旗標（只存摘要）但目前為 False；是否可直接開啟、舊資料如何相容我沒有驗證。ext4.vhdx 在 Windows 主機端的實際寫入量沒有量
