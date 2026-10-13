@@ -702,3 +702,8 @@ C-0064通過後立即接續C-0050，stacked branch由PR57精確頭2fc76a23建立
 - 時間：2026-10-13 14:26 UTC
 - 結果：量測：30 秒窗口內 12 個服務合計寫入 45.5 MB/s（每個 2.7 到 5.4 MB/s，約每秒 700 到 1300 次寫入呼叫），換算約 3.9 TB/天。W1-ETH 的 broker.sqlite3 54 MB，其中單一列 sim_broker_state 的 JSON 27.1 MB，幾乎全是 seen_events（42542 筆，每筆含完整盤口快照）；runtime.sqlite3 791 MB（audit 142075 列、749 MB）。檔案以 20ms 輪詢看到 broker 與 runtime 每 20 秒各約 16 次提交，journal_mode=delete、synchronous=FULL。在副本上對 27 MB 的列只改 40 位元組再提交，量到每次提交寫入 18.1 MB
 - 判定：支持使用者的觀察：整份狀態被反覆重寫。sim_broker.py 已有 compact_seen_events 旗標（只存摘要）但目前為 False；是否可直接開啟、舊資料如何相容我沒有驗證。ext4.vhdx 在 Windows 主機端的實際寫入量沒有量
+
+## J-0107 [decision] 磁碟寫入問題：決定走工程單元修 sim_broker 存檔，不改設定繞過
+- 時間：2026-10-13 14:46 UTC
+- 結果：量測歸因：broker 單列狀態每次提交寫 18 到 27 MB（runtime 狀態列 0.59 MB、audit 附加 0.025 MB），主因是 seen_events 存完整盤口且只增不減。考慮過的繞法：資料庫改 WAL（每次仍整列重寫，推論無效）、放記憶體磁碟加定期備份（崩潰時丟失窗口狀態，不可接受）、關閉 fsync（崩潰一致性風險）。選擇把 seen_events 移到獨立表加遷移，等價性用確定性重放證明。規格 PERSISTENCE_EFFICIENCY_SPEC.md
+- 判定：工程單元不部署；部署與逐臂重啟由負責人在驗收後執行，會有資料中斷強制平倉

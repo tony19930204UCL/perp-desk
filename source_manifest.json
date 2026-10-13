@@ -135,8 +135,9 @@
     "lab/PAPER_V4_PREREGISTRATION.md": "db552f8a4238915b1107b4d78151204ab3ab565760a523d38a73d481f94413dc",
     "lab/PAPER_WIDE_PREREGISTRATION.md": "12ea5ea90fc76e5dab65e2a8b0823a8bd007ab7be1f5d78b79b37c16e5a642b4",
     "lab/PARENT_DEPLOY_V3.md": "755b0e7393da14cc4435266d1f7d2d705730cf8fc9b391ecd6f3cd70053c3642",
+    "lab/PERSISTENCE_EFFICIENCY_SPEC.md": "7ca27bae6d878bffa8fd5f0f26c5369e78baed487a9b90f9c9edb1712592ec0b",
     "lab/PROPOSED_VERSIONS_APPENDIX.md": "2a16b72aaf98a90f6218e649b8095b64b384d0d707e12e6c2dbbf84256983d36",
-    "lab/RESEARCH_JOURNAL.md": "547cc836b333174b2d9db45c35f1dfe25004f302022b0099e4dfd5ca02b001ba",
+    "lab/RESEARCH_JOURNAL.md": "90af13c4857b0bae06c253493c53dd7b528aafaa8fb763304348266d2d4553f6",
     "lab/SIGNALS_README.md": "7835c465093294ad9eee45552757ba960d8d23526cf903fa9b8b3414ea8eac54",
     "lab/SIM_BROKER_README.md": "691b60fecbebc803676748906efb581cef9947c1a29a7f297937a108dd08ce73",
     "lab/TRADE_REVIEW.md": "2c9c4259794ed6fb5914b85b062cee13d897d68528cf38cb9c1f055f1d5bedfa",
@@ -325,7 +326,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "addb4ac7a0dec66dd1c39e6bf26eb7e3b02d2ec2b449f804730c3268643645da",
+  "fingerprint": "d922354b0ca13b19fde00907ce88e5bb5bf856f612653402ef0aff423aa6949c",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
