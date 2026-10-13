@@ -131,20 +131,78 @@ class SimBroker:
         self._meta = json.loads(json.dumps(self._meta, default=str, sort_keys=True))
         try:
             self._db = sqlite3.connect(self.path)
-            names = {x[0] for x in self._db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            if names - {'sim_broker_state'}:
-                raise ValueError('refuse shared or foreign database')
-            self._db.execute('CREATE TABLE IF NOT EXISTS sim_broker_state (singleton INTEGER PRIMARY KEY CHECK(singleton=1), payload TEXT NOT NULL)')
-            row = self._db.execute('SELECT payload FROM sim_broker_state WHERE singleton=1').fetchone()
-            if row:
-                state = json.loads(row[0])
-                if state.pop('meta') != self._meta:
+            # Explicit BEGIN covers both DDL and data: no half-created history table
+            # and no partially removed legacy history if migration fails.
+            with self._db:
+                self._db.execute('BEGIN IMMEDIATE')
+                names = {x[0] for x in self._db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                if names - {'sim_broker_state', 'sim_seen_events'}:
+                    raise ValueError('refuse shared or foreign database')
+                self._db.execute('CREATE TABLE IF NOT EXISTS sim_broker_state (singleton INTEGER PRIMARY KEY CHECK(singleton=1), payload TEXT NOT NULL)')
+                row = self._db.execute('SELECT payload FROM sim_broker_state WHERE singleton=1').fetchone()
+                state = json.loads(row[0]) if row else None
+                # Reject different owners/models before creating or migrating history.
+                if state is not None and state.get('meta') != self._meta:
                     raise ValueError('version/model/instrument metadata frozen; use a new namespace')
-                self.cash = Decimal(state.pop('cash'))
-                for key, value in state.items():
-                    setattr(self, key, value)
-            else:
-                self._save()
+                self._db.execute('CREATE TABLE IF NOT EXISTS sim_seen_events (event_id TEXT PRIMARY KEY, digest TEXT NOT NULL)')
+                columns = self._db.execute('PRAGMA table_info(sim_seen_events)').fetchall()
+                if (len(columns) != 2 or
+                        [(c[1], c[2].upper(), c[3], c[5]) for c in columns] !=
+                        [('event_id', 'TEXT', 0, 1), ('digest', 'TEXT', 1, 0)] and
+                        [(c[1], c[2].upper(), c[5]) for c in columns] !=
+                        [('event_id', 'TEXT', 1), ('digest', 'TEXT', 0)]):
+                    raise ValueError('incompatible sim_seen_events schema')
+                # Check actual PK uniqueness and binary event-ID equality, not names alone.
+                pk_indexes = [r[1] for r in self._db.execute('PRAGMA index_list(sim_seen_events)')
+                              if r[2] == 1 and r[3] == 'pk']
+                if len(pk_indexes) != 1 or not any(
+                        col[2] == 'event_id' and col[4] == 'BINARY' and col[5] == 1
+                        for col in self._db.execute('PRAGMA index_xinfo(' + "'" + pk_indexes[0] + "'" + ')')):
+                    raise ValueError('incompatible sim_seen_events primary key')
+                persisted = {}
+                for event_id, digest in self._db.execute('SELECT event_id, digest FROM sim_seen_events'):
+                    if not isinstance(event_id, str) or not event_id or not self._valid_digest(digest):
+                        raise ValueError('invalid persisted event history')
+                    persisted[event_id] = digest
+                if state is None:
+                    if persisted:
+                        raise ValueError('orphaned event history')
+                    self._write_state()
+                else:
+                    legacy = state.pop('seen_events', None)
+                    if legacy is not None:
+                        if not isinstance(legacy, dict):
+                            raise ValueError('invalid legacy event history')
+                        for event_id, prior in legacy.items():
+                            if not isinstance(event_id, str) or not event_id:
+                                raise ValueError('invalid legacy event ID')
+                            if isinstance(prior, dict):
+                                if prior.get('event_id') != event_id:
+                                    raise ValueError('invalid legacy event identity')
+                                digest = hashlib.sha256(
+                                    json.dumps(prior, sort_keys=True, separators=(',', ':')).encode()
+                                ).hexdigest()
+                            elif isinstance(prior, str):
+                                digest = prior
+                            else:
+                                raise ValueError('invalid legacy event history')
+                            if not self._valid_digest(digest):
+                                raise ValueError('invalid legacy event digest')
+                            if event_id in persisted and persisted[event_id] != digest:
+                                raise ValueError('conflicting persisted event history')
+                            if event_id not in persisted:
+                                self._db.execute('INSERT INTO sim_seen_events (event_id, digest) VALUES (?, ?)',
+                                                 (event_id, digest))
+                                persisted[event_id] = digest
+                        # Removing the legacy payload and inserting every history row
+                        # commits in the same transaction.
+                        self._db.execute('UPDATE sim_broker_state SET payload=? WHERE singleton=1',
+                                         (json.dumps(state, default=str, sort_keys=True),))
+                    self.cash = Decimal(state.pop('cash'))
+                    state.pop('meta')
+                    for key, value in state.items():
+                        setattr(self, key, value)
+                self.seen_events = persisted
         except Exception:
             self.close()
             raise
@@ -154,12 +212,27 @@ class SimBroker:
         if json.loads(json.dumps(current, default=str, sort_keys=True)) != self._meta:
             raise ValueError('model/instrument/version metadata frozen; create a new namespace')
 
-    def _save(self):
-        state = {k: getattr(self, k) for k in ('orders', 'positions', 'fills', 'ledger', 'audit', 'marks', 'funding_events', 'seen_events', 'funding_status', 'initial_cash', 'day_baselines', 'last_ts')}
+    @staticmethod
+    def _valid_digest(digest):
+        return (isinstance(digest, str) and len(digest) == 64 and
+                all(char in '0123456789abcdef' for char in digest))
+
+    def _write_state(self):
+        # History lives only in sim_seen_events; this payload is independent of
+        # the number of already processed events.
+        state = {k: getattr(self, k) for k in ('orders', 'positions', 'fills', 'ledger', 'audit', 'marks', 'funding_events', 'funding_status', 'initial_cash', 'day_baselines', 'last_ts')}
         state.update(cash=str(self.cash), meta=self._meta)
         payload = json.dumps(state, default=str, sort_keys=True)
-        with self._db:
-            self._db.execute('INSERT OR REPLACE INTO sim_broker_state VALUES (1, ?)', (payload,))
+        self._db.execute('INSERT OR REPLACE INTO sim_broker_state VALUES (1, ?)', (payload,))
+
+    def _save(self):
+        if self._in_event:
+            # on_event owns the transaction that also inserts the event digest.
+            self._write_state()
+        else:
+            # submit/cancel and other callers still commit their state alone.
+            with self._db:
+                self._write_state()
 
     def _risk_approved(self):
         r = self.risk
@@ -330,21 +403,25 @@ class SimBroker:
             return
         if event['type'] != 'funding' and event['ts'] < self.last_ts:
             raise ValueError('out-of-order event; supply chronological observation timestamps')
-        names = ('cash','orders','positions','fills','ledger','audit','marks','funding_events','seen_events','funding_status','day_baselines','last_ts')
+        names = ('cash','orders','positions','fills','ledger','audit','marks','funding_events','funding_status','day_baselines','last_ts')
         before = {name: deepcopy(getattr(self, name)) for name in names}
         self._in_event = True
         self._event_ts = max(self.last_ts, event['ts'])
         try:
-            day = str(self._event_ts // 86400000)
-            if day not in self.day_baselines:
-                self.day_baselines[day] = str(self.equity) if self.equity is not None else None
-            self._on_event(event)
-            self.seen_events[event['event_id']] = event_digest if self._compact_seen_events else dict(event)
-            self.last_ts = max(self.last_ts, event['ts'])
-            self._save()
+            with self._db:
+                day = str(self._event_ts // 86400000)
+                if day not in self.day_baselines:
+                    self.day_baselines[day] = str(self.equity) if self.equity is not None else None
+                self._on_event(event)
+                self.seen_events[event['event_id']] = event_digest
+                self.last_ts = max(self.last_ts, event['ts'])
+                self._save()
+                self._db.execute('INSERT INTO sim_seen_events (event_id, digest) VALUES (?, ?)',
+                                 (event['event_id'], event_digest))
         except Exception:
             for name, value in before.items():
                 setattr(self, name, value)
+            self.seen_events.pop(event['event_id'], None)
             raise
         finally:
             self._in_event = False
