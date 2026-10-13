@@ -222,6 +222,322 @@ class PersistenceTests(unittest.TestCase):
             self.assertEqual(db.execute('SELECT payload FROM sim_broker_state').fetchone()[0], before)
             self.assertEqual(db.execute('SELECT count(*) FROM sim_seen_events').fetchone()[0], 0)
 
+# P2 differential / write-volume evidence. Kept separate from P1 unit tests.
+# Commands from repo root:
+# cd lab && SIM_BROKER_P2_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_parent_differential_2048_events
+# cd lab && SIM_BROKER_P2_WRITE_PROBE=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_linux_write_bytes_40000_history
+# Parent code loads solely from local git show at pinned PR51 SHA, or from
+# SIM_BROKER_P2_PARENT_PATH (untracked scratch file, pinned blob checked).
+# No network calls or new source/third-party dependencies.
+import os
+import subprocess
+import sys
+import types
+import sim_broker as p2_current
+
+_P2_PARENT_COMMIT = 'b1c5d9279506123bfb2939f795e71f3455368d78'
+_P2_PARENT_BLOB = 'a8f96f9237d0161308e875a19347ba54000a943c'
+_P2_FIELDS = ('cash', 'orders', 'positions', 'fills', 'ledger', 'audit', 'marks',
+              'funding_events', 'funding_status', 'day_baselines', 'last_ts')
+
+
+def _p2_parent_module():
+    path = os.environ.get('SIM_BROKER_P2_PARENT_PATH')
+    if path:
+        source = Path(path).read_bytes()
+    else:
+        root = Path(__file__).resolve().parents[2]
+        cmd = ['git', '-C', str(root), 'show',
+               _P2_PARENT_COMMIT + ':lab/sim_broker.py']
+        try:
+            proc = subprocess.run(cmd, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, check=False)
+        except (OSError, ValueError) as exc:
+            raise unittest.SkipTest('PR51 source unavailable locally: ' + str(exc)) from exc
+        if proc.returncode:
+            raise unittest.SkipTest(
+                'PR51 git object unavailable locally (no network fetch): '
+                + proc.stderr.decode('utf-8', 'replace')[:240])
+        source = proc.stdout
+    data = b'blob ' + str(len(source)).encode() + b'\0' + source
+    blob = hashlib.sha1(data).hexdigest()
+    if blob != _P2_PARENT_BLOB:
+        raise AssertionError('PR51 original source blob mismatch: ' + blob)
+    name = '_p2_original_sim_broker_pr51'
+    module = types.ModuleType(name)
+    module.__file__ = str(Path(__file__).resolve().parents[1] / 'sim_broker.py')
+    sys.modules[name] = module
+    try:
+        exec(compile(source, module.__file__, 'exec'), module.__dict__)
+    except BaseException:
+        sys.modules.pop(name, None)
+        raise
+    return module
+
+
+def _p2_broker(module, path, *, compact=False):
+    settings = module.InstrumentSettings('TEST', D('.0002'), D('.0005'),
+                                         D('.1'), D('.1'), D('5'), D('100'))
+    risk = module.RiskContract(
+        approved=True, version='P2-SYNTHETIC',
+        max_loss_per_trade_usdt=D('1000'), max_daily_loss_usdt=D('1000'),
+        max_effective_exposure_x=D('100'), max_positions=2,
+        total_loss_limit_usdt=D('1000'), require_stop=True)
+    return module.SimBroker(path, initial_cash=D('100'), instruments=[settings],
+                            execution=module.ExecutionModel(10, 2, None), risk=risk,
+                            version_id='p2-synthetic', forward_start=100,
+                            compact_seen_events=compact)
+
+
+def _p2_canonical(value):
+    return json.loads(json.dumps(value, default=str, sort_keys=True))
+
+
+def _p2_snapshot(b):
+    return {name: _p2_canonical(getattr(b, name)) for name in _P2_FIELDS}
+
+
+def _p2_event(kind, ts, eid, **extras):
+    return dict(type=kind, event_id=eid, symbol='TEST', ts=ts, **extras)
+
+
+def _p2_book(ts, eid, bid='99', ask='100'):
+    return _p2_event('book', ts, eid, bids=[[bid, '10']], asks=[[ask, '10']])
+
+
+def _p2_intent(module, key, ts, side='BUY', *, reduce=False, stop='90'):
+    return module.Intent(key, 'TEST', side, D('1'), None if reduce else D(stop),
+                         ts, D('.1'), D('.1'), D('5'), D('100'), 'TAKER', reduce)
+
+
+def _p2_workload():
+    """Fixed fill, stop, manual exit, late settlement, short and varied feed."""
+    actions = [
+        ('event', _p2_event('mark', 100, 'initial-mark', price='100')),
+        ('event', _p2_event('funding_status', 100, 'funding-ready', complete=True,
+                            valid_until_ts=1_000_000_000)),
+        ('intent', ('long-one', 100, 'BUY', False, '90')),
+        ('event', _p2_book(111, 'entry-one-book')),
+        ('event', _p2_event('funding', 112, 'long-funding', settlement_ts=112,
+                            rate='.001', mark='100', finalized=True)),
+        ('event', _p2_event('mark', 113, 'trigger-long-stop', price='80')),
+        ('event', _p2_book(124, 'fill-long-stop', bid='80', ask='81')),
+        ('intent', ('long-two', 125, 'BUY', False, '90')),
+        ('event', _p2_book(136, 'entry-two-book')),
+        ('intent', ('manual-exit', 137, 'SELL', True, '90')),
+        ('event', _p2_book(148, 'fill-manual-exit', bid='105', ask='106')),
+        ('event', _p2_event('funding', 150, 'late-funding', settlement_ts=140,
+                            rate='.002', mark='100', finalized=True)),
+        ('intent', ('short-one', 151, 'SELL', False, '110')),
+        ('event', _p2_book(162, 'enter-short')),
+        ('event', _p2_event('mark', 163, 'trigger-short-stop', price='111')),
+        ('event', _p2_book(174, 'fill-short-stop', bid='111', ask='112')),
+        ('event', _p2_event('funding', 175, 'short-funding', settlement_ts=165,
+                            rate='.001', mark='100', finalized=True)),
+    ]
+    for n in range(2048):
+        ts = 200 + n
+        if n % 37 == 0:
+            event = _p2_event('funding', ts, 'batch-funding:' + str(n),
+                              settlement_ts=ts, rate='.0001', mark='100',
+                              finalized=True)
+        elif n % 11 == 0:
+            event = _p2_event('funding_status', ts, 'batch-status:' + str(n),
+                              complete=True, valid_until_ts=1_000_000_000)
+        elif n % 5 == 0:
+            event = _p2_event('aggTrade', ts, 'batch-trade:' + str(n),
+                              price='99', qty='1', aggressor='SELL')
+        elif n % 3 == 0:
+            event = _p2_book(ts, 'batch-book:' + str(n))
+        else:
+            event = _p2_event('mark', ts, 'batch-mark:' + str(n), price='100')
+        actions.append(('event', event))
+    return actions
+
+
+def _p2_coverage(b):
+    entries = [f for f in b.fills
+               if f['intent_id'] in ('long-one', 'long-two', 'short-one')]
+    exits = [f for f in b.fills if f['intent_id'] == 'manual-exit']
+    stops = [f for f in b.fills if f['intent_id'].startswith('stop:')]
+    funding = [x for x in b.ledger
+               if x['type'] == 'funding' and D(x['amount']) != 0]
+    return dict(entry_fills=len(entries), explicit_exit_fills=len(exits),
+                stop_fills=len(stops), nonzero_funding_settlements=len(funding),
+                events=len(b.seen_events))
+
+
+def _p2_digest(event):
+    value = _p2_canonical(event)
+    return hashlib.sha256(json.dumps(value, sort_keys=True,
+                                     separators=(',', ':')).encode()).hexdigest()
+
+
+def _p2_warm_event(n):
+    return _p2_event('mark', 100 + n, 'warm:' + str(n), price='100')
+
+
+def _p2_seed_warm(module, path, count, *, legacy):
+    """Seed equivalent fully formed histories, not O(N^2) prior replay.
+
+    Each mark is a valid public event with monotonically increasing time.
+    Both snapshots reflect the same final mark, baseline and timestamp.
+    """
+    b = _p2_broker(module, path, compact=True)
+    try:
+        b.close()
+        with sqlite3.connect(path) as db:
+            state = json.loads(db.execute(
+                'SELECT payload FROM sim_broker_state WHERE singleton=1').fetchone()[0])
+            state.update(last_ts=99 + count, marks={'TEST': '100'},
+                         day_baselines={'0': '100'})
+            if legacy:
+                state['seen_events'] = {e['event_id']: e
+                                        for e in (_p2_warm_event(i)
+                                                  for i in range(count))}
+            db.execute('UPDATE sim_broker_state SET payload=? WHERE singleton=1',
+                       (json.dumps(state, sort_keys=True),))
+            if not legacy:
+                db.executemany(
+                    'INSERT INTO sim_seen_events(event_id,digest) VALUES (?,?)',
+                    ((e['event_id'], _p2_digest(e))
+                     for e in (_p2_warm_event(i) for i in range(count))))
+        b = _p2_broker(module, path, compact=True)
+        assert len(b.seen_events) == count, 'wrong warm history count'
+        assert b.last_ts == 99 + count, 'wrong warm timestamp'
+        return b
+    except BaseException:
+        b.close()
+        raise
+
+
+def _p2_proc_write_bytes():
+    with open('/proc/self/io', encoding='ascii') as stream:
+        for line in stream:
+            if line.startswith('write_bytes:'):
+                return int(line.split(':', 1)[1])
+    raise unittest.SkipTest('Linux /proc/self/io missing write_bytes')
+
+
+def _p2_sample_bytes(broker, count):
+    os.sync()
+    before = _p2_proc_write_bytes()
+    for n in range(20):
+        broker.on_event(_p2_event('mark', 100 + count + n,
+                                  'measured:' + str(n), price='100'))
+        os.sync()  # Actual sync after EACH submission.
+    total = _p2_proc_write_bytes() - before
+    if total <= 0:
+        raise AssertionError('Linux write_bytes recorded no committed writes')
+    return total
+
+
+class P2EvidenceTests(unittest.TestCase):
+    def test_deterministic_trace_shape(self):
+        a, b = _p2_workload(), _p2_workload()
+        self.assertEqual(a, b)
+        self.assertGreaterEqual(sum(k == 'event' for k, _ in a), 2000)
+        self.assertGreaterEqual(sum(k == 'intent' for k, _ in a), 4)
+
+    @unittest.skipUnless(os.environ.get('SIM_BROKER_P2_DIFFERENTIAL') == '1',
+                         'opt-in SIM_BROKER_P2_DIFFERENTIAL=1; needs original PR51')
+    def test_parent_differential_2048_events(self):
+        parent = _p2_parent_module()
+        with tempfile.TemporaryDirectory(prefix='p2-differential-') as directory:
+            root = Path(directory)
+            (root / 'parent').mkdir()
+            (root / 'current').mkdir()
+            old_path = root / 'parent' / 'state.sqlite'
+            new_path = root / 'current' / 'state.sqlite'
+            old = _p2_broker(parent, old_path)
+            new = _p2_broker(p2_current, new_path)
+            events = 0
+            try:
+                for action, value in _p2_workload():
+                    if action == 'intent':
+                        key, ts, side, reduce, stop = value
+                        original = old.submit(_p2_intent(
+                            parent, key, ts, side, reduce=reduce, stop=stop))
+                        revised = new.submit(_p2_intent(
+                            p2_current, key, ts, side, reduce=reduce, stop=stop))
+                        self.assertEqual(_p2_canonical(original),
+                                         _p2_canonical(revised), key)
+                        self.assertEqual(original['status'], 'PENDING', key)
+                    else:
+                        old.on_event(value)
+                        new.on_event(value)
+                        events += 1
+                    if action == 'intent' or (
+                            events and events % 256 == 0 and action == 'event'):
+                        self.assertEqual(_p2_snapshot(old), _p2_snapshot(new),
+                                         'checkpoint event ' + str(events))
+                    if events == 1024 and action == 'event':
+                        old.close()
+                        new.close()
+                        old = _p2_broker(parent, old_path)
+                        new = _p2_broker(p2_current, new_path)
+                        self.assertEqual(_p2_snapshot(old), _p2_snapshot(new),
+                                         'restarted at event 1024')
+                self.assertGreaterEqual(events, 2000)
+                self.assertEqual(_p2_snapshot(old), _p2_snapshot(new))
+                # Idempotent replay across the restart; the event is persisted.
+                last = _p2_workload()[-1][1]
+                old.on_event(last)
+                new.on_event(last)
+                self.assertEqual(_p2_snapshot(old), _p2_snapshot(new))
+                proof = _p2_coverage(new)
+                for field in ('entry_fills', 'explicit_exit_fills',
+                              'stop_fills', 'nonzero_funding_settlements'):
+                    self.assertGreater(proof[field], 0, proof)
+                self.assertEqual(proof['events'], events)
+                print('P2 DIFFERENTIAL parent=' + _P2_PARENT_COMMIT +
+                      ' events=' + str(events) + ' exact_fields=' +
+                      str(_P2_FIELDS) + ' coverage=' +
+                      json.dumps(proof, sort_keys=True), flush=True)
+            finally:
+                old.close()
+                new.close()
+
+    @unittest.skipUnless(os.environ.get('SIM_BROKER_P2_WRITE_PROBE') == '1',
+                         'opt-in SIM_BROKER_P2_WRITE_PROBE=1; Linux only')
+    def test_linux_write_bytes_40000_history(self):
+        if (not sys.platform.startswith('linux') or
+                not hasattr(os, 'sync') or
+                not Path('/proc/self/io').is_file()):
+            self.skipTest('Linux /proc/self/io write_bytes and os.sync required')
+        _p2_proc_write_bytes()
+        parent = _p2_parent_module()
+        observations = {}
+        with tempfile.TemporaryDirectory(prefix='p2-write-bytes-') as directory:
+            for size in (512, 40000):
+                for label, module, legacy in (
+                        ('legacy', parent, True), ('new', p2_current, False)):
+                    path = Path(directory) / (label + '-' + str(size))
+                    path.mkdir()
+                    b = _p2_seed_warm(module, path / 'broker.sqlite', size,
+                                      legacy=legacy)
+                    try:
+                        measured = _p2_sample_bytes(b, size)
+                        self.assertEqual(b.last_ts, 119 + size)
+                        self.assertEqual(len(b.seen_events), size + 20)
+                        observations[(size, label)] = measured / 20
+                        print('P2 WRITE history=' + str(size) +
+                              ' implementation=' + label + ' write_bytes=' +
+                              str(measured) + ' events=20 mean_bytes=' +
+                              format(measured / 20, '.1f'), flush=True)
+                    finally:
+                        b.close()
+        old_large = observations[(40000, 'legacy')]
+        new_large = observations[(40000, 'new')]
+        new_small = observations[(512, 'new')]
+        self.assertGreater(old_large, 0)
+        self.assertLess(new_large, 1_000_000, observations)
+        self.assertLess(new_large, .05 * old_large, observations)
+        self.assertLess(new_large, 2 * new_small + 262144, observations)
+        print('P2 WRITE ratio_new_to_legacy_40000=' +
+              format(new_large / old_large, '.6f') +
+              ' new_bytes_per_event_small_large=' + format(new_small, '.1f') +
+              '/' + format(new_large, '.1f'), flush=True)
 
 if __name__ == '__main__':
     unittest.main()
