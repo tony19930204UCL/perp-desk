@@ -146,11 +146,12 @@ class SimBroker:
                     raise ValueError('version/model/instrument metadata frozen; use a new namespace')
                 self._db.execute('CREATE TABLE IF NOT EXISTS sim_seen_events (event_id TEXT PRIMARY KEY, digest TEXT NOT NULL)')
                 columns = self._db.execute('PRAGMA table_info(sim_seen_events)').fetchall()
+                # SQLite may report an implicit TEXT PRIMARY KEY as nullable in
+                # table_info; digest must independently declare NOT NULL.
                 if (len(columns) != 2 or
-                        [(c[1], c[2].upper(), c[3], c[5]) for c in columns] !=
-                        [('event_id', 'TEXT', 0, 1), ('digest', 'TEXT', 1, 0)] and
                         [(c[1], c[2].upper(), c[5]) for c in columns] !=
-                        [('event_id', 'TEXT', 1), ('digest', 'TEXT', 0)]):
+                        [('event_id', 'TEXT', 1), ('digest', 'TEXT', 0)] or
+                        columns[0][3] not in (0, 1) or columns[1][3] != 1):
                     raise ValueError('incompatible sim_seen_events schema')
                 # Check actual PK uniqueness and binary event-ID equality, not names alone.
                 pk_indexes = [r[1] for r in self._db.execute('PRAGMA index_list(sim_seen_events)')
@@ -413,7 +414,9 @@ class SimBroker:
                 if day not in self.day_baselines:
                     self.day_baselines[day] = str(self.equity) if self.equity is not None else None
                 self._on_event(event)
-                self.seen_events[event['event_id']] = event_digest
+                # Only durable history is digest-only. Existing noncompact
+                # consumers inspect freshly processed normalized event dicts.
+                self.seen_events[event['event_id']] = (event_digest if self._compact_seen_events else event)
                 self.last_ts = max(self.last_ts, event['ts'])
                 self._save()
                 self._db.execute('INSERT INTO sim_seen_events (event_id, digest) VALUES (?, ?)',
