@@ -1,1 +1,45 @@
-{"placeholder": true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 59,
+  "branch": "feat/persist-1-20261013T145750Z",
+  "task_id": "persist-1-20261013T145750Z",
+  "instruction_id": "P1-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "6cb41806bbf93b357577acff3732db4e260161ed",
+  "summary": "P1 only: sim_seen_events primary-key event digest table; atomically migrate full-event or digest legacy singleton history after frozen metadata check; keep digest-only memory; event singleton write and history INSERT share transaction; restore event memory on failure; preserve non-event save semantics. Added 15 isolated regression methods. No deployment, services or trading.",
+  "changed_files": [
+    "lab/sim_broker.py",
+    "lab/tests/test_sim_broker_persistence.py",
+    "docs/engineering/HANDOFF-persist-1-20261013T145750Z.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "not run",
+      "evidence": "No repository shell or local checkout was available through connected GitHub integration."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "not run",
+      "evidence": "No local execution performed; GitHub Actions PAPER isolated suite not yet completed at mailbox write."
+    },
+    {
+      "command": "GitHub Actions PAPER review tests #38433957581 at source head 6cb41806bbf93b357577acff3732db4e260161ed",
+      "result": "in_progress",
+      "evidence": "GitHub Actions job isolated-tests #115423016454, exporter contract in progress when checked; no pass claim."
+    }
+  ],
+  "remaining_work": [
+    "Main independently rerun focused persistence suite and both exact-head CI commands; inspect SQLite migration and event rollback directly.",
+    "Observe completion of pending CI and fix any failures before accepting P1.",
+    "P2 differential/performance evidence (40k-event write volume) is separately scoped, not accepted by this mailbox."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Review exact source-head diff and run test_sim_broker_persistence plus existing broker tests and both CI discovery commands; probe trigger-injected mid-migration and event INSERT failure in real SQLite.",
+    "if_pass": "Independently accept bounded P1 only; keep PR draft and plan P2 separately.",
+    "if_fail": "Return exact failing assertion or SQLite trace for bounded repair on same branch; do not merge/deploy.",
+    "blockers": []
+  }
+}
