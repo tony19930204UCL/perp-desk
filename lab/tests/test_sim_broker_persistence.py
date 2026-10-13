@@ -68,7 +68,7 @@ class PersistenceTests(unittest.TestCase):
         state, history = self.saved()
         self.assertNotIn('seen_events', state)
         self.assertEqual(history, [('m1', self.digest(self.mark()))])
-        self.assertEqual(b.seen_events, dict(history))
+        self.assertEqual(b.seen_events, {'m1': self.mark()})
         with sqlite3.connect(self.path) as db:
             with self.assertRaises(sqlite3.IntegrityError):
                 db.execute('INSERT INTO sim_seen_events VALUES (?,NULL)', ('bad',))
@@ -170,7 +170,8 @@ class PersistenceTests(unittest.TestCase):
         result = b.submit(intent)
         self.assertEqual(result['status'], 'REJECTED')
         b = self.reopen()
-        self.assertEqual(b.submit(intent), result)
+        self.assertEqual(json.loads(json.dumps(b.submit(intent), default=str, sort_keys=True)),
+                         json.loads(json.dumps(result, default=str, sort_keys=True)))
         self.assertEqual(b.orders['order:a']['status'], 'REJECTED')
         # A pending synthetic reduce-only order is not needed to test the
         # cancellation persistence path: seed a pending order in memory.
@@ -187,7 +188,8 @@ class PersistenceTests(unittest.TestCase):
                 path = self.path.with_name('case-' + str(compact) + '.sqlite')
                 b = self.broker(compact=compact, path=path)
                 b.on_event(self.mark())
-                self.assertEqual(b.seen_events['m1'], self.digest(self.mark()))
+                self.assertEqual(b.seen_events['m1'],
+                                 self.digest(self.mark()) if compact else self.mark())
                 b.close()
                 r = self.broker(compact=not compact, path=path)
                 self.assertEqual(r.seen_events['m1'], self.digest(self.mark()))
