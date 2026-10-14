@@ -234,5 +234,174 @@ class EquityHistoryTests(unittest.TestCase):
         self.assertEqual(reopened.recent(), original + [point('alpha', '3.00')])
 
 
+# B2 inherited runtime integration, all data and roots synthetic.
+import hashlib
+from paper_runtime_v2 import PaperRuntime as BaseRuntime, canonical, stamp
+from paper_runtime_v5 import PaperRuntime as V5Runtime
+
+
+class RuntimeIntegrationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.lab = Path(__file__).resolve().parents[1]
+        self.now = [1700000000000]
+
+    def config(self, cls):
+        return self.lab / ('paper_config_v2.json' if cls is BaseRuntime
+                           else 'paper_config_f1h_btcusdt.json')
+
+    def state(self, cls, original):
+        return dict(config_hash=hashlib.sha256(self.config(cls).read_bytes()).hexdigest(),
+                    fixture=True, forward_start_ms=self.now[0], cursor=123456,
+                    errors=7, gaps=2, last_success_ms=None, markets=[],
+                    latest_error=None, warmup=0, history=list(original),
+                    diagnostic='warmup', extra={'receipt': ['synthetic'], 'account': 'preserve'})
+
+    def seed(self, root, state):
+        root.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(root / 'runtime.sqlite3') as db:
+            db.execute('CREATE TABLE state(id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT NOT NULL)')
+            db.execute('CREATE TABLE audit(id INTEGER PRIMARY KEY, payload TEXT NOT NULL, '
+                       'previous_hash TEXT NOT NULL, hash TEXT NOT NULL)')
+            db.execute('INSERT INTO state VALUES(1,?)', (canonical(state),))
+
+    def runtime(self, cls, root):
+        obj = cls(root, self.config(cls), fixture=True, clock_ms=lambda: self.now[0])
+        self.addCleanup(obj.close)
+        return obj
+
+    def payload(self, root):
+        with sqlite3.connect(root / 'runtime.sqlite3') as db:
+            return json.loads(db.execute('SELECT payload FROM state WHERE id=1').fetchone()[0])
+
+    def archive(self, root):
+        with sqlite3.connect(root / 'runtime.sqlite3') as db:
+            return [dict(ts=ts, equity_usdt=equity, valuation_stale=bool(stale))
+                    for ts, equity, stale in db.execute(
+                        'SELECT ts,equity_usdt,valuation_stale FROM runtime_equity_history ORDER BY seq')]
+
+    def test_base_and_v5_real_save_snapshot_restart_no_adjacent_duplicates(self):
+        for cls in (BaseRuntime, V5Runtime):
+            with self.subTest(cls=cls.__module__):
+                root = Path(self.temp.name) / cls.__module__
+                original = [point('old-a', '01'), point('old-b', '2.000', True),
+                            point('old-a', '3e0')]
+                prior = self.state(cls, original)
+                self.seed(root, prior)
+                obj = self.runtime(cls, root)
+                self.assertEqual(self.archive(root), original)
+                result = obj.snapshot()
+                new = point(stamp(self.now[0]), str(obj.config['initial_equity_usdt']))
+                self.assertEqual(result['equity_history'], original + [new])
+                obj.snapshot()
+                obj.save()
+                self.assertEqual(self.archive(root), original + [new])
+                obj.close()
+                resumed = self.runtime(cls, root)
+                resumed.snapshot()
+                self.assertEqual(self.archive(root), original + [new])
+                self.now[0] += 1000
+                resumed.snapshot()
+                self.now[0] -= 1000
+                resumed.snapshot()
+                self.assertEqual([x['ts'] for x in self.archive(root)][-3:],
+                                 [new['ts'], stamp(self.now[0] + 1000), new['ts']])
+                for field in ('cursor', 'errors', 'gaps', 'extra'):
+                    self.assertEqual(self.payload(root)[field], prior[field])
+
+    def test_large_archives_recent_cap_and_constant_status_sizes(self):
+        sizes = []
+        for n in (8192, 16384):
+            root = Path(self.temp.name) / ('large_' + str(n))
+            points = [point('%08d' % i, '%014d.0000' % i, bool(i % 2))
+                      for i in range(n)]
+            prior = self.state(BaseRuntime, points)
+            self.seed(root, prior)
+            obj = self.runtime(BaseRuntime, root)
+            status = obj.snapshot()
+            expected = points + [point(stamp(self.now[0]), str(obj.config['initial_equity_usdt']))]
+            self.assertEqual(self.archive(root), expected)
+            self.assertEqual(obj.state['history'], expected[-RECENT_LIMIT:])
+            self.assertEqual(status['equity_history'], expected[-RECENT_LIMIT:])
+            self.assertEqual(status['equity_history_window']['archived_points'], n + 1)
+            self.assertFalse(status['equity_history_window']['complete_lifetime'])
+            persisted = self.payload(root)
+            for key in ('cursor', 'errors', 'gaps', 'extra'):
+                self.assertEqual(persisted[key], prior[key])
+            size = (len(canonical(persisted).encode()),
+                    len(canonical(persisted['history']).encode()),
+                    len(canonical(status).encode()))
+            sizes.append(size)
+            print('B2 archive=%d singleton_bytes=%d history_bytes=%d status_bytes=%d' %
+                  ((n + 1,) + size))
+            obj.close()
+            resumed = self.runtime(BaseRuntime, root)
+            self.assertEqual(self.archive(root), expected)
+            self.assertEqual(resumed.state['history'], expected[-RECENT_LIMIT:])
+        self.assertEqual(sizes[0], sizes[1])
+
+    def bare_legacy(self, label, points):
+        root = Path(self.temp.name) / label
+        prior = self.state(BaseRuntime, points)
+        self.seed(root, prior)
+        db = sqlite3.connect(root / 'runtime.sqlite3')
+        db.execute('PRAGMA foreign_keys=ON')
+        obj = BaseRuntime.__new__(BaseRuntime)
+        obj.db, obj.state = db, json.loads(canonical(prior))
+        self.addCleanup(db.close)
+        return root, db, obj, prior
+
+    def test_sql_migration_and_singleton_write_failures_atomic_retry(self):
+        points = [point('first'), point('second', '2.000', True)]
+        root, db, obj, original = self.bare_legacy('sql', points)
+        denied = []
+        def deny(action, table, col, database, trigger):
+            if action == sqlite3.SQLITE_INSERT and table == 'runtime_equity_history':
+                denied.append(table)
+                return sqlite3.SQLITE_DENY
+            return sqlite3.SQLITE_OK
+        db.set_authorizer(deny)
+        try:
+            with self.assertRaises(sqlite3.DatabaseError):
+                obj.save()
+        finally:
+            db.set_authorizer(None)
+        self.assertTrue(denied)
+        self.assertEqual(obj.state, original)
+        self.assertEqual(self.payload(root), original)
+        self.assertEqual(db.execute("SELECT count(*) FROM sqlite_master WHERE name='runtime_equity_history'").fetchone()[0], 0)
+        obj.save()
+        self.assertEqual(self.archive(root), points)
+        before = json.loads(canonical(obj.state))
+        db.execute("CREATE TRIGGER fail_singleton BEFORE INSERT ON state "
+                   "BEGIN SELECT RAISE(ABORT, 'synthetic failure'); END")
+        with self.assertRaises(sqlite3.DatabaseError):
+            obj.save(equity_point=point('later', '4'))
+        self.assertEqual(obj.state, before)
+        self.assertEqual(self.archive(root), points)
+        db.execute('DROP TRIGGER fail_singleton')
+        obj.save(equity_point=point('later', '4'))
+        self.assertEqual(self.archive(root), points + [point('later', '4')])
+
+    def test_real_deferred_commit_failure_rollback_and_retry(self):
+        points = [point('a'), point('b', '2', True)]
+        root, db, obj, original = self.bare_legacy('commit', points)
+        db.execute('CREATE TABLE parent(id INTEGER PRIMARY KEY)')
+        db.execute('CREATE TABLE child(parent_id INTEGER REFERENCES parent(id) '
+                   'DEFERRABLE INITIALLY DEFERRED)')
+        db.execute('CREATE TRIGGER fail_commit AFTER INSERT ON state '
+                   'BEGIN INSERT INTO child VALUES(999); END')
+        with self.assertRaises(sqlite3.IntegrityError):
+            obj.save()
+        self.assertFalse(db.in_transaction)
+        self.assertEqual(self.payload(root), original)
+        self.assertEqual(obj.state, original)
+        self.assertEqual(db.execute("SELECT count(*) FROM sqlite_master WHERE name='runtime_equity_history'").fetchone()[0], 0)
+        db.execute('DROP TRIGGER fail_commit')
+        obj.save()
+        self.assertEqual(self.archive(root), points)
+
+
 if __name__ == '__main__':
     unittest.main()
