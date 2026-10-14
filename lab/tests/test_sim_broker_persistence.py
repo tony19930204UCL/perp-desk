@@ -407,6 +407,98 @@ class P3RetentionTests(unittest.TestCase):
                     b.close()
 
 
+    def _legacy_with_companion(self, *, mode='full'):
+        """Produce the frozen P1 fixture's transient digest gap."""
+        b = self.broker(retention=None)
+        a, z = self.mark('m1', 100), self.mark('m2', 101)
+        b.on_event(a)
+        b.on_event(z)
+        b.close()
+        digest = lambda event: hashlib.sha256(
+            json.dumps(event, sort_keys=True, separators=(',', ':')).encode()
+        ).hexdigest()
+        with sqlite3.connect(self.path) as db:
+            state = json.loads(db.execute(
+                'SELECT payload FROM sim_broker_state WHERE singleton=1'
+            ).fetchone()[0])
+            state['seen_events'] = ({'m1': a, 'm2': z} if mode == 'full'
+                                    else {'m1': digest(a), 'm2': digest(z)})
+            db.execute('UPDATE sim_broker_state SET payload=?',
+                       (json.dumps(state, sort_keys=True),))
+            db.execute('DELETE FROM sim_seen_events')
+        return a, z
+
+    def test_legacy_full_with_existing_companion_migrates_atomically(self):
+        self._legacy_with_companion()
+        b = self.broker(retention=None)
+        rows, meta, state = self.rows()
+        self.assertEqual(rows, [('m1',), ('m2',)])
+        self.assertEqual(meta, [('m1', 'mark', 100), ('m2', 'mark', 101)])
+        self.assertNotIn('seen_events', json.loads(state))
+        prior = self.rows()
+        b.on_event(self.mark('m1', 100))
+        with self.assertRaisesRegex(ValueError, 'conflicting event ID'):
+            b.on_event(dict(self.mark('m1', 100), price='102'))
+        self.assertEqual(self.rows(), prior)
+
+    def test_digest_legacy_with_existing_companion_preserves_identity(self):
+        self._legacy_with_companion(mode='digest')
+        b = self.broker(retention=None)
+        self.assertEqual(self.rows()[1],
+                         [('m1', 'mark', 100), ('m2', 'mark', 101)])
+        self.assertEqual(set(b.seen_events), {'m1', 'm2'})
+        self.assertEqual(set(b._seen_event_meta), {'m1', 'm2'})
+
+    def test_true_orphan_companion_refused_without_mutation(self):
+        self._legacy_with_companion()
+        with sqlite3.connect(self.path) as db:
+            db.execute("DELETE FROM sim_seen_event_meta WHERE event_id='m2'")
+            db.execute("INSERT INTO sim_seen_event_meta VALUES ('orphan','mark',100)")
+            before = (db.execute('SELECT payload FROM sim_broker_state').fetchone()[0],
+                      db.execute('SELECT * FROM sim_seen_events').fetchall(),
+                      db.execute('SELECT * FROM sim_seen_event_meta ORDER BY event_id').fetchall())
+        with self.assertRaisesRegex(ValueError, 'invalid persisted seen-event metadata'):
+            self.broker(retention=None)
+        with sqlite3.connect(self.path) as db:
+            self.assertEqual(
+                (db.execute('SELECT payload FROM sim_broker_state').fetchone()[0],
+                 db.execute('SELECT * FROM sim_seen_events').fetchall(),
+                 db.execute('SELECT * FROM sim_seen_event_meta ORDER BY event_id').fetchall()),
+                before)
+
+    def test_companion_identity_conflict_refused_and_retryable(self):
+        self._legacy_with_companion()
+        with sqlite3.connect(self.path) as db:
+            db.execute("UPDATE sim_seen_event_meta SET observed_ts=102 WHERE event_id='m2'")
+            original = db.execute('SELECT payload FROM sim_broker_state').fetchone()[0]
+        with self.assertRaisesRegex(ValueError, 'conflicting migrated seen-event metadata'):
+            self.broker(retention=None)
+        with sqlite3.connect(self.path) as db:
+            self.assertEqual(db.execute('SELECT payload FROM sim_broker_state').fetchone()[0],
+                             original)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM sim_seen_events').fetchone()[0], 0)
+            db.execute("UPDATE sim_seen_event_meta SET observed_ts=101 WHERE event_id='m2'")
+        b = self.broker(retention=None)
+        self.assertEqual(set(b.seen_events), {'m1', 'm2'})
+
+    def test_companion_migration_insert_failure_rolls_back_and_retries(self):
+        self._legacy_with_companion()
+        with sqlite3.connect(self.path) as db:
+            original = db.execute('SELECT payload FROM sim_broker_state').fetchone()[0]
+            db.execute("""CREATE TRIGGER reject_legacy_m2 BEFORE INSERT ON sim_seen_events
+                          WHEN NEW.event_id='m2'
+                          BEGIN SELECT RAISE(FAIL, 'synthetic insert failure'); END""")
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.broker(retention=None)
+        with sqlite3.connect(self.path) as db:
+            self.assertEqual(db.execute('SELECT payload FROM sim_broker_state').fetchone()[0],
+                             original)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM sim_seen_events').fetchone()[0], 0)
+            db.execute('DROP TRIGGER reject_legacy_m2')
+        b = self.broker(retention=None)
+        self.assertEqual(set(b._seen_event_meta), {'m1', 'm2'})
+
+
 # P2 differential / write-volume evidence. Kept separate from P1 unit tests.
 # Commands from repo root:
 # cd lab && SIM_BROKER_P2_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_parent_differential_2048_events
