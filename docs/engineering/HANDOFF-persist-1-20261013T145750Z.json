@@ -4,10 +4,10 @@
   "pr_number": 59,
   "branch": "feat/persist-1-20261013T145750Z",
   "task_id": "persist-1-20261013T145750Z",
-  "instruction_id": "P3-A-r0",
+  "instruction_id": "P3-A-r1",
   "status": "WAITING_CI",
-  "source_head_sha": "c87671dcab2caaa13956616b5b2c4ae6b98b38bc",
-  "summary": "P3-A only: validated optional seen_event_retention_ms (default 3600000, None disables); exact-schema companion sim_seen_event_meta stores event kind/observation timestamp for accepted IDs; known non-funding rows strictly older than last_ts-retention pruned from digest table, companion table and memory under same event transaction. Funding identities never pruned. Pre-P3 digest-only unknown rows remain indefinitely; full legacy event metadata recorded only after _validate_event. Pruned old non-funding replays are chronological errors; a pruned ID with a valid current timestamp cannot be conflict detected without permanent tombstones. P1/P2 frozen tests unchanged; no runtime/config/status changes. All P3 source writes are on existing draft PR branch; not independently accepted.",
+  "source_head_sha": "4ee338cf124005c3d76db23d5164e8205f18fbce",
+  "summary": "Repaired P3-A-r0 migration ordering: validate existing companion event metadata fields and exact schema immediately, but check companion-to-digest referential integrity only after atomic legacy singleton digest migration has completed. This permits matching full or digest legacy histories whose frozen fixture clears only sim_seen_events while companion rows remain; preserves exact identity-conflict refusal, genuinely orphan companion refusal and transactional rollback. Added five isolated regressions without changing existing P1/P2/P3 test methods. Retention, duplicate-before-chronology, funding and unknown digest safeguards unchanged; no runtime/config/status edits.",
   "changed_files": [
     "lab/sim_broker.py",
     "lab/tests/test_sim_broker_persistence.py",
@@ -17,40 +17,40 @@
     {
       "command": "cd lab && python3 -m unittest -v tests.test_sim_broker_persistence.P3RetentionTests",
       "result": "not run",
-      "evidence": "No local Git repository checkout; GitHub connector writes source but does not execute Python. Eleven deterministic P3 tests added and still require CI/independent execution."
+      "evidence": "Repository checkout is not present in execution container. Five P3-A-r1 regression methods were added and committed; no local Python assertion is claimed."
+    },
+    {
+      "command": "cd lab && python3 -m unittest -v tests.test_sim_broker_persistence.PersistenceTests",
+      "result": "not run",
+      "evidence": "No local checkout. The five frozen legacy migration tests previously failed on r0 and must be independently rechecked at this SHA."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests",
       "result": "not run",
-      "evidence": "No local repository checkout. Exact-head push and pull_request GitHub Actions in progress at source commit c87671dcab2caaa13956616b5b2c4ae6b98b38bc."
+      "evidence": "No repository checkout; only remote GitHub commits available."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No local repository checkout; exact-head isolated-tests jobs in progress."
+      "evidence": "No repository checkout; exact-head CI not yet concluded at inspection."
     },
     {
-      "command": "GitHub Actions push event run 38533518367",
+      "command": "GitHub Actions PAPER review tests push/pull_request for source head 4ee338cf124005c3d76db23d5164e8205f18fbce",
       "result": "in progress",
-      "evidence": "Run associated with source_head_sha c87671dcab2caaa13956616b5b2c4ae6b98b38bc, isolated-tests job 115750764745 in_progress at inspection."
-    },
-    {
-      "command": "GitHub Actions pull_request event run 38533524664",
-      "result": "in progress",
-      "evidence": "Run associated with source_head_sha c87671dcab2caaa13956616b5b2c4ae6b98b38bc, isolated-tests job 115750785160 in_progress at inspection."
+      "evidence": "GitHub Actions pull-request-associated run 38535867821 reported in_progress with no conclusion; do not infer green. Both event types require Main verification."
     }
   ],
   "remaining_work": [
-    "Independently run exact-head focused P3 and full unchanged automation/lab discovery; inspect both push and pull_request CI conclusions and any exporter failures.",
-    "Independently probe cutoff, restart, funding retention, legacy digest-only unknown rows, rollback including COMMIT failure, and row counts for 128 and 2048 non-funding histories.",
-    "Known residual: pre-P3 digest-only rows have no recoverable type/time and remain unbounded; pruned ID reused with valid current timestamp cannot be distinguished from a new ID.",
-    "No <50KB/s runtime proof, deployment, whole-P3 completion or trading acceptance is asserted."
+    "Main must independently run focused P1/P2/P3 migrations and both complete unchanged CI discovery commands on exact head, then inspect push and pull_request CI conclusions.",
+    "Main must verify true orphan companion refusal, exact-schema refusal, full/digest metadata conflicts, retry after insert/commit failure and restart/boundary/funding probes.",
+    "Conservative residual: digest-only pre-P3 records lacking companion identity remain unprunable; a pruned non-funding ID reused at a current valid timestamp cannot be distinguished from a new ID.",
+    "No runtime write-throughput target, deployment, live trading, or whole-P3 acceptance is asserted."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Inspect exact source HEAD c87671dcab2caaa13956616b5b2c4ae6b98b38bc; run focused P3 tests and both unchanged full suites; inspect push run 38533518367 and pull_request run 38533524664 for this SHA; verify structural SQLite rows and adversarial migration/commit rollback; preserve all frozen files.",
-    "if_pass": "Independently accept only P3-A known non-funding bounded retention on draft PR 59. No merge/deploy/trade.",
-    "if_fail": "Return reproducible test/CI failure and exact SHA for bounded repair; do not weaken frozen P1/P2 tests or expand authorization.",
+    "verify_now": "Independently checkout source HEAD 4ee338cf124005c3d76db23d5164e8205f18fbce on PR 59, run frozen PersistenceTests and P3RetentionTests plus full automation/lab suites, check both exact-head CI events and exporter; probe companion/full legacy migration, orphan/metadata conflicts, rollback and bounded rows.",
+    "if_pass": "Accept only P3-A bounded known non-funding broker retention on draft PR 59, leaving unknown digest rows permanent. No merge/deploy/trade.",
+    "if_fail": "Return failing command, traceback, reproducible fixture and exact SHA; request bounded repair only within allowlist.",
     "blockers": []
   }
 }
