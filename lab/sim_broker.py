@@ -208,10 +208,12 @@ class SimBroker:
                 known = {}
                 for event_id, event_type, observed_ts in self._db.execute(
                         'SELECT event_id, event_type, observed_ts FROM sim_seen_event_meta'):
-                    if (event_id not in persisted or
-                            event_type not in ('book', 'mark', 'aggTrade', 'funding', 'funding_status') or
+                    if (event_type not in ('book', 'mark', 'aggTrade', 'funding', 'funding_status') or
                             type(observed_ts) is not int or observed_ts < self.forward_start):
                         raise ValueError('invalid persisted seen-event metadata')
+                    # Do not check the companion-to-digest relationship yet:
+                    # legacy singleton digests may still need migration. An
+                    # orphan is refused only against the final atomic set.
                     known[event_id] = (event_type, observed_ts)
                 if state is None:
                     if persisted:
@@ -269,6 +271,13 @@ class SimBroker:
                     state.pop('meta')
                     for key, value in state.items():
                         setattr(self, key, value)
+                # Companion rows already existed in valid pre-P3 databases
+                # whose legacy fixture clears only the digest table. Verify
+                # referential integrity against the COMPLETED migration, not
+                # the transient pre-migration digest set. Genuine orphans,
+                # including databases with no singleton, remain forbidden.
+                if any(event_id not in persisted for event_id in known):
+                    raise ValueError('invalid persisted seen-event metadata')
                 self.seen_events = persisted
                 self._seen_event_meta = known
         except Exception:
