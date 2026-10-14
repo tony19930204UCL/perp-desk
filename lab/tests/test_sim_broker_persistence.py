@@ -222,6 +222,191 @@ class PersistenceTests(unittest.TestCase):
             self.assertEqual(db.execute('SELECT payload FROM sim_broker_state').fetchone()[0], before)
             self.assertEqual(db.execute('SELECT count(*) FROM sim_seen_events').fetchone()[0], 0)
 
+# P3-A bounded retention tests, isolated SQLite and injected observation times.
+class P3RetentionTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix='p3-retention-')
+        self.addCleanup(temporary.cleanup)
+        self.path = Path(temporary.name) / 'broker.sqlite'
+        self.brokers = []
+
+    def broker(self, retention=10, compact=True):
+        b = SimBroker(self.path, initial_cash=D('100'),
+                      instruments=[InstrumentSettings('TEST', D('.0002'), D('.0005'),
+                                                      D('.1'), D('.1'), D('5'), D('100'))],
+                      execution=ExecutionModel(10, 2, None), risk=None,
+                      version_id='p3-synthetic', forward_start=100,
+                      compact_seen_events=compact,
+                      seen_event_retention_ms=retention)
+        self.brokers.append(b)
+        return b
+
+    def tearDown(self):
+        for broker in self.brokers:
+            broker.close()
+
+    @staticmethod
+    def mark(eid, ts):
+        return dict(type='mark', event_id=eid, symbol='TEST', ts=ts, price='100')
+
+    def rows(self):
+        with sqlite3.connect(self.path) as db:
+            return (db.execute('SELECT event_id FROM sim_seen_events ORDER BY event_id').fetchall(),
+                    db.execute('SELECT event_id,event_type,observed_ts '
+                               'FROM sim_seen_event_meta ORDER BY event_id').fetchall(),
+                    db.execute('SELECT payload FROM sim_broker_state').fetchone()[0])
+
+    def test_exact_cutoff_retained_one_millisecond_older_pruned(self):
+        b = self.broker()
+        for eid, ts in [('older', 100), ('cutoff', 101), ('now', 111)]:
+            b.on_event(self.mark(eid, ts))
+        self.assertEqual([r[0] for r in self.rows()[0]], ['cutoff', 'now'])
+        self.assertEqual(set(b.seen_events), {'cutoff', 'now'})
+        self.assertEqual(b._seen_event_meta['cutoff'], ('mark', 101))
+
+    def test_retained_same_and_conflicting_duplicates_before_chronology(self):
+        b = self.broker()
+        event = self.mark('retained', 100)
+        b.on_event(event)
+        b.on_event(self.mark('advance', 109))
+        previous = self.rows()
+        b.on_event(event)
+        with self.assertRaisesRegex(ValueError, 'conflicting event ID'):
+            b.on_event(dict(event, price='102'))
+        self.assertEqual(self.rows(), previous)
+
+    def test_pruned_replay_rejected_without_any_state_change(self):
+        b = self.broker()
+        b.on_event(self.mark('stale', 100))
+        b.on_event(self.mark('current', 111))
+        previous = self.rows()
+        memory = (dict(b.seen_events), dict(b._seen_event_meta), b.last_ts, dict(b.marks))
+        with self.assertRaisesRegex(ValueError, 'out-of-order'):
+            b.on_event(self.mark('stale', 100))
+        self.assertEqual(self.rows(), previous)
+        self.assertEqual((b.seen_events, b._seen_event_meta, b.last_ts, b.marks), memory)
+
+    def test_funding_and_old_funding_identity_never_pruned(self):
+        b = self.broker(retention=1)
+        funding = dict(type='funding', event_id='fund', symbol='TEST', ts=100,
+                       settlement_ts=100, rate='.01', mark='100', finalized=True)
+        b.on_event(funding)
+        b.on_event(self.mark('later', 200))
+        self.assertIn('fund', b.seen_events)
+        self.assertEqual(b._seen_event_meta['fund'], ('funding', 100))
+        before = self.rows()
+        b.on_event(funding)
+        with self.assertRaisesRegex(ValueError, 'conflicting event ID'):
+            b.on_event(dict(funding, rate='.02'))
+        self.assertEqual(self.rows(), before)
+
+    def test_digest_only_unknown_migration_stays_unprunable(self):
+        b = self.broker()
+        b.on_event(self.mark('legacy', 100))
+        b.close()
+        with sqlite3.connect(self.path) as db:
+            db.execute('DELETE FROM sim_seen_event_meta')
+        b = self.broker()
+        self.assertNotIn('legacy', b._seen_event_meta)
+        b.on_event(self.mark('future', 200))
+        self.assertEqual([r[0] for r in self.rows()[0]], ['future', 'legacy'])
+        self.assertEqual([r[0] for r in self.rows()[1]], ['future'])
+        with self.assertRaisesRegex(ValueError, 'conflicting event ID'):
+            b.on_event(dict(self.mark('legacy', 100), price='102'))
+
+    def test_restart_retains_known_metadata_and_cutoff(self):
+        b = self.broker()
+        b.on_event(self.mark('cutoff', 100))
+        b.on_event(self.mark('latest', 110))
+        b.close()
+        b = self.broker()
+        self.assertEqual(b._seen_event_meta['cutoff'], ('mark', 100))
+        b.on_event(self.mark('next', 111))
+        self.assertEqual([r[0] for r in self.rows()[0]], ['latest', 'next'])
+        self.assertNotIn('cutoff', b.seen_events)
+
+    def test_prune_failure_rolls_back_tables_memory_singleton_then_retry(self):
+        b = self.broker()
+        b.on_event(self.mark('old', 100))
+        before = self.rows()
+        with sqlite3.connect(self.path) as db:
+            db.execute("""CREATE TRIGGER reject_prune BEFORE DELETE ON sim_seen_events
+                          BEGIN SELECT RAISE(FAIL, 'synthetic prune failure'); END""")
+        with self.assertRaises(sqlite3.IntegrityError):
+            b.on_event(self.mark('new', 111))
+        self.assertEqual(self.rows(), before)
+        self.assertEqual(set(b.seen_events), {'old'})
+        self.assertEqual(set(b._seen_event_meta), {'old'})
+        self.assertEqual(b.last_ts, 100)
+        with sqlite3.connect(self.path) as db:
+            db.execute('DROP TRIGGER reject_prune')
+        b.on_event(self.mark('new', 111))
+        self.assertEqual(set(b.seen_events), {'new'})
+
+    def test_commit_failure_rolls_back_then_retry(self):
+        b = self.broker()
+        b.on_event(self.mark('old', 100))
+        previous = self.rows()
+        b._db.execute('PRAGMA foreign_keys=ON')
+        b._db.execute('CREATE TABLE synthetic_guard (id INTEGER REFERENCES synthetic_parent(id) '
+                      'DEFERRABLE INITIALLY DEFERRED)')
+        b._db.execute('CREATE TABLE synthetic_parent (id INTEGER PRIMARY KEY)')
+        b._db.execute("""CREATE TRIGGER synthetic_commit_failure
+                         AFTER INSERT ON sim_seen_event_meta
+                         BEGIN INSERT INTO synthetic_guard VALUES (999); END""")
+        with self.assertRaises(sqlite3.IntegrityError):
+            b.on_event(self.mark('new', 111))
+        self.assertEqual(self.rows(), previous)
+        self.assertEqual(set(b.seen_events), {'old'})
+        self.assertEqual(b.last_ts, 100)
+        b._db.execute('DROP TRIGGER synthetic_commit_failure')
+        b.on_event(self.mark('new', 111))
+        self.assertEqual(set(b.seen_events), {'new'})
+
+    def test_option_validation_and_disabled_pruning(self):
+        for invalid in (0, -1, True, False, 1.5, '10'):
+            with self.subTest(invalid=invalid):
+                with self.assertRaisesRegex(ValueError, 'seen_event_retention_ms'):
+                    self.broker(retention=invalid)
+        b = self.broker(retention=None)
+        b.on_event(self.mark('very-old', 100))
+        b.on_event(self.mark('far-ahead', 500000))
+        self.assertEqual(len(self.rows()[0]), 2)
+        self.assertEqual(len(self.rows()[1]), 2)
+
+    def test_foreign_and_malformed_side_table_refused_atomically(self):
+        with sqlite3.connect(self.path) as db:
+            db.execute('CREATE TABLE sim_seen_event_meta (event_id TEXT, event_type TEXT, observed_ts INTEGER)')
+        with self.assertRaisesRegex(ValueError, 'incompatible sim_seen_event_meta'):
+            self.broker()
+        with sqlite3.connect(self.path) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM sqlite_master "
+                                        "WHERE name='sim_broker_state'").fetchone()[0], 0)
+
+    def test_structural_history_bounds_at_two_sizes(self):
+        for size in (128, 2048):
+            with self.subTest(size=size):
+                path = self.path.with_name('history-' + str(size) + '.sqlite')
+                b = SimBroker(path, initial_cash=D('100'),
+                              instruments=[InstrumentSettings('TEST', D('.0002'), D('.0005'),
+                                                              D('.1'), D('.1'), D('5'), D('100'))],
+                              execution=ExecutionModel(10, 2, None), risk=None,
+                              version_id='p3-synthetic', forward_start=100,
+                              compact_seen_events=True, seen_event_retention_ms=10)
+                try:
+                    for n in range(size):
+                        b.on_event(self.mark('sample:' + str(n), 100 + n))
+                    with sqlite3.connect(path) as db:
+                        seen = db.execute('SELECT count(*) FROM sim_seen_events').fetchone()[0]
+                        known = db.execute('SELECT count(*) FROM sim_seen_event_meta').fetchone()[0]
+                    self.assertEqual((seen, known), (11, 11))
+                    self.assertEqual(len(b.seen_events), 11)
+                    print('P3-A rows history=' + str(size) + ' seen=' + str(seen) +
+                          ' typed=' + str(known), flush=True)
+                finally:
+                    b.close()
+
+
 # P2 differential / write-volume evidence. Kept separate from P1 unit tests.
 # Commands from repo root:
 # cd lab && SIM_BROKER_P2_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_parent_differential_2048_events
