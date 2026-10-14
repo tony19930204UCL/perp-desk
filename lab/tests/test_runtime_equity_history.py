@@ -607,11 +607,13 @@ class ExactReceiptStoreTests(unittest.TestCase):
 # B3B: full exchangeInfo reference integration through inherited save.
 class ReferenceRuntimeTests(RuntimeIntegrationTests):
     def reference_receipt(self, observed=1700000000000, count=1):
+        from datetime import datetime, timezone
+        received_at = datetime.fromtimestamp(observed / 1000, timezone.utc).isoformat()
         return {'payload': {'symbols': [
             {'symbol': 'ETHUSDT', 'filters': [{'tickSize': '0.01000000'},
                                              {'minNotional': '20.000000000000001'}],
              'extra': {'levels': ['0.100', '0.200']}} for _ in range(count)]},
-                'received_at': '2023-11-14T22:13:20+00:00',
+                'received_at': received_at,
                 'received_at_ms': observed, 'source_timestamp_ms': observed,
                 'provenance': {'fixture': True, 'ordering': ['z', 'a']}}
 
@@ -704,7 +706,7 @@ class ReferenceRuntimeTests(RuntimeIntegrationTests):
             obj.save()
         self.assertEqual(obj.state, original)
         self.assertEqual(self.payload(root)['history'], original['history'])
-        self.assertEqual(self.payload(root).get('reference'), receipt)
+        self.assertNotIn('reference', self.payload(root))
         self.assertEqual(db.execute(
             "SELECT count(*) FROM sqlite_master WHERE name='runtime_exact_receipts'").fetchone()[0], 0)
         db.execute('DROP TRIGGER no_singleton')
