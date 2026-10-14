@@ -1,1 +1,45 @@
-{"placeholder": true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 60,
+  "branch": "feat/persist-1-history-20261014T094119Z",
+  "task_id": "persist-1-history-20261014T094119Z",
+  "instruction_id": "P3-B1-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "4223a8b9f4e8445f7e050560d5aed2de35bb88d5",
+  "summary": "B1 isolated append-only SQLite equity-history seam and ten real local regression tests. Preserves ordered original point strings, separated repeated timestamps, 2048 latest originals with complete archive, migration marker atomically under caller-controlled transaction. B2 runtime integration not performed; inherited paper_runtime_v2.py unchanged.",
+  "changed_files": [
+    "lab/runtime_equity_history.py",
+    "lab/tests/test_runtime_equity_history.py",
+    "docs/engineering/HANDOFF-persist-1-history-20261014T094119Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd /mnt/data/b1/lab && python3 -m unittest discover -s tests -p test_runtime_equity_history.py -v",
+      "result": "PASS",
+      "evidence": "Isolated local copies: 10 tests passed, 0 failures/errors; 0.107s. Local sources match submitted contents."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "NOT_RUN",
+      "evidence": "Full repository not cloned; container cannot resolve github.com. GitHub Actions PR run 38545277447 was queued at mailbox creation."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "NOT_RUN",
+      "evidence": "Full repository suite not executed locally; independent exact-head CI pending."
+    }
+  ],
+  "remaining_work": [
+    "Main CIO must verify exact-head GitHub CI and independent full SQLite probes.",
+    "B2 must integrate prepare/migrate/append_snapshot/recent with runtime singleton save and snapshot in same transaction; preserve existing snapshot timestamp policy; remove legacy singleton history atomically.",
+    "No runtime write-rate, performance, deployment, or full runtime integration claims in B1."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Review PR60 exact source head 4223a8b9f4e8445f7e050560d5aed2de35bb88d5 and the separately committed mailbox; run full automation and lab discovery, independent migration/rollback/reopen/row-count checks, and verify paper_runtime_v2.py stayed byte-identical.",
+    "if_pass": "Accept P3-B1 storage seam only; dispatch B2 runtime integration separately without merge/deployment.",
+    "if_fail": "Return exact test failure and source HEAD for branch-only repair; do not merge or deploy.",
+    "blockers": []
+  }
+}
