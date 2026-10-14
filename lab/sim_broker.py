@@ -72,10 +72,16 @@ class Intent:
 
 class SimBroker:
     def __init__(self, path, *, initial_cash, instruments, execution, risk, version_id, forward_start,
-                 compact_seen_events=False):
+                 compact_seen_events=False, seen_event_retention_ms=3600000):
         if type(compact_seen_events) is not bool:
             raise ValueError('compact_seen_events must be bool')
+        if (seen_event_retention_ms is not None and
+                (type(seen_event_retention_ms) is not int or seen_event_retention_ms <= 0)):
+            raise ValueError('seen_event_retention_ms must be positive int or None')
         self._compact_seen_events=compact_seen_events
+        # None disables pruning for equivalence probes; do not freeze this policy
+        # into the financial model/instrument ownership metadata.
+        self.seen_event_retention_ms = seen_event_retention_ms
         if not isinstance(initial_cash, Decimal) or not initial_cash.is_finite() or initial_cash <= 0:
             raise ValueError('explicit finite positive initial cash required')
         if not isinstance(version_id, str) or not version_id.strip() or type(forward_start) is not int or forward_start < 0:
@@ -115,6 +121,9 @@ class SimBroker:
         self.funding_events = {}
         self.funding_status = {}
         self.seen_events = {}
+        # Only events with independently validated type and observation time
+        # belong here. Pre-P3 digest-only rows remain unknown and unprunable.
+        self._seen_event_meta = {}
         self.path = Path(path).resolve()
         if self.path.name in ('observations.sqlite', 'observations.sqlite3', 'status.json') or 'shared' in self.path.parts:
             raise ValueError('isolated simulator state path required')
@@ -131,20 +140,146 @@ class SimBroker:
         self._meta = json.loads(json.dumps(self._meta, default=str, sort_keys=True))
         try:
             self._db = sqlite3.connect(self.path)
-            names = {x[0] for x in self._db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            if names - {'sim_broker_state'}:
-                raise ValueError('refuse shared or foreign database')
-            self._db.execute('CREATE TABLE IF NOT EXISTS sim_broker_state (singleton INTEGER PRIMARY KEY CHECK(singleton=1), payload TEXT NOT NULL)')
-            row = self._db.execute('SELECT payload FROM sim_broker_state WHERE singleton=1').fetchone()
-            if row:
-                state = json.loads(row[0])
-                if state.pop('meta') != self._meta:
+            # Explicit BEGIN covers both DDL and data: no half-created history table
+            # and no partially removed legacy history if migration fails.
+            with self._db:
+                self._db.execute('BEGIN IMMEDIATE')
+                names = {x[0] for x in self._db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                if names - {'sim_broker_state', 'sim_seen_events', 'sim_seen_event_meta'}:
+                    raise ValueError('refuse shared or foreign database')
+                self._db.execute('CREATE TABLE IF NOT EXISTS sim_broker_state (singleton INTEGER PRIMARY KEY CHECK(singleton=1), payload TEXT NOT NULL)')
+                row = self._db.execute('SELECT payload FROM sim_broker_state WHERE singleton=1').fetchone()
+                state = json.loads(row[0]) if row else None
+                # Reject different owners/models before creating or migrating history.
+                if state is not None and state.get('meta') != self._meta:
                     raise ValueError('version/model/instrument metadata frozen; use a new namespace')
-                self.cash = Decimal(state.pop('cash'))
-                for key, value in state.items():
-                    setattr(self, key, value)
-            else:
-                self._save()
+                self._db.execute('CREATE TABLE IF NOT EXISTS sim_seen_events (event_id TEXT PRIMARY KEY, digest TEXT NOT NULL)')
+                columns = self._db.execute('PRAGMA table_info(sim_seen_events)').fetchall()
+                # SQLite may report an implicit TEXT PRIMARY KEY as nullable in
+                # table_info; digest must independently declare NOT NULL.
+                if (len(columns) != 2 or
+                        [(c[1], c[2].upper(), c[5]) for c in columns] !=
+                        [('event_id', 'TEXT', 1), ('digest', 'TEXT', 0)] or
+                        columns[0][3] not in (0, 1) or columns[1][3] != 1):
+                    raise ValueError('incompatible sim_seen_events schema')
+                # Check actual PK uniqueness and binary event-ID equality, not names alone.
+                pk_indexes = [r[1] for r in self._db.execute('PRAGMA index_list(sim_seen_events)')
+                              if r[2] == 1 and r[3] == 'pk']
+                if len(pk_indexes) != 1 or not any(
+                        col[2] == 'event_id' and col[4] == 'BINARY' and col[5] == 1
+                        for col in self._db.execute('PRAGMA index_xinfo(' + "'" + pk_indexes[0] + "'" + ')')):
+                    raise ValueError('incompatible sim_seen_events primary key')
+                persisted = {}
+                for event_id, digest in self._db.execute('SELECT event_id, digest FROM sim_seen_events'):
+                    if not isinstance(event_id, str) or not event_id or not self._valid_digest(digest):
+                        raise ValueError('invalid persisted event history')
+                    persisted[event_id] = digest
+                # Preserve the original two-column digest table/API. The small
+                # companion table has an exact, validated schema: no guesses
+                # from hashes and no silently weakened SQLite constraints.
+                meta_ddl = (
+                    "CREATE TABLE sim_seen_event_meta ("
+                    "event_id TEXT PRIMARY KEY COLLATE BINARY, "
+                    "event_type TEXT NOT NULL CHECK(event_type IN "
+                    "('book','mark','aggTrade','funding','funding_status')), "
+                    "observed_ts INTEGER NOT NULL CHECK("
+                    "typeof(observed_ts)='integer' AND observed_ts>=0))"
+                )
+                if 'sim_seen_event_meta' not in names:
+                    self._db.execute(meta_ddl)
+                actual_ddl = self._db.execute(
+                    "SELECT sql FROM sqlite_master WHERE type='table' AND name='sim_seen_event_meta'"
+                ).fetchone()
+                if actual_ddl != (meta_ddl,):
+                    raise ValueError('incompatible sim_seen_event_meta schema or constraints')
+                meta_index_ddl = ('CREATE INDEX sim_seen_event_meta_time_idx '
+                                  'ON sim_seen_event_meta(observed_ts)')
+                existing_idx = self._db.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index' "
+                    "AND name='sim_seen_event_meta_time_idx'").fetchone()
+                if existing_idx is None:
+                    self._db.execute(meta_index_ddl)
+                actual_index = self._db.execute(
+                    "SELECT tbl_name, sql FROM sqlite_master WHERE type='index' "
+                    "AND name='sim_seen_event_meta_time_idx'"
+                ).fetchone()
+                if actual_index != ('sim_seen_event_meta', meta_index_ddl):
+                    raise ValueError('incompatible sim_seen_event_meta index')
+                known = {}
+                for event_id, event_type, observed_ts in self._db.execute(
+                        'SELECT event_id, event_type, observed_ts FROM sim_seen_event_meta'):
+                    if (event_type not in ('book', 'mark', 'aggTrade', 'funding', 'funding_status') or
+                            type(observed_ts) is not int or observed_ts < self.forward_start):
+                        raise ValueError('invalid persisted seen-event metadata')
+                    # Do not check the companion-to-digest relationship yet:
+                    # legacy singleton digests may still need migration. An
+                    # orphan is refused only against the final atomic set.
+                    known[event_id] = (event_type, observed_ts)
+                if state is None:
+                    if persisted:
+                        raise ValueError('orphaned event history')
+                    self._write_state()
+                else:
+                    legacy = state.pop('seen_events', None)
+                    if legacy is not None:
+                        if not isinstance(legacy, dict):
+                            raise ValueError('invalid legacy event history')
+                        for event_id, prior in legacy.items():
+                            if not isinstance(event_id, str) or not event_id:
+                                raise ValueError('invalid legacy event ID')
+                            if isinstance(prior, dict):
+                                if prior.get('event_id') != event_id:
+                                    raise ValueError('invalid legacy event identity')
+                                digest = hashlib.sha256(
+                                    json.dumps(prior, sort_keys=True, separators=(',', ':')).encode()
+                                ).hexdigest()
+                            elif isinstance(prior, str):
+                                digest = prior
+                            else:
+                                raise ValueError('invalid legacy event history')
+                            if not self._valid_digest(digest):
+                                raise ValueError('invalid legacy event digest')
+                            if event_id in persisted and persisted[event_id] != digest:
+                                raise ValueError('conflicting persisted event history')
+                            if event_id not in persisted:
+                                self._db.execute('INSERT INTO sim_seen_events (event_id, digest) VALUES (?, ?)',
+                                                 (event_id, digest))
+                                persisted[event_id] = digest
+                            # Full legacy events can identify type/time only
+                            # after passing the existing public event validator.
+                            # Digest strings cannot reconstruct this information.
+                            if isinstance(prior, dict):
+                                try:
+                                    self._validate_event(prior)
+                                except (ValueError, TypeError, KeyError):
+                                    pass
+                                else:
+                                    identity = (prior['type'], prior['ts'])
+                                    if event_id in known and known[event_id] != identity:
+                                        raise ValueError('conflicting migrated seen-event metadata')
+                                    if event_id not in known:
+                                        self._db.execute(
+                                            'INSERT INTO sim_seen_event_meta '
+                                            '(event_id, event_type, observed_ts) VALUES (?,?,?)',
+                                            (event_id, *identity))
+                                        known[event_id] = identity
+                        # Removing the legacy payload and inserting every history row
+                        # commits in the same transaction.
+                        self._db.execute('UPDATE sim_broker_state SET payload=? WHERE singleton=1',
+                                         (json.dumps(state, default=str, sort_keys=True),))
+                    self.cash = Decimal(state.pop('cash'))
+                    state.pop('meta')
+                    for key, value in state.items():
+                        setattr(self, key, value)
+                # Companion rows already existed in valid pre-P3 databases
+                # whose legacy fixture clears only the digest table. Verify
+                # referential integrity against the COMPLETED migration, not
+                # the transient pre-migration digest set. Genuine orphans,
+                # including databases with no singleton, remain forbidden.
+                if any(event_id not in persisted for event_id in known):
+                    raise ValueError('invalid persisted seen-event metadata')
+                self.seen_events = persisted
+                self._seen_event_meta = known
         except Exception:
             self.close()
             raise
@@ -154,12 +289,27 @@ class SimBroker:
         if json.loads(json.dumps(current, default=str, sort_keys=True)) != self._meta:
             raise ValueError('model/instrument/version metadata frozen; create a new namespace')
 
-    def _save(self):
-        state = {k: getattr(self, k) for k in ('orders', 'positions', 'fills', 'ledger', 'audit', 'marks', 'funding_events', 'seen_events', 'funding_status', 'initial_cash', 'day_baselines', 'last_ts')}
+    @staticmethod
+    def _valid_digest(digest):
+        return (isinstance(digest, str) and len(digest) == 64 and
+                all(char in '0123456789abcdef' for char in digest))
+
+    def _write_state(self):
+        # History lives only in sim_seen_events; this payload is independent of
+        # the number of already processed events.
+        state = {k: getattr(self, k) for k in ('orders', 'positions', 'fills', 'ledger', 'audit', 'marks', 'funding_events', 'funding_status', 'initial_cash', 'day_baselines', 'last_ts')}
         state.update(cash=str(self.cash), meta=self._meta)
         payload = json.dumps(state, default=str, sort_keys=True)
-        with self._db:
-            self._db.execute('INSERT OR REPLACE INTO sim_broker_state VALUES (1, ?)', (payload,))
+        self._db.execute('INSERT OR REPLACE INTO sim_broker_state VALUES (1, ?)', (payload,))
+
+    def _save(self):
+        if self._in_event:
+            # on_event owns the transaction that also inserts the event digest.
+            self._write_state()
+        else:
+            # submit/cancel and other callers still commit their state alone.
+            with self._db:
+                self._write_state()
 
     def _risk_approved(self):
         r = self.risk
@@ -330,24 +480,72 @@ class SimBroker:
             return
         if event['type'] != 'funding' and event['ts'] < self.last_ts:
             raise ValueError('out-of-order event; supply chronological observation timestamps')
-        names = ('cash','orders','positions','fills','ledger','audit','marks','funding_events','seen_events','funding_status','day_baselines','last_ts')
+        names = ('cash','orders','positions','fills','ledger','audit','marks','funding_events','funding_status','day_baselines','last_ts')
         before = {name: deepcopy(getattr(self, name)) for name in names}
+        had_event_ts = hasattr(self, '_event_ts')
+        prior_event_ts = getattr(self, '_event_ts', None)
         self._in_event = True
         self._event_ts = max(self.last_ts, event['ts'])
+        pruned_ids = ()
         try:
-            day = str(self._event_ts // 86400000)
-            if day not in self.day_baselines:
-                self.day_baselines[day] = str(self.equity) if self.equity is not None else None
-            self._on_event(event)
-            self.seen_events[event['event_id']] = event_digest if self._compact_seen_events else dict(event)
-            self.last_ts = max(self.last_ts, event['ts'])
-            self._save()
-        except Exception:
-            for name, value in before.items():
-                setattr(self, name, value)
+            with self._db:
+                day = str(self._event_ts // 86400000)
+                if day not in self.day_baselines:
+                    self.day_baselines[day] = str(self.equity) if self.equity is not None else None
+                self._on_event(event)
+                self.last_ts = max(self.last_ts, event['ts'])
+                self._save()
+                self._db.execute('INSERT INTO sim_seen_events (event_id, digest) VALUES (?, ?)',
+                                 (event['event_id'], event_digest))
+                self._db.execute(
+                    'INSERT INTO sim_seen_event_meta (event_id, event_type, observed_ts) '
+                    'VALUES (?,?,?)', (event['event_id'], event['type'], event['ts']))
+                if self.seen_event_retention_ms is not None:
+                    # Use only the processed high-water clock, never wall time.
+                    # Strictly older is prunable; exact-cutoff IDs are retained.
+                    cutoff = self.last_ts - self.seen_event_retention_ms
+                    pruned_ids = tuple(row[0] for row in self._db.execute(
+                        "SELECT event_id FROM sim_seen_event_meta "
+                        "WHERE observed_ts < ? AND event_type != 'funding'", (cutoff,)))
+                    # Both tables and the singleton share this one transaction.
+                    self._db.execute(
+                        'DELETE FROM sim_seen_events WHERE event_id IN ('
+                        "SELECT event_id FROM sim_seen_event_meta WHERE observed_ts < ? "
+                        "AND event_type != 'funding')", (cutoff,))
+                    self._db.execute(
+                        "DELETE FROM sim_seen_event_meta WHERE observed_ts < ? "
+                        "AND event_type != 'funding'", (cutoff,))
+            # Memory is updated ONLY after successful COMMIT. Any failed
+            # processing, insert, prune or commit leaves both maps untouched.
+            self.seen_events[event['event_id']] = (
+                event_digest if self._compact_seen_events else event)
+            self._seen_event_meta[event['event_id']] = (event['type'], event['ts'])
+            for old_id in pruned_ids:
+                self.seen_events.pop(old_id, None)
+                self._seen_event_meta.pop(old_id, None)
+        except Exception as original_error:
+            try:
+                # A context-only connection adapter may delegate __exit__ to
+                # SQLite without exposing in_transaction or rollback. In that
+                # case __exit__ already handled rollback. Real SQLite (including
+                # a failed COMMIT) still needs an explicit rollback if active.
+                if getattr(self._db, 'in_transaction', False):
+                    self._db.rollback()
+            except Exception as rollback_error:
+                # Never hide a failed rollback: retain the event error as the
+                # primary failure and chain the recovery failure explicitly.
+                raise original_error from rollback_error
+            finally:
+                # Restore memory even if the rollback attempt itself failed.
+                for name, value in before.items():
+                    setattr(self, name, value)
             raise
         finally:
             self._in_event = False
+            if had_event_ts:
+                self._event_ts = prior_event_ts
+            else:
+                del self._event_ts
 
     @property
     @_exact_context

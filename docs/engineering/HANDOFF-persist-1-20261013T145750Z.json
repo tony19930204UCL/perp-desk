@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 59,
+  "branch": "feat/persist-1-20261013T145750Z",
+  "task_id": "persist-1-20261013T145750Z",
+  "instruction_id": "P3-A-r2",
+  "status": "WAITING_CI",
+  "source_head_sha": "5de7fdbf4a2dcacc69e45747f1403a6f7a3b54af",
+  "summary": "Narrow P3-A-r2 recovery repair at the prior rejected head: on_event exception handling now supports SQLite context-only adapters lacking in_transaction/rollback, restoring memory state and re-raising the original write/prune OSError. Real sqlite3 transaction remains explicitly rolled back when active (including COMMIT errors); a rollback failure is chained rather than silently suppressed. Added two deterministic isolated SQLite regressions for context-only write failure and prune failure, state/table rollback and retry. Prior P1/P2/P3 migration, side-table validation, retention, funding and duplicate rules were not otherwise altered.",
+  "changed_files": [
+    "lab/sim_broker.py",
+    "lab/tests/test_sim_broker_persistence.py",
+    "docs/engineering/HANDOFF-persist-1-20261013T145750Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p test_sim_broker_persistence.py",
+      "result": "not run",
+      "evidence": "Repository checkout unavailable in execution container. Added two regression methods; execution cannot be claimed."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p test_storage_protection.py",
+      "result": "not run",
+      "evidence": "Frozen test inspected remotely but no local repository checkout to execute it."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "not run",
+      "evidence": "No local repository checkout; verify in exact-head CI."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "not run",
+      "evidence": "No local repository checkout; no full-suite pass claimed."
+    },
+    {
+      "command": "GitHub Actions pull_request CI for source HEAD 5de7fdbf4a2dcacc69e45747f1403a6f7a3b54af",
+      "result": "in progress",
+      "evidence": "Observed run 38538295958 status in_progress with conclusion null at inspection; no success claimed. Check independent push event as well."
+    }
+  ],
+  "remaining_work": [
+    "Main independently reruns frozen StorageProtectionTests interrupted-write case and full P1/P2/P3 persistence tests at exact source head; inspect both push and pull_request CI events and exporter.",
+    "Specifically check original OSError propagation, all-memory/singleton/history restoration, prune and true COMMIT failure rollback then successful retry, and strict cutoff/funding/unknown legacy metadata retention boundaries.",
+    "Unknown digest-only pre-P3 rows remain unprunable; pruned ID reused with valid current timestamp cannot be conflict-detected. No runtime throughput, deployment or whole-P3 acceptance is claimed."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Checkout exact source HEAD 5de7fdbf4a2dcacc69e45747f1403a6f7a3b54af in draft PR59; run discovery-form persistence and storage regressions, both full CI commands and verify both exact-head push/pull_request CI conclusions; validate after-prune and COMMIT rollback/retry plus funding/cutoff/migration/refusal and row-count probes.",
+    "if_pass": "Accept only P3-A bounded known non-funding broker retention within PR59; no merge/deploy/trading.",
+    "if_fail": "Return traceback, exact failed test/CI event and source SHA for another bounded allowlist repair.",
+    "blockers": []
+  }
+}
