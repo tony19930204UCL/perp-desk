@@ -4,10 +4,10 @@
   "pr_number": 60,
   "branch": "feat/persist-1-history-20261014T094119Z",
   "task_id": "persist-1-history-20261014T094119Z",
-  "instruction_id": "P3-B1-r0",
+  "instruction_id": "P3-B1-r2",
   "status": "WAITING_CI",
-  "source_head_sha": "4223a8b9f4e8445f7e050560d5aed2de35bb88d5",
-  "summary": "B1 isolated append-only SQLite equity-history seam and ten real local regression tests. Preserves ordered original point strings, separated repeated timestamps, 2048 latest originals with complete archive, migration marker atomically under caller-controlled transaction. B2 runtime integration not performed; inherited paper_runtime_v2.py unchanged.",
+  "source_head_sha": "5b0d6d4a49fde7d555e4589dbfffcff3a4b8acc1",
+  "summary": "B1 only: reject noncanonical SQLite stored CREATE TABLE definitions byte-for-byte, preserving quoted CHECK literal semantics. Added two isolated on-disk regressions for case and whitespace changes within typeof(ts) quoted literals, transaction/schema/data preservation assertions, and explicit valid canonical reopen/migrate/append coverage. Existing B1 append-only, original text/order, 2048 recent, migration and caller-owned transaction APIs unchanged. Runtime remains frozen; this is not B2.",
   "changed_files": [
     "lab/runtime_equity_history.py",
     "lab/tests/test_runtime_equity_history.py",
@@ -15,31 +15,36 @@
   ],
   "tests": [
     {
-      "command": "cd /mnt/data/b1/lab && python3 -m unittest discover -s tests -p test_runtime_equity_history.py -v",
-      "result": "PASS",
-      "evidence": "Isolated local copies: 10 tests passed, 0 failures/errors; 0.107s. Local sources match submitted contents."
+      "command": "cd lab && python3 -m unittest discover -s tests -p test_runtime_equity_history.py -v",
+      "result": "NOT_RUN",
+      "evidence": "Full repository checkout unavailable in this execution container; no focused local unittest command executed. Three regression methods committed, not claimed passed."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests",
       "result": "NOT_RUN",
-      "evidence": "Full repository not cloned; container cannot resolve github.com. GitHub Actions PR run 38545277447 was queued at mailbox creation."
+      "evidence": "No full repository checkout available; not executed locally. Previously successful CI at original B1 head is not evidence for current r2 head."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "NOT_RUN",
-      "evidence": "Full repository suite not executed locally; independent exact-head CI pending."
+      "evidence": "No full repository checkout available; not executed locally. Frozen full suite remains for Main to verify."
+    },
+    {
+      "command": "GitHub Actions workflow run 38554873472",
+      "result": "IN_PROGRESS",
+      "evidence": "Connector returned workflow run 38554873472 in_progress with null conclusion for pre-mailbox r2 source head 5b0d6d4a49fde7d555e4589dbfffcff3a4b8acc1; this does not establish CI success."
     }
   ],
   "remaining_work": [
-    "Main CIO must verify exact-head GitHub CI and independent full SQLite probes.",
-    "B2 must integrate prepare/migrate/append_snapshot/recent with runtime singleton save and snapshot in same transaction; preserve existing snapshot timestamp policy; remove legacy singleton history atomically.",
-    "No runtime write-rate, performance, deployment, or full runtime integration claims in B1."
+    "Main CIO independently reproduce quoted literal 'TEXT' and 'te xt' invalid-schema refusals and verify transaction/schema/data preservation.",
+    "Main CIO run focused and complete frozen suites and pin both exact-head PR/push CI after mailbox delivery.",
+    "B2 runtime integration pending independent B1 acceptance; no paper_runtime_v2.py changes, no write-rate or full P3 claims."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review PR60 exact source head 4223a8b9f4e8445f7e050560d5aed2de35bb88d5 and the separately committed mailbox; run full automation and lab discovery, independent migration/rollback/reopen/row-count checks, and verify paper_runtime_v2.py stayed byte-identical.",
-    "if_pass": "Accept P3-B1 storage seam only; dispatch B2 runtime integration separately without merge/deployment.",
-    "if_fail": "Return exact test failure and source HEAD for branch-only repair; do not merge or deploy.",
+    "verify_now": "Inspect PR60 r2 source head 5b0d6d4a49fde7d555e4589dbfffcff3a4b8acc1 and separately committed mailbox; validate refused CHECK literal variants, canonical reopen/migration/append, 8192 archive/2048 recent, frozen suites, both exact-head CI events and only permitted B1 paths changed; confirm paper_runtime_v2.py byte-identical.",
+    "if_pass": "Independently accept P3-B1 storage seam only, then separately dispatch B2. Do not merge/deploy.",
+    "if_fail": "Return failing probe/command and exact HEAD for branch-only correction; no merge/deploy.",
     "blockers": []
   }
 }
