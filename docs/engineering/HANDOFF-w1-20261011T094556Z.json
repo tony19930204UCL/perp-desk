@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "task_id": "w1-20261011T094556Z",
+  "instruction_id": "W1-U2-r1",
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 49,
+  "branch": "feat/paper-w1-20261011T094556Z",
+  "status": "WAITING_CI",
+  "summary": "Added v6 CLI main with W1 default config, F1H publish/canonical reuse and leverage-model caveat. Added offline CLI, per-symbol sizing and snapshot risk-version tests. Daily/total broker loss rejection integration tests remain outstanding.",
+  "source_head_sha": "12806c2218590c4e0a557c55bc7ba77ecd4284cb",
+  "changed_files": [
+    "lab/paper_runtime_v6.py",
+    "lab/tests/test_paper_runtime_v6.py",
+    "docs/engineering/HANDOFF-w1-20261011T094556Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "not run",
+      "evidence": "No test execution performed in this repair; prior 17 passing tests and green CI apply only to earlier head e4a24f04c79864287ba3433ed37f17d36f8bdb39."
+    }
+  ],
+  "remaining_work": [
+    "Add direct broker daily and total loss rejection tests with fixed instruments and injected clock",
+    "Run exact-head CI and repair any failures",
+    "Independently verify all four config hashes unchanged"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Run exact-head CI and check W1 CLI, per-symbol sizing, snapshot risk_version and broker daily/total loss coverage.",
+    "if_pass": "Require missing risk_daily_loss and risk_total_loss tests before acceptance.",
+    "if_fail": "Return exact-head failure logs for bounded repair.",
+    "blockers": []
+  },
+  "blockers": [
+    "Daily and total loss rejection tests requested by W1-U2-r1 are not implemented."
+  ]
+}
