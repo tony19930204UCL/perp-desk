@@ -16,7 +16,7 @@ from paper_sizing import size_long
 from signals_v2 import Detector
 from sim_broker import SimBroker, InstrumentSettings, ExecutionModel, RiskContract, Intent
 from dashboard import validate_snapshot
-from runtime_equity_history import EquityHistoryStore, RECENT_LIMIT
+from runtime_equity_history import EquityHistoryStore, ExactReceiptStore, RECENT_LIMIT
 
 D = Decimal
 
@@ -85,40 +85,68 @@ class PaperRuntime:
             self.close()
             raise
     def save(self, *, equity_point=None):
-        """Save bounded state and complete original history in one transaction.
+        """Atomically persist bounded equity and the exact exchangeInfo reference.
 
-        Lazy initialization is essential: v5 constructs its database itself and
-        invokes this inherited method without entering the base initializer.
-        Do not mutate memory until SQLite COMMIT has succeeded.
+        Both stores are lazy because v5 initializes SQLite independently before
+        calling inherited save(). Never mutate save-owned memory before COMMIT.
+        A durable digest is hydrated into the full in-memory reference on reopen.
         """
         history = getattr(self, '_equity_history_store', None)
         if history is None or history.db is not self.db:
             history = EquityHistoryStore(self.db)
             self._equity_history_store = history
             self._equity_history_prepared = False
+        receipts = getattr(self, '_exact_reference_store', None)
+        if receipts is None or receipts.db is not self.db:
+            receipts = ExactReceiptStore(self.db)
+            self._exact_reference_store = receipts
+            self._exact_reference_prepared = False
         begun = False
         try:
             self.db.execute('BEGIN')
             begun = True
             if not self._equity_history_prepared:
                 history.prepare()
+            if not self._exact_reference_prepared:
+                receipts.prepare()
+
+            # A digest-only singleton is the on-disk representation. Resolve
+            # before any runtime consumer can see it, also through v5's init.
+            from_digest = 'reference_digest' in self.state
+            if from_digest:
+                if 'reference' in self.state:
+                    raise ValueError('conflicting durable and in-memory reference')
+                full_reference = receipts.get(self.state['reference_digest'])
+            else:
+                full_reference = self.state.get('reference')
+
             history.migrate_legacy(self.state.get('history', []))
             if equity_point is not None:
                 history.append_snapshot(equity_point)
             recent = history.recent()
             total = history.count()
             state_to_write = dict(self.state, history=recent)
+            state_to_write.pop('reference_digest', None)
+            if from_digest or (('reference' in self.state) and full_reference is not None):
+                # Store the complete original receipt, never just its payload.
+                state_to_write.pop('reference', None)
+                state_to_write['reference_digest'] = receipts.put(full_reference)
             self.db.execute('INSERT OR REPLACE INTO state VALUES(1,?)', (canonical(state_to_write),))
             self.db.commit()
         except BaseException:
             if begun:
                 self.db.rollback()
-            # An initial schema creation, append, or deferred COMMIT may have
-            # rolled back. Never trust the prepared flag after any failure.
+            # DDL, writes, or deferred COMMIT may have been rolled back.
+            # Do not reuse prepared flags after any failed transaction.
             self._equity_history_prepared = False
+            self._exact_reference_prepared = False
             raise
         self._equity_history_prepared = True
+        self._exact_reference_prepared = True
         self.state['history'] = recent
+        if from_digest:
+            self.state.pop('reference_digest')
+            self.state['reference'] = full_reference
         self._equity_history_count = total
     def audit(self, event):
         payload=canonical(event)
