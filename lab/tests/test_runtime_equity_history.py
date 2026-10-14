@@ -181,5 +181,58 @@ class EquityHistoryTests(unittest.TestCase):
             self.history.append(point('y'))
 
 
+    def _assert_changed_check_literal_refused(self, replacement):
+        # Independent on-disk database; preserve the original canonical store.
+        bad_path = Path(self.temp.name) / ('variant_' + replacement.replace(' ', '_') + '.sqlite3')
+        db = sqlite3.connect(bad_path, isolation_level=None)
+        self.connections.append(db)
+        canonical = {name: sql for name, sql in self.db.execute(
+            "SELECT name, sql FROM sqlite_master WHERE name IN (?, ?)",
+            ('runtime_equity_history', 'runtime_equity_migration'))}
+        self.assertEqual(len(canonical), 2)
+        changed = canonical['runtime_equity_history'].replace(
+            "typeof(ts) = 'text'", "typeof(ts) = '" + replacement + "'", 1)
+        self.assertNotEqual(changed, canonical['runtime_equity_history'])
+        db.execute(changed)
+        db.execute(canonical['runtime_equity_migration'])
+        db.execute('CREATE TABLE untouched (v TEXT)')
+        db.execute("INSERT INTO untouched VALUES ('before')")
+        before_schema = db.execute(
+            "SELECT name, type, sql FROM sqlite_master ORDER BY name").fetchall()
+        before_data = db.execute('SELECT * FROM runtime_equity_history').fetchall()
+        before_marker = db.execute('SELECT * FROM runtime_equity_migration').fetchall()
+        db.execute('BEGIN')
+        db.execute("INSERT INTO untouched VALUES ('uncommitted')")
+        with self.assertRaisesRegex(ValueError, 'incompatible equity history schema'):
+            EquityHistoryStore(db).prepare()
+        self.assertTrue(db.in_transaction, 'prepare must not commit or roll back')
+        self.assertEqual(db.execute(
+            "SELECT name, type, sql FROM sqlite_master ORDER BY name").fetchall(), before_schema)
+        self.assertEqual(db.execute('SELECT * FROM runtime_equity_history').fetchall(), before_data)
+        self.assertEqual(db.execute('SELECT * FROM runtime_equity_migration').fetchall(), before_marker)
+        db.execute('ROLLBACK')
+        self.assertEqual(db.execute('SELECT * FROM untouched').fetchall(), [('before',)])
+        self.assertEqual(db.execute(
+            "SELECT name, type, sql FROM sqlite_master ORDER BY name").fetchall(), before_schema)
+
+    def test_schema_quoted_typeof_case_change_refused(self):
+        self._assert_changed_check_literal_refused('TEXT')
+
+    def test_schema_quoted_typeof_whitespace_change_refused(self):
+        self._assert_changed_check_literal_refused('te xt')
+
+    def test_canonical_reopen_migrate_and_append_after_validation(self):
+        original = [point('alpha', '1.00'), point('beta', '2.000', True)]
+        self.assertTrue(self.migrate(original))
+        _, reopened = self.open_store()
+        reopened.db.execute('BEGIN')
+        self.assertFalse(reopened.migrate_legacy(original))
+        self.assertTrue(reopened.append_snapshot(point('alpha', '3.00')))
+        self.assertFalse(reopened.append_snapshot(point('alpha', '4.00')))
+        reopened.db.execute('COMMIT')
+        self.assertEqual(reopened.count(), 3)
+        self.assertEqual(reopened.recent(), original + [point('alpha', '3.00')])
+
+
 if __name__ == '__main__':
     unittest.main()
