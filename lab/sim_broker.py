@@ -523,11 +523,22 @@ class SimBroker:
             for old_id in pruned_ids:
                 self.seen_events.pop(old_id, None)
                 self._seen_event_meta.pop(old_id, None)
-        except Exception:
-            if self._db.in_transaction:
-                self._db.rollback()
-            for name, value in before.items():
-                setattr(self, name, value)
+        except Exception as original_error:
+            try:
+                # A context-only connection adapter may delegate __exit__ to
+                # SQLite without exposing in_transaction or rollback. In that
+                # case __exit__ already handled rollback. Real SQLite (including
+                # a failed COMMIT) still needs an explicit rollback if active.
+                if getattr(self._db, 'in_transaction', False):
+                    self._db.rollback()
+            except Exception as rollback_error:
+                # Never hide a failed rollback: retain the event error as the
+                # primary failure and chain the recovery failure explicitly.
+                raise original_error from rollback_error
+            finally:
+                # Restore memory even if the rollback attempt itself failed.
+                for name, value in before.items():
+                    setattr(self, name, value)
             raise
         finally:
             self._in_event = False
