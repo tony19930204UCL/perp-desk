@@ -4,66 +4,53 @@
   "pr_number": 59,
   "branch": "feat/persist-1-20261013T145750Z",
   "task_id": "persist-1-20261013T145750Z",
-  "instruction_id": "P2-r0",
+  "instruction_id": "P3-A-r0",
   "status": "WAITING_CI",
-  "source_head_sha": "8604daa8f3d1d218cf1dc83e03c7778ba0b9ac78",
-  "summary": "P2 tests/evidence only: preserved frozen sim_broker.py and all existing tests; added opt-in deterministic parent-source-pinned >=2048-event differential with four order intents, real entry/explicit exit/stop fills and finalized funding, restart/replay assertions and exact state-field comparisons. Added opt-in Linux write_bytes measurement of 20 individually synced new events after 512 and 40000 seeded well-formed histories, comparing actual PR51 legacy against P1. No numeric performance or full-suite success claimed; local executor lacks repository checkout to run tests. Main must independently run.",
+  "source_head_sha": "c87671dcab2caaa13956616b5b2c4ae6b98b38bc",
+  "summary": "P3-A only: validated optional seen_event_retention_ms (default 3600000, None disables); exact-schema companion sim_seen_event_meta stores event kind/observation timestamp for accepted IDs; known non-funding rows strictly older than last_ts-retention pruned from digest table, companion table and memory under same event transaction. Funding identities never pruned. Pre-P3 digest-only unknown rows remain indefinitely; full legacy event metadata recorded only after _validate_event. Pruned old non-funding replays are chronological errors; a pruned ID with a valid current timestamp cannot be conflict detected without permanent tombstones. P1/P2 frozen tests unchanged; no runtime/config/status changes. All P3 source writes are on existing draft PR branch; not independently accepted.",
   "changed_files": [
+    "lab/sim_broker.py",
     "lab/tests/test_sim_broker_persistence.py",
     "docs/engineering/HANDOFF-persist-1-20261013T145750Z.json"
   ],
   "tests": [
     {
-      "command": "python3 -m py_compile /mnt/data/p2_test.py",
-      "result": "passed",
-      "evidence": "Local scratch prototype syntax compilation succeeded; exact committed test suite not executed. Do not treat scratch compile as test run."
-    },
-    {
-      "command": "cd lab && python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_parent_differential_2048_events",
+      "command": "cd lab && python3 -m unittest -v tests.test_sim_broker_persistence.P3RetentionTests",
       "result": "not run",
-      "evidence": "Requires SIM_BROKER_P2_DIFFERENTIAL=1 and local checked-out Git parent object or verified scratch PR51 source; no executable repo checkout accessible."
-    },
-    {
-      "command": "cd lab && SIM_BROKER_P2_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_parent_differential_2048_events",
-      "result": "not run",
-      "evidence": "PR51 Git blob independently fetched using GitHub connector, but local runtime cannot reach GitHub and has no checkout; result and coverage remain unverified."
-    },
-    {
-      "command": "cd lab && SIM_BROKER_P2_WRITE_PROBE=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_linux_write_bytes_40000_history",
-      "result": "not run",
-      "evidence": "Linux platform available, but no local repo checkout, so no /proc/self/io write_bytes measurements made; 40000+20 probe reserved for Main."
-    },
-    {
-      "command": "cd lab && python3 -m unittest -v tests.test_sim_broker_persistence",
-      "result": "not run",
-      "evidence": "No repo checkout for execution; do not claim focused tests pass."
+      "evidence": "No local Git repository checkout; GitHub connector writes source but does not execute Python. Eleven deterministic P3 tests added and still require CI/independent execution."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests",
       "result": "not run",
-      "evidence": "No repo checkout."
+      "evidence": "No local repository checkout. Exact-head push and pull_request GitHub Actions in progress at source commit c87671dcab2caaa13956616b5b2c4ae6b98b38bc."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "not run",
-      "evidence": "No repo checkout."
+      "evidence": "No local repository checkout; exact-head isolated-tests jobs in progress."
     },
     {
-      "command": "exact-head push/pull_request CI",
-      "result": "not run",
-      "evidence": "Not independently verified at handoff; Main owns exact-head CI acceptance."
+      "command": "GitHub Actions push event run 38533518367",
+      "result": "in progress",
+      "evidence": "Run associated with source_head_sha c87671dcab2caaa13956616b5b2c4ae6b98b38bc, isolated-tests job 115750764745 in_progress at inspection."
+    },
+    {
+      "command": "GitHub Actions pull_request event run 38533524664",
+      "result": "in progress",
+      "evidence": "Run associated with source_head_sha c87671dcab2caaa13956616b5b2c4ae6b98b38bc, isolated-tests job 115750785160 in_progress at inspection."
     }
   ],
   "remaining_work": [
-    "Main to execute focused suite and both opt-in differential/write probes at exact source HEAD; investigate any failure without modifying frozen sim_broker.py in P2.",
-    "Main to independently verify Linux measured mean new write_bytes <1MB and <5% parent at 40000 events, with smaller 512-history contrast; no result has been measured here.",
-    "Main to independently confirm all six PERSIST-1 acceptance criteria including P1 migration and transaction rollback; verify exact-head push and pull_request CI, plus all existing tests."
+    "Independently run exact-head focused P3 and full unchanged automation/lab discovery; inspect both push and pull_request CI conclusions and any exporter failures.",
+    "Independently probe cutoff, restart, funding retention, legacy digest-only unknown rows, rollback including COMMIT failure, and row counts for 128 and 2048 non-funding histories.",
+    "Known residual: pre-P3 digest-only rows have no recoverable type/time and remain unbounded; pruned ID reused with valid current timestamp cannot be distinguished from a new ID.",
+    "No <50KB/s runtime proof, deployment, whole-P3 completion or trading acceptance is asserted."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review source commit 8604daa8f3d1d218cf1dc83e03c7778ba0b9ac78; run cd lab && python3 -m unittest -v tests.test_sim_broker_persistence; run opt-in env vars SIM_BROKER_P2_DIFFERENTIAL=1 and SIM_BROKER_P2_WRITE_PROBE=1 commands documented in tests; run automation/tests and lab/tests discovery and inspect exact-head push/pull_request CI. Confirm P1 migration/rollback acceptance too.",
-    "if_pass": "Independently accept six PERSIST-1 criteria and retain draft PR 59 pending owner governance; no merge/deployment.",
-    "if_fail": "Return reproducible exact-head failing assertion/write-byte measurements. P2 forbids modifying frozen broker source; mark BLOCKED if real defect.",
+    "verify_now": "Inspect exact source HEAD c87671dcab2caaa13956616b5b2c4ae6b98b38bc; run focused P3 tests and both unchanged full suites; inspect push run 38533518367 and pull_request run 38533524664 for this SHA; verify structural SQLite rows and adversarial migration/commit rollback; preserve all frozen files.",
+    "if_pass": "Independently accept only P3-A known non-funding bounded retention on draft PR 59. No merge/deploy/trade.",
+    "if_fail": "Return reproducible test/CI failure and exact SHA for bounded repair; do not weaken frozen P1/P2 tests or expand authorization.",
     "blockers": []
   }
 }
