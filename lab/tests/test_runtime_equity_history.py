@@ -312,6 +312,7 @@ class RuntimeIntegrationTests(unittest.TestCase):
 
     def test_large_archives_recent_cap_and_constant_status_sizes(self):
         sizes = []
+        raw_status_sizes = []
         for n in (8192, 16384):
             root = Path(self.temp.name) / ('large_' + str(n))
             points = [point('%08d' % i, '%014d.0000' % i, bool(i % 2))
@@ -332,14 +333,21 @@ class RuntimeIntegrationTests(unittest.TestCase):
             size = (len(canonical(persisted).encode()),
                     len(canonical(persisted['history']).encode()),
                     len(canonical(status).encode()))
-            sizes.append(size)
-            print('B2 archive=%d singleton_bytes=%d history_bytes=%d status_bytes=%d' %
-                  ((n + 1,) + size))
+            # Only the archived_points digit width may scale in status metadata.
+            normalized_status = json.loads(canonical(status))
+            normalized_status['equity_history_window']['archived_points'] = 0
+            normalized_status_bytes = len(canonical(normalized_status).encode())
+            sizes.append((size[0], size[1], normalized_status_bytes))
+            raw_status_sizes.append(size[2])
+            print('B2 archive=%d singleton_bytes=%d history_bytes=%d status_bytes=%d normalized_status_bytes=%d' %
+                  ((n + 1,) + size + (normalized_status_bytes,)))
             obj.close()
             resumed = self.runtime(BaseRuntime, root)
             self.assertEqual(self.archive(root), expected)
             self.assertEqual(resumed.state['history'], expected[-RECENT_LIMIT:])
         self.assertEqual(sizes[0], sizes[1])
+        self.assertEqual(raw_status_sizes[1] - raw_status_sizes[0],
+                         len(str(16385)) - len(str(8193)))
 
     def bare_legacy(self, label, points):
         root = Path(self.temp.name) / label
