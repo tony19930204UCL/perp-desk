@@ -35,9 +35,6 @@ _MIGRATION = """CREATE TABLE runtime_equity_migration (
 _SCHEMAS = {'runtime_equity_history': _HISTORY, 'runtime_equity_migration': _MIGRATION}
 
 
-def _normalized(sql):
-    return ''.join(sql.split()).lower()
-
 
 def _point(point):
     if not isinstance(point, dict) or set(point) != {'ts', 'equity_usdt', 'valuation_stale'}:
@@ -73,7 +70,7 @@ class EquityHistoryStore:
         if existing and set(existing) != set(_SCHEMAS):
             raise ValueError('partial equity history schema')
         for name, (kind, sql) in existing.items():
-            if kind != 'table' or _normalized(sql or '') != _normalized(_SCHEMAS[name]):
+            if kind != 'table' or sql != _SCHEMAS[name]:
                 raise ValueError('incompatible equity history schema: ' + name)
         if existing:
             unexpected = self.db.execute(
