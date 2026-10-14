@@ -411,5 +411,198 @@ class RuntimeIntegrationTests(unittest.TestCase):
         self.assertEqual(self.archive(root), points)
 
 
+# B3A independent exact receipt storage tests; no runtime integration.
+from runtime_equity_history import ExactReceiptStore
+
+
+class ExactReceiptStoreTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.path = Path(self.temp.name) / 'receipts.sqlite3'
+        self.db = sqlite3.connect(self.path, isolation_level=None)
+        self.db.execute('PRAGMA foreign_keys=ON')
+        self.addCleanup(self.db.close)
+        self.db.execute('CREATE TABLE unrelated (value TEXT NOT NULL)')
+        self.db.execute("INSERT INTO unrelated VALUES ('preserved')")
+        self.db.execute('BEGIN')
+        self.store = ExactReceiptStore(self.db)
+        self.store.prepare()
+        self.db.execute('COMMIT')
+
+    def receipt(self, observed='2026-10-14T12:00:00Z'):
+        return {'payload': {'exchangeInfo': {'symbols': [
+            {'symbol': 'BTCUSDT', 'filters': [{'tickSize': '0.01000000'},
+                                             {'quantity': 12, 'enabled': True}]},
+            {'symbol': 'ETHUSDT', 'filters': []}]},
+                            'precision': '1.00000000000000000001',
+                            'small': 0.125, 'none': None},
+                'observed_at': observed, 'provenance': {'source': 'synthetic',
+                                                       'attempts': [1, 2, 3]},
+                'extra': {'array': [False, None, '0042', {'nested': ['x', 'y']}]}}
+
+    def put_committed(self, receipt):
+        self.db.execute('BEGIN')
+        digest = self.store.put(receipt)
+        self.assertTrue(self.db.in_transaction)
+        self.db.execute('COMMIT')
+        return digest
+
+    def rows(self):
+        return self.db.execute(
+            'SELECT digest,receipt_json FROM runtime_exact_receipts ORDER BY digest'
+        ).fetchall()
+
+    def test_nested_exact_roundtrip_and_returned_data_is_detached(self):
+        source = self.receipt()
+        digest = self.put_committed(source)
+        self.assertEqual(self.store.get(digest), source)
+        self.assertEqual(len(digest), 64)
+        source['payload']['exchangeInfo']['symbols'].clear()
+        returned = self.store.get(digest)
+        returned['extra']['array'][3]['nested'].append('changed')
+        self.assertEqual(len(self.store.get(digest)['payload']['exchangeInfo']['symbols']), 2)
+        self.assertEqual(self.store.get(digest)['extra']['array'][3]['nested'], ['x', 'y'])
+
+    def test_idempotent_duplicate_and_key_order(self):
+        receipt = self.receipt()
+        first = self.put_committed(receipt)
+        second = self.put_committed(dict(reversed(list(receipt.items()))))
+        self.assertEqual(first, second)
+        self.assertEqual(len(self.rows()), 1)
+
+    def test_timestamp_participates_in_identity(self):
+        a = self.put_committed(self.receipt('2026-10-14T12:00:00Z'))
+        b = self.put_committed(self.receipt('2026-10-14T12:00:01Z'))
+        self.assertNotEqual(a, b)
+        self.assertEqual(len(self.rows()), 2)
+        self.assertNotEqual(self.store.get(a)['observed_at'],
+                            self.store.get(b)['observed_at'])
+
+    def test_caller_rollback_and_reopen(self):
+        self.db.execute('BEGIN')
+        digest = self.store.put(self.receipt())
+        self.db.execute('ROLLBACK')
+        with self.assertRaises(KeyError):
+            self.store.get(digest)
+        self.assertEqual(len(self.rows()), 0)
+        saved = self.put_committed(self.receipt())
+        reopened = sqlite3.connect(self.path, isolation_level=None)
+        self.addCleanup(reopened.close)
+        reopened.execute('BEGIN')
+        other = ExactReceiptStore(reopened)
+        other.prepare()
+        reopened.execute('COMMIT')
+        self.assertEqual(other.get(saved), self.receipt())
+        self.assertEqual(len(self.rows()), 1)
+
+    def test_real_deferred_commit_failure_then_retry(self):
+        self.db.execute('CREATE TABLE parent(id INTEGER PRIMARY KEY)')
+        self.db.execute('CREATE TABLE child(parent_id INTEGER REFERENCES parent(id) '
+                        'DEFERRABLE INITIALLY DEFERRED)')
+        self.db.execute('BEGIN')
+        digest = self.store.put(self.receipt())
+        self.db.execute('INSERT INTO child VALUES (999)')
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.execute('COMMIT')
+        self.assertTrue(self.db.in_transaction)
+        self.db.execute('ROLLBACK')
+        self.assertEqual(self.rows(), [])
+        self.assertEqual(self.put_committed(self.receipt()), digest)
+        self.assertEqual(len(self.rows()), 1)
+
+    def test_malformed_missing_and_unsupported_json_fail_closed(self):
+        for bad in ('', 'g' * 64, 'A' * 64, 'a' * 63, None, 42):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                self.store.get(bad)
+        with self.assertRaises(KeyError):
+            self.store.get('0' * 64)
+        invalid = [{'payload': float('nan')}, {'payload': float('inf')},
+                   {'payload': {1: 'bad'}}, {'payload': (1, 2)},
+                   {'payload': object()}]
+        for item in invalid:
+            with self.subTest(item=str(type(item['payload']))):
+                self.db.execute('BEGIN')
+                with self.assertRaises(ValueError):
+                    self.store.put(item)
+                self.db.execute('ROLLBACK')
+        with self.assertRaises(RuntimeError):
+            self.store.put(self.receipt())
+        self.assertEqual(self.rows(), [])
+
+    def test_corrupt_existing_digest_and_payload_refused(self):
+        receipt = self.receipt()
+        digest = self.put_committed(receipt)
+        original = self.rows()
+        self.db.execute('UPDATE runtime_exact_receipts SET receipt_json=? WHERE digest=?',
+                        ('{"tampered":true}', digest))
+        with self.assertRaises(ValueError):
+            self.store.get(digest)
+        self.db.execute('BEGIN')
+        with self.assertRaises(ValueError):
+            self.store.prepare()
+        self.db.execute('ROLLBACK')
+        self.assertNotEqual(self.rows(), original)
+        self.db.execute('UPDATE runtime_exact_receipts SET receipt_json=? WHERE digest=?',
+                        (original[0][1], digest))
+        self.db.execute('PRAGMA ignore_check_constraints=ON')
+        self.db.execute('UPDATE runtime_exact_receipts SET digest=? WHERE digest=?',
+                        ('z' * 64, digest))
+        self.db.execute('PRAGMA ignore_check_constraints=OFF')
+        bad_rows = self.rows()
+        self.db.execute('BEGIN')
+        with self.assertRaises(ValueError):
+            self.store.prepare()
+        self.db.execute('ROLLBACK')
+        self.assertEqual(self.rows(), bad_rows)
+        self.assertEqual(self.db.execute('SELECT value FROM unrelated').fetchone(),
+                         ('preserved',))
+
+    def test_reject_incompatible_and_quoted_literal_variants_unchanged(self):
+        canonical_sql = self.db.execute(
+            "SELECT sql FROM sqlite_master WHERE name='runtime_exact_receipts'"
+        ).fetchone()[0]
+        alternatives = [
+            canonical_sql.replace("length(digest) = 64", "length(digest) > 0"),
+            canonical_sql.replace("'text'", "'TEXT'", 1),
+            canonical_sql.replace("'text'", "'te xt'", 1),
+            canonical_sql.replace("digest NOT GLOB '*[^0-9a-f]*'", "1 = 1"),
+        ]
+        for i, sql in enumerate(alternatives):
+            with self.subTest(variant=i):
+                path = Path(self.temp.name) / ('different_' + str(i) + '.sqlite3')
+                db = sqlite3.connect(path, isolation_level=None)
+                try:
+                    db.execute(sql)
+                    db.execute('CREATE TABLE unrelated(value TEXT)')
+                    db.execute("INSERT INTO unrelated VALUES ('keep')")
+                    before = db.execute(
+                        "SELECT name,type,sql FROM sqlite_master ORDER BY name").fetchall()
+                    db.execute('BEGIN')
+                    with self.assertRaisesRegex(ValueError, 'incompatible exact receipt schema'):
+                        ExactReceiptStore(db).prepare()
+                    self.assertTrue(db.in_transaction)
+                    self.assertEqual(db.execute(
+                        "SELECT name,type,sql FROM sqlite_master ORDER BY name").fetchall(),
+                        before)
+                    db.execute('ROLLBACK')
+                    self.assertEqual(db.execute('SELECT value FROM unrelated').fetchone(),
+                                     ('keep',))
+                finally:
+                    db.close()
+
+    def test_existing_equity_and_unrelated_tables_survive(self):
+        self.db.execute('BEGIN')
+        history = EquityHistoryStore(self.db)
+        history.prepare()
+        history.migrate_legacy([point('one', '1.00')])
+        self.store.put(self.receipt())
+        self.db.execute('COMMIT')
+        self.assertEqual(history.recent(), [point('one', '1.00')])
+        self.assertEqual(history.count(), 1)
+        self.assertEqual(self.db.execute('SELECT value FROM unrelated').fetchone(),
+                         ('preserved',))
+
+
 if __name__ == '__main__':
     unittest.main()
