@@ -1,0 +1,84 @@
+{
+  "schema_version": 2,
+  "task_id": "accept-progress-20261014T154830Z",
+  "instruction_id": "accept-progress-20261014T154830Z-formal-handback-agy",
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 61,
+  "branch": "feat/accept-progress-20261014T154830Z",
+  "status": "READY_FOR_REVIEW",
+  "source_head_sha": "3c561bf31279d9bd097649f63153359c5f70d0fa",
+  "agent_role": "metadata-composition-only",
+  "summary": "AGY metadata agent composes formal schema-v2 handback for task accept-progress-20261014T154830Z. This agent performed NO test execution, NO file reads, NO CI triggers, and NO deployments. All test evidence cited below originates from prior independent operator runs at source head 3c561bf31279d9bd097649f63153359c5f70d0fa and is reproduced here for traceability only. The full suite was executed from a clone/lab environment using python3 -m unittest discover -s tests -v, and an independent report was imported; this agent did not execute tests. AP2 delta (since independently accepted AP1 ee7513415d62105cd10223b7054085f93538feab) contains existing source changes to engineering/acceptance/README.md, engineering/acceptance/accept_unit.py, engineering/acceptance/auto_accept.py, engineering/acceptance/progress_runner.py, and lab/tests/test_acceptance_progress_runner.py. The current mailbox-only edit replaces the existing placeholder docs/engineering/HANDOFF-accept-progress-20261014T154830Z.json and introduces no new implementation. Original combined-scope rejection (PROGRESS_BRIEF.md outside initial allowlist) is preserved; AP2-only delta was accepted independently and is not retrospectively erased by this handback.",
+  "changed_files": [
+    "docs/engineering/HANDOFF-accept-progress-20261014T154830Z.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s tests -v",
+      "result": "671 passed / 2 skipped / 0 failed (673 total), duration 1066.168 sec, single lifecycle with progress checkpoint continuation at 840 sec",
+      "evidence": {
+        "source": "prior-independent-operator-run",
+        "evidence_path_readonly": "/home/chihcheng/.hermes/profiles/perp-desk/lab/evidence/accept-progress-20261014T154830Z/AP2-INDEPENDENT-VERIFICATION.json",
+        "original_worker": "792741/start7269051",
+        "head_sha_at_run": "3c561bf31279d9bd097649f63153359c5f70d0fa",
+        "executed_by_this_agent": false,
+        "caution": "This agent did NOT execute this command. Full suite was executed from clone/lab with discover -s tests -v and independent report was imported. Evidence is from prior independent operator run and is cited for traceability only."
+      }
+    },
+    {
+      "command": "python3 deployment-20261014T174711Z/verify-installed-fixtures.py",
+      "result": "39 fixtures PASS",
+      "evidence": {
+        "source": "prior-independent-operator-run",
+        "evidence_path_readonly": "/home/chihcheng/.hermes/profiles/perp-desk/lab/evidence/accept-progress-20261014T154830Z/deployment-20261014T174711Z/DEPLOYMENT-RESULT.json",
+        "head_sha_at_run": "3c561bf31279d9bd097649f63153359c5f70d0fa",
+        "executed_by_this_agent": false,
+        "caution": "This agent did NOT execute this command. Evidence is from prior independent operator run and is cited for traceability only."
+      }
+    }
+  ],
+  "ci_runs": [
+    {
+      "ci_run_id": "38606209397",
+      "trigger": "push",
+      "result": "success",
+      "head_sha": "3c561bf31279d9bd097649f63153359c5f70d0fa",
+      "note": "Prior exact source push CI; not triggered by this agent"
+    },
+    {
+      "ci_run_id": "38606222496",
+      "trigger": "pull_request",
+      "result": "success",
+      "head_sha": "3c561bf31279d9bd097649f63153359c5f70d0fa",
+      "note": "Prior exact source pull_request CI; not triggered by this agent"
+    }
+  ],
+  "evidence": {
+    "independent_verification_file": "/home/chihcheng/.hermes/profiles/perp-desk/lab/evidence/accept-progress-20261014T154830Z/AP2-INDEPENDENT-VERIFICATION.json",
+    "deployment_result_file": "/home/chihcheng/.hermes/profiles/perp-desk/lab/evidence/accept-progress-20261014T154830Z/deployment-20261014T174711Z/DEPLOYMENT-RESULT.json",
+    "access_mode": "read-only absolute paths, not accessed by this agent",
+    "source_provenance": "All evidence originates at source head 3c561bf31279d9bd097649f63153359c5f70d0fa from prior independent operator runs. Full suite was executed from clone/lab with discover -s tests -v and independent report was imported; this agent did not execute tests. This mailbox-only metadata edit has no new test or CI result.",
+    "ap2_implementation_note": "AP2 delta (since AP1 ee7513415d62105cd10223b7054085f93538feab) consists of existing source changes to engineering/acceptance/README.md, engineering/acceptance/accept_unit.py, engineering/acceptance/auto_accept.py, engineering/acceptance/progress_runner.py, and lab/tests/test_acceptance_progress_runner.py. unittest_worker.py is a dependency installed alongside these files but was not changed in the AP2 delta; it belongs to the deployment install set, not the AP2 source change set.",
+    "ap1_accepted_sha": "ee7513415d62105cd10223b7054085f93538feab",
+    "combined_scope_rejection_preserved": true,
+    "combined_scope_rejection_reason": "PROGRESS_BRIEF.md was outside initial allowlist; original combined-scope rejection is not retrospectively erased. AP2-only delta was accepted independently."
+  },
+  "remaining_work": [
+    "Independent formal validator must confirm ancestry and verify metadata-only scope of this mailbox edit",
+    "Post-mailbox commit exact-head CI must be run and pass",
+    "Deployment backup and install of four helper modules: auto_accept.py, accept_unit.py, progress_runner.py, unittest_worker.py",
+    "Installed fixtures and completed-result reuse must preserve source provenance at 3c561bf31279d9bd097649f63153359c5f70d0fa",
+    "Resume original cron d08c2da3ae25 and conduct actual scheduler trial",
+    "No real eligible candidate is currently known; live no-op must not claim genuine full delivery",
+    "Formal validator must not conflate prior independent operator evidence with tests run by this metadata agent"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Confirm that this handback JSON was composed by metadata-only agent with no tool use, no file reads, no test execution, and no CI triggers. Verify source_head_sha 3c561bf31279d9bd097649f63153359c5f70d0fa matches the pre-mailbox source head. Confirm AP2 delta files are present in branch. Confirm original combined-scope rejection record is intact.",
+    "if_pass": "Proceed to independent formal validator review of ancestry and metadata-only scope. Then trigger post-mailbox commit exact-head CI. If CI passes, proceed to deployment backup, helper install (auto_accept.py, accept_unit.py, progress_runner.py, unittest_worker.py), fixture reuse, and cron d08c2da3ae25 resumption per remaining_work list.",
+    "if_fail": "Do not proceed. Return handback to engineering with specific failure details. Do not retrospectively erase combined-scope rejection. Do not claim delivery on live no-op without genuine eligible candidate.",
+    "blockers": [],
+    "advisory_only": true,
+    "no_automatic_execution": true
+  }
+}

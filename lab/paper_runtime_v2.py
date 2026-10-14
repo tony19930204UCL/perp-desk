@@ -16,6 +16,7 @@ from paper_sizing import size_long
 from signals_v2 import Detector
 from sim_broker import SimBroker, InstrumentSettings, ExecutionModel, RiskContract, Intent
 from dashboard import validate_snapshot
+from runtime_equity_history import EquityHistoryStore, RECENT_LIMIT
 
 D = Decimal
 
@@ -83,9 +84,42 @@ class PaperRuntime:
         except Exception:
             self.close()
             raise
-    def save(self):
-        with self.db:
-            self.db.execute('INSERT OR REPLACE INTO state VALUES(1,?)', (canonical(self.state),))
+    def save(self, *, equity_point=None):
+        """Save bounded state and complete original history in one transaction.
+
+        Lazy initialization is essential: v5 constructs its database itself and
+        invokes this inherited method without entering the base initializer.
+        Do not mutate memory until SQLite COMMIT has succeeded.
+        """
+        history = getattr(self, '_equity_history_store', None)
+        if history is None or history.db is not self.db:
+            history = EquityHistoryStore(self.db)
+            self._equity_history_store = history
+            self._equity_history_prepared = False
+        begun = False
+        try:
+            self.db.execute('BEGIN')
+            begun = True
+            if not self._equity_history_prepared:
+                history.prepare()
+            history.migrate_legacy(self.state.get('history', []))
+            if equity_point is not None:
+                history.append_snapshot(equity_point)
+            recent = history.recent()
+            total = history.count()
+            state_to_write = dict(self.state, history=recent)
+            self.db.execute('INSERT OR REPLACE INTO state VALUES(1,?)', (canonical(state_to_write),))
+            self.db.commit()
+        except BaseException:
+            if begun:
+                self.db.rollback()
+            # An initial schema creation, append, or deferred COMMIT may have
+            # rolled back. Never trust the prepared flag after any failure.
+            self._equity_history_prepared = False
+            raise
+        self._equity_history_prepared = True
+        self.state['history'] = recent
+        self._equity_history_count = total
     def audit(self, event):
         payload=canonical(event)
         row=self.db.execute('SELECT hash FROM audit ORDER BY id DESC LIMIT 1').fetchone()
@@ -577,10 +611,15 @@ class PaperRuntime:
             runtime_state='blocked' if error or risk_blocks else 'warming_up' if warm else 'observing'
             now=self.clock()
             point=dict(ts=stamp(now),equity_usdt=str(equity),valuation_stale=bool(error))
-            if not self.state['history'] or self.state['history'][-1]['ts']!=point['ts']:
-                self.state['history'].append(point)
-            self.save()
+            # Adjacent same-ts snapshots remain idempotent across restart.
+            # Both the archive append and singleton cache update commit together.
+            self.save(equity_point=point)
             s=dict(schema_version=1,mode='paper',fixture=self.fixture,fixture_label='ARTIFICIAL ENGINEERING FIXTURE NOT PERFORMANCE' if self.fixture else None,updated_at=stamp(now),initial_equity_usdt=str(initial),cash_usdt=str(cash),equity_usdt=str(equity),realized_pnl_usdt=str(net),unrealized_pnl_usdt=str(unreal),total_pnl_usdt=str(net+unreal),gross_realized_pnl_usdt=str(sum((D(x['amount']) for x in b.ledger if x['type']=='realized'),D(0)) if b else D(0)),fees_usdt=str(-sum((D(x['amount']) for x in b.ledger if x['type']=='fee'),D(0)) if b else D(0)),funding_pnl_usdt=str(sum((D(x['amount']) for x in b.ledger if x['type']=='funding'),D(0)) if b else D(0)),paper_trading_enabled=not bool(error or risk_blocks) and not warm,live_trading_enabled=False,runtime_state=runtime_state,engine=dict(implementation='paper-engine-v1',version_id=c['version_id'],forward_start_at=stamp(self.state['forward_start_ms']),model_sha256=digest(dict(config_hash=self.config_hash,sources=self.source_hashes)),source_sha256=self.source_hashes,status='error' if error else 'halted' if risk_blocks else 'warmup' if warm else 'running',warmup_received=self.state['warmup'],warmup_required=61),risk=dict(approved=True,risk_version=c['risk_version'],risk_config_sha256=self.config_hash),positions=positions,fills_count=len(b.fills) if b else 0,fills=b.fills if b else [],signals_count=len(self.state.get('handled_signals',{})),blocked_signals_count=sum(x['status']=='rejected' for x in self.state.get('handled_signals',{}).values()),rejections=[dict(signal_id=k,**v) for k,v in self.state.get('handled_signals',{}).items() if v['status']=='rejected'],blockers=([error] if error else [])+risk_blocks+(['fresh_forward_warmup'] if warm else []),feed=dict(transport='REST polling',connected=not bool(error),last_success_at=stamp(self.state['last_success_ms']) if self.state['last_success_ms'] else None,errors_count=self.state['errors'],gaps_count=self.state['gaps']),markets=self.state['markets'],versions=[dict(version_id=c['version_id'],created_at=stamp(self.state['forward_start_ms']),status=runtime_state)],equity_history=self.state['history'],latest_error=error,cost_ledger=b.ledger if b else [])
+            if self._equity_history_count > RECENT_LIMIT:
+                s['equity_history_window'] = dict(
+                    complete_lifetime=False, recent_points=len(self.state['history']),
+                    archived_points=self._equity_history_count,
+                    ordering='oldest_to_newest', archive='runtime_equity_history')
             s['orders']=list(b.orders.values()) if b else []
             s['rejections'] += [dict(order_id=o['order_id'],signal_id=o['intent_id'],reason=o['reason'],status=o['status']) for o in s['orders'] if o['status']=='REJECTED']
             s['blocked_signals_count']=len({x['signal_id'] for x in s['rejections'] if x['signal_id'] in self.state.get('handled_signals',{})})

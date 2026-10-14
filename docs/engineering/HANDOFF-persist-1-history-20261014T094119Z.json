@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 60,
+  "branch": "feat/persist-1-history-20261014T094119Z",
+  "task_id": "persist-1-history-20261014T094119Z",
+  "instruction_id": "P3-B3A-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "427cbde00019f85015f9b134ef95264614f215c4",
+  "summary": "Added independent ExactReceiptStore in existing runtime_equity_history.py with prepare/put/get, canonical full JSON SHA256 identity, lossless nested JSON, caller-owned transactions, duplicate idempotence, strict owned schema/literal and corrupt data validation at prepare, indexed digest-only hot-path put/get and fail-closed retrieval. Nine synthetic real SQLite test methods added. No base/v5 or any other runtime integration, no fundingInfo, no reduction claim. Existing EquityHistoryStore implementation unchanged; no merge or deployment.",
+  "changed_files": [
+    "lab/runtime_equity_history.py",
+    "lab/tests/test_runtime_equity_history.py",
+    "docs/engineering/HANDOFF-persist-1-history-20261014T094119Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p test_runtime_equity_history.py -v",
+      "result": "NOT_RUN",
+      "evidence": "No local full repository checkout mounted in execution container; 9 new B3A test methods committed but no focused runtime test execution claimed."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "NOT_RUN",
+      "evidence": "Full checkout unavailable; frozen automation suite not run in this worker."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "NOT_RUN",
+      "evidence": "Full checkout unavailable; frozen lab suite not run in this worker. Accepted B2 prior results belong to parent HEAD, not B3A."
+    },
+    {
+      "command": "GitHub Actions pull_request workflow 38583408627",
+      "result": "IN_PROGRESS",
+      "evidence": "Connector reported run in_progress with null conclusion for source commit 427cbde00019f85015f9b134ef95264614f215c4 at inspection; no CI success claim."
+    },
+    {
+      "command": "GitHub Actions push exact-head",
+      "result": "NOT_RUN",
+      "evidence": "Push-triggered exact-source HEAD run not verified by available commit workflow lookup."
+    }
+  ],
+  "remaining_work": [
+    "Main CIO independently clone and execute focused B3A SQLite tests, full automation and lab suites, and adversarial corruption/schema and transaction probes.",
+    "Main CIO verify both exact-head push and PR CI, exact source HEAD and changes limited to receipt module/new test/mailbox.",
+    "Main CIO independently compare all frozen runtime/broker/config/old tests to accepted B2 HEAD; B3A has no reference integration or fundingInfo optimization and does not imply full P3/write-rate acceptance."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Independently test source HEAD 427cbde00019f85015f9b134ef95264614f215c4 with lossless complete receipt roundtrip, nested JSON, timestamp identity, duplicate put, caller rollback/reopen, deferred COMMIT failure/retry, missing and corrupt identity, bad schema/CHECK literal changes, preserved equity/unrelated tables, full frozen suites and both exact-head CI.",
+    "if_pass": "Accept only B3A isolated reference receipt storage seam; plan separately reviewed runtime reference integration later, no merge/deploy/trading.",
+    "if_fail": "Provide exact failing source HEAD, test/SQL evidence and bounded B3A repair; leave frozen files untouched and do not deploy.",
+    "blockers": []
+  }
+}

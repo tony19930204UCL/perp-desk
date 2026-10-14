@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "task_id": "t1-20261011T125818Z",
+  "instruction_id": "T1-U2B2-r2",
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 51,
+  "branch": "feat/paper-t1-20261011T125818Z",
+  "status": "WAITING_CI",
+  "summary": "Fixed only test_snapshot_window_void_halts by supplying a fully validated crypto market (BTCUSDT, decimal bid/ask/mark, source timestamps) immediately before snapshot; prepared() and runtime unchanged. Commit diff verified that only this test was modified. Hermes reported previous exact-head clean-clone/CI run of 36 tests with 35 passed and 1 error; Hermes scratch fix reportedly passed four snapshot tests, but this new source head has not yet been run or accepted independently. No merge, deploy, or trading.",
+  "source_head_sha": "e0627b0518024bba913784065ed53884aa7a7af5",
+  "changed_files": [
+    "lab/tests/test_paper_runtime_v7.py",
+    "docs/engineering/HANDOFF-t1-20261011T125818Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p 'test_paper_runtime_v7.py'",
+      "result": "not run",
+      "evidence": "No Python execution by this GitHub-only editing session. Hermes independently reported all four snapshot tests passed on a scratch copy with exactly this fixture correction; that is not an exact-head run."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "not run",
+      "evidence": "Hermes reported 36 tests at previous head 9ff3d931a99dd2e437774e53ff9fccdc969fca34 with 35 ok and one error in test_snapshot_window_void_halts. At new pre-mailbox source head e0627b0518024bba913784065ed53884aa7a7af5, GitHub commit workflow runs and combined status checks returned empty lists; no exact-head CI result yet."
+    }
+  ],
+  "remaining_work": [
+    "Run focused v7 test suite on exact source head and confirm all 36 v7 tests, including snapshot window_void.",
+    "Run full CI on exact source head; confirm no other regression.",
+    "Main CIO independently validate source diff and accept or reject PR 51; no deployment or trading."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Review test-only source commit e0627b0518024bba913784065ed53884aa7a7af5 and mailbox, confirm only test_snapshot_window_void_halts market fixture changed; run focused v7 suite and full cd lab && python3 -m unittest discover -s tests on exact head.",
+    "if_pass": "Accept T1-U2B2-r2 after independent CI review; preserve draft PR 51 until Main approval. No merge, deploy, or trading.",
+    "if_fail": "Report exact-head failing test names and traceback; constrain repair to named allowlist and avoid runtime changes without evidence.",
+    "blockers": []
+  },
+  "blockers": []
+}
