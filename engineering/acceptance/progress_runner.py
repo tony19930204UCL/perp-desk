@@ -288,7 +288,11 @@ def main(argv=None):
                 existing_state = json.loads(state_path.read_text())
             except Exception:
                 existing_state = {}
-            if existing_state.get("config_key") != config_key:
+            if (
+                existing_state.get("status") == "RUNNING"
+                and existing_state.get("config_key")
+                and existing_state.get("config_key") != config_key
+            ):
                 sys.stderr.write(
                     f"Conflict: state-dir {state_dir} is locked by another runner with a different configuration.\n"
                 )
@@ -791,6 +795,7 @@ def main(argv=None):
         "completed_ids": list(completed_tests.keys()),
         "last_completed_id": last_completed_id,
         "current_id": current_test_id,
+        "suite_completed_event": suite_completed_event,
         "tests": {
             "ran": len(completed_tests),
             "passed": passed_count,
