@@ -4,12 +4,12 @@
   "pr_number": 60,
   "branch": "feat/persist-1-history-20261014T094119Z",
   "task_id": "persist-1-history-20261014T094119Z",
-  "instruction_id": "P3-B1-r2",
+  "instruction_id": "P3-B2-r0",
   "status": "WAITING_CI",
-  "source_head_sha": "5b0d6d4a49fde7d555e4589dbfffcff3a4b8acc1",
-  "summary": "B1 only: reject noncanonical SQLite stored CREATE TABLE definitions byte-for-byte, preserving quoted CHECK literal semantics. Added two isolated on-disk regressions for case and whitespace changes within typeof(ts) quoted literals, transaction/schema/data preservation assertions, and explicit valid canonical reopen/migrate/append coverage. Existing B1 append-only, original text/order, 2048 recent, migration and caller-owned transaction APIs unchanged. Runtime remains frozen; this is not B2.",
+  "source_head_sha": "a6c259c71299b96027955c516cc15b4a0c395e22",
+  "summary": "B2 integrated accepted B1 transactional append-only equity archive into inherited PaperRuntime.save/snapshot with lazy per-connection prepare usable by v5 independent constructor. Legacy list migration and bounded singleton history update share atomic commit; snapshot appends original points once for adjacent same timestamps, including restarts. In-memory, singleton and snapshot recent window capped at 2048; archive remains complete and in original sequence. Truncated snapshot declares incomplete lifetime and archive count. No other engines, broker, config, reference or fundingInfo files edited. B2 tests added for base/v5, large-scale archives and SQL/COMMIT rollback and retry. Not accepted, not deployed.",
   "changed_files": [
-    "lab/runtime_equity_history.py",
+    "lab/paper_runtime_v2.py",
     "lab/tests/test_runtime_equity_history.py",
     "docs/engineering/HANDOFF-persist-1-history-20261014T094119Z.json"
   ],
@@ -17,34 +17,39 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests -p test_runtime_equity_history.py -v",
       "result": "NOT_RUN",
-      "evidence": "Full repository checkout unavailable in this execution container; no focused local unittest command executed. Three regression methods committed, not claimed passed."
+      "evidence": "No connected full repository checkout accessible for local tests; tests committed but no focused test execution claimed."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests",
       "result": "NOT_RUN",
-      "evidence": "No full repository checkout available; not executed locally. Previously successful CI at original B1 head is not evidence for current r2 head."
+      "evidence": "No full repository checkout available in execution container; frozen suite not run locally."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "NOT_RUN",
-      "evidence": "No full repository checkout available; not executed locally. Frozen full suite remains for Main to verify."
+      "evidence": "No full repository checkout available in execution container; frozen suite not run locally."
     },
     {
-      "command": "GitHub Actions workflow run 38554873472",
+      "command": "GitHub Actions push run 38562498372",
       "result": "IN_PROGRESS",
-      "evidence": "Connector returned workflow run 38554873472 in_progress with null conclusion for pre-mailbox r2 source head 5b0d6d4a49fde7d555e4589dbfffcff3a4b8acc1; this does not establish CI success."
+      "evidence": "At inspection, run for pre-mailbox source head a6c259c71299b96027955c516cc15b4a0c395e22 in_progress with null conclusion."
+    },
+    {
+      "command": "GitHub Actions pull_request run 38562504443",
+      "result": "IN_PROGRESS",
+      "evidence": "At inspection, run for pre-mailbox source head a6c259c71299b96027955c516cc15b4a0c395e22 in_progress with null conclusion."
     }
   ],
   "remaining_work": [
-    "Main CIO independently reproduce quoted literal 'TEXT' and 'te xt' invalid-schema refusals and verify transaction/schema/data preservation.",
-    "Main CIO run focused and complete frozen suites and pin both exact-head PR/push CI after mailbox delivery.",
-    "B2 runtime integration pending independent B1 acceptance; no paper_runtime_v2.py changes, no write-rate or full P3 claims."
+    "Main CIO independently run exact-head focused and frozen suites, both CI events and real inherited save/snapshot failure probes.",
+    "Main CIO compare frozen parent for small-history snapshot differential and verify immutable source/broker/config/other runtime paths.",
+    "Review archive-size metrics from focused tests; no byte-rate, <50KB/s or P3 completion claim."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Inspect PR60 r2 source head 5b0d6d4a49fde7d555e4589dbfffcff3a4b8acc1 and separately committed mailbox; validate refused CHECK literal variants, canonical reopen/migration/append, 8192 archive/2048 recent, frozen suites, both exact-head CI events and only permitted B1 paths changed; confirm paper_runtime_v2.py byte-identical.",
-    "if_pass": "Independently accept P3-B1 storage seam only, then separately dispatch B2. Do not merge/deploy.",
-    "if_fail": "Return failing probe/command and exact HEAD for branch-only correction; no merge/deploy.",
+    "verify_now": "Independently clone PR60 source head a6c259c71299b96027955c516cc15b4a0c395e22, run B2 focused and full automation/lab suites; probe base and v5 inherited save/snapshot, 8192+ migration, SQL and deferred commit failures, same-ts restarts, exact archive, 2048 recent, metadata and byte sizes; verify both exact-head push/PR CI and changed files only allowed paths.",
+    "if_pass": "Accept B2 separately only after independent review; no merge/deploy/trading.",
+    "if_fail": "Return exact HEAD and first failing probe or command for allowlisted B2 repair; no merge/deploy.",
     "blockers": []
   }
 }
