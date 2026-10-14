@@ -604,5 +604,172 @@ class ExactReceiptStoreTests(unittest.TestCase):
                          ('preserved',))
 
 
+# B3B: full exchangeInfo reference integration through inherited save.
+class ReferenceRuntimeTests(RuntimeIntegrationTests):
+    def reference_receipt(self, observed=1700000000000, count=1):
+        return {'payload': {'symbols': [
+            {'symbol': 'ETHUSDT', 'filters': [{'tickSize': '0.01000000'},
+                                             {'minNotional': '20.000000000000001'}],
+             'extra': {'levels': ['0.100', '0.200']}} for _ in range(count)]},
+                'received_at': '2023-11-14T22:13:20+00:00',
+                'received_at_ms': observed, 'source_timestamp_ms': observed,
+                'provenance': {'fixture': True, 'ordering': ['z', 'a']}}
+
+    def seeded(self, cls, name, receipt_marker=None, history=None):
+        root = Path(self.temp.name) / name
+        state = self.state(cls, history or [])
+        if receipt_marker is not None:
+            state['reference'] = receipt_marker
+        self.seed(root, state)
+        return root, state
+
+    def stored(self, root):
+        with sqlite3.connect(root / 'runtime.sqlite3') as db:
+            return db.execute('SELECT digest,receipt_json FROM runtime_exact_receipts').fetchall()
+
+    def test_base_v5_legacy_migrate_reopen_full_exact_and_equity(self):
+        for cls in (BaseRuntime, V5Runtime):
+            with self.subTest(cls=cls.__module__):
+                receipt = self.reference_receipt()
+                historical = [point('x', '1.000'), point('y', '2.00')]
+                root, prior = self.seeded(cls, cls.__module__ + '_reference', receipt, historical)
+                obj = self.runtime(cls, root)
+                self.assertEqual(obj.state['reference'], receipt)
+                payload = self.payload(root)
+                self.assertNotIn('reference', payload)
+                self.assertEqual(len(payload['reference_digest']), 64)
+                self.assertEqual(self.stored(root)[0][0], payload['reference_digest'])
+                self.assertEqual(self.archive(root), historical)
+                self.assertEqual(len(self.stored(root)), 1)
+                for k in ('cursor', 'errors', 'gaps', 'extra'):
+                    self.assertEqual(payload[k], prior[k])
+                obj.save()
+                obj.close()
+                resumed = self.runtime(cls, root)
+                self.assertEqual(resumed.state['reference'], receipt)
+                self.assertEqual(self.archive(root), historical)
+                self.assertEqual(len(self.stored(root)), 1)
+
+    def test_absent_reference_remains_absent(self):
+        root, _ = self.seeded(BaseRuntime, 'no_reference')
+        obj = self.runtime(BaseRuntime, root)
+        self.assertNotIn('reference', obj.state)
+        self.assertNotIn('reference_digest', self.payload(root))
+        self.assertEqual(self.stored(root), [])
+
+    def test_timestamp_changes_identity_and_unchanged_save_idempotent(self):
+        receipt = self.reference_receipt()
+        root, _ = self.seeded(BaseRuntime, 'identity', receipt)
+        obj = self.runtime(BaseRuntime, root)
+        original_digest = self.payload(root)['reference_digest']
+        for _ in range(3):
+            obj.save()
+        self.assertEqual(len(self.stored(root)), 1)
+        self.assertEqual(self.payload(root)['reference_digest'], original_digest)
+        changed = self.reference_receipt(observed=receipt['received_at_ms'] + 1)
+        obj.state['reference'] = changed
+        obj.save()
+        self.assertNotEqual(self.payload(root)['reference_digest'], original_digest)
+        self.assertEqual(len(self.stored(root)), 2)
+        self.assertEqual(obj.state['reference'], changed)
+
+    def test_missing_and_corrupt_pointer_refused_without_mutation(self):
+        for label, corrupt in (('missing', False), ('corrupt', True)):
+            with self.subTest(label=label):
+                root, _ = self.seeded(BaseRuntime, label, self.reference_receipt())
+                obj = self.runtime(BaseRuntime, root)
+                obj.close()
+                with sqlite3.connect(root / 'runtime.sqlite3') as db:
+                    digest = self.payload(root)['reference_digest']
+                    if corrupt:
+                        db.execute('UPDATE runtime_exact_receipts SET receipt_json=? WHERE digest=?',
+                                   ('{"damaged":true}', digest))
+                    else:
+                        db.execute('DELETE FROM runtime_exact_receipts WHERE digest=?', (digest,))
+                before = self.payload(root)
+                archive_before = self.archive(root)
+                with self.assertRaises((KeyError, ValueError)):
+                    self.runtime(BaseRuntime, root)
+                self.assertEqual(self.payload(root), before)
+                self.assertEqual(self.archive(root), archive_before)
+
+    def test_sql_failure_rolls_back_legacy_reference_and_equity(self):
+        receipt = self.reference_receipt()
+        root, db, obj, original = self.bare_legacy('ref_sql', [point('a')])
+        obj.state['reference'] = receipt
+        original['reference'] = receipt
+        db.execute('CREATE TRIGGER no_singleton BEFORE INSERT ON state '
+                   "BEGIN SELECT RAISE(ABORT,'synthetic'); END")
+        with self.assertRaises(sqlite3.DatabaseError):
+            obj.save()
+        self.assertEqual(obj.state, original)
+        self.assertEqual(self.payload(root)['history'], original['history'])
+        self.assertEqual(self.payload(root).get('reference'), receipt)
+        self.assertEqual(db.execute(
+            "SELECT count(*) FROM sqlite_master WHERE name='runtime_exact_receipts'").fetchone()[0], 0)
+        db.execute('DROP TRIGGER no_singleton')
+        obj.save()
+        self.assertEqual(self.archive(root), [point('a')])
+        self.assertEqual(len(self.stored(root)), 1)
+
+    def test_deferred_commit_failure_then_retry_both_stores(self):
+        receipt = self.reference_receipt()
+        root, db, obj, _ = self.bare_legacy('ref_commit', [point('a')])
+        obj.state['reference'] = receipt
+        db.execute('CREATE TABLE ref_parent(id INTEGER PRIMARY KEY)')
+        db.execute('CREATE TABLE ref_child(parent_id INTEGER REFERENCES ref_parent(id) '
+                   'DEFERRABLE INITIALLY DEFERRED)')
+        db.execute('CREATE TRIGGER ref_commit_failure AFTER INSERT ON state '
+                   'BEGIN INSERT INTO ref_child VALUES(999); END')
+        original_memory = json.loads(canonical(obj.state))
+        with self.assertRaises(sqlite3.IntegrityError):
+            obj.save()
+        self.assertEqual(obj.state, original_memory)
+        self.assertFalse(db.in_transaction)
+        self.assertEqual(db.execute(
+            "SELECT count(*) FROM sqlite_master WHERE name='runtime_exact_receipts'").fetchone()[0], 0)
+        db.execute('DROP TRIGGER ref_commit_failure')
+        obj.save()
+        self.assertEqual(self.archive(root), [point('a')])
+        self.assertEqual(len(self.stored(root)), 1)
+
+    def test_singleton_does_not_embed_large_receipt(self):
+        sizes = []
+        for n in (1, 800):
+            receipt = self.reference_receipt(count=n)
+            root, _ = self.seeded(BaseRuntime, 'reference_size_' + str(n), receipt)
+            obj = self.runtime(BaseRuntime, root)
+            saved = self.payload(root)
+            encoded = canonical(saved).encode()
+            self.assertNotIn('reference', saved)
+            self.assertNotIn('minNotional', encoded.decode())
+            sizes.append(len(encoded))
+            self.assertEqual(len(self.stored(root)), 1)
+            print('B3B symbols=%d singleton_bytes=%d receipt_bytes=%d' %
+                  (n, len(encoded), len(canonical(receipt).encode())))
+            obj.close()
+        self.assertEqual(sizes[0], sizes[1])
+
+    def test_reference_freshness_boundaries_and_fetch_behavior(self):
+        # Exercise unmodified reference() logic without network through a stub.
+        from unittest.mock import Mock
+        from paper_market import receipt_ms
+        for delta, should_fetch in ((86400000 - 1, False), (86400000, True),
+                                    (-1, True), (0, False)):
+            with self.subTest(delta=delta):
+                root, _ = self.seeded(BaseRuntime, 'fresh_' + str(delta),
+                                      self.reference_receipt())
+                obj = self.runtime(BaseRuntime, root)
+                observed = receipt_ms(obj.state['reference'])
+                self.now[0] = observed + delta
+                replacement = self.reference_receipt(observed + delta)
+                obj.fetch = Mock(return_value=replacement)
+                got = obj.reference()
+                self.assertEqual(got, replacement if should_fetch else self.reference_receipt())
+                self.assertEqual(obj.fetch.call_count, int(should_fetch))
+                obj.close()
+                self.now[0] = 1700000000000
+
+
 if __name__ == '__main__':
     unittest.main()
