@@ -499,6 +499,79 @@ class P3RetentionTests(unittest.TestCase):
         self.assertEqual(set(b._seen_event_meta), {'m1', 'm2'})
 
 
+    def test_context_only_wrapper_restores_original_write_error_and_all_state(self):
+        b = self.broker()
+        b.on_event(self.mark('baseline', 100))
+        before_rows = self.rows()
+        before = (dict(b.seen_events), dict(b._seen_event_meta),
+                  dict(b.marks), dict(b.day_baselines), b.cash, b.last_ts)
+        raw = b._db
+
+        class InterruptedConnection:
+            def __init__(self, inner):
+                self.inner = inner
+            def __enter__(self):
+                self.inner.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.inner.__exit__(*args)
+            def execute(self, sql, args=()):
+                cursor = self.inner.execute(sql, args)
+                if sql.startswith('INSERT OR REPLACE INTO sim_broker_state'):
+                    raise OSError('synthetic context-only write interruption')
+                return cursor
+
+        b._db = InterruptedConnection(raw)
+        try:
+            with self.assertRaisesRegex(OSError, 'context-only write interruption'):
+                b.on_event(self.mark('new', 111))
+            self.assertEqual((b.seen_events, b._seen_event_meta,
+                              b.marks, b.day_baselines, b.cash, b.last_ts), before)
+            self.assertEqual(self.rows(), before_rows)
+            self.assertFalse(raw.in_transaction)
+        finally:
+            b._db = raw
+        b.on_event(self.mark('new', 111))
+        self.assertEqual(set(b.seen_events), {'new'})
+        self.assertEqual(set(b._seen_event_meta), {'new'})
+
+    def test_context_only_wrapper_prune_failure_restores_original_error(self):
+        b = self.broker()
+        b.on_event(self.mark('old', 100))
+        before_rows = self.rows()
+        before = (dict(b.seen_events), dict(b._seen_event_meta),
+                  dict(b.marks), dict(b.day_baselines), b.cash, b.last_ts)
+        raw = b._db
+
+        class PruneInterruptedConnection:
+            def __init__(self, inner):
+                self.inner = inner
+            def __enter__(self):
+                self.inner.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.inner.__exit__(*args)
+            def execute(self, sql, args=()):
+                cursor = self.inner.execute(sql, args)
+                if sql.startswith('DELETE FROM sim_seen_events'):
+                    raise OSError('synthetic context-only prune interruption')
+                return cursor
+
+        b._db = PruneInterruptedConnection(raw)
+        try:
+            with self.assertRaisesRegex(OSError, 'context-only prune interruption'):
+                b.on_event(self.mark('new', 111))
+            self.assertEqual((b.seen_events, b._seen_event_meta,
+                              b.marks, b.day_baselines, b.cash, b.last_ts), before)
+            self.assertEqual(self.rows(), before_rows)
+            self.assertFalse(raw.in_transaction)
+        finally:
+            b._db = raw
+        b.on_event(self.mark('new', 111))
+        self.assertEqual(set(b.seen_events), {'new'})
+        self.assertEqual(set(b._seen_event_meta), {'new'})
+
+
 # P2 differential / write-volume evidence. Kept separate from P1 unit tests.
 # Commands from repo root:
 # cd lab && SIM_BROKER_P2_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_parent_differential_2048_events
