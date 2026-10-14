@@ -4,11 +4,12 @@
   "pr_number": 60,
   "branch": "feat/persist-1-history-20261014T094119Z",
   "task_id": "persist-1-history-20261014T094119Z",
-  "instruction_id": "P3-B2-r1",
+  "instruction_id": "P3-B3A-r0",
   "status": "WAITING_CI",
-  "source_head_sha": "837356441604ad940f01a248d773a00a4cec048d",
-  "summary": "Repair only the new B2 large-archive status size assertion: compare singleton and bounded history sizes unchanged, normalize only equity_history_window.archived_points for status byte-size comparison, and independently assert that raw status byte difference equals the archived count digit-width difference. Exact archive counts 8193/16385, 2048 recent cap, original point retention and non-history state checks remain. Production runtime and store unchanged. GitHub connector does not provide an executable repository checkout here, so no local tests claimed. Prior B2-r0 independent lab run reported 625 tests with 1 failure and 2 skipped; prior exact-head CI failed. This repair is not independently accepted, not merged and not deployed.",
+  "source_head_sha": "427cbde00019f85015f9b134ef95264614f215c4",
+  "summary": "Added independent ExactReceiptStore in existing runtime_equity_history.py with prepare/put/get, canonical full JSON SHA256 identity, lossless nested JSON, caller-owned transactions, duplicate idempotence, strict owned schema/literal and corrupt data validation at prepare, indexed digest-only hot-path put/get and fail-closed retrieval. Nine synthetic real SQLite test methods added. No base/v5 or any other runtime integration, no fundingInfo, no reduction claim. Existing EquityHistoryStore implementation unchanged; no merge or deployment.",
   "changed_files": [
+    "lab/runtime_equity_history.py",
     "lab/tests/test_runtime_equity_history.py",
     "docs/engineering/HANDOFF-persist-1-history-20261014T094119Z.json"
   ],
@@ -16,34 +17,39 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests -p test_runtime_equity_history.py -v",
       "result": "NOT_RUN",
-      "evidence": "Repository is not checked out in the available execution container; no local focused test executed. The single corrected assertion remains subject to exact-head verification."
+      "evidence": "No local full repository checkout mounted in execution container; 9 new B3A test methods committed but no focused runtime test execution claimed."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests",
       "result": "NOT_RUN",
-      "evidence": "No runnable full repository checkout available; do not confuse prior independent B2-r0 exporter 52 PASS with testing this repair."
+      "evidence": "Full checkout unavailable; frozen automation suite not run in this worker."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "NOT_RUN",
-      "evidence": "No runnable full repository checkout available. Prior independent B2-r0 lab discovery: 625 tests, 1 failure, 2 skipped in 1232.383 s; not a result for this r1 head."
+      "evidence": "Full checkout unavailable; frozen lab suite not run in this worker. Accepted B2 prior results belong to parent HEAD, not B3A."
     },
     {
-      "command": "GitHub Actions push and pull_request exact-head",
+      "command": "GitHub Actions pull_request workflow 38583408627",
+      "result": "IN_PROGRESS",
+      "evidence": "Connector reported run in_progress with null conclusion for source commit 427cbde00019f85015f9b134ef95264614f215c4 at inspection; no CI success claim."
+    },
+    {
+      "command": "GitHub Actions push exact-head",
       "result": "NOT_RUN",
-      "evidence": "Exact-head run conclusions were not verified at mailbox preparation. Prior r0 head f74041cc2dd932742e3c4470ebeff71162508544 had failing CI."
+      "evidence": "Push-triggered exact-source HEAD run not verified by available commit workflow lookup."
     }
   ],
   "remaining_work": [
-    "Main CIO independently run focused B2 test and both frozen suites at this source HEAD, including 8193/16385 archive byte-size prints.",
-    "Main CIO verify push and pull_request CI for exact source HEAD and migration SQL/COMMIT failure paths, base/v5 inherited save/snapshot and same-ts restart idempotence.",
-    "Main CIO verify only the new test and mailbox changed relative to repair input; all runtime, broker, source, config and other tests frozen. Do not claim <50KB/s or P3 complete."
+    "Main CIO independently clone and execute focused B3A SQLite tests, full automation and lab suites, and adversarial corruption/schema and transaction probes.",
+    "Main CIO verify both exact-head push and PR CI, exact source HEAD and changes limited to receipt module/new test/mailbox.",
+    "Main CIO independently compare all frozen runtime/broker/config/old tests to accepted B2 HEAD; B3A has no reference integration or fundingInfo optimization and does not imply full P3/write-rate acceptance."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Independently clone exact pre-mailbox source head 837356441604ad940f01a248d773a00a4cec048d and execute focused test plus automation/lab suites; verify archive counts 8193 and 16385, size normalized only for archived_points, singleton/history 2048 bounded, complete SQLite archive, SQL/COMMIT retry, base/v5 save/snapshot and exact-head both CI.",
-    "if_pass": "Accept P3-B2-r1 only after independent exact-head validation; no merge/deploy/trading.",
-    "if_fail": "Return exact failing HEAD/command/traceback and bounded repair instruction; do not merge/deploy.",
+    "verify_now": "Independently test source HEAD 427cbde00019f85015f9b134ef95264614f215c4 with lossless complete receipt roundtrip, nested JSON, timestamp identity, duplicate put, caller rollback/reopen, deferred COMMIT failure/retry, missing and corrupt identity, bad schema/CHECK literal changes, preserved equity/unrelated tables, full frozen suites and both exact-head CI.",
+    "if_pass": "Accept only B3A isolated reference receipt storage seam; plan separately reviewed runtime reference integration later, no merge/deploy/trading.",
+    "if_fail": "Provide exact failing source HEAD, test/SQL evidence and bounded B3A repair; leave frozen files untouched and do not deploy.",
     "blockers": []
   }
 }
