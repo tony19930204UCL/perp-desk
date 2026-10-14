@@ -185,7 +185,8 @@ class SimBroker:
                     "observed_ts INTEGER NOT NULL CHECK("
                     "typeof(observed_ts)='integer' AND observed_ts>=0))"
                 )
-                self._db.execute(meta_ddl.replace('CREATE TABLE ', 'CREATE TABLE IF NOT EXISTS ', 1))
+                if 'sim_seen_event_meta' not in names:
+                    self._db.execute(meta_ddl)
                 actual_ddl = self._db.execute(
                     "SELECT sql FROM sqlite_master WHERE type='table' AND name='sim_seen_event_meta'"
                 ).fetchone()
@@ -193,8 +194,11 @@ class SimBroker:
                     raise ValueError('incompatible sim_seen_event_meta schema or constraints')
                 meta_index_ddl = ('CREATE INDEX sim_seen_event_meta_time_idx '
                                   'ON sim_seen_event_meta(observed_ts)')
-                self._db.execute(meta_index_ddl.replace(
-                    'CREATE INDEX ', 'CREATE INDEX IF NOT EXISTS ', 1))
+                existing_idx = self._db.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index' "
+                    "AND name='sim_seen_event_meta_time_idx'").fetchone()
+                if existing_idx is None:
+                    self._db.execute(meta_index_ddl)
                 actual_index = self._db.execute(
                     "SELECT tbl_name, sql FROM sqlite_master WHERE type='index' "
                     "AND name='sim_seen_event_meta_time_idx'"
