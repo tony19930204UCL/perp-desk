@@ -4,12 +4,11 @@
   "pr_number": 60,
   "branch": "feat/persist-1-history-20261014T094119Z",
   "task_id": "persist-1-history-20261014T094119Z",
-  "instruction_id": "P3-B2-r0",
+  "instruction_id": "P3-B2-r1",
   "status": "WAITING_CI",
-  "source_head_sha": "a6c259c71299b96027955c516cc15b4a0c395e22",
-  "summary": "B2 integrated accepted B1 transactional append-only equity archive into inherited PaperRuntime.save/snapshot with lazy per-connection prepare usable by v5 independent constructor. Legacy list migration and bounded singleton history update share atomic commit; snapshot appends original points once for adjacent same timestamps, including restarts. In-memory, singleton and snapshot recent window capped at 2048; archive remains complete and in original sequence. Truncated snapshot declares incomplete lifetime and archive count. No other engines, broker, config, reference or fundingInfo files edited. B2 tests added for base/v5, large-scale archives and SQL/COMMIT rollback and retry. Not accepted, not deployed.",
+  "source_head_sha": "837356441604ad940f01a248d773a00a4cec048d",
+  "summary": "Repair only the new B2 large-archive status size assertion: compare singleton and bounded history sizes unchanged, normalize only equity_history_window.archived_points for status byte-size comparison, and independently assert that raw status byte difference equals the archived count digit-width difference. Exact archive counts 8193/16385, 2048 recent cap, original point retention and non-history state checks remain. Production runtime and store unchanged. GitHub connector does not provide an executable repository checkout here, so no local tests claimed. Prior B2-r0 independent lab run reported 625 tests with 1 failure and 2 skipped; prior exact-head CI failed. This repair is not independently accepted, not merged and not deployed.",
   "changed_files": [
-    "lab/paper_runtime_v2.py",
     "lab/tests/test_runtime_equity_history.py",
     "docs/engineering/HANDOFF-persist-1-history-20261014T094119Z.json"
   ],
@@ -17,39 +16,34 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests -p test_runtime_equity_history.py -v",
       "result": "NOT_RUN",
-      "evidence": "No connected full repository checkout accessible for local tests; tests committed but no focused test execution claimed."
+      "evidence": "Repository is not checked out in the available execution container; no local focused test executed. The single corrected assertion remains subject to exact-head verification."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests",
       "result": "NOT_RUN",
-      "evidence": "No full repository checkout available in execution container; frozen suite not run locally."
+      "evidence": "No runnable full repository checkout available; do not confuse prior independent B2-r0 exporter 52 PASS with testing this repair."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "NOT_RUN",
-      "evidence": "No full repository checkout available in execution container; frozen suite not run locally."
+      "evidence": "No runnable full repository checkout available. Prior independent B2-r0 lab discovery: 625 tests, 1 failure, 2 skipped in 1232.383 s; not a result for this r1 head."
     },
     {
-      "command": "GitHub Actions push run 38562498372",
-      "result": "IN_PROGRESS",
-      "evidence": "At inspection, run for pre-mailbox source head a6c259c71299b96027955c516cc15b4a0c395e22 in_progress with null conclusion."
-    },
-    {
-      "command": "GitHub Actions pull_request run 38562504443",
-      "result": "IN_PROGRESS",
-      "evidence": "At inspection, run for pre-mailbox source head a6c259c71299b96027955c516cc15b4a0c395e22 in_progress with null conclusion."
+      "command": "GitHub Actions push and pull_request exact-head",
+      "result": "NOT_RUN",
+      "evidence": "Exact-head run conclusions were not verified at mailbox preparation. Prior r0 head f74041cc2dd932742e3c4470ebeff71162508544 had failing CI."
     }
   ],
   "remaining_work": [
-    "Main CIO independently run exact-head focused and frozen suites, both CI events and real inherited save/snapshot failure probes.",
-    "Main CIO compare frozen parent for small-history snapshot differential and verify immutable source/broker/config/other runtime paths.",
-    "Review archive-size metrics from focused tests; no byte-rate, <50KB/s or P3 completion claim."
+    "Main CIO independently run focused B2 test and both frozen suites at this source HEAD, including 8193/16385 archive byte-size prints.",
+    "Main CIO verify push and pull_request CI for exact source HEAD and migration SQL/COMMIT failure paths, base/v5 inherited save/snapshot and same-ts restart idempotence.",
+    "Main CIO verify only the new test and mailbox changed relative to repair input; all runtime, broker, source, config and other tests frozen. Do not claim <50KB/s or P3 complete."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Independently clone PR60 source head a6c259c71299b96027955c516cc15b4a0c395e22, run B2 focused and full automation/lab suites; probe base and v5 inherited save/snapshot, 8192+ migration, SQL and deferred commit failures, same-ts restarts, exact archive, 2048 recent, metadata and byte sizes; verify both exact-head push/PR CI and changed files only allowed paths.",
-    "if_pass": "Accept B2 separately only after independent review; no merge/deploy/trading.",
-    "if_fail": "Return exact HEAD and first failing probe or command for allowlisted B2 repair; no merge/deploy.",
+    "verify_now": "Independently clone exact pre-mailbox source head 837356441604ad940f01a248d773a00a4cec048d and execute focused test plus automation/lab suites; verify archive counts 8193 and 16385, size normalized only for archived_points, singleton/history 2048 bounded, complete SQLite archive, SQL/COMMIT retry, base/v5 save/snapshot and exact-head both CI.",
+    "if_pass": "Accept P3-B2-r1 only after independent exact-head validation; no merge/deploy/trading.",
+    "if_fail": "Return exact failing HEAD/command/traceback and bounded repair instruction; do not merge/deploy.",
     "blockers": []
   }
 }
