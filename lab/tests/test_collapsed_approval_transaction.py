@@ -442,3 +442,86 @@ class MatrixVariantTests(unittest.TestCase):
                     self.ap.transport(j,{"op":"snapshot"})
         with self.assertRaises(self.ap.InfraError):
             self.ap.evaluate({}, "tok","inspect",send=lambda j,r:(_ for _ in ()).throw(RuntimeError("synthetic JS error")))
+
+
+class AdmissionVariantTests(unittest.TestCase):
+    def setUp(self):
+        import approval_transaction as ap
+        self.ap=ap
+        self.tmp=tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root=Path(self.tmp.name)
+        self.chat="https://chatgpt.com/c/fake-current-turn"
+        self.j={"task_id":"synthetic","conversation_mode":"new",
+                "chat_url":"https://chatgpt.com/",
+                "repository":"example/repo","branch":"test","write_allowlist":["path.txt"],
+                "valid_until":"2099-01-01T00:00:00+00:00"}
+        self.a={"task_id":"synthetic","instruction_id":"synthetic-r2","chat_url":self.chat}
+        self.r={"status":"CONFIRMED","chat_url":self.chat,"chat_path":"/"}
+        self.save()
+
+    def save(self):
+        for name,obj in [("job.json",self.j),("active_instruction.json",self.a),
+                         ("send_synthetic-r2.json",self.r)]:
+            (self.root/name).write_text(json.dumps(obj))
+
+    def test_C08_wrong_chat_and_origin_variants(self):
+        for bad in ("https://other.example/c/fake-current-turn",
+                    "http://chatgpt.com/c/fake-current-turn",
+                    "https://chatgpt.com/",
+                    "https://chatgpt.com/c/different"):
+            with self.subTest(url=bad):
+                self.a["chat_url"]=bad;self.save()
+                with self.assertRaises(self.ap.AdmissionError):self.ap.admission(self.root)
+
+    def test_C09_wrong_task_instruction_or_receipt(self):
+        for data in ({"task_id":"wrong"},{"instruction_id":"else-r2"},
+                     {"chat_url":None}):
+            with self.subTest(data=data):
+                self.a={**self.a,**data};self.save()
+                with self.assertRaises(self.ap.AdmissionError):self.ap.admission(self.root)
+                self.a={"task_id":"synthetic","instruction_id":"synthetic-r2","chat_url":self.chat}
+        for status in ("SEND_UNKNOWN_NO_RETRY","BROWSER_BUSY_NOT_SENT",""):
+            with self.subTest(status=status):
+                self.r["status"]=status;self.save()
+                with self.assertRaises(self.ap.AdmissionError):self.ap.admission(self.root)
+
+    def test_C10_expiry_variants(self):
+        for value in (None,"","not a date","2000-01-01T00:00:00+00:00",
+                      "2099-01-01T00:00:00"):
+            with self.subTest(expiry=value):
+                self.j["valid_until"]=value;self.save()
+                with self.assertRaises(self.ap.AdmissionError):self.ap.admission(self.root)
+
+    def test_C12_all_tool_scopes(self):
+        for mutation in ({"path":"github/delete_file"},
+                         {"args":{"repository_full_name":"other/repo"}},
+                         {"args":{"branch":"main"}},
+                         {"args":{"path":"not-allowed"}}):
+            op={"path":"github/update_file",
+                "args":{"repository_full_name":"example/repo","branch":"test",
+                        "path":"path.txt","content":"safe"}}
+            op["path"]=mutation.get("path",op["path"])
+            op["args"].update(mutation.get("args",{}))
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(self.ap.PolicyRejected):
+                    self.ap.strict_policy(op,self.j)
+        op={"path":"github/create_file","args":{"repository_full_name":"example/repo",
+            "branch":"test","path":"path.txt","content":"safe"}}
+        with self.assertRaises(self.ap.PolicyRejected):
+            self.ap.diff_policy(op,self.j,fetch_base=lambda j,p:"old")
+
+    def test_C20_identity_fingerprint_all_fields(self):
+        original={"path":"github/update_file","args":{
+            "repository_full_name":"example/repo","branch":"test",
+            "path":"path.txt","content":"safe"}}
+        a=self.ap.fingerprint(original,"invocation-A")
+        self.assertNotEqual(a,self.ap.fingerprint(original,"invocation-B"))
+        for key,new in (("repository_full_name","changed/repo"),
+                        ("branch","other"),("path","other.txt"),("content","different")):
+            op=json.loads(json.dumps(original))
+            op["args"][key]=new
+            with self.subTest(key=key):
+                self.assertNotEqual(a,self.ap.fingerprint(op,"invocation-A"))
+        op=json.loads(json.dumps(original));op["path"]="github/create_file"
+        self.assertNotEqual(a,self.ap.fingerprint(op,"invocation-A"))
