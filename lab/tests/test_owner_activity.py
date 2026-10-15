@@ -116,6 +116,7 @@ class Projection(unittest.TestCase):
                 self.assertEqual(row['blocker_details'][0]['resolution'], 'unknown')
                 self.assertEqual(row['state'], 'blocked')
                 self.assertNotIn(raw.split(':')[1], str(row))
+        f['ledger']['items'][3]['blocked_by'] = 'item:C-0032'
         f['ledger']['items'][4]['state'] = 'OPEN'
         self.assertEqual(by_id(model(f), 'C-0031')['blocker_details'][0]['resolution'], 'unresolved')
 
