@@ -6,8 +6,8 @@
   "task_id": "owner-activity-dashboard-20261015",
   "instruction_id": "OA1-r1",
   "status": "WAITING_CI",
-  "source_head_sha": "436cbc28d047e3d5be79228a4411f189d77a0772",
-  "summary": "Scoped r1 repair committed. Actual-shape typed blocked_by, epoch times/history/defer, kind/ref cron joins, PID/start independent proof, explicit unverifiable freshness and removed-selection reset. Entirely synthetic public fixture; no deployment, runtime writes, or external proof supplier.",
+  "source_head_sha": "02f566acf55bd423419ac2d86d5fe0fe1ef68f05",
+  "summary": "Scoped r1 repair committed. Actual-shape typed blocked_by, epoch times/history/defer, kind/ref cron joins, PID/start independent proof, explicit unverifiable freshness and removed-selection reset. Entirely synthetic public fixture; no deployment, runtime writes, or external proof supplier. Follow-up synthetic test corrections: work header clock on empty tasks and restored item dependency for unresolved prerequisite check.",
   "changed_files": [
     "lab/owner_activity.py",
     "lab/owner_activity.js",
@@ -37,10 +37,20 @@
       "command": "Independent Chromium desktop/mobile synthetic fixture assessment",
       "result": "r0 15/16 PASS as supplied by Main, failed stale selected detail; r1 not rerun or screenshot-reviewed in this tool route",
       "evidence": "No new screenshot evidence"
+    },
+    {
+      "command": "PR run 38771392004 and push run 38771381662 at intermediate r1 HEAD 33c66d97504ce610e7888b08f18c1ae2c2f7161e",
+      "result": "FAIL: 600 tests, 3 failures: inherited '/' root conflict plus two r1 source/test expectations corrected in later commits",
+      "evidence": "GitHub workflow logs, no successful final-head claim"
+    },
+    {
+      "command": "Exact source-head push and pull_request CI for 02f566acf55bd423419ac2d86d5fe0fe1ef68f05",
+      "result": "WAITING_CI",
+      "evidence": "GitHub Actions source-head runs initiated; no completed verdict observed"
     }
   ],
   "remaining_work": [
-    "Observe exact-head push and PR CI and diagnose any remaining r1 failures; do not claim green",
+    "Verify push and pull_request exact-head results for source 02f566acf55bd423419ac2d86d5fe0fe1ef68f05 and mailbox HEAD; no green claimed.",
     "Preserve root 200 and report inherited contradiction between frozen v2 server and serving tests as out-of-allowlist migration blocker",
     "Repeat isolated Chromium server/browser synthetic-fixture 16 checks and desktop/mobile screenshot, selection removal, keyboard, no-overflow acceptance",
     "Independently validate source field projection/totals and proof suppliers; source snapshots are non-atomic; deployed=false",
@@ -48,7 +58,7 @@
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Check exact pre-mailbox HEAD 436cbc28d047e3d5be79228a4411f189d77a0772 and post-mailbox HEAD CI push/PR; run synthetic actual-schema and browser acceptance; preserve root 200.",
+    "verify_now": "Verify source HEAD 02f566acf55bd423419ac2d86d5fe0fe1ef68f05 and new mailbox HEAD; compare push/pull_request exact-head CI, especially synthetic r1 corrections; isolate inherited frozen root route assertion",
     "if_pass": "Accept scoped engineering functionality separately from inherited root-test migration; request user visual assessment; no deployment.",
     "if_fail": "Return exact failing tests and scoped repair request on same PR63; out-of-allowlist frozen root assertion must be resolved by authorized owner, not this worker.",
     "blockers": [
