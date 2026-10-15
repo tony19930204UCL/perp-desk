@@ -1,6 +1,11 @@
 """Node DOM interaction regression for actual Monitor JS; real screenshots not claimed."""
+import copy
+import json
 import shutil
 import subprocess
+import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -89,6 +94,114 @@ class BrowserContract(unittest.TestCase):
         run = subprocess.run(['node', '-e', HARNESS, str(JS)], capture_output=True,
                              text=True, timeout=15, check=False)
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+
+
+    def test_real_chromium_300_task_mobile_layout(self):
+        """True DOM measurements; synthetic records only, never a live profile."""
+        from browser_issue3_acceptance import CdpSession, chrome_binary
+        from dashboard_v2_server import create_server
+        try:
+            chrome = chrome_binary()
+        except RuntimeError:
+            self.skipTest('Chromium not installed: real viewport measurement unavailable')
+        original = json.loads((ROOT / 'tests/fixtures/owner_activity_sanitized.json').read_text())
+        self.assertTrue(original['synthetic'])
+        long_name = ('跨階段研究驗證_調查任務-' + 'SYNTHETICUNBROKENSTATUSNAME' * 8 +
+                     '-多語文依賴情境未確認・Αλφα・العربية')
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for folder in ('commitments', 'cron', 'lab/journal', 'lab/shared'):
+                (root / folder).mkdir(parents=True, exist_ok=True)
+            ledger = copy.deepcopy(original['ledger'])
+            for number in range(5, 300):
+                ledger['items'].append({
+                    'id': 'C-SYNTH-%04d' % number,
+                    'text': long_name + ('-' + str(number)),
+                    'state': 'BLOCKED' if number % 7 == 0 else 'OPEN',
+                    'blocked_by': 'item:C-UNCONFIRMED' if number % 7 == 0 else None,
+                    'updated': 1792062000, 'due': 1792234800,
+                    'reason': '多語文_原因_' + long_name,
+                    'accept': '驗收依據_' + long_name})
+            roadmap = copy.deepcopy(original['roadmap'])
+            roadmap['goals'][0]['title'] = long_name
+            work = copy.deepcopy(original['work'])
+            work['tasks'][0]['current_step'] = long_name
+            work['tasks'][0]['next_step'] = long_name
+            sources = {
+                'commitments/ledger.json': ledger,
+                'cron/jobs.json': original['cron'],
+                'lab/journal/roadmap.json': roadmap,
+                'lab/shared/work_status.json': work,
+            }
+            for rel, obj in sources.items():
+                (root / rel).write_text(json.dumps(obj, ensure_ascii=False), encoding='utf-8')
+            (root / 'lab/journal/entries.jsonl').write_text(
+                json.dumps(original['journal'][0], ensure_ascii=False) + '\n', encoding='utf-8')
+            server = create_server(scorecard_path=str(root / 'score'),
+                                   journal_path=str(root / 'journal'),
+                                   ledger_path=str(root / 'account_ledger'),
+                                   port=0, clock_ms=lambda: 1792065600000,
+                                   max_bytes=1048576)
+            server.configure_monitor(profile_root=str(root))
+            thread = threading.Thread(target=server.serve_forever,
+                                      kwargs={'poll_interval': .01}, daemon=True)
+            thread.start()
+            session = None
+            try:
+                session = CdpSession(chrome, root / 'chrome-profile')
+                session.call('Page.enable')
+                session.call('Runtime.enable')
+                base = 'http://127.0.0.1:%d/owner_activity.html' % server.server_port
+                for width, height, mobile in ((390, 844, True), (1440, 900, False)):
+                    with self.subTest(width=width):
+                        session.call('Emulation.setDeviceMetricsOverride', {
+                            'width': width, 'height': height,
+                            'deviceScaleFactor': 1, 'mobile': mobile,
+                            'screenWidth': width, 'screenHeight': height})
+                        session.navigate(base)
+                        deadline = time.monotonic() + 8
+                        metrics = None
+                        while time.monotonic() < deadline:
+                            metrics = session.evaluate("""(()=>({
+                                innerWidth, dpr:devicePixelRatio,
+                                clientWidth:document.documentElement.clientWidth,
+                                scrollWidth:document.documentElement.scrollWidth,
+                                count:document.getElementById('visibleCount').textContent,
+                                tail:document.getElementById('tasks').textContent.includes('C-SYNTH-0299'),
+                                overflowing:[...document.querySelectorAll('body *')].filter(e=>{
+                                    const r=e.getBoundingClientRect();
+                                    return r.width>0 && (r.right>document.documentElement.clientWidth+.1 || r.left<-.1);
+                                }).slice(0,8).map(e=>({tag:e.tagName,css:e.className,
+                                    scroll:e.scrollWidth,client:e.clientWidth}))
+                            }))()""")
+                            if metrics and metrics['count'] == '300 / 300 項' and metrics['tail']:
+                                break
+                            time.sleep(.05)
+                        self.assertIsNotNone(metrics)
+                        self.assertEqual(metrics['count'], '300 / 300 項', metrics)
+                        self.assertTrue(metrics['tail'], metrics)
+                        self.assertEqual(metrics['innerWidth'], width, metrics)
+                        self.assertEqual(metrics['dpr'], 1, metrics)
+                        self.assertLessEqual(metrics['scrollWidth'], metrics['clientWidth'], metrics)
+                        # Real click and expanded detail, not a static initial-layout check.
+                        detail = session.evaluate("""(()=>{
+                            const rows=document.querySelectorAll('#tasks button.task');
+                            rows[rows.length-1].click();
+                            return {visible:rows.length,
+                                text:document.getElementById('detail').textContent,
+                                scroll:document.documentElement.scrollWidth,
+                                client:document.documentElement.clientWidth};
+                        })()""")
+                        self.assertEqual(detail['visible'], 300)
+                        self.assertIn('C-SYNTH-0299', detail['text'])
+                        self.assertLessEqual(detail['scroll'], detail['client'], detail)
+            finally:
+                if session is not None:
+                    session.close()
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=3)
+                self.assertFalse(thread.is_alive())
 
 
 if __name__ == '__main__':
