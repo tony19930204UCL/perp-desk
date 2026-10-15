@@ -1,1 +1,92 @@
-{"placeholder": true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 62,
+  "branch": "fix/collapsed-approval-20261015T114325Z",
+  "task_id": "collapsed-approval-20261015T114325Z",
+  "instruction_id": "CA1-r0",
+  "status": "BLOCKED",
+  "source_head_sha": "a124ec25efc522c427de580224240549868e49a1",
+  "summary": "Partial source candidate written to existing PR62 branch. Implemented shared flock-backed admission/policy/DOM transaction and routed direct strict/diff helpers, auto_allow, relay-poll, relay-drive, carrier and profile_runner toward it. Restored supporting reference source modules. NOT acceptance-ready: authentic DOM assumptions unverified; full C01-C28 JS fixture, multiprocess, real CLI tests and all integration/CI runs absent. This mailbox does not claim the requested full security repair is verified.",
+  "changed_files": [
+    "engineering/relay/approval_transaction.py",
+    "engineering/relay/relay-allow-card.py",
+    "engineering/relay/relay-allow-if-diff-clean.py",
+    "engineering/relay/auto_allow.py",
+    "engineering/relay/engineering_instruction_carrier.py",
+    "engineering/relay/profile_runner.py",
+    "engineering/relay/engineering_github_inbox.py",
+    "engineering/relay/engineering_handback_contract.py",
+    "engineering/relay/main_verdict.py",
+    "engineering/relay/queue_runner.py",
+    "engineering/relay/legacy_cdp_bridge.py",
+    "engineering/relay/relay-poll.py",
+    "engineering/relay/relay-drive.py",
+    "engineering/relay/README.md",
+    "lab/tests/test_collapsed_approval_transaction.py",
+    "docs/engineering/HANDOFF-collapsed-approval-20261015T114325Z.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest lab.tests.test_collapsed_approval_transaction",
+      "result": "NOT_RUN",
+      "evidence": "GitHub connector exposes file reads/writes but no remote test-execution facility; local sandbox cannot resolve github.com, so candidate branch source was not present locally."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "NOT_RUN",
+      "evidence": "No local checkout; no claim of regression pass."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "NOT_RUN",
+      "evidence": "No local checkout; no claim of regression pass."
+    },
+    {
+      "command": "node lab/tests/fixtures/collapsed_approval_dom_driver.js",
+      "result": "NOT_RUN",
+      "evidence": "Fixture and candidate-JS DOM driver were not completed; C01-C28 unverified."
+    },
+    {
+      "command": "python3 engineering/relay/auto_allow.py --once",
+      "result": "NOT_RUN",
+      "evidence": "Unsafe to run against a live profile; isolated synthetic integration harness not completed."
+    },
+    {
+      "command": "git ls-remote https://github.com/tony19930204UCL/perp-desk.git refs/heads/fix/collapsed-approval-20261015T114325Z",
+      "result": "INFRA",
+      "evidence": "container: fatal: Could not resolve host github.com. GitHub connector separately confirmed PR62 branch read and write access."
+    }
+  ],
+  "remaining_work": [
+    {
+      "status": "ACTIONABLE_NOW",
+      "description": "Implement and execute C01-C28 candidate JS against isolated DOM fixtures, exact click-target spies, multiprocess race and deadlock cases. Fixture files remain placeholders."
+    },
+    {
+      "status": "ACTIONABLE_NOW",
+      "description": "Review actual source end-to-end for bugs: operation dialog binding, action retry semantics, lock ownership, admission receipts, strict/diff fallback and each CLI entrypoint. Run full local focused and repository suites; fix failures."
+    },
+    {
+      "status": "EXTERNAL_BLOCKER",
+      "description": "Main must independently run exact-head push/pull_request CI and verify source/deployment mapping, deployed CLI/scheduler. Never deploy or generate live cards as part of this engineering job."
+    },
+    {
+      "status": "EXTERNAL_BLOCKER",
+      "description": "Authenticated-live collapsed card layout/state is unobserved; do not infer selectors are proven or replay paused AP3."
+    }
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Treat as BLOCKED candidate only. Inspect exact source head, allowlist diff, and security gaps. Do not accept or deploy absent C01-C28 and independent tests.",
+    "if_pass": "After an independently verified complete repair in a subsequent authorized scope, run exact-head dual CI, review deployment mapping and CLI/scheduler readback before any deployment decision.",
+    "if_fail": "Keep draft PR62 isolated; repair source and tests on same branch under approved allowlist. Never retry AP3 unknown send.",
+    "blockers": [
+      "C01-C28 unexecuted",
+      "DOM fixtures unfinished",
+      "No actual candidate entrypoint/full-suite execution",
+      "No authenticated-live folded-card evidence",
+      "No deployed mapping verification"
+    ]
+  }
+}
