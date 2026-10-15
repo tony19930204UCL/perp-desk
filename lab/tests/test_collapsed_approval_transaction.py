@@ -576,3 +576,59 @@ else: sys.exit(4)
             self.assertTrue(log.exists())
             self.assertNotIn('"op": "click"',log.read_text())
             self.assertFalse((home/"cache"/"approval-transaction-ledger.json").exists())
+
+
+class StructuralDetectorRegressionTests(unittest.TestCase):
+    def setUp(self):
+        import approval_transaction as ap
+        self.ap=ap
+        self.job={"repository":"example/repo","branch":"feature","write_allowlist":["detector.py"]}
+        self.op={"path":"github/update_file","args":{"repository_full_name":"example/repo",
+            "branch":"feature","path":"detector.py","content":""}}
+
+    def test_C13_exact_ast_detector_large_file(self):
+        import re
+        pattern=self.ap.STRICT_REGEX.pattern
+        # Python repr is an exact constant, with no dynamic construction.
+        source="import re\nPAT = re.compile("+repr(pattern)+")\n"+"# safe line\n"*220
+        self.op["args"]["content"]=source
+        self.assertEqual(self.ap.strict_policy(self.op,self.job)["tool"],"update_file")
+        with self.assertRaises(self.ap.PolicyRejected):
+            self.ap.diff_policy(self.op,self.job,max_lines=200,fetch_base=lambda j,p:"old")
+
+    def test_C13_detector_plus_real_value_rejected(self):
+        pattern=self.ap.STRICT_REGEX.pattern
+        source="import re\nPAT = re.compile("+repr(pattern)+")\n"
+        self.op["args"]["content"]=source+"value = "+repr("ghp_"+"a"*25)+"\n"
+        with self.assertRaises(self.ap.PolicyRejected):
+            self.ap.strict_policy(self.op,self.job)
+
+    def test_C13_changed_detector_and_secret_comment_not_exempt(self):
+        pattern=self.ap.STRICT_REGEX.pattern
+        for source in (
+            "import re\nPAT = re.compile("+repr(pattern+"X")+")\n",
+            "import re\nPAT = re.compile(prefix)\nvalue = "+repr("ghp_"+"a"*25)+"\n",
+            "# SECRET detection rule\nvalue = "+repr("ghp_"+"a"*25)+"\n",
+            "SECRET = "+repr("ghp_"+"a"*25)+"\n",
+        ):
+            with self.subTest(source=source[:30]):
+                self.op["args"]["content"]=source
+                with self.assertRaises(self.ap.PolicyRejected):
+                    self.ap.strict_policy(self.op,self.job)
+
+
+class MissingAdmissionRecordTests(unittest.TestCase):
+    def test_C09_missing_send_is_admission_failure(self):
+        import approval_transaction as ap
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)
+            chat="https://chatgpt.com/c/synthetic-current"
+            (p/"job.json").write_text(json.dumps({"task_id":"t","repository":"a/b",
+                "branch":"fix","write_allowlist":["a"],"valid_until":"2099-01-01T00:00:00+00:00"}))
+            (p/"active_instruction.json").write_text(json.dumps({
+                "task_id":"t","instruction_id":"different-r2","chat_url":chat}))
+            with self.assertRaises(ap.AdmissionError):
+                ap.admission(p)
+            (p/"active_instruction.json").write_text("{not json")
+            with self.assertRaises(ap.AdmissionError):
+                ap.admission(p)
