@@ -112,11 +112,14 @@ def create_server(*, scorecard_path, journal_path, ledger_path, port=0,
         def _trusted(self):
             host = self.headers.get('Host', '')
             allowed = {'127.0.0.1', 'localhost', '[::1]'}
-            try:
-                name, port_text = host.rsplit(':', 1)
-                port_valid = int(port_text) == self.server.server_port
-            except (ValueError, TypeError):
-                return False
+            if host in allowed:
+                name, port_valid = host, True
+            else:
+                try:
+                    name, port_text = host.rsplit(':', 1)
+                    port_valid = int(port_text) == self.server.server_port
+                except (ValueError, TypeError):
+                    return False
             if name not in allowed or not port_valid:
                 return False
             origin = self.headers.get('Origin')
