@@ -126,7 +126,12 @@ def transport(job, request):
 
 
 def snapshot(job, send=transport):
-    result = send(job, {"op": "snapshot"})
+    try:
+        result = send(job, {"op": "snapshot"})
+    except InfraError:
+        raise
+    except Exception as exc:
+        raise InfraError("SNAPSHOT_TRANSPORT_OR_ADAPTER") from exc
     if not isinstance(result, dict) or not isinstance(result.get("url"), str):
         raise InfraError("SNAPSHOT_INVALID")
     return result
@@ -181,7 +186,7 @@ DOM_JS = r"""
    const unknown = buttons(turn).filter(b => label(b) === "先前活動" && !enabled(b));
    if (controls.length > 1 || unknown.length) throw Error("AMBIGUOUS_OR_DISABLED_ACTIVITY");
    if (controls.length === 1 && controls[0].getAttribute("aria-expanded") === "false") {
-     globalThis.__boundedApprovalTx = {token, turn, expansion:controls[0], clicked:false};
+     globalThis.__boundedApprovalTx = {token, turn, expansion:controls[0], opText:null, clicked:false};
      return {state:"COLLAPSED"};
    }
    if (controls.length && controls[0].getAttribute("aria-expanded") !== "true")
@@ -217,7 +222,8 @@ DOM_JS = r"""
    if (!c) return {state:"NO_PENDING"};
    const invocation = c.getAttribute("data-invocation-id") || c.getAttribute("data-tool-call-id");
    if (!invocation) throw Error("MISSING_INVOCATION_ID");
-   tx.card = c; tx.invocation = invocation; return {state:"PENDING",invocation};
+   tx.card = c; tx.invocation = invocation; tx.opText = null;
+   return {state:"PENDING",invocation};
  }
  const c = tx.card;
  if (!c || !visible(c) || !turn.contains(c) || c !== locate() ||
@@ -281,6 +287,10 @@ def evaluate(job, token, action, send=transport):
         raise
     except (TypeError, ValueError, KeyError) as exc:
         raise InfraError("EVALUATE_BAD_JSON") from exc
+    except Exception as exc:
+        # Includes Playwright/bridge JS exceptions, not only subprocess failures.
+        # Do not leak CDP arguments, card payloads or raw adapter exception text.
+        raise InfraError("EVALUATE_TRANSPORT_OR_JS") from exc
 
 
 def parse_operation(text):
