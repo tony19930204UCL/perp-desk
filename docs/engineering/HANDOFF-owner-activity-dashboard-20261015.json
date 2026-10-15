@@ -4,67 +4,50 @@
   "pr_number": 63,
   "branch": "feat/owner-activity-dashboard-20261015",
   "task_id": "owner-activity-dashboard-20261015",
-  "instruction_id": "OA1-r1",
+  "instruction_id": "OA1-r2",
   "status": "WAITING_CI",
-  "source_head_sha": "02f566acf55bd423419ac2d86d5fe0fe1ef68f05",
-  "summary": "Scoped r1 repair committed. Actual-shape typed blocked_by, epoch times/history/defer, kind/ref cron joins, PID/start independent proof, explicit unverifiable freshness and removed-selection reset. Entirely synthetic public fixture; no deployment, runtime writes, or external proof supplier. Follow-up synthetic test corrections: work header clock on empty tasks and restored item dependency for unresolved prerequisite check.",
+  "source_head_sha": "87b71ba69f931fbce6eeab59323562d1f318badd",
+  "summary": "Migrated one stale test expectation: valid '/' is no longer in invalid-route 404 table; added actual homepage GET 200 exact HTML bytes, HEAD parity, cache/security headers and proof the API reader is not invoked. All invalid query, encoded, absolute and traversal routes remain 404. Production code unchanged; undeployed.",
   "changed_files": [
-    "lab/owner_activity.py",
-    "lab/owner_activity.js",
-    "lab/tests/fixtures/owner_activity_sanitized.json",
-    "lab/tests/test_owner_activity.py",
-    "lab/tests/test_owner_activity_browser.py",
-    "docs/engineering/OWNER_ACTIVITY_DESIGN.md",
+    "lab/tests/test_dashboard_v2_server.py",
     "docs/engineering/HANDOFF-owner-activity-dashboard-20261015.json"
   ],
   "tests": [
     {
-      "command": "GitHub Actions push run 38760135495 and pull_request run 38760146488 at reviewed r0 HEAD 477db3621959a4a07f4177bbe5c5b0f0a3b44ec5",
-      "result": "FAIL: both, 595 tests and one failure each",
-      "evidence": "Frozen test_dashboard_v2_server.py line149 expects '/' 404; existing dashboard_v2_serving.py requires root HTML200. Inherited before OA1; out of write scope."
+      "command": "Main independently ran normal automation/tests and lab/tests discovery at previous reviewed HEAD fd4a8f6613618327ef21bf7c9e3af5a1b8df5553",
+      "result": "600 distinct tests: 599 PASS, 1 FAIL, zero errors/skips (as reported by Main); not OA1-r2 execution",
+      "evidence": "Exact prior-head push 38771780702 and pull_request 38771796235 FAILURE; one inherited test expects '/' 404 against existing product root 200"
     },
     {
-      "command": "GitHub Actions run 38771227361 at intermediate r1 HEAD 7b920b4a901fbcbaf369526571581176fa480a2e",
-      "result": "FAIL: 595 tests, 5 failures 2 errors including old-shape fixture and root conflict, preceding synthetic fixture/test repairs",
-      "evidence": "Actual workflow log; not final-head results"
+      "command": "python3 -m unittest discover -s automation/tests -v",
+      "result": "Not executed locally in connected GitHub route; newly triggered push/PR CI pending",
+      "evidence": "Source commit 87b71ba69f931fbce6eeab59323562d1f318badd; new-head runs must be inspected before acceptance"
     },
     {
-      "command": "python3 -m unittest discover -s automation/tests -v and cd lab && python3 -m unittest discover -s tests -v",
-      "result": "Final source-head exact-run pending; no local shell tests claimed",
-      "evidence": "GitHub push 38771479470 and pull_request 38771489524 for source HEAD 436cbc28d047e3d5be79228a4411f189d77a0772 observed in_progress"
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "Not executed locally; actual run counts pending new-head GitHub Actions",
+      "evidence": "Changed test adds root HTML GET/HEAD acceptance and retains true invalid-route 404 checks"
     },
     {
-      "command": "Independent Chromium desktop/mobile synthetic fixture assessment",
-      "result": "r0 15/16 PASS as supplied by Main, failed stale selected detail; r1 not rerun or screenshot-reviewed in this tool route",
-      "evidence": "No new screenshot evidence"
-    },
-    {
-      "command": "PR run 38771392004 and push run 38771381662 at intermediate r1 HEAD 33c66d97504ce610e7888b08f18c1ae2c2f7161e",
-      "result": "FAIL: 600 tests, 3 failures: inherited '/' root conflict plus two r1 source/test expectations corrected in later commits",
-      "evidence": "GitHub workflow logs, no successful final-head claim"
-    },
-    {
-      "command": "Exact source-head push and pull_request CI for 02f566acf55bd423419ac2d86d5fe0fe1ef68f05",
-      "result": "WAITING_CI",
-      "evidence": "GitHub Actions source-head runs initiated; no completed verdict observed"
+      "command": "Independently reported previous-head owner/browser acceptance",
+      "result": "All 16 owner tests, 14 actual-source probes, 15 Chromium checks and private union 288/288 passed per Main, not rerun for OA1-r2",
+      "evidence": "Main's independently supplied results, no private fixtures or screenshots exported"
     }
   ],
   "remaining_work": [
-    "Verify push and pull_request exact-head results for source 02f566acf55bd423419ac2d86d5fe0fe1ef68f05 and mailbox HEAD; no green claimed.",
-    "Preserve root 200 and report inherited contradiction between frozen v2 server and serving tests as out-of-allowlist migration blocker",
-    "Repeat isolated Chromium server/browser synthetic-fixture 16 checks and desktop/mobile screenshot, selection removal, keyboard, no-overflow acceptance",
-    "Independently validate source field projection/totals and proof suppliers; source snapshots are non-atomic; deployed=false",
-    "User owns visual acceptance; Main owns engineering acceptance"
+    "Verify complete automation/tests and lab/tests discovery test counts/errors/skips at exact OA1-r2 source and mailbox HEAD",
+    "Verify BOTH push and pull_request exact-head workflows and log any failures, no passing retry claim",
+    "Main independent final functional and security acceptance, source freshness/totals, desktop/mobile, removed-selection/detail and backups",
+    "User visual approval, then separate authorized local deployment only; deployed=false"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Verify source HEAD 02f566acf55bd423419ac2d86d5fe0fe1ef68f05 and new mailbox HEAD; compare push/pull_request exact-head CI, especially synthetic r1 corrections; isolate inherited frozen root route assertion",
-    "if_pass": "Accept scoped engineering functionality separately from inherited root-test migration; request user visual assessment; no deployment.",
-    "if_fail": "Return exact failing tests and scoped repair request on same PR63; out-of-allowlist frozen root assertion must be resolved by authorized owner, not this worker.",
+    "verify_now": "Inspect source commit 87b71ba69f931fbce6eeab59323562d1f318badd and mailbox commit; require exact-head push and pull_request CI and verify remaining invalid routes still 404, root actual HTML 200 and zero API reads",
+    "if_pass": "Independently review OA1-r2 test migration alongside established Owner Monitor proofs, then seek user visual acceptance; keep undeployed.",
+    "if_fail": "Return exact new-head failure and block without expanding this two-file scope.",
     "blockers": [
-      "Frozen original v2 root '/' assertion contradicts serving suite; outside allowlist",
-      "Exact-head CI unfinished",
-      "New browser screenshot and independent proof-supplier verification pending"
+      "Exact-head CI not yet concluded",
+      "Main acceptance and user visual approval outstanding"
     ]
   },
   "deployed": false
