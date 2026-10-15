@@ -46,9 +46,25 @@ const find=(el,tag)=>el.children.flatMap(child=>[...(child.tagName===tag?[child]
  const hostile='<img src=x onerror=alert(1)>';const changed={...model,tasks:[{...task('C-0026','activity_unconfirmed'),title:hostile}]};
  window.renderOwnerActivity(changed);
  assert(ids.tasks.textContent.includes(hostile));assert.equal(find(ids.tasks,'img').length,0);
+ // Selecting a task and removing it on refresh must clear the former detail.
+ window.renderOwnerActivity({...model,tasks:[task('C-0030','failed')]});
+ find(ids.tasks,'button')[0].listeners.click();
+ assert(ids.detail.textContent.includes('C-0030'));
+ const removed=window.refreshOwnerActivity();
+ pending[1].resolve({ok:true,json:async()=>({...model,tasks:[task('C-0026','scheduled_idle')]})});
+ await removed;
+ assert(!ids.detail.textContent.includes('C-0030'));
+ assert(ids.detail.textContent.includes('已不存在'));
+ // A filtered-out but still existing task remains selectable only as current model data.
+ window.renderOwnerActivity(model);
+ ids.search.value='C-0028';ids.search.listeners.input();
+ find(ids.tasks,'button')[0].listeners.click();
+ ids.search.value='C-0026';ids.search.listeners.input();
+ assert(ids.detail.textContent.includes('C-0028'));
+ ids.search.value='';ids.search.listeners.input();
  const old=window.refreshOwnerActivity(),newer=window.refreshOwnerActivity();
- pending[2].resolve({ok:true,json:async()=>({...model,tasks:[task('NEW','running_verified')]})});await newer;
- pending[1].resolve({ok:true,json:async()=>({...model,tasks:[task('OLD','blocked')]})});await old;
+ pending[3].resolve({ok:true,json:async()=>({...model,tasks:[task('NEW','running_verified')]})});await newer;
+ pending[2].resolve({ok:true,json:async()=>({...model,tasks:[task('OLD','blocked')]})});await old;
  assert(ids.tasks.textContent.includes('NEW'));assert(!ids.tasks.textContent.includes('OLD'));
  console.log('Node DOM interactions PASS');
 })().catch(e=>{console.error(e);process.exitCode=1});
