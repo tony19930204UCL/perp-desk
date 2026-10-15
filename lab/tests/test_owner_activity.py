@@ -33,9 +33,9 @@ class Projection(unittest.TestCase):
         m = model()
         self.assertEqual(by_id(m, 'C-0030')['state'], 'running_verified')
         self.assertEqual(by_id(m, 'C-0030')['activity'], 'verified_worker')
-        for proof in ({'pid': 1234, 'start_identity': 'different', 'alive': True,
+        for proof in ({'pid': 1234, 'start': 999, 'alive': True,
                        'observed_at': '2026-10-15T11:59:30Z'},
-                      {'pid': 1234, 'start_identity': 'fixture-start', 'alive': False,
+                      {'pid': 1234, 'start': 456, 'alive': False,
                        'observed_at': '2026-10-15T11:59:30Z'}, None):
             with self.subTest(proof=proof):
                 f = copy.deepcopy(FIX)
@@ -81,6 +81,7 @@ class Projection(unittest.TestCase):
         self.assertEqual(m['totals']['cron'], len(FIX['cron']['jobs']))
         self.assertEqual(m['totals']['union'], len({t['id'] for t in m['tasks']}))
         self.assertEqual(m['totals']['union'], 5)
+        self.assertFalse(any(x['id'].startswith('JOB:') for x in m['tasks']))
         self.assertEqual(m['stage_current'], None)
         self.assertTrue(all(t['deployed'] == 'unconfirmed' for t in m['tasks']))
 
@@ -100,6 +101,69 @@ class Projection(unittest.TestCase):
             target.unlink()
             target.write_text('x' * 500)
             self.assertEqual(read_activity(str(root), now_ms=NOW, max_bytes=128)['sources']['ledger']['state'], 'invalid')
+
+    def test_actual_blocker_categories_and_resolution(self):
+        f = copy.deepcopy(FIX)
+        for index, raw in enumerate(('item:C-0032', 'cmd:synthetic-command',
+                                     'file:synthetic-marker', 'user:synthetic-question')):
+            f['ledger']['items'][3]['blocked_by'] = raw
+            row = by_id(model(f), 'C-0031')
+            self.assertEqual(row['blocker_details'][0]['type'], raw.split(':')[0])
+            if index == 0:
+                self.assertEqual(row['blocker_details'][0]['resolution'], 'resolved')
+                self.assertEqual(row['dependencies'], ['C-0032'])
+            else:
+                self.assertEqual(row['blocker_details'][0]['resolution'], 'unknown')
+                self.assertEqual(row['state'], 'blocked')
+                self.assertNotIn(raw.split(':')[1], str(row))
+        f['ledger']['items'][4]['state'] = 'OPEN'
+        self.assertEqual(by_id(model(f), 'C-0031')['blocker_details'][0]['resolution'], 'unresolved')
+
+    def test_epoch_defer_and_history(self):
+        row = by_id(model(), 'C-0031')
+        self.assertTrue(row['due'].startswith('2026-10-14'))
+        self.assertEqual(row['recheck_at'], row['due'])
+        self.assertEqual(row['deferral_state'], 'overdue')
+        self.assertEqual(row['defer_reason'], 'synthetic review')
+        history = by_id(model(), 'C-0026')['history']
+        self.assertEqual(len(history), 1)
+        self.assertIn('Synthetic observation', history[0]['note'])
+        self.assertIn('2026-10-15', history[0]['at'])
+
+    def test_dispatch_with_no_independent_proof(self):
+        f = copy.deepcopy(FIX)
+        f['ledger']['items'][2]['state'] = 'DISPATCHED'
+        f['work']['tasks'] = []
+        self.assertEqual(by_id(model(f), 'C-0030')['state'], 'activity_unconfirmed')
+        f['ledger']['items'][2]['handle'] = {'kind':'manual','ref':'synthetic-owner'}
+        self.assertEqual(by_id(model(f), 'C-0030')['state'], 'activity_unconfirmed')
+
+    def test_numeric_source_freshness_and_invalid_clock(self):
+        f = copy.deepcopy(FIX)
+        self.assertEqual(model(f)['sources']['roadmap']['state'], 'available')
+        self.assertEqual(model(f)['sources']['ledger']['state'], 'available')
+        f['ledger']['items'] = [{**x, 'updated': 1700000000} for x in f['ledger']['items']]
+        self.assertEqual(model(f)['sources']['ledger']['state'], 'stale')
+        f['ledger']['items'][0]['updated'] = True
+        self.assertEqual(model(f)['sources']['ledger']['state'], 'conflict')
+        f['ledger']['items'] = []
+        self.assertEqual(model(f)['sources']['ledger']['state'], 'unverifiable')
+        f['roadmap']['updated'] = 'not-a-time'
+        self.assertEqual(model(f)['sources']['roadmap']['state'], 'unverifiable')
+
+    def test_dispatched_cron_links_no_extra_rows(self):
+        f = copy.deepcopy(FIX)
+        for i in range(11):
+            name = 'C-S%02d' % i
+            job = 'synthetic-job-%02d' % i
+            f['ledger']['items'].append({'id': name,'text':name,'state':'DISPATCHED',
+                                            'handle':{'kind':'cron','ref':job},
+                                            'updated':1792062000})
+            f['cron']['jobs'].append({'id':job,'enabled':True,'schedule':{'kind':'every','minutes':60},
+                                       'next_run_at':'2026-10-16T11:00:00Z'})
+        m = model(f)
+        self.assertEqual(m['totals']['union'], len(f['ledger']['items']))
+        self.assertFalse(any(row['id'].startswith('JOB:') for row in m['tasks']))
 
     def test_unsafe_text_not_elevated_to_markup(self):
         f = copy.deepcopy(FIX)
