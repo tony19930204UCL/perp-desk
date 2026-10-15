@@ -85,23 +85,38 @@ if __name__=="__main__": unittest.main()
 class CandidateDOMTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        try:
-            from playwright.sync_api import sync_playwright
-        except ImportError as exc:
-            raise unittest.SkipTest("playwright unavailable; C01-C28 NOT VERIFIED") from exc
+        import os, shutil
+        from playwright.sync_api import sync_playwright
         cls._playwright_context=sync_playwright()
         cls._playwright=cls._playwright_context.start()
+        cls.browser=None
         try:
-            cls.browser=cls._playwright.chromium.launch(headless=True, executable_path="/usr/bin/chromium",
-                args=["--no-sandbox"])
-        except Exception as exc:
-            cls._playwright_context.stop()
-            raise unittest.SkipTest("isolated Chromium unavailable; C01-C28 NOT VERIFIED: "+str(exc)) from exc
+            override=os.environ.get("COLLAPSED_APPROVAL_CHROMIUM")
+            candidates=([override] if override else []) + [
+                shutil.which("chromium"),shutil.which("chromium-browser"),
+                shutil.which("google-chrome"),shutil.which("chrome")]
+            candidates=[c for c in candidates if c]
+            failures=[]
+            for exe in [*candidates,None]:
+                try:
+                    opts={"headless":True,"args":["--no-sandbox"]}
+                    if exe: opts["executable_path"]=exe
+                    cls.browser=cls._playwright.chromium.launch(**opts)
+                    break
+                except Exception as exc:
+                    failures.append(type(exc).__name__ + ":" + str(exc)[:180])
+            if cls.browser is None:
+                raise RuntimeError("CHROMIUM_REQUIRED_NO_SKIP: "+"; ".join(failures))
+        except BaseException:
+            cls._playwright_context.__exit__(None,None,None)
+            raise
 
     @classmethod
     def tearDownClass(cls):
-        cls.browser.close()
-        cls._playwright_context.stop()
+        try:
+            if cls.browser is not None: cls.browser.close()
+        finally:
+            cls._playwright_context.__exit__(None,None,None)
 
     def setUp(self):
         import approval_transaction as ap
@@ -152,6 +167,12 @@ class CandidateDOMTests(unittest.TestCase):
         if req["op"]=="evaluate":
             return self.page.evaluate(req["expression"])
         raise AssertionError("unsupported")
+
+    def active_action(self,req):
+        if req.get("op")!="evaluate": return None
+        import re
+        m=re.search(r'const token = [^,]+, action = ("[^"]+");',req["expression"])
+        return json.loads(m.group(1)) if m else None
 
     def approval(self,mode="strict",**kw):
         return self.ap.approve(self.p,mode=mode,send=self.send,**kw)
@@ -255,7 +276,7 @@ class CandidateDOMTests(unittest.TestCase):
         called=[False]
         def send(j,r):
             out=self.send(j,r)
-            if r["op"]=="evaluate" and '"details"' in r["expression"] and not called[0]:
+            if r["op"]=="evaluate" and self.active_action(r)=="details" and not called[0]:
                 called[0]=True;self.chat="https://chatgpt.com/c/another-conversation"
             return out
         self.assertEqual(self.ap.approve(self.p,send=send)["status"],"REJECTED")
@@ -265,7 +286,7 @@ class CandidateDOMTests(unittest.TestCase):
         called=[False]
         def send(j,r):
             out=self.send(j,r)
-            if r["op"]=="evaluate" and '"details"' in r["expression"] and not called[0]:
+            if r["op"]=="evaluate" and self.active_action(r)=="details" and not called[0]:
                 called[0]=True
                 self.mutate("""document.getElementById('operation-dialog').innerText=
                     document.getElementById('operation-dialog').innerText.replace('"safe"','"mutated"')""")
@@ -301,7 +322,7 @@ class CandidateDOMTests(unittest.TestCase):
 
     def test_C25_readback_unknown_persistent(self):
         def send(j,r):
-            if r["op"]=="evaluate" and '"readback"' in r["expression"]:
+            if r["op"]=="evaluate" and self.active_action(r)=="readback":
                 raise self.ap.InfraError("synthetic unknown readback")
             return self.send(j,r)
         self.assertEqual(self.ap.approve(self.p,send=send)["status"],"UNKNOWN")
