@@ -56,6 +56,7 @@ class Projection(unittest.TestCase):
         f['cron']['jobs'][0]['last_status'] = 'failed'
         self.assertEqual(by_id(model(f), 'C-0026')['schedule']['run_state'], 'failed')
         f['cron']['jobs'][0]['next_run_at'] = '2026-10-14T00:00:00Z'
+        f['cron']['jobs'][0]['last_run_at'] = '2026-10-13T00:00:00Z'
         self.assertEqual(by_id(model(f), 'C-0026')['schedule']['run_state'], 'missed')
 
     def test_resolved_blocker_and_overdue_recheck(self):
