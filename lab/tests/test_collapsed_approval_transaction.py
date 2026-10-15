@@ -525,3 +525,58 @@ class AdmissionVariantTests(unittest.TestCase):
                 self.assertNotEqual(a,self.ap.fingerprint(op,"invocation-A"))
         op=json.loads(json.dumps(original));op["path"]="github/create_file"
         self.assertNotEqual(a,self.ap.fingerprint(op,"invocation-A"))
+
+
+class EntrypointProcessTests(unittest.TestCase):
+    """Real direct helpers and auto_allow --once via synthetic no-card transport."""
+
+    def test_C23_real_cli_no_card_isolation(self):
+        import os, subprocess, concurrent.futures
+        root=Path(__file__).resolve().parents[2]
+        scripts=root/"engineering"/"relay"
+        with tempfile.TemporaryDirectory() as d:
+            home=Path(d)
+            jd=home/"cache"/"scratch"/"relay-synthetic"
+            jd.mkdir(parents=True)
+            transport=home/"synthetic_transport.py"
+            log=home/"transport_calls.jsonl"
+            transport.write_text("""import json,sys,os
+from pathlib import Path
+request=json.load(sys.stdin)
+with Path(os.environ['SYNTHETIC_TRANSPORT_LOG']).open('a') as out:
+ out.write(json.dumps({'op':request['op']})+'\\n')
+if request['op']=='snapshot':
+ print(json.dumps({'url':'https://chatgpt.com/c/synthetic-test','text':'No pending card','busy':False}))
+elif request['op']=='evaluate':
+ print(json.dumps({'state':'NO_PENDING'}))
+else: sys.exit(4)
+""")
+            j={"task_id":"synthetic","instruction_id":"synthetic-r2",
+               "repository":"example/repo","branch":"test","write_allowlist":["path.txt"],
+               "valid_until":"2099-01-01T00:00:00+00:00",
+               "conversation_mode":"new","chat_url":"https://chatgpt.com/",
+               "transport_command":[sys.executable,str(transport)]}
+            (jd/"job.json").write_text(json.dumps(j))
+            (jd/"active_instruction.json").write_text(json.dumps({
+                "task_id":"synthetic","instruction_id":"synthetic-r2",
+                "chat_url":"https://chatgpt.com/c/synthetic-test"}))
+            (jd/"send_synthetic-r2.json").write_text(json.dumps({
+                "status":"CONFIRMED","chat_url":"https://chatgpt.com/c/synthetic-test"}))
+            env={**os.environ,"HERMES_HOME":str(home),
+                 "SYNTHETIC_TRANSPORT_LOG":str(log)}
+            def run(argv):
+                return subprocess.run(argv,env=env,capture_output=True,text=True,
+                                      timeout=20,cwd=str(root))
+            entrypoints=[
+                [sys.executable,str(scripts/"relay-allow-card.py"),str(jd)],
+                [sys.executable,str(scripts/"relay-allow-if-diff-clean.py"),str(jd),"200"],
+                [sys.executable,str(scripts/"auto_allow.py"),"--once"]]
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+                results=list(pool.map(run,entrypoints))
+            for i,result in enumerate(results):
+                with self.subTest(entrypoint=entrypoints[i]):
+                    self.assertEqual(result.returncode,0,
+                        (result.stdout,result.stderr))
+            self.assertTrue(log.exists())
+            self.assertNotIn('"op": "click"',log.read_text())
+            self.assertFalse((home/"cache"/"approval-transaction-ledger.json").exists())
