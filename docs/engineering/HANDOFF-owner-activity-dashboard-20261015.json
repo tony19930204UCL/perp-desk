@@ -4,61 +4,57 @@
   "pr_number": 63,
   "branch": "feat/owner-activity-dashboard-20261015",
   "task_id": "owner-activity-dashboard-20261015",
-  "instruction_id": "OA1-r0",
+  "instruction_id": "OA1-r1",
   "status": "WAITING_CI",
-  "source_head_sha": "76e22ea9b97ffcfd00242fcebbda95c4837d7a78",
-  "summary": "Implemented opt-in read-only activity Monitor in existing observer UI with bounded profile reader, explicit run/result proof distinctions, synthetic fixtures and interaction tests. No deployment or real private data. CI and real browser screenshot acceptance outstanding.",
+  "source_head_sha": "436cbc28d047e3d5be79228a4411f189d77a0772",
+  "summary": "Scoped r1 repair committed. Actual-shape typed blocked_by, epoch times/history/defer, kind/ref cron joins, PID/start independent proof, explicit unverifiable freshness and removed-selection reset. Entirely synthetic public fixture; no deployment, runtime writes, or external proof supplier.",
   "changed_files": [
-    "docs/engineering/OWNER_ACTIVITY_DESIGN.md",
-    "lab/dashboard_v2.html",
-    "lab/dashboard_v2_server.py",
-    "lab/owner_activity.html",
-    "lab/owner_activity.js",
     "lab/owner_activity.py",
+    "lab/owner_activity.js",
     "lab/tests/fixtures/owner_activity_sanitized.json",
     "lab/tests/test_owner_activity.py",
     "lab/tests/test_owner_activity_browser.py",
+    "docs/engineering/OWNER_ACTIVITY_DESIGN.md",
     "docs/engineering/HANDOFF-owner-activity-dashboard-20261015.json"
   ],
   "tests": [
     {
-      "command": "python3 -m unittest discover -s automation/tests -v",
-      "result": "Observed GitHub workflow step completed on intermediate head ecd432efb0abb8970ac2c0874eea663d21f6efa8, 52 tests; final head pending",
-      "evidence": "GitHub Actions PR workflow 38759671994, logs show Ran 52 tests"
+      "command": "GitHub Actions push run 38760135495 and pull_request run 38760146488 at reviewed r0 HEAD 477db3621959a4a07f4177bbe5c5b0f0a3b44ec5",
+      "result": "FAIL: both, 595 tests and one failure each",
+      "evidence": "Frozen test_dashboard_v2_server.py line149 expects '/' 404; existing dashboard_v2_serving.py requires root HTML200. Inherited before OA1; out of write scope."
     },
     {
-      "command": "cd lab && python3 -m unittest discover -s tests -v",
-      "result": "FAIL on intermediate head ecd432efb0abb8970ac2c0874eea663d21f6efa8; 595 tests, 2 failures. One existing incompatible '/' expectation; Node DOM timing test addressed in subsequent commit. Final head pending.",
-      "evidence": "GitHub Actions PR workflow 38759671994, PAPER isolated suite"
+      "command": "GitHub Actions run 38771227361 at intermediate r1 HEAD 7b920b4a901fbcbaf369526571581176fa480a2e",
+      "result": "FAIL: 595 tests, 5 failures 2 errors including old-shape fixture and root conflict, preceding synthetic fixture/test repairs",
+      "evidence": "Actual workflow log; not final-head results"
     },
     {
-      "command": "Real Chromium desktop/mobile screenshot, keyboard and responsive review",
-      "result": "NOT RUN; no browser-equipped checkout/harness execution or screenshots available in this execution path",
-      "evidence": "No screenshots produced"
+      "command": "python3 -m unittest discover -s automation/tests -v and cd lab && python3 -m unittest discover -s tests -v",
+      "result": "Final source-head exact-run pending; no local shell tests claimed",
+      "evidence": "GitHub push 38771479470 and pull_request 38771489524 for source HEAD 436cbc28d047e3d5be79228a4411f189d77a0772 observed in_progress"
     },
     {
-      "command": "Push and pull_request exact-head CI",
-      "result": "WAITING; not asserted successful",
-      "evidence": "Current source head 76e22ea9b97ffcfd00242fcebbda95c4837d7a78"
+      "command": "Independent Chromium desktop/mobile synthetic fixture assessment",
+      "result": "r0 15/16 PASS as supplied by Main, failed stale selected detail; r1 not rerun or screenshot-reviewed in this tool route",
+      "evidence": "No new screenshot evidence"
     }
   ],
   "remaining_work": [
-    "Recheck push and pull_request CI for exact source HEAD and post-mailbox HEAD; no green claim before both succeed",
-    "Resolve inherited test conflict: test_dashboard_v2_server expects '/' 404 but test_dashboard_v2_serving asserts '/' 200; retain root dashboard behavior",
-    "Verify Node JS harness fix on exact head",
-    "Run real Chromium desktop/mobile screenshots and keyboard accessibility interactions",
-    "Review scheduling semantics against actual trusted local adapter and source totals; no private records exported",
-    "User visual acceptance; deployed=false"
+    "Observe exact-head push and PR CI and diagnose any remaining r1 failures; do not claim green",
+    "Preserve root 200 and report inherited contradiction between frozen v2 server and serving tests as out-of-allowlist migration blocker",
+    "Repeat isolated Chromium server/browser synthetic-fixture 16 checks and desktop/mobile screenshot, selection removal, keyboard, no-overflow acceptance",
+    "Independently validate source field projection/totals and proof suppliers; source snapshots are non-atomic; deployed=false",
+    "User owns visual acceptance; Main owns engineering acceptance"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Inspect exact source SHA 76e22ea9b97ffcfd00242fcebbda95c4837d7a78 and post-mailbox HEAD; require both push/pull_request CI and desktop/mobile screenshots; verify route contradiction without editing frozen tests",
-    "if_pass": "Review functionality and safety, then solicit user visual acceptance; do not deploy without separate authorization",
-    "if_fail": "Return scoped repair for exact failing lines/heads; keep same PR63/branch",
+    "verify_now": "Check exact pre-mailbox HEAD 436cbc28d047e3d5be79228a4411f189d77a0772 and post-mailbox HEAD CI push/PR; run synthetic actual-schema and browser acceptance; preserve root 200.",
+    "if_pass": "Accept scoped engineering functionality separately from inherited root-test migration; request user visual assessment; no deployment.",
+    "if_fail": "Return exact failing tests and scoped repair request on same PR63; out-of-allowlist frozen root assertion must be resolved by authorized owner, not this worker.",
     "blockers": [
-      "No real browser screenshots",
-      "CI pending for final head",
-      "Root '/' contradictory existing tests"
+      "Frozen original v2 root '/' assertion contradicts serving suite; outside allowlist",
+      "Exact-head CI unfinished",
+      "New browser screenshot and independent proof-supplier verification pending"
     ]
   },
   "deployed": false
