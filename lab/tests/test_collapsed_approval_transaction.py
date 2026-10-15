@@ -85,44 +85,39 @@ if __name__=="__main__": unittest.main()
 class CandidateDOMTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        import os, shutil
-        from playwright.sync_api import sync_playwright
-        cls._playwright_context=sync_playwright()
-        cls._playwright=cls._playwright_context.start()
-        cls.browser=None
-        try:
-            override=os.environ.get("COLLAPSED_APPROVAL_CHROMIUM")
-            candidates=([override] if override else []) + [
-                shutil.which("chromium"),shutil.which("chromium-browser"),
-                shutil.which("google-chrome"),shutil.which("chrome")]
-            candidates=[c for c in candidates if c]
-            failures=[]
-            for exe in [*candidates,None]:
-                try:
-                    opts={"headless":True,"args":["--no-sandbox"]}
-                    if exe: opts["executable_path"]=exe
-                    cls.browser=cls._playwright.chromium.launch(**opts)
-                    break
-                except Exception as exc:
-                    failures.append(type(exc).__name__ + ":" + str(exc)[:180])
-            if cls.browser is None:
-                raise RuntimeError("CHROMIUM_REQUIRED_NO_SKIP: "+"; ".join(failures))
-        except BaseException:
-            cls._playwright_context.__exit__(None,None,None)
-            raise
+        # Existing stdlib CDP client, no Playwright/installation dependency.
+        import importlib.util, os, shutil
+        from pathlib import Path
+        source=Path(__file__).resolve().parents[1]/"browser_issue3_acceptance.py"
+        spec=importlib.util.spec_from_file_location("browser_issue3_acceptance",source)
+        module=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        cls.CdpSession=module.CdpSession
+        cls.chrome=os.environ.get("COLLAPSED_APPROVAL_CHROMIUM") or module.chrome_binary()
+        if not Path(cls.chrome).exists() and not shutil.which(cls.chrome):
+            raise RuntimeError("CHROMIUM_REQUIRED_NO_SKIP")
 
-    @classmethod
-    def tearDownClass(cls):
-        try:
-            if cls.browser is not None: cls.browser.close()
-        finally:
-            cls._playwright_context.__exit__(None,None,None)
+    def _eval(self, expression):
+        return self.session.evaluate(expression)
+
+    class _Locator:
+        def __init__(self, session, selector):
+            self.session=session;self.selector=selector
+        def inner_text(self):
+            return self.session.evaluate("document.querySelector("+json.dumps(self.selector)+").innerText")
+
+    class _Page:
+        def __init__(self,session):self.session=session
+        def evaluate(self,expression):return self.session.evaluate(expression)
+        def locator(self,selector):return CandidateDOMTests._Locator(self.session,selector)
+        def goto(self,url):self.session.navigate(url)
 
     def setUp(self):
         import approval_transaction as ap
         self.ap=ap
-        self.ctx=self.browser.new_context()
-        self.page=self.ctx.new_page()
+        self.chrome_tmp=tempfile.TemporaryDirectory()
+        self.session=self.CdpSession(self.chrome,Path(self.chrome_tmp.name))
+        self.page=self._Page(self.session)
         self.page.goto(Path(__file__).resolve().parent.joinpath("fixtures/collapsed_approval_dom.html").as_uri())
         self.page.evaluate("""() => {document.getElementById('operation-dialog').innerText='call_tool\\n'+JSON.stringify({
             path:'github/update_file',
@@ -146,7 +141,8 @@ class CandidateDOMTests(unittest.TestCase):
         self.original_draft=self.page.locator("#prompt-textarea").inner_text()
 
     def tearDown(self):
-        self.ctx.close()
+        self.session.close()
+        self.chrome_tmp.cleanup()
 
     def write(self,name,value):
         (self.p/name).write_text(json.dumps(value))
