@@ -1,1 +1,65 @@
-{"placeholder": true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 63,
+  "branch": "feat/owner-activity-dashboard-20261015",
+  "task_id": "owner-activity-dashboard-20261015",
+  "instruction_id": "OA1-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "76e22ea9b97ffcfd00242fcebbda95c4837d7a78",
+  "summary": "Implemented opt-in read-only activity Monitor in existing observer UI with bounded profile reader, explicit run/result proof distinctions, synthetic fixtures and interaction tests. No deployment or real private data. CI and real browser screenshot acceptance outstanding.",
+  "changed_files": [
+    "docs/engineering/OWNER_ACTIVITY_DESIGN.md",
+    "lab/dashboard_v2.html",
+    "lab/dashboard_v2_server.py",
+    "lab/owner_activity.html",
+    "lab/owner_activity.js",
+    "lab/owner_activity.py",
+    "lab/tests/fixtures/owner_activity_sanitized.json",
+    "lab/tests/test_owner_activity.py",
+    "lab/tests/test_owner_activity_browser.py",
+    "docs/engineering/HANDOFF-owner-activity-dashboard-20261015.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s automation/tests -v",
+      "result": "Observed GitHub workflow step completed on intermediate head ecd432efb0abb8970ac2c0874eea663d21f6efa8, 52 tests; final head pending",
+      "evidence": "GitHub Actions PR workflow 38759671994, logs show Ran 52 tests"
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "FAIL on intermediate head ecd432efb0abb8970ac2c0874eea663d21f6efa8; 595 tests, 2 failures. One existing incompatible '/' expectation; Node DOM timing test addressed in subsequent commit. Final head pending.",
+      "evidence": "GitHub Actions PR workflow 38759671994, PAPER isolated suite"
+    },
+    {
+      "command": "Real Chromium desktop/mobile screenshot, keyboard and responsive review",
+      "result": "NOT RUN; no browser-equipped checkout/harness execution or screenshots available in this execution path",
+      "evidence": "No screenshots produced"
+    },
+    {
+      "command": "Push and pull_request exact-head CI",
+      "result": "WAITING; not asserted successful",
+      "evidence": "Current source head 76e22ea9b97ffcfd00242fcebbda95c4837d7a78"
+    }
+  ],
+  "remaining_work": [
+    "Recheck push and pull_request CI for exact source HEAD and post-mailbox HEAD; no green claim before both succeed",
+    "Resolve inherited test conflict: test_dashboard_v2_server expects '/' 404 but test_dashboard_v2_serving asserts '/' 200; retain root dashboard behavior",
+    "Verify Node JS harness fix on exact head",
+    "Run real Chromium desktop/mobile screenshots and keyboard accessibility interactions",
+    "Review scheduling semantics against actual trusted local adapter and source totals; no private records exported",
+    "User visual acceptance; deployed=false"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Inspect exact source SHA 76e22ea9b97ffcfd00242fcebbda95c4837d7a78 and post-mailbox HEAD; require both push/pull_request CI and desktop/mobile screenshots; verify route contradiction without editing frozen tests",
+    "if_pass": "Review functionality and safety, then solicit user visual acceptance; do not deploy without separate authorization",
+    "if_fail": "Return scoped repair for exact failing lines/heads; keep same PR63/branch",
+    "blockers": [
+      "No real browser screenshots",
+      "CI pending for final head",
+      "Root '/' contradictory existing tests"
+    ]
+  },
+  "deployed": false
+}
