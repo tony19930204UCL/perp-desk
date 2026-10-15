@@ -373,6 +373,51 @@ def diff_policy(op, job, max_lines=4, fetch_base=None):
     return {"tool":tool, "path":a["path"], "changed_lines":len(lines)}
 
 
+def journal_path(job_dir):
+    return profile_root(job_dir) / "cache" / "approval-transaction-ledger.json"
+
+
+def read_journal(path):
+    if not path.exists():
+        return {"version": 1, "attempts": {}}
+    try:
+        data = load_json(path)
+    except (OSError, ValueError) as exc:
+        raise InfraError("APPROVAL_JOURNAL_UNREADABLE") from exc
+    if not isinstance(data, dict) or data.get("version") != 1 or not isinstance(data.get("attempts"), dict):
+        raise InfraError("APPROVAL_JOURNAL_INVALID")
+    return data
+
+
+def save_journal(path, value):
+    """Durable replacement before click. Never store dialog contents."""
+    import tempfile
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8",
+                dir=path.parent, prefix=".approval-", delete=False) as out:
+            temp = Path(out.name)
+            json.dump(value, out, sort_keys=True, separators=(",", ":"))
+            out.flush()
+            os.fsync(out.fileno())
+        os.replace(temp, path)
+        temp = None
+        fd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    finally:
+        if temp is not None:
+            temp.unlink(missing_ok=True)
+
+
+def identity_key(chat, invocation):
+    return hashlib.sha256(json.dumps([chat, invocation],
+            ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+
+
 def approve(job_dir, mode="auto", max_lines=200, *, send=transport, fetch_base=None,
             clock=utcnow, lock_timeout=8):
     """One serialized inspect -> expand -> details -> policy -> reread -> click -> readback.
@@ -419,6 +464,12 @@ def approve(job_dir, mode="auto", max_lines=200, *, send=transport, fetch_base=N
             j = check()
             op1 = parse_operation(d1.get("details"))
             fp1 = fingerprint(op1, state["invocation"])
+            ledger_file = journal_path(path)
+            ledger = read_journal(ledger_file)
+            key = identity_key(ident[2], state["invocation"])
+            if key in ledger["attempts"]:
+                return {"status":"UNKNOWN", "reason":"PRIOR_APPROVAL_ATTEMPT",
+                        "fingerprint":fp1}
             if mode == "strict":
                 audit = strict_policy(op1, j)
             elif mode == "diff":
@@ -438,6 +489,15 @@ def approve(job_dir, mode="auto", max_lines=200, *, send=transport, fetch_base=N
             if d2.get("invocation") != state["invocation"] or fingerprint(op2, state["invocation"]) != fp1:
                 raise PolicyRejected("FINGERPRINT_CHANGED")
             j = check()  # exact identity, expiry, dispatch and URL immediately before click
+            # Re-read durable state under the same process-wide lease.
+            ledger = read_journal(ledger_file)
+            if key in ledger["attempts"]:
+                return {"status":"UNKNOWN", "reason":"PRIOR_APPROVAL_ATTEMPT",
+                        "fingerprint":fp1}
+            ledger["attempts"][key] = {"fingerprint":fp1, "status":"CLICK_INTENT_UNRESOLVED",
+                                      "instruction_id":ident[1],
+                                      "at":clock().isoformat()}
+            save_journal(ledger_file, ledger)
             clicked = True  # fail closed even when acknowledge is lost; no retry
             ack = evaluate(j, token, "click", send)
             if ack.get("clicked") is not True or ack.get("invocation") != state["invocation"]:
@@ -448,6 +508,9 @@ def approve(job_dir, mode="auto", max_lines=200, *, send=transport, fetch_base=N
                     after.get("invocation") == state["invocation"]):
                 return {"status":"UNKNOWN", "reason":"SAME_CARD_READBACK_UNVERIFIED",
                         "fingerprint":fp1}
+            ledger = read_journal(ledger_file)
+            ledger["attempts"][key]["status"] = "READBACK_PROVEN"
+            save_journal(ledger_file, ledger)
             return {"status":"APPROVED", "fingerprint":fp1, **audit}
         except AdmissionError as exc:
             return {"status":"REJECTED", "reason":str(exc)}
