@@ -192,6 +192,8 @@ def build_activity(ledger, cron, roadmap, work, journal, *, now_ms, max_age_ms=8
                     status = "conflict" if status == "available" else status
                 elif valid:
                     raw = max(valid) / 1000
+                elif key == "work":
+                    raw = value.get("updated_at")
             elif key == "journal":
                 pass
         elif key == "journal" and isinstance(value, list):
