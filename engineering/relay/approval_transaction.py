@@ -63,7 +63,10 @@ def profile_root(job_dir):
 
 
 def load_json(path):
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError, TypeError) as exc:
+        raise AdmissionError("ADMISSION_RECORD_MISSING_OR_INVALID") from exc
 
 
 def admission(job_dir, expected=None, clock=utcnow):
@@ -96,6 +99,8 @@ def admission(job_dir, expected=None, clock=utcnow):
         raise AdmissionError("INVALID_EXPIRY") from exc
     if expires.tzinfo is None or expires.utcoffset() is None or clock() >= expires:
         raise AdmissionError("EXPIRED_OR_NAIVE")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,140}", str(iid)):
+        raise AdmissionError("INVALID_INSTRUCTION_ID")
     receipt = load_json(root / ("send_" + iid + ".json"))
     if receipt.get("status") != "CONFIRMED" or receipt.get("chat_url") != chat:
         raise AdmissionError("UNCONFIRMED_DISPATCH")
@@ -392,7 +397,7 @@ def read_journal(path):
         return {"version": 1, "attempts": {}}
     try:
         data = load_json(path)
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, AdmissionError) as exc:
         raise InfraError("APPROVAL_JOURNAL_UNREADABLE") from exc
     if not isinstance(data, dict) or data.get("version") != 1 or not isinstance(data.get("attempts"), dict):
         raise InfraError("APPROVAL_JOURNAL_INVALID")
