@@ -5,7 +5,9 @@ Execution and result observations must be independently injected and identity-ma
 """
 from datetime import datetime, timezone
 import json
+import math
 import os
+import re
 import stat
 
 SOURCES = {
@@ -20,19 +22,57 @@ ACTIVE = {"running", "testing", "verifying"}
 
 
 def _stamp(value):
-    if type(value) in (int, float) and not isinstance(value, bool):
-        if not 0 <= value < 10**12:
+    """Declared epoch seconds or timezone-aware ISO/roadmap UTC; never bool/NaN."""
+    if type(value) in (int, float):
+        if not math.isfinite(value) or not 946684800 <= value < 4102444800:
             return None
         return int(value * 1000)
-    if not isinstance(value, str) or len(value) > 64:
+    if not isinstance(value, str) or not 0 < len(value) <= 64:
         return None
     try:
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC", value):
+            value = value[:-4] + "+00:00"
         dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
         if dt.utcoffset() is None:
             return None
-        return int(dt.timestamp() * 1000)
+        ms = int(dt.timestamp() * 1000)
+        return ms if 946684800000 <= ms < 4102444800000 else None
     except (ValueError, OverflowError, OSError):
         return None
+
+
+def _time(value):
+    ms = _stamp(value)
+    return datetime.fromtimestamp(ms / 1000, timezone.utc).isoformat() if ms is not None else None
+
+
+_PUBLIC_REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$")
+_PRIVATE = re.compile(r"(?:[/\\]|://|@|[\x00-\x1f]|\b(?:token|secret|passwd|password|api.?key|credential|private.?key)\b)", re.I)
+
+
+def _public_note(value, limit=240):
+    """Conservative projection; uncertain history/defer contents are hidden."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    if len(value) > limit or _PRIVATE.search(value):
+        return "[private or unsupported note withheld]"
+    return value
+
+
+def _blocker(value):
+    """Typed opaque blocker. Never echo command text, file paths or user questions."""
+    if not isinstance(value, str) or ":" not in value:
+        return None
+    kind, raw = value.split(":", 1)
+    if kind not in ("item", "cmd", "file", "user") or not raw.strip():
+        return None
+    if kind == "item":
+        reference = raw if _PUBLIC_REF.fullmatch(raw) else None
+        return {"type": kind, "ref": reference,
+                "label": ("item:" + reference) if reference else "item:[reference withheld]"}
+    return {"type": kind, "ref": None, "label": {
+        "cmd": "cmd:[command withheld]", "file": "file:[path withheld]",
+        "user": "user:[question withheld]"}[kind]}
 
 
 def _safe(value, limit=240):
@@ -134,18 +174,45 @@ def build_activity(ledger, cron, roadmap, work, journal, *, now_ms, max_age_ms=8
     sources, warnings = {}, []
     for key, value in inputs.items():
         status = states.get(key, "missing")
-        updated = None
+        raw = None
+        basis = "source_timestamp"
         if isinstance(value, dict):
-            updated = _safe(value.get("updated_at") or value.get("updated"), 64)
-        at = _stamp(updated)
-        if status == "available" and at is not None:
-            if at > now_ms + 5000:
+            if key == "cron":
+                raw = value.get("updated_at")
+            elif key == "roadmap":
+                raw = value.get("updated")
+            elif key in ("ledger", "work"):
+                field = "updated" if key == "ledger" else "updated_at"
+                records = value.get("items") if key == "ledger" else value.get("tasks")
+                times = [record.get(field) for record in _objects(records)
+                         if isinstance(record, dict) and record.get(field) is not None]
+                valid = [_stamp(x) for x in times]
+                basis = "latest_item_bookkeeping" if key == "ledger" else "latest_task_update"
+                if times and any(x is None for x in valid):
+                    status = "conflict" if status == "available" else status
+                elif valid:
+                    raw = max(valid) / 1000
+            elif key == "journal":
+                pass
+        elif key == "journal" and isinstance(value, list):
+            times = [row.get("at") for row in value if isinstance(row, dict) and row.get("at") is not None]
+            valid = [_stamp(x) for x in times]
+            basis = "latest_public_journal_event"
+            if times and any(x is None for x in valid):
+                status = "conflict" if status == "available" else status
+            elif valid:
+                raw = max(valid) / 1000
+        at = _stamp(raw)
+        if status == "available":
+            if at is None:
+                status = "unverifiable"
+            elif at > now_ms + 5000:
                 status = "conflict"
             elif now_ms - at > max_age_ms:
                 status = "stale"
         if status != "available":
             warnings.append(key + ": " + status)
-        sources[key] = {"state": status, "updated_at": updated}
+        sources[key] = {"state": status, "updated_at": _time(raw), "clock_basis": basis}
     items = {}
     def get(identifier):
         return items.setdefault(identifier, {
@@ -153,7 +220,8 @@ def build_activity(ledger, cron, roadmap, work, journal, *, now_ms, max_age_ms=8
             "kind": "commitment", "stage": None, "stage_status": None, "why": None,
             "acceptance": None, "next": None, "owner": None, "step": None,
             "started_at": None, "progress_at": None, "due": None,
-            "recheck_at": None, "defer_reason": None, "dependencies": [],
+            "recheck_at": None, "defer_reason": None, "deferral_state": None,
+            "dependencies": [], "blocker_details": [],
             "blockers": [], "evidence": [], "warnings": [], "updated_at": None,
             "engineering_accepted": False, "deployed": "unconfirmed",
             "unattended": "unconfirmed", "activity": "not_proven",
@@ -181,8 +249,15 @@ def build_activity(ledger, cron, roadmap, work, journal, *, now_ms, max_age_ms=8
         item["commitment"] = item["title"]
         item["why"] = _safe(row.get("reason"))
         item["acceptance"] = _safe(row.get("accept"), 600)
-        item["due"] = _safe(row.get("due"), 64)
-        item["updated_at"] = _safe(row.get("updated"), 64)
+        item["due"] = _time(row.get("due"))
+        item["created_at"] = _time(row.get("created"))
+        item["updated_at"] = _time(row.get("updated"))
+        for key in ("created", "updated", "due"):
+            raw_value = row.get(key)
+            if raw_value is not None and _stamp(raw_value) is None:
+                item["warnings"].append("invalid ledger " + key + " time")
+        if _stamp(row.get("updated")) is not None and _stamp(row["updated"]) > now_ms + 5000:
+            item["warnings"].append("ledger bookkeeping time in future")
         raw_state = _name(row.get("state"))
         item["ledger_state"] = raw_state
         item["engineering_accepted"] = raw_state == "VERIFIED"
@@ -194,26 +269,54 @@ def build_activity(ledger, cron, roadmap, work, journal, *, now_ms, max_age_ms=8
             item["state"] = "blocked"
         elif raw_state is None:
             item["warnings"].append("ledger state unknown")
-        blockers = row.get("blocked_by")
-        if isinstance(blockers, list):
-            item["dependencies"] = [_name(b) for b in blockers if _name(b)][:20]
+        raw_blockers = row.get("blocked_by")
+        if isinstance(raw_blockers, str):
+            raw_blockers = [raw_blockers]
+        elif not isinstance(raw_blockers, list):
+            raw_blockers = []
+        for raw_blocker in raw_blockers[:20]:
+            typed = _blocker(raw_blocker)
+            if typed is None:
+                item["warnings"].append("invalid blocker reference")
+                item["blocker_details"].append({"type": "unknown", "ref": None,
+                                                "label": "unsupported blocker", "resolution": "unknown"})
+                continue
+            typed["resolution"] = "unknown"
+            item["blocker_details"].append(typed)
+            if typed["type"] == "item" and typed["ref"]:
+                item["dependencies"].append(typed["ref"])
         defer = row.get("defer")
-        if isinstance(defer, dict):
-            item["defer_reason"] = _safe(defer.get("reason"))
-            item["recheck_at"] = _safe(defer.get("recheck_at") or defer.get("recheck"), 64)
+        if isinstance(defer, str) and defer.strip():
+            item["defer_reason"] = _public_note(defer)
+            item["recheck_at"] = item["due"]
+            item["deferral_state"] = "unverifiable" if item["recheck_at"] is None else "pending"
+        elif defer is not None:
+            item["warnings"].append("invalid defer value")
         handle = row.get("handle")
         if isinstance(handle, dict):
-            job_id = _name(handle.get("job_id") or handle.get("cron_id"))
-            if job_id:
-                jobs_link[job_id] = identifier
-            item["_handle"] = handle
+            kind = handle.get("kind")
+            ref = handle.get("ref")
+            if kind == "cron" and isinstance(ref, str) and _PUBLIC_REF.fullmatch(ref):
+                if ref in jobs_link:
+                    warnings.append("cron: duplicate ledger handle ref")
+                    get(jobs_link[ref])["warnings"].append("duplicate cron ref")
+                    item["warnings"].append("duplicate cron ref")
+                else:
+                    jobs_link[ref] = identifier
+            elif kind in ("pid", "manual"):
+                item["_handle"] = {k: handle.get(k) for k in ("kind", "pid", "start", "ref")}
+            else:
+                item["warnings"].append("unrecognized executor handle")
         for entry in _objects(row.get("history"))[-5:]:
-            if isinstance(entry, dict):
+            if isinstance(entry, (list, tuple)) and len(entry) == 2:
                 item["history"].append({
-                    "at": _safe(entry.get("at"), 64),
-                    "state": _name(entry.get("state")),
-                    "note": _safe(entry.get("public_summary")),
+                    "at": _time(entry[0]), "state": None,
+                    "note": _public_note(entry[1]),
                 })
+            elif isinstance(entry, dict):
+                item["history"].append({"at": _time(entry.get("at")),
+                    "state": _name(entry.get("state")),
+                    "note": _public_note(entry.get("public_summary"))})
 
     roadmap_rows = _objects(roadmap.get("items")) if isinstance(roadmap, dict) else []
     goals = {}
