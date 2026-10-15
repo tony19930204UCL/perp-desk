@@ -33,7 +33,7 @@ const find=(el,tag)=>el.children.flatMap(child=>[...(child.tagName===tag?[child]
 (async()=>{
  document.ready();assert.equal(pending.length,1);
  assert.equal(pending[0].url,'/api/owner-activity');assert.equal(pending[0].options.cache,'no-store');
- pending[0].resolve({ok:true,json:async()=>model});await Promise.resolve();await Promise.resolve();
+ pending[0].resolve({ok:true,json:async()=>model});await new Promise(resolve=>setImmediate(resolve));
  assert(ids.tasks.textContent.includes('C-0026'));assert(ids.metrics.textContent.includes('2'));
  ids.search.value='C-0028';ids.search.listeners.input();
  assert(!ids.tasks.textContent.includes('C-0026'));assert(ids.tasks.textContent.includes('C-0028'));
