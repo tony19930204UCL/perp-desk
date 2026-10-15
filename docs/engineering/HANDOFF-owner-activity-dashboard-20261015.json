@@ -4,50 +4,56 @@
   "pr_number": 63,
   "branch": "feat/owner-activity-dashboard-20261015",
   "task_id": "owner-activity-dashboard-20261015",
-  "instruction_id": "OA1-r2",
+  "instruction_id": "OA1-r3",
   "status": "WAITING_CI",
-  "source_head_sha": "87b71ba69f931fbce6eeab59323562d1f318badd",
-  "summary": "Migrated one stale test expectation: valid '/' is no longer in invalid-route 404 table; added actual homepage GET 200 exact HTML bytes, HEAD parity, cache/security headers and proof the API reader is not invoked. All invalid query, encoded, absolute and traversal routes remain 404. Production code unchanged; undeployed.",
+  "source_head_sha": "4d0709447c0db249576b6da588fa8cd1d3a66aa3",
+  "summary": "Scoped responsive correction: constrained intrinsic-width grid/flex descendants, enabled break-anywhere wrapping for long dynamic text and stacked task state label at mobile width without hiding content. Added actual Chromium CDP browser regression rendering 300 purely synthetic multilingual and unbroken-name tasks, 390x844 mobile DPR1 and 1440 desktop, asserting all rows retained and root scrollWidth<=clientWidth before and after opening detail. Original 5-row fixture unchanged; production adapter, account UI, security, API and JS unchanged. Undeployed.",
   "changed_files": [
-    "lab/tests/test_dashboard_v2_server.py",
+    "lab/owner_activity.html",
+    "lab/tests/test_owner_activity_browser.py",
     "docs/engineering/HANDOFF-owner-activity-dashboard-20261015.json"
   ],
   "tests": [
     {
-      "command": "Main independently ran normal automation/tests and lab/tests discovery at previous reviewed HEAD fd4a8f6613618327ef21bf7c9e3af5a1b8df5553",
-      "result": "600 distinct tests: 599 PASS, 1 FAIL, zero errors/skips (as reported by Main); not OA1-r2 execution",
-      "evidence": "Exact prior-head push 38771780702 and pull_request 38771796235 FAILURE; one inherited test expects '/' 404 against existing product root 200"
+      "command": "Independent actual local loopback and Chromium at reviewed OA1-r2 HEAD 86764019ecf0960763c23d04a2efd846b1b5a87a",
+      "result": "16 PASS, 1 FAIL: mobile 390x844 DPR1 real 300-task source returned innerWidth394/clientWidth390/scrollWidth394; synthetic 5-task mobile 390/390/390. No JS runtime errors. Supplied by Main; not r3 validation.",
+      "evidence": "Main supplied readback; no private records copied or requested."
+    },
+    {
+      "command": "GitHub Actions normal push run 38800583356 and pull_request run 38800593138 at r2 reviewed HEAD",
+      "result": "Both SUCCESS, existing normal workflow; Main independently reported 601/601 full tests and 52/52 exporter PASS; 14 model probes,15 Chromium checks and source-union 299/299",
+      "evidence": "GitHub completed conclusions and Main's independent acceptance evidence, not r3."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests -v",
-      "result": "Not executed locally in connected GitHub route; newly triggered push/PR CI pending",
-      "evidence": "Source commit 87b71ba69f931fbce6eeab59323562d1f318badd; new-head runs must be inspected before acceptance"
+      "result": "New source-head full GitHub CI pending; not executed locally",
+      "evidence": "Push 38803673843; pull_request 38803683739 for source 4d0709447c0db249576b6da588fa8cd1d3a66aa3"
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
-      "result": "Not executed locally; actual run counts pending new-head GitHub Actions",
-      "evidence": "Changed test adds root HTML GET/HEAD acceptance and retains true invalid-route 404 checks"
+      "result": "New source-head full GitHub CI pending; no passing count claimed",
+      "evidence": "CI includes newly authored browser CDP regression; run IDs 38803673843 and 38803683739"
     },
     {
-      "command": "Independently reported previous-head owner/browser acceptance",
-      "result": "All 16 owner tests, 14 actual-source probes, 15 Chromium checks and private union 288/288 passed per Main, not rerun for OA1-r2",
-      "evidence": "Main's independently supplied results, no private fixtures or screenshots exported"
+      "command": "Real Chromium at 390x844 mobile DPR1 and desktop 1440 using 300 synthetic tasks",
+      "result": "New test committed, result pending exact-head CI; no fresh screenshot claimed",
+      "evidence": "lab/tests/test_owner_activity_browser.py::BrowserContract.test_real_chromium_300_task_mobile_layout"
     }
   ],
   "remaining_work": [
-    "Verify complete automation/tests and lab/tests discovery test counts/errors/skips at exact OA1-r2 source and mailbox HEAD",
-    "Verify BOTH push and pull_request exact-head workflows and log any failures, no passing retry claim",
-    "Main independent final functional and security acceptance, source freshness/totals, desktop/mobile, removed-selection/detail and backups",
-    "User visual approval, then separate authorized local deployment only; deployed=false"
+    "Check complete full normal discovery result/counts/skip/errors and both source-head and post-mailbox exact-head push/pull_request CI; repair any within-scope failing regression",
+    "Main independently run authorized local real 300-task profile mobile 390x844, expect innerWidth=390 DPR1 documentElement.scrollWidth<=clientWidth=390, desktop1440; review readability/search/filter/detail/refresh/no-overflow and screenshots",
+    "Main verify actual source freshness/counts, read-only Host/Origin/symlink/traversal and existing source union; no private record export",
+    "Main owns local deployment only after authorization gates, user owns visual acceptance; deployed=false"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Inspect source commit 87b71ba69f931fbce6eeab59323562d1f318badd and mailbox commit; require exact-head push and pull_request CI and verify remaining invalid routes still 404, root actual HTML 200 and zero API reads",
-    "if_pass": "Independently review OA1-r2 test migration alongside established Owner Monitor proofs, then seek user visual acceptance; keep undeployed.",
-    "if_fail": "Return exact new-head failure and block without expanding this two-file scope.",
+    "verify_now": "Independently verify exact source 4d0709447c0db249576b6da588fa8cd1d3a66aa3 and final mailbox commit CI for push and pull_request; validate synthetic 300-task Chromium test plus actual private local readback at 390px, without exporting private records. Confirm 390/390/390, intact 1440 desktop and no clipped detail.",
+    "if_pass": "Review layout quality and complete Main acceptance; use separately authorized local deployment gates and user visual signoff. Do not treat source/tests as deployment.",
+    "if_fail": "Report exact layout offender/viewport metrics and CI test/log, return scoped repair on the same PR63; do not expand to server/JS/reader or private data.",
     "blockers": [
-      "Exact-head CI not yet concluded",
-      "Main acceptance and user visual approval outstanding"
+      "New source-head exact CI not yet concluded",
+      "Main actual 300-task viewport and visual acceptance pending"
     ]
   },
   "deployed": false
