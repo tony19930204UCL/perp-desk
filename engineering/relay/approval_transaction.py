@@ -157,12 +157,27 @@ DOM_JS = r"""
  const label = e => (e.innerText || e.textContent || "").trim();
  const unique = a => a.length === 1 ? a[0] : null;
  const activeTurn = () => {
-   const users = [...document.querySelectorAll('[data-message-author-role="user"]')];
-   const assistants = [...document.querySelectorAll('[data-message-author-role="assistant"]')];
-   if (!users.length || !assistants.length) return null;
+   const users = [...document.querySelectorAll(
+     '[data-message-author-role="user"], [data-user-message-bubble="true"]')].filter(visible);
+   if (!users.length) throw Error("UNVERIFIABLE_USER_TURN");
    const lastUser = users[users.length-1];
-   const after = assistants.filter(a => !!(lastUser.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING));
-   return after.length ? after[after.length-1] : null;
+   // The hydrated family uses search-unit identifiers rather than author-role.
+   const anchor = lastUser.closest('[data-chatgpt-search-unit-key], [data-content-search-unit-key]');
+   if (!anchor && !lastUser.matches('[data-message-author-role="user"]'))
+      throw Error("UNVERIFIABLE_TURN_ANCHOR");
+   const assistants = [...document.querySelectorAll('[data-message-author-role="assistant"]')];
+   if (assistants.length) {
+     const after = assistants.filter(x => !!(lastUser.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING));
+     if (after.length) return after[after.length-1];
+   }
+   if (!anchor) throw Error("UNVERIFIABLE_ASSISTANT_TURN");
+   const scope = anchor.parentElement;
+   if (!scope) throw Error("UNVERIFIABLE_TURN_SCOPE");
+   const subsequent = [...scope.children].filter(x => x !== anchor &&
+       !!(anchor.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+       (x.hasAttribute('data-content-search-unit-key') || x.hasAttribute('data-chatgpt-search-unit-key')));
+   if (subsequent.length !== 1) throw Error("UNVERIFIABLE_ASSISTANT_TURN");
+   return subsequent[0];
  };
  const turn = activeTurn();
  const candidates = () => {
@@ -342,15 +357,47 @@ def scoped(op, job):
 
 def strict_policy(op, job):
     tool, a, c = scoped(op, job)
-    for word in LONG.findall(c):
+    # Only literal Python detector templates are exempt. All other bytes remain
+    # under original strict checks, including comments and dynamic regexes.
+    protected = []
+    if a["path"].endswith(".py"):
+        import ast
+        templates = (STRICT_NEVER.pattern, STRICT_REGEX.pattern, DIFF_SECRET.pattern)
+        try:
+            tree = ast.parse(c)
+            source_lines = c.splitlines(keepends=True)
+            offsets = [0]
+            for line in source_lines:
+                offsets.append(offsets[-1] + len(line))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                    continue
+                if node.func.attr not in ("compile", "search") or not isinstance(node.func.value, ast.Name) or node.func.value.id != "re":
+                    continue
+                if not node.args or not isinstance(node.args[0], ast.Constant) or not isinstance(node.args[0].value, str):
+                    continue
+                if node.args[0].value not in templates:
+                    continue
+                literal = node.args[0]
+                start = offsets[literal.lineno - 1] + literal.col_offset
+                stop = offsets[literal.end_lineno - 1] + literal.end_col_offset
+                protected.append((start, stop))
+        except (SyntaxError, UnicodeError, ValueError, IndexError):
+            protected = []
+    def unprotected(match):
+        return not any(begin <= match.start() and match.end() <= end for begin, end in protected)
+    for word in LONG.finditer(c):
+        if not unprotected(word):
+            continue
+        word = word.group()
+
         ok = SNAKE.fullmatch(word) and sum(ch.isdigit() for ch in word) <= len(word) * .1
         if not ok:
             raise PolicyRejected("TOKEN_LIKE", fallback=True)
-    if STRICT_NEVER.search(c):
+    if any(unprotected(hit) for hit in STRICT_NEVER.finditer(c)):
         raise PolicyRejected("TOKEN_LIKE", fallback=True)
     for match in STRICT_REGEX.finditer(c):
-        line = c[c.rfind("\n", 0, match.start()) + 1:c.find("\n", match.end()) if "\n" in c[match.end():] else len(c)]
-        if "re.compile" not in line and "SECRET" not in line.upper():
+        if unprotected(match):
             raise PolicyRejected("TOKEN_LIKE", fallback=True)
     return {"tool":tool, "path":a["path"], "changed_lines":None}
 
