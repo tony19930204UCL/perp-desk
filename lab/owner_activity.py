@@ -370,10 +370,10 @@ def build_activity(ledger, cron, roadmap, work, journal, *, now_ms, max_age_ms=8
             proof = _proof_for(execution_proofs, item["id"])
             age = _stamp(item["progress_at"])
             verified = (isinstance(handle, dict) and isinstance(proof, dict) and
-                        handle.get("pid") is not None and type(handle.get("pid")) is int and
+                        handle.get("kind") == "pid" and type(handle.get("pid")) is int and
                         type(proof.get("pid")) is int and proof["pid"] == handle["pid"] and
-                        isinstance(handle.get("start_identity"), str) and
-                        proof.get("start_identity") == handle.get("start_identity") and
+                        type(handle.get("start")) in (int, str) and
+                        proof.get("start") == handle.get("start") and
                         proof.get("alive") is True and
                         (age is not None and 0 <= now_ms - age <= max_age_ms) and
                         (lambda t: t is not None and 0 <= now_ms - t <= max_age_ms)(
@@ -391,6 +391,13 @@ def build_activity(ledger, cron, roadmap, work, journal, *, now_ms, max_age_ms=8
         if work_state == "completed" and item.get("ledger_state") == "BLOCKED":
             item["warnings"].append("work/ledger conflict")
 
+    # Ledger DISPATCHED is a claim, not evidence of a live worker.
+    for item in items.values():
+        if item.get("ledger_state") == "DISPATCHED" and item["activity"] != "verified_worker":
+            item["activity"] = "activity_unconfirmed"
+            item["state"] = "activity_unconfirmed"
+            item["warnings"].append("dispatch has no independently verified executor")
+
     cron_rows = _objects(cron.get("jobs")) if isinstance(cron, dict) else []
     for row in cron_rows:
         if not isinstance(row, dict) or not _name(row.get("id")):
@@ -402,10 +409,10 @@ def build_activity(ledger, cron, roadmap, work, journal, *, now_ms, max_age_ms=8
         if item["id"].startswith("JOB:"):
             item["kind"] = "schedule"
         item["title"] = item["title"] or _safe(row.get("name")) or job_id
-        last_run = _safe(row.get("last_run_at"), 64)
-        next_run = _safe(row.get("next_run_at"), 64)
+        last_run = _time(row.get("last_run_at"))
+        next_run = _time(row.get("next_run_at"))
         last_dispatch = row.get("last_dispatch")
-        expected = _safe(last_dispatch.get("scheduled_at"), 64) if isinstance(last_dispatch, dict) else None
+        expected = _time(last_dispatch.get("scheduled_at")) if isinstance(last_dispatch, dict) else None
         proof = _proof_for(result_proofs, job_id)
         actual_status = _name(row.get("last_status"))
         has_result = bool(proof and proof.get("status") == "ok" and
@@ -442,9 +449,9 @@ def build_activity(ledger, cron, roadmap, work, journal, *, now_ms, max_age_ms=8
             "expected_at": expected, "last_run_at": last_run, "next_run_at": next_run,
             "last_status": actual_status, "run_state": run_state,
             "result_ref": _safe(proof.get("result_ref")) if has_result else None,
-            "output_at": _safe(proof.get("output_at"), 64) if has_result else None,
+            "output_at": _time(proof.get("output_at")) if has_result else None,
         }
-        if item["activity"] != "verified_worker" and item["state"] not in (
+        if item["activity"] not in ("verified_worker", "activity_unconfirmed") and item["state"] not in (
                 "engineering_accepted", "blocked", "dropped"):
             item["state"] = run_state
             item["activity"] = "scheduled_idle" if run_state != "missed" else "not_proven"
@@ -457,13 +464,22 @@ def build_activity(ledger, cron, roadmap, work, journal, *, now_ms, max_age_ms=8
             item["stage"] = "unclassified"
         unresolved = [x for x in item["dependencies"]
                       if x not in ledger_index or ledger_index[x].get("state") != "VERIFIED"]
-        item["blockers"] = unresolved
-        if unresolved and item["state"] not in ("running_verified", "activity_unconfirmed"):
+        for blocked in item["blocker_details"]:
+            if blocked["type"] == "item" and blocked["ref"] in ledger_index:
+                blocked["resolution"] = ("resolved" if
+                    ledger_index[blocked["ref"]].get("state") == "VERIFIED" else "unresolved")
+            elif blocked["type"] == "item":
+                blocked["resolution"] = "unknown"
+        item["blockers"] = [b["label"] for b in item["blocker_details"]
+                            if b["resolution"] != "resolved"] + [
+                            x for x in unresolved if x not in item["dependencies"]]
+        if item["blockers"] and item["state"] not in ("running_verified", "activity_unconfirmed"):
             item["state"] = "blocked"
-        if item["dependencies"] and not unresolved and item.get("ledger_state") == "BLOCKED":
+        if item["blocker_details"] and not item["blockers"] and item.get("ledger_state") == "BLOCKED":
             item["warnings"].append("recorded blocker resolved; ledger still blocked")
         recheck = _stamp(item["recheck_at"])
-        if recheck is not None and now_ms > recheck:
+        if item["deferral_state"] == "pending" and recheck is not None and now_ms > recheck:
+            item["deferral_state"] = "overdue"
             item["warnings"].append("deferral recheck overdue")
         if item.get("work_state") in ACTIVE and item.get("ledger_state") in ("VERIFIED", "DROPPED"):
             item["warnings"].append("ledger/work state conflict")
