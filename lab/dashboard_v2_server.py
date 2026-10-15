@@ -7,6 +7,7 @@ from pathlib import Path
 import time
 
 from dashboard_v2_reader import read_dashboard
+from owner_activity import read_activity
 
 
 _ROUTE = '/api/dashboard'
@@ -14,9 +15,12 @@ _ASSET_DIR = Path(__file__).resolve().parent
 _STATIC_ROUTES = {
     '/': ('dashboard_v2.html', 'text/html; charset=utf-8'),
     '/dashboard_v2.html': ('dashboard_v2.html', 'text/html; charset=utf-8'),
+    '/owner_activity.html': ('owner_activity.html', 'text/html; charset=utf-8'),
+    '/owner_activity.js': ('owner_activity.js', 'application/javascript; charset=utf-8'),
     '/dashboard_v2_ui.js': ('dashboard_v2_ui.js', 'application/javascript; charset=utf-8'),
 }
 _ERRORS = {
+    403: '{"error":"禁止跨來源存取"}'.encode('utf-8'),
     400: '{"error":"請求無效"}'.encode('utf-8'),
     404: '{"error":"找不到資源"}'.encode('utf-8'),
     405: '{"error":"不支援此方法"}'.encode('utf-8'),
@@ -69,6 +73,13 @@ def create_server(*, scorecard_path, journal_path, ledger_path, port=0,
         raise ValueError('clock_ms 必須是可呼叫物件')
 
     scorecard, journal, ledger = paths
+    monitor_root = None
+    def configure_monitor(*, profile_root):
+        nonlocal monitor_root
+        root = _absolute_path(profile_root)
+        if os.path.realpath(root) != os.path.normpath(root) or not os.path.isdir(root):
+            raise ValueError('invalid trusted root')
+        monitor_root = root
     age, limit, clock = max_age_ms, max_bytes, clock_ms
 
     class Handler(BaseHTTPRequestHandler):
@@ -98,10 +109,44 @@ def create_server(*, scorecard_path, journal_path, ledger_path, port=0,
             self._respond(status, _ERRORS[status],
                           head=self.command == 'HEAD', allow=status == 405)
 
+        def _trusted(self):
+            host = self.headers.get('Host', '')
+            allowed = {'127.0.0.1', 'localhost', '[::1]'}
+            try:
+                name, port_text = host.rsplit(':', 1)
+                port_valid = int(port_text) == self.server.server_port
+            except (ValueError, TypeError):
+                return False
+            if name not in allowed or not port_valid:
+                return False
+            origin = self.headers.get('Origin')
+            if origin is not None and origin not in ('http://' + host,):
+                return False
+            if self.headers.get('Sec-Fetch-Site', '') in ('cross-site', 'same-site'):
+                return False
+            return True
+
         def _read(self, *, head):
             # BaseHTTPRequestHandler normalizes leading //; require exact raw
             # request target as well as the parsed path for every route.
+            if not self._trusted():
+                self._respond(403, _ERRORS[403], head=head)
+                return
             target = self.raw_requestline.split()[1]
+            if self.path == '/api/owner-activity' and target == b'/api/owner-activity':
+                if monitor_root is None:
+                    self._respond(404, _ERRORS[404], head=head)
+                    return
+                try:
+                    result = read_activity(monitor_root, now_ms=clock(), max_age_ms=age,
+                                           max_bytes=limit)
+                    payload = json.dumps(result, ensure_ascii=False, allow_nan=False,
+                                         separators=(',', ':')).encode('utf-8')
+                except Exception:
+                    self._respond(500, _ERRORS[500], head=head)
+                    return
+                self._respond(200, payload, head=head)
+                return
             if self.path == _ROUTE and target == b'/api/dashboard':
                 try:
                     result = read_dashboard(scorecard, journal, ledger,
@@ -143,7 +188,9 @@ def create_server(*, scorecard_path, journal_path, ledger_path, port=0,
                 return self._reject_method
             raise AttributeError(name)
 
-    return _LoopbackHTTPServer(('127.0.0.1', port), Handler)
+    service = _LoopbackHTTPServer(('127.0.0.1', port), Handler)
+    service.configure_monitor = configure_monitor
+    return service
 
 
 def main(argv=None):
@@ -154,12 +201,15 @@ def main(argv=None):
     parser.add_argument('--port', type=int, default=8766)
     parser.add_argument('--max-age-ms', type=int, default=300000)
     parser.add_argument('--max-bytes', type=int, default=1048576)
+    parser.add_argument('--profile-root', help='Trusted absolute profile root for Monitor')
     args = parser.parse_args(argv)
     try:
         httpd = create_server(scorecard_path=args.scorecard,
                               journal_path=args.journal, ledger_path=args.ledger,
                               port=args.port, max_age_ms=args.max_age_ms,
                               max_bytes=args.max_bytes)
+        if args.profile_root:
+            httpd.configure_monitor(profile_root=args.profile_root)
     except (ValueError, OSError):
         parser.error('設定無效或無法繫結本機埠')
     try:
