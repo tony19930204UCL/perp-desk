@@ -21,10 +21,11 @@
   act.onclick=()=>{window.syntheticClicks.push('expand:'+act.id); fold.hidden=false;act.setAttribute('aria-expanded','true')};
   const dialog=document.getElementById('operation-dialog');
   document.querySelector('.details').onclick=()=>{window.syntheticClicks.push('details:card'); dialog.hidden=false};
-  document.querySelector('.once').onclick=()=>{
-    window.syntheticClicks.push('once:card');
-    document.getElementById('card').setAttribute('data-approval-state','completed');
-    document.querySelector('.once').disabled=true;
+  document.querySelector('.once').onclick=function(){
+    const card=this.closest('[data-approval-card]');
+    window.syntheticClicks.push('once:'+card.id);
+    card.setAttribute('data-approval-state','completed');
+    this.disabled=true;
   };
   document.querySelector('.wide').onclick=()=>window.syntheticClicks.push('WIDE:card');
 </script>
