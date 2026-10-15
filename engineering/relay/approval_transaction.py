@@ -80,7 +80,15 @@ def admission(job_dir, expected=None, clock=utcnow):
     chat = a.get("chat_url")
     if not isinstance(chat, str) or not EXACT_CHAT.fullmatch(chat):
         raise AdmissionError("PINNED_CHAT_REQUIRED")
-    if j.get("chat_url") and j["chat_url"] != chat:
+    # A new-mode job can retain its homepage transport URL after dispatch.
+    # Only the active instruction and CONFIRMED receipt pin the resulting chat.
+    mode = j.get("conversation_mode", "new")
+    if mode not in ("new", "reuse"):
+        raise AdmissionError("CONVERSATION_MODE_INVALID")
+    if mode == "reuse" and j.get("chat_url") != chat:
+        raise AdmissionError("JOB_CHAT_MISMATCH")
+    if mode == "new" and j.get("chat_url") not in (
+            None, "https://chatgpt.com/", "https://chatgpt.com", chat):
         raise AdmissionError("JOB_CHAT_MISMATCH")
     try:
         expires = dt.datetime.fromisoformat(j["valid_until"])
@@ -180,8 +188,22 @@ DOM_JS = r"""
      throw Error("UNKNOWN_ACTIVITY_STATE");
    return {state:"NO_PENDING"};
  }
- if (!tx || tx.token !== token || tx.clicked || !turn || tx.turn !== turn)
+ if (!tx || tx.token !== token || !turn || tx.turn !== turn)
    throw Error("TRANSACTION_IDENTITY_CHANGED");
+ // Readback intentionally bypasses pre-click pending-card lookup and the
+ // clicked guard; it NEVER selects or clicks another node after completion.
+ if (action === "readback") {
+   if (!tx.clicked) throw Error("READBACK_BEFORE_CLICK");
+   const c = tx.card;
+   const same = !!c && c.isConnected && turn.contains(c) &&
+       tx.invocation === (c.getAttribute("data-invocation-id") || c.getAttribute("data-tool-call-id"));
+   if (!same) return {same:false, completed:false, invocation:tx.invocation};
+   const noOnce = !buttons(c).some(b => enabled(b) &&
+       (label(b) === "允許一次" || label(b) === "Allow once"));
+   return {same:true, completed:c.getAttribute("data-approval-state") === "completed" && noOnce,
+           invocation:tx.invocation};
+ }
+ if (tx.clicked) throw Error("TRANSACTION_ALREADY_CLICKED");
  if (action === "expand") {
    if (!tx.expansion || !enabled(tx.expansion) ||
        tx.expansion.getAttribute("aria-expanded") !== "false" ||
@@ -241,14 +263,6 @@ DOM_JS = r"""
    tx.clicked = true; b.click();
    return {clicked:true, invocation:tx.invocation};
  }
- if (action === "readback") {
-   const state = c.getAttribute("data-approval-state");
-   const noPending = !buttons(c).some(b => enabled(b) &&
-                       (label(b) === "允許一次" || label(b) === "Allow once"));
-   return {same:!!c.isConnected && turn.contains(c),
-           completed: state === "completed" && noPending,
-           invocation:tx.invocation};
- }
  throw Error("UNKNOWN_APPROVAL_ACTION");
 })()
 """
@@ -272,14 +286,16 @@ def evaluate(job, token, action, send=transport):
 def parse_operation(text):
     if not isinstance(text, str) or text.count("call_tool\n") != 1:
         raise PolicyRejected("OPERATION_COUNT")
+    raw = text.split("call_tool\n", 1)[1].lstrip()
     try:
-        op, rest = json.JSONDecoder().raw_decode(text.split("call_tool\n", 1)[1].lstrip())
+        op, end = json.JSONDecoder().raw_decode(raw)
     except ValueError as exc:
         raise PolicyRejected("MALFORMED_OPERATION") from exc
     if not isinstance(op, dict) or not isinstance(op.get("args"), dict):
         raise PolicyRejected("MALFORMED_OPERATION")
-    if rest.strip() and not rest.lstrip().startswith(("}", "關閉", "Close")):
-        # Reject another serialized tool invocation or arbitrary trailing payload.
+    trailing = raw[end:].strip()
+    # Only a card-local dialog's exact close-button label is recognized.
+    if trailing not in ("", "關閉對話框", "關閉對話方塊", "Close dialog"):
         raise PolicyRejected("OPERATION_TRAILING_DATA")
     return op
 
