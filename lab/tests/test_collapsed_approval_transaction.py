@@ -345,3 +345,100 @@ class CandidateDOMTests(unittest.TestCase):
         self.assertEqual(self.page.locator("#prompt-textarea").inner_text(),self.original_draft)
         self.assertEqual(self.page.locator("#old-editor").inner_text(),"Old user message")
         self.assertEqual(self.clicks().count("once:card"),1)
+
+
+class MatrixVariantTests(unittest.TestCase):
+    """Additional variants and multiprocess locks; not substitutes for browser tests."""
+
+    def setUp(self):
+        import approval_transaction as ap
+        self.ap=ap
+        self.tmp=tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root=Path(self.tmp.name)
+        self.job={"repository":"example/repo","branch":"test","write_allowlist":["path.txt"]}
+        self.args={"repository_full_name":"example/repo","branch":"test","path":"path.txt","content":"safe"}
+        self.op={"path":"github/update_file","args":self.args}
+
+    def reject(self,content):
+        self.args["content"]=content
+        with self.assertRaises(self.ap.PolicyRejected):
+            self.ap.strict_policy(self.op,self.job)
+
+    def test_C13_all_inherited_patterns(self):
+        # Assemble patterns at runtime; none is a credential.
+        patterns=[
+            "sk_"+"live_"+"a"*22,"sk_"+"test_"+"a"*22,
+            "xox"+"b-"+"a"*22,"xox"+"a-"+"a"*22,
+            "AKIA"+"A"*15,"-----"+"BEGIN"+" SYNTHETIC KEY",
+            "sk-"+"a"*23,"ghp_"+"a"*25,
+            "PRIVATE "+"KEY", 'api_key="'+'a'*25+'"',
+            "A"*32,"12345678901234567890123456789012345",
+        ]
+        for ix,token in enumerate(patterns):
+            with self.subTest(pattern=ix): self.reject(token)
+        for nonstring in (None, [], {}, 42):
+            with self.subTest(type=type(nonstring).__name__): self.reject(nonstring)
+        self.reject("a"*180001)
+
+    def test_C14_all_diff_policy_variants(self):
+        for sample in ["sk-"+"a"*25,"ghp_"+"a"*25,
+                       "github_pat_"+"a"*22,
+                       "PRIVATE "+"KEY","A"*32]:
+            with self.subTest(kind=sample[:6]):
+                self.args["content"]=sample
+                with self.assertRaises(self.ap.PolicyRejected):
+                    self.ap.diff_policy(self.op,self.job,fetch_base=lambda j,p:"old")
+        self.args["content"]="base"
+        with self.assertRaises(self.ap.PolicyRejected):
+            self.ap.diff_policy(self.op,self.job,fetch_base=lambda j,p:"base")
+        self.args["content"]="\n".join("changed"+str(i) for i in range(201))
+        with self.assertRaises(self.ap.PolicyRejected):
+            self.ap.diff_policy(self.op,self.job,200,fetch_base=lambda j,p:"old")
+        with self.assertRaises(self.ap.InfraError):
+            self.ap.diff_policy(self.op,self.job,200,fetch_base=lambda j,p:"")
+        with self.assertRaises(self.ap.InfraError):
+            self.ap.diff_policy(self.op,self.job,200,fetch_base=lambda j,p:None)
+
+    def test_C18_parser_requires_one_complete_object(self):
+        valid="call_tool\n"+json.dumps(self.op)
+        self.assertEqual(self.ap.parse_operation(valid),self.op)
+        for invalid in ("call_tool\n","call_tool\n{}",valid+"\n{}",
+                        valid+"\ncall_tool\n"+json.dumps(self.op),
+                        valid+" unexpected", "call_tool\nnull"):
+            with self.subTest(input=invalid[:40]):
+                with self.assertRaises(self.ap.PolicyRejected): self.ap.parse_operation(invalid)
+
+    def test_C22_multiprocess_lock_retained_during_fallback(self):
+        import subprocess, os, time
+        lock=self.root/"cache"/"approval-transaction.lock"
+        lock.parent.mkdir(parents=True,exist_ok=True)
+        child_code=("import fcntl,sys,time;f=open(sys.argv[1],'a+');"
+                    "fcntl.flock(f,fcntl.LOCK_EX); print('LOCKED',flush=True);time.sleep(2)")
+        p=subprocess.Popen([sys.executable,"-c",child_code,str(lock)],
+                           stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        try:
+            self.assertEqual(p.stdout.readline().strip(),"LOCKED")
+            with lock.open("a+") as fd:
+                import fcntl
+                with self.assertRaises(BlockingIOError):
+                    fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            self.assertIsNone(p.poll())
+        finally:
+            p.terminate()
+            p.communicate(timeout=5)
+
+    def test_C24_real_transport_failures(self):
+        import subprocess
+        cases=[
+            [sys.executable,"-c","import sys;sys.exit(2)"],
+            [sys.executable,"-c","print('')"],
+            [sys.executable,"-c","print('not json')"],
+        ]
+        for cmd in cases:
+            with self.subTest(cmd=cmd[-1]):
+                j={"transport_command":cmd}
+                with self.assertRaises(self.ap.InfraError):
+                    self.ap.transport(j,{"op":"snapshot"})
+        with self.assertRaises(self.ap.InfraError):
+            self.ap.evaluate({}, "tok","inspect",send=lambda j,r:(_ for _ in ()).throw(RuntimeError("synthetic JS error")))
