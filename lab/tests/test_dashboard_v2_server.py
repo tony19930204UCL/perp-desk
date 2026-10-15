@@ -141,13 +141,30 @@ class DashboardServerTests(unittest.TestCase):
         routes = ('/api/dashboard?x=1', '/api/%64ashboard',
                   '/api/dashboard%3Fx=1', '/api/../api/dashboard',
                   '//api/dashboard', '/api/dashboard/', '/%2e%2e/api/dashboard',
-                  'http://localhost/api/dashboard', '/score', '/')
+                  'http://localhost/api/dashboard', '/score', '/?x=1')
         with patch.object(server, 'read_dashboard', side_effect=AssertionError('read')) as call:
             for route in routes:
                 with self.subTest(route=route):
                     status, _, data = self.request(path=route)
                     self.assertEqual(status, 404)
                     self.assertEqual(json.loads(data), {'error': '找不到資源'})
+            call.assert_not_called()
+
+    def test_root_serves_actual_html_without_reading_dashboard(self):
+        expected = (Path(server.__file__).resolve().parent /
+                    'dashboard_v2.html').read_bytes()
+        with patch.object(server, 'read_dashboard',
+                          side_effect=AssertionError('API reader must not run')) as call:
+            status, headers, body = self.request(path='/')
+            self.assertEqual(status, 200)
+            self.assertEqual(body, expected)
+            self.assertEqual(headers['Content-Type'], 'text/html; charset=utf-8')
+            self.assertEqual(int(headers['Content-Length']), len(expected))
+            self.assertEqual(headers['Cache-Control'], 'no-store')
+            self.assertEqual(headers['X-Content-Type-Options'], 'nosniff')
+            head_status, head_headers, head_body = self.request('HEAD', '/')
+            self.assertEqual((head_status, head_headers, head_body),
+                             (status, headers, b''))
             call.assert_not_called()
 
     def test_head_invalid_route_sanitized(self):
