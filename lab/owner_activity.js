@@ -18,7 +18,7 @@ function detail(task){
  ['執行持有人',task.owner],['開始時間',task.started_at],['最後進度',task.progress_at],
  ['來源更新',task.updated_at],['狀態來源',task.source_keys?.join(', ')],
  ['階段',task.stage],['階段狀態',task.stage_status],['依賴',task.dependencies?.join(', ')],
- ['未解除阻擋',task.blockers?.join(', ')],['延後原因',task.defer_reason],
+ ['未解除阻擋',task.blockers?.join(', ')],['阻擋分類',task.blocker_details?.map(b=>b.label+' ('+b.resolution+')').join(' · ')],['延後原因',task.defer_reason],['延後狀態',task.deferral_state],
  ['重新檢查',task.recheck_at],['期限',task.due],
  ['工程驗收',task.engineering_accepted?'已驗收':'未獲驗收證據'],
  ['已部署',str(task.deployed)],['無人值守閉環',str(task.unattended)],
@@ -45,7 +45,7 @@ function render(){
  put('span',[str(t.stage),t.next||t.step||'下一步未確認'].join(' · '),b,'meta');
  b.addEventListener('click',()=>{detail(t);render()});});
  if(!shown.length)put('p','沒有符合篩選的工作；這不代表來源為空或健康。',list,'subtle');
- if(selected){const t=tasks.find(t=>t.id===selected);if(t)detail(t);else selected=null;}
+ if(selected){const t=tasks.find(t=>t.id===selected);if(t)detail(t);else {selected=null;const box=wipe('detail');put('h2','任務詳情',box);put('p','先前選取的任務已不存在於最新來源；舊內容已清除。',box,'subtle');}}
 }
 function show(data){
  if(!data||!Array.isArray(data.tasks)||!data.sources||!data.totals)throw Error('invalid model');
