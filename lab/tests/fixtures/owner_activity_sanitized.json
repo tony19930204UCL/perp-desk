@@ -9,42 +9,58 @@
         "text": "Synthetic daily observation",
         "state": "OPEN",
         "handle": {
-          "job_id": "daily"
-        }
+          "kind": "cron",
+          "ref": "daily"
+        },
+        "created": 1791972000,
+        "updated": 1792062000,
+        "history": [
+          [
+            1792062000,
+            "Synthetic observation recorded"
+          ]
+        ]
       },
       {
         "id": "C-0028",
         "text": "Synthetic weekly review",
         "state": "OPEN",
         "handle": {
-          "job_id": "weekly"
-        }
+          "kind": "cron",
+          "ref": "weekly"
+        },
+        "created": 1791972000,
+        "updated": 1792062000
       },
       {
         "id": "C-0030",
         "text": "Synthetic worker",
         "state": "IN_PROGRESS",
         "handle": {
+          "kind": "pid",
           "pid": 1234,
-          "start_identity": "fixture-start"
-        }
+          "start": 456,
+          "ref": "1234"
+        },
+        "created": 1791972000,
+        "updated": 1792062000
       },
       {
         "id": "C-0031",
         "text": "Block resolved",
         "state": "BLOCKED",
-        "blocked_by": [
-          "C-0032"
-        ],
-        "defer": {
-          "reason": "fixture review",
-          "recheck_at": "2026-10-14T12:00:00Z"
-        }
+        "blocked_by": "item:C-0032",
+        "defer": "synthetic review",
+        "due": 1791979200,
+        "created": 1791972000,
+        "updated": 1792062000
       },
       {
         "id": "C-0032",
         "text": "Fixture prerequisite",
-        "state": "VERIFIED"
+        "state": "VERIFIED",
+        "created": 1791972000,
+        "updated": 1792062000
       }
     ]
   },
@@ -77,7 +93,8 @@
         "next_run_at": "2026-10-19T12:00:00Z",
         "last_status": "ok"
       }
-    ]
+    ],
+    "updated_at": "2026-10-15T11:58:00Z"
   },
   "roadmap": {
     "goals": [
@@ -95,7 +112,8 @@
         "status": "in_progress",
         "next": "inspect identity"
       }
-    ]
+    ],
+    "updated": "2026-10-15 11:50 UTC"
   },
   "work": {
     "schema_version": 1,
@@ -112,7 +130,8 @@
           "REF:SYNTHETIC"
         ]
       }
-    ]
+    ],
+    "updated_at": "2026-10-15T11:59:00Z"
   },
   "journal": [
     {
@@ -125,7 +144,7 @@
   "execution_proofs": {
     "C-0030": {
       "pid": 1234,
-      "start_identity": "fixture-start",
+      "start": 456,
       "alive": true,
       "observed_at": "2026-10-15T11:59:30Z"
     }
