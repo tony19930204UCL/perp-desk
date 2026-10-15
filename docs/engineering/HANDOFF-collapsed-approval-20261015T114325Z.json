@@ -4,88 +4,91 @@
   "pr_number": 62,
   "branch": "fix/collapsed-approval-20261015T114325Z",
   "task_id": "collapsed-approval-20261015T114325Z",
-  "instruction_id": "CA1-r1",
+  "instruction_id": "CA1-r2",
   "status": "BLOCKED",
-  "source_head_sha": "c559fb35d5d52a4f72f65e6e204098b958f67bfe",
-  "summary": "CA1-r1 partial repair on existing PR62: corrected JSONDecoder end-offset parsing; separated post-click readback guard from pending-card guard; accepted verified new-conversation homepage transport job while enforcing active_instruction/CONFIRMED receipt exact chat identity; added durable profile-wide fsynced per-chat/invocation no-retry ledger under the approval flock; added 28 browser-backed test_C01..test_C28 methods executing candidate DOM_JS in isolated Chromium and fixture click spies. No live profile, AP3, deployment or main mutation. Candidate remains BLOCKED: tests not executed, some case coverage is partial (especially true multiprocess/CLI integration); synthetic DOM selectors not authenticated-live verified.",
+  "source_head_sha": "fa9a6609d5e32cac66be0b18e3e887d156e13848",
+  "summary": "CA1-r2 repair committed on original PR62: initializes opText=null in both collapsed inspect/bind, normalizes raw browser/Playwright errors in snapshot/evaluate into INFRA, removes hardcoded Chromium path and repairs context-manager teardown, fixes fixture to mutate same clicked card and phase-specific fault injection, adds extensive admission/policy/DOM/multiprocess/CLI variant source tests. No broadening of strict/diff gates, no reset of durable unknown-click journal. Partial candidate only, not complete C01-C28 independent acceptance: test source unexecuted; C22 and C23 full pending-card cross-entrypoint/process race coverage still incomplete.",
   "changed_files": [
     "engineering/relay/approval_transaction.py",
-    "lab/tests/fixtures/collapsed_approval_dom.html",
-    "lab/tests/fixtures/collapsed_approval_dom_driver.js",
     "lab/tests/test_collapsed_approval_transaction.py",
+    "lab/tests/fixtures/collapsed_approval_dom.html",
     "engineering/relay/README.md",
     "docs/engineering/HANDOFF-collapsed-approval-20261015T114325Z.json"
   ],
   "tests": [
     {
-      "command": "python3 -m unittest lab.tests.test_collapsed_approval_transaction -v",
+      "command": "python3 -m unittest discover -s lab/tests -p test_collapsed_approval_transaction.py -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub connector can read/write branch but local runner cannot fetch candidate (git ls-remote: Could not resolve host github.com). 28 candidate Chromium cases added, none claimed PASS; predecessor 15 policy/admission tests independently passed according to Main, not re-run here."
+      "evidence": "Candidate source updated via GitHub file contents connector. Local container cannot git fetch repository; no candidate checkout. No skips or local PASS claimed. Main's prior CA1-r1 measured logs remain independent evidence, not r2 results."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests",
       "result": "NOT_RUN",
-      "evidence": "Candidate checkout unavailable in sandbox; no local full automation suite result."
+      "evidence": "No local GitHub checkout; unavailable to execute against exact source head."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "NOT_RUN",
-      "evidence": "Candidate checkout unavailable; no local full lab suite result."
+      "evidence": "No local checkout; no full suite claim."
     },
     {
       "command": "node lab/tests/fixtures/collapsed_approval_dom_driver.js",
       "result": "NOT_RUN",
-      "evidence": "Node driver currently checks fixture source only; browser-backed candidate-JS tests live in Python Playwright class and remain unexecuted."
+      "evidence": "Node driver remains source-only smoke, not candidate DOM execution; Python CandidateDOMTests executes actual DOM_JS in isolated Chromium when run."
     },
     {
       "command": "python3 engineering/relay/auto_allow.py --once",
       "result": "NOT_RUN",
-      "evidence": "No isolated CLI fake transport harness completed; running on live profile prohibited."
+      "evidence": "New synthetic no-card CLI test has been committed but not executed. Live profile actions prohibited."
     },
     {
       "command": "git ls-remote https://github.com/tony19930204UCL/perp-desk.git refs/heads/fix/collapsed-approval-20261015T114325Z",
       "result": "INFRA",
-      "evidence": "Executed in container: fatal: unable to access ... Could not resolve host: github.com. GitHub connector directly confirmed writable PR62 HEAD separately."
+      "evidence": "Container git: fatal: unable to access ... Could not resolve host: github.com. GitHub connector successfully read and updated exact branch instead."
     },
     {
-      "command": "node --version && python3 --version && command -v chromium",
+      "command": "python3 -V; node -v; which chromium; python3 -c 'import playwright'",
       "result": "PASS",
-      "evidence": "Environment inspection: Node v22.16.0; Python 3.13.5; /usr/bin/chromium available. python3 import playwright succeeded."
+      "evidence": "Local environment probe: Python 3.13.5, Node v22.16.0, /usr/bin/chromium, Playwright installed; this is NOT execution of candidate tests."
     }
   ],
   "remaining_work": [
     {
       "status": "ACTIONABLE_NOW",
-      "description": "Run test_C01..test_C28 against isolated Chromium; repair failures, ensure all 28 reach their intended assertions rather than skip. Review scenario completeness including multi-variant C13/C14/C19/C20, actual CLI --once, click-target spies, cross-process strict→diff races, process deadlock and real caller integration."
+      "description": "Execute current 28 browser test methods and variant methods against actual candidate source, fix runtime failures and verify each required C01-C28 variant (including DOM replacement, invalid close details, expiry boundaries) with stdout/stderr, rc, per-ID time, no silent skip."
     },
     {
       "status": "ACTIONABLE_NOW",
-      "description": "Audit durable ledger durability/path trust and DOM final same-evaluate guard; verify error mapping for transport/JS and no retry across helper restarts after unknown acknowledgement. No automated journal clearing."
+      "description": "Implement and execute full C22 competing PROCESS during strict-to-diff fallback holding the shared lock through readback; existing distinct-process flock contention test is not equivalent."
     },
     {
       "status": "ACTIONABLE_NOW",
-      "description": "Replace fixture JS source-only smoke driver with actual candidate JS DOM execution if independent acceptance requires direct Node execution."
+      "description": "Implement and execute full C23 pending-card concurrent auto_allow --once, relay-poll, drive/carrier, profile_runner and direct helper with one shared synthetic profile, bounded deadline, <=1 aggregate click, no nested deadlock; current no-card CLI smoke is insufficient."
+    },
+    {
+      "status": "ACTIONABLE_NOW",
+      "description": "Complete C24 real subprocess timeouts and adapter errors and C14 failing-gh fixture, with finite runtime. Review policy and scenario branch assertions. Test candidate source and pre-mailbox head."
+    },
+    {
+      "status": "ACTIONABLE_NOW",
+      "description": "Retain inherited self-regex TOKEN_LIKE, <=200 diff line cap and inherited detection-rule exceptions without treating exceptions as proven secret-safe."
     },
     {
       "status": "EXTERNAL_BLOCKER",
-      "description": "Main independent exact source head dual CI and source/deployment mapping, local scheduler and CLI readback; real folded card DOM is unobserved. Do not deploy or trigger a live approval."
-    },
-    {
-      "status": "ACTIONABLE_NOW",
-      "description": "Original self-regex TOKEN_LIKE and >200 changed-line DIFF_SIZE policy limits persist; inherited detection-rule exception is not a secret-safety proof and must not be broadened."
+      "description": "Main independent exact-head push/pull_request CI, source-deployment mapping and deployed scheduler/CLI readback require owner execution after a verified candidate; authenticated-live folded-card observation remains distinct."
     }
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "BLOCKED candidate at pre-mailbox source HEAD. Inspect changed-file allowlist and code, execute C01-C28 individually with return codes/durations and full entrypoint/multiprocess suite. Verify all three measured defects including actual approve path and durable no-reentry.",
-    "if_pass": "Only after source/tests independently pass: verify exact-head push and pull_request CI, deployment/source mapping and deployed CLI/scheduler readback; keep fixture and authenticated-live observations separate.",
-    "if_fail": "Continue repair on the same draft PR62/branch with bounded scope. Keep old AP3 unknown send paused and never retry or mutate live profile.",
+    "verify_now": "Review pre-mailbox source HEAD and changed allowlist. Do not mark READY: C22/C23 full tests and exact-head execution incomplete. Run all focused DOM/variant tests, identify FAIL vs ERROR vs SKIP precisely; inspect new portable browser and collapsed bind fixes.",
+    "if_pass": "Once remaining engineered integration is implemented and all cases independently pass, verify exact-head push and pull_request CI and deployment mapping; no automatic deployment.",
+    "if_fail": "Keep draft PR62 and same branch; continue bounded code/tests repair, keep AP3 unknown send paused, no live browser/permission changes.",
     "blockers": [
-      "C01-C28 and suites not executed in this environment",
-      "Cross-process and full CLI coverage incomplete",
-      "Node driver is source-only",
-      "No authenticated-live folded card evidence",
-      "No independent exact-head CI or deployment verification"
+      "No exact-head candidate tests executed by engineer",
+      "Full C22 competing approval process race test incomplete",
+      "Full C23 pending-card cross-entrypoint race test incomplete",
+      "No independent r2 exact-head dual CI",
+      "No authenticated-live folded-card evidence"
     ]
   }
 }
