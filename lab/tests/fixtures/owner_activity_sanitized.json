@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "examples": [
+    {
+      "id": "C-0026",
+      "example": "daily_scheduled_idle"
+    },
+    {
+      "id": "C-0028",
+      "example": "weekly_not_due"
+    }
+  ]
+}
