@@ -18,3 +18,13 @@ All UI reads require an exact confirmed send receipt, active instruction, matchi
 * `engineering/relay/engineering_github_inbox.py`, `engineering_handback_contract.py`, `main_verdict.py`, `queue_runner.py`: retained reference implementations
 
 **Open blocking verification:** the full C01–C28 executable candidate-DOM matrix, process/race tests, actual CLI integration, independent CI and authenticated-live observation were not executed in this session. These gaps prohibit treating this candidate as accepted or deployable. Existing test file covers only initial policy/admission regression cases. Never equate a fixture PASS with live approval proof.
+
+
+## CA1-r1 delta (candidate; Main review required)
+
+* Corrected `JSONDecoder.raw_decode()` end-offset handling; only whitespace or the precise card-local close label may follow the single parsed operation.
+* Corrected post-click DOM readback to use the same retained node/turn/invocation without the pre-click pending gate; no second click during readback.
+* Normal new-conversation jobs may retain the homepage transport URL. Positive active-instruction and `CONFIRMED` send receipt must both identify the identical exact conversation; live snapshot must still match it.
+* Every invocation gets a profile-local, fsynced, atomically replaced SHA256-keyed ledger entry before the potential click. Any existing entry, including an unknown previous click or a previously verified approval, blocks reentry across processes. The global flock covers the ledger and strict-to-diff transaction. Environment variables are used only to resolve a profile root, not to claim lock ownership. The ledger is append-only in intent: do not clear an unresolved entry automatically.
+* **Inherited policy limitations remain:** strict detection-rule exceptions for selected self-contained `re.compile` or `SECRET` lines are not proof of secret safety. The original self-regex `TOKEN_LIKE` rejection and diff-clean `DIFF_SIZE` for more than 200 changed lines remain. There is no third fallback, payload splitting or obfuscation.
+* Tests `test_C01` … `test_C28` now exist and invoke actual `DOM_JS` in isolated Chromium via Python Playwright. These are unexecuted candidate tests in this workspace; current fixture driver JS file is a static source check, not a Node browser runner. Tests do not establish authenticated live DOM behavior. Main must execute all tests and inspect coverage gaps and platform prerequisites before acceptance.
