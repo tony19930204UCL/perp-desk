@@ -1,1 +1,31 @@
-<!-- Engineer placeholder; no runtime behavior. -->
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>Offline synthetic approval fixture</title>
+<body>
+<nav id="sidebar"><button>先前活動</button></nav>
+<section data-message-author-role="user"><div contenteditable="true" id="old-editor">Old user message</div></section>
+<section data-message-author-role="assistant" id="current-turn">
+  <button id="activity" aria-expanded="false">先前活動</button>
+  <section id="fold" hidden>
+    <div data-approval-card data-invocation-id="synthetic-call-1" data-approval-state="pending" id="card">
+      <span>要允許 ChatGPT 使用 GitHub 嗎？</span>
+      <button class="details" aria-controls="operation-dialog">查看詳細資訊</button>
+      <button class="once">允許一次</button>
+      <button class="wide">允許整段對話</button>
+    </div>
+  </section>
+</section>
+<div role="dialog" id="operation-dialog" hidden></div>
+<div id="prompt-textarea" role="textbox" contenteditable="true">Synthetic unsent user draft — preserve exactly.</div>
+<script>
+  window.syntheticClicks=[];
+  const act=document.getElementById('activity'), fold=document.getElementById('fold');
+  act.onclick=()=>{window.syntheticClicks.push('expand:'+act.id); fold.hidden=false;act.setAttribute('aria-expanded','true')};
+  const dialog=document.getElementById('operation-dialog');
+  document.querySelector('.details').onclick=()=>{window.syntheticClicks.push('details:card'); dialog.hidden=false};
+  document.querySelector('.once').onclick=()=>{
+    window.syntheticClicks.push('once:card');
+    document.getElementById('card').setAttribute('data-approval-state','completed');
+    document.querySelector('.once').disabled=true;
+  };
+  document.querySelector('.wide').onclick=()=>window.syntheticClicks.push('WIDE:card');
+</script>
+</body></html>
