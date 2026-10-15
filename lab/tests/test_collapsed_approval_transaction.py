@@ -632,3 +632,88 @@ class MissingAdmissionRecordTests(unittest.TestCase):
             (p/"active_instruction.json").write_text("{not json")
             with self.assertRaises(ap.AdmissionError):
                 ap.admission(p)
+
+
+class CrossProcessFallbackRaceTests(unittest.TestCase):
+    def test_C22_competing_process_blocked_through_diff_and_readback(self):
+        """Synthetic bridge, genuine independent Python processes and flock."""
+        import os, subprocess, time
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            work=root/"cache"/"scratch"/"relay-race"
+            work.mkdir(parents=True)
+            chat="https://chatgpt.com/c/synthetic-race"
+            job={"task_id":"race","conversation_mode":"new",
+                 "chat_url":"https://chatgpt.com/",
+                 "repository":"example/repo","branch":"feature",
+                 "write_allowlist":["sample.py"],
+                 "valid_until":"2099-01-01T00:00:00+00:00"}
+            (work/"job.json").write_text(json.dumps(job))
+            (work/"active_instruction.json").write_text(json.dumps({
+                "task_id":"race","instruction_id":"race-r3","chat_url":chat}))
+            (work/"send_race-r3.json").write_text(json.dumps({
+                "status":"CONFIRMED","chat_url":chat}))
+            bridge=root/"process_bridge.py"
+            bridge.write_text(StringBridgeSource)
+            ready=root/"at-fallback"
+            release=root/"release-fallback"
+            click=root/"clicked"
+            script=root/"worker.py"
+            script.write_text("""import json,os,sys,time
+from pathlib import Path
+sys.path.insert(0,os.environ['APPROVAL_MODULE_PATH'])
+import approval_transaction as a
+home=Path(os.environ['HERMES_HOME'])
+job=Path(sys.argv[1])
+def send(_job,req):
+ if req['op']=='snapshot':return {'url':'https://chatgpt.com/c/synthetic-race','text':''}
+ import re
+ action=json.loads(re.search(r'const token = [^,]+, action = ("[^"]+");',req['expression']).group(1))
+ if action in ('inspect','bind'):return {'state':'PENDING','invocation':'single-operation'}
+ if action=='details':
+  return {'details':'call_tool\\\\n'+json.dumps({'path':'github/update_file','args':{
+      'repository_full_name':'example/repo','branch':'feature',
+      'path':'sample.py','content':'ghp_'+'a'*25}}),'invocation':'single-operation'}
+ if action=='click':
+  with (home/'clicked').open('a') as f:f.write('click\\\\n')
+  return {'clicked':True,'invocation':'single-operation'}
+ if action=='readback':return {'same':True,'completed':True,'invocation':'single-operation'}
+ raise RuntimeError(action)
+def base(j,p):
+ (home/'at-fallback').write_text('ready')
+ deadline=time.monotonic()+8
+ while not (home/'release-fallback').exists() and time.monotonic()<deadline:time.sleep(.02)
+ if not (home/'release-fallback').exists():raise RuntimeError('barrier timeout')
+ return 'old'
+r=a.approve(job,mode='auto',send=send,fetch_base=base,lock_timeout=.25)
+print(json.dumps(r),flush=True)
+""")
+            env={**os.environ,"HERMES_HOME":str(root),
+                 "APPROVAL_MODULE_PATH":str(Path(__file__).resolve().parents[2]/"engineering"/"relay")}
+            first=subprocess.Popen([sys.executable,str(script),str(work)],env=env,
+                stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            try:
+                until=time.monotonic()+6
+                while not ready.exists() and time.monotonic()<until:
+                    if first.poll() is not None:break
+                    time.sleep(.02)
+                self.assertTrue(ready.exists(),"first process never reached fallback")
+                second=subprocess.run([sys.executable,str(script),str(work)],env=env,
+                    capture_output=True,text=True,timeout=5)
+                self.assertIn('"LOCK_BUSY"',second.stdout,second.stderr)
+                self.assertFalse(click.exists(),"other process interleaved before readback")
+                release.write_text("go")
+                stdout,stderr=first.communicate(timeout=8)
+                self.assertEqual(first.returncode,0,stderr)
+                self.assertIn('"APPROVED"',stdout)
+                self.assertEqual(click.read_text().count("click"),1)
+            finally:
+                release.write_text("go")
+                if first.poll() is None:
+                    first.terminate()
+                    first.communicate(timeout=5)
+
+
+# Kept as a string so fixture imports remain pure stdlib. The process bridge
+# never navigates or opens Chrome; DOM behavior is tested separately.
+StringBridgeSource = "# no external transport used for C22\\n"
