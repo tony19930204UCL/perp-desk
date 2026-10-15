@@ -40,3 +40,12 @@ All UI reads require an exact confirmed send receipt, active instruction, matchi
 * **Still unverified/incomplete**: candidate test execution on this exact source head, C22 competing approval processes holding lock from fallback through readback, full C23 carrier/poll/drive/profile concurrent entrypoint competition, and authentication-live DOM. The no-card CLI smoke is not equivalent to a pending-card race. Main acceptance must remain separate from source completeness.
 
 Strict self-regex `TOKEN_LIKE`, inherited detection-rule exceptions (which do not certify secret safety), and diff-clean `DIFF_SIZE` for more than 200 changed lines remain exactly bounded. No third fallback or content-splitting workaround is authorized.
+
+
+## CA1-r3 bounded follow-up (unverified candidate)
+
+Admission now converts missing, malformed and unreadable job/active/send records into explicit `AdmissionError` rather than leaking `FileNotFoundError`, before browser mutation. The DOM transaction additionally attempts the observed `data-user-message-bubble=true` and search-unit ancestor family; it requires a uniquely bounded subsequent content unit, otherwise raises an explicit `UNVERIFIABLE_ASSISTANT_TURN`/infra category. **No authenticated live pending card was observed**, so invocation and approval card selectors remain hypotheses.
+
+Strict content policy makes a *narrow change* to the earlier insecure line-based `SECRET` and `re.compile` exceptions: only AST literal spans passed directly as the first argument to `re.compile` or `re.search`, with `re` an explicit name and value matching an original detector template, may be excluded from inherited strict regex/long-token checks in allowlisted `.py` files. No `eval`, no dynamic interpolation, no comment/whole-line exemption, no exemption for a separate runtime value. All other characters retain the old long-token/secret checks. The `TOKEN_LIKE` and 200-line fallback `DIFF_SIZE` blockers persist for unresolved content.
+
+The browser test class is changed to use the existing read-only `lab/browser_issue3_acceptance.py` stdlib `CdpSession`/Chrome search with an optional `COLLAPSED_APPROVAL_CHROMIUM` override; no Playwright dependency or skip is introduced. C22/C23 full competing pending-card multiprocess entrypoint assertions still require implementation/execution. A successful synthetic DOM test is distinct from live observation, source deployment and exact-head CI.
