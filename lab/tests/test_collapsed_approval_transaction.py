@@ -671,11 +671,11 @@ def send(_job,req):
  action=json.loads(re.search(r'const token = [^,]+, action = ("[^"]+");',req['expression']).group(1))
  if action in ('inspect','bind'):return {'state':'PENDING','invocation':'single-operation'}
  if action=='details':
-  return {'details':'call_tool\\\\n'+json.dumps({'path':'github/update_file','args':{
+  return {'details':'call_tool\\n'+json.dumps({'path':'github/update_file','args':{
       'repository_full_name':'example/repo','branch':'feature',
-      'path':'sample.py','content':'ghp_'+'a'*25}}),'invocation':'single-operation'}
+      'path':'sample.py','content':'alpha_1234567890_beta_1234567890_gamma'}}),'invocation':'single-operation'}
  if action=='click':
-  with (home/'clicked').open('a') as f:f.write('click\\\\n')
+  with (home/'clicked').open('a') as f:f.write('click\\n')
   return {'clicked':True,'invocation':'single-operation'}
  if action=='readback':return {'same':True,'completed':True,'invocation':'single-operation'}
  raise RuntimeError(action)
