@@ -1,14 +1,141 @@
 {
   "schema_version": 1,
   "synthetic": true,
-  "examples": [
+  "clock": "2026-10-15T12:00:00Z",
+  "ledger": {
+    "items": [
+      {
+        "id": "C-0026",
+        "text": "Synthetic daily observation",
+        "state": "OPEN",
+        "handle": {
+          "job_id": "daily"
+        }
+      },
+      {
+        "id": "C-0028",
+        "text": "Synthetic weekly review",
+        "state": "OPEN",
+        "handle": {
+          "job_id": "weekly"
+        }
+      },
+      {
+        "id": "C-0030",
+        "text": "Synthetic worker",
+        "state": "IN_PROGRESS",
+        "handle": {
+          "pid": 1234,
+          "start_identity": "fixture-start"
+        }
+      },
+      {
+        "id": "C-0031",
+        "text": "Block resolved",
+        "state": "BLOCKED",
+        "blocked_by": [
+          "C-0032"
+        ],
+        "defer": {
+          "reason": "fixture review",
+          "recheck_at": "2026-10-14T12:00:00Z"
+        }
+      },
+      {
+        "id": "C-0032",
+        "text": "Fixture prerequisite",
+        "state": "VERIFIED"
+      }
+    ]
+  },
+  "cron": {
+    "jobs": [
+      {
+        "id": "daily",
+        "name": "Daily observation",
+        "enabled": true,
+        "schedule": {
+          "kind": "every",
+          "minutes": 1440
+        },
+        "last_run_at": "2026-10-15T11:00:00Z",
+        "last_status": "ok",
+        "next_run_at": "2026-10-16T11:00:00Z",
+        "last_dispatch": {
+          "scheduled_at": "2026-10-15T11:00:00Z"
+        }
+      },
+      {
+        "id": "weekly",
+        "name": "Weekly review",
+        "enabled": true,
+        "schedule": {
+          "kind": "cron",
+          "expr": "0 12 * * 1"
+        },
+        "last_run_at": "2026-10-12T11:00:00Z",
+        "next_run_at": "2026-10-19T12:00:00Z",
+        "last_status": "ok"
+      }
+    ]
+  },
+  "roadmap": {
+    "goals": [
+      {
+        "id": "paper",
+        "title": "Paper reliability"
+      }
+    ],
+    "items": [
+      {
+        "id": "R-1",
+        "ledger": "C-0030",
+        "goal": "paper",
+        "title": "Worker proof",
+        "status": "in_progress",
+        "next": "inspect identity"
+      }
+    ]
+  },
+  "work": {
+    "schema_version": 1,
+    "tasks": [
+      {
+        "id": "C-0030",
+        "state": "running",
+        "started_at": "2026-10-15T11:30:00Z",
+        "updated_at": "2026-10-15T11:59:00Z",
+        "title": "Synthetic worker",
+        "current_step": "test",
+        "next_step": "review",
+        "evidence": [
+          "REF:SYNTHETIC"
+        ]
+      }
+    ]
+  },
+  "journal": [
     {
-      "id": "C-0026",
-      "example": "daily_scheduled_idle"
-    },
-    {
-      "id": "C-0028",
-      "example": "weekly_not_due"
+      "at": "2026-10-15T11:50:00Z",
+      "public_summary": "Synthetic engineering observation",
+      "proof_ref": "REF:SANITIZED",
+      "kind": "observation"
     }
-  ]
+  ],
+  "execution_proofs": {
+    "C-0030": {
+      "pid": 1234,
+      "start_identity": "fixture-start",
+      "alive": true,
+      "observed_at": "2026-10-15T11:59:30Z"
+    }
+  },
+  "result_proofs": {
+    "daily": {
+      "status": "ok",
+      "run_at": "2026-10-15T11:00:00Z",
+      "result_ref": "REF:SYNTHETIC-OUTPUT",
+      "output_at": "2026-10-15T11:02:00Z"
+    }
+  }
 }
