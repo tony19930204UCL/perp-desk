@@ -1,1 +1,74 @@
-{"placeholder":true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 66,
+  "branch": "fix/source-aging-20261015T2059Z",
+  "task_id": "source-aging-20261015T2059Z",
+  "instruction_id": "SA1-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "f5842a5e3099233c6b9028a4590bf75dadd59eb3",
+  "summary": "Implemented narrow undeployed broker append-only digest history in its own SQLite table with same-transaction singleton persistence and atomic legacy migration, plus H2/F1H collection ordering that performs closed-candle work before fresh batch acquisition. No 15000ms/future/risk/cost/window/arrival thresholds changed, no event pruning or PR59/60 merge. PR59/60 experimental schema requires separate compatibility verification. This is an engineering candidate, not independent acceptance.",
+  "changed_files": [
+    "lab/paper_runtime_v2.py",
+    "lab/paper_runtime_v5.py",
+    "lab/sim_broker.py",
+    "lab/tests/test_source_aging_repair.py",
+    "docs/engineering/SOURCE_AGING_REPAIR.md",
+    "docs/engineering/HANDOFF-source-aging-20261015T2059Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p 'test_source_aging_repair.py' -v",
+      "result": "NOT_RUN",
+      "evidence": "Five synthetic regression methods authored, but no runnable repository checkout was available; no execution result/test IDs claimed."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No runnable local checkout; not executed."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No runnable local checkout; not executed."
+    },
+    {
+      "command": "GitHub Actions pull_request source commit f5842a5e3099233c6b9028a4590bf75dadd59eb3",
+      "result": "IN_PROGRESS",
+      "evidence": "Observed run id 38922196111, status in_progress, conclusion null, 'PAPER review tests' (before mailbox HEAD)."
+    },
+    {
+      "command": "GitHub Actions push exact source/mailbox HEAD",
+      "result": "NOT_VERIFIED",
+      "evidence": "GitHub connector fetch_commit_workflow_runs reports pull_request-triggered runs only; push run ID and conclusion unavailable. Must verify independently."
+    },
+    {
+      "command": "public isolated dry-run CLI with exact public source/receipt/dispatch times",
+      "result": "NOT_RUN",
+      "evidence": "No isolated runnable checkout or public dry-run execution available. Documented CLI only; timings in issue64 are prior operator observations, not produced by this candidate."
+    },
+    {
+      "command": "controlled slow broker/persistence, peer aging, old-vs-new differential, boundary 14999/15000/15001 and future rejection",
+      "result": "NOT_RUN",
+      "evidence": "Not executed; issue64 acceptance remains open. Added broker restart/dedup/rollback/out-of-order regressions but no simulated latency or differential assertions."
+    }
+  ],
+  "remaining_work": [
+    "Independent Main CIO test of on_event COMMIT rollback, migration of legacy full and digest-only history, write volume, broker audit/account/ledger preservation, event-ID duplicates after restart, PR59/60 schema compatibility; inspect exact failure traces.",
+    "Deterministic slow broker/persistence and peer aging old-vs-new differential plus exact 14999/15000/15001, future, and arrival rejects with immutable source/receipt timestamps and monotonic boundaries.",
+    "Run public isolated one-shot CLI in new namespace, record exact source/receipt/dispatch and monotonic timings; do not infer HTTP or disk cause.",
+    "Verify exact final HEAD push and pull_request CI IDs/results; count actual discovered test IDs; no deployment/merge/trade."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Review PR66 final mailbox HEAD and pre-mailbox source SHA; independently run focused/full suites, compare legacy golden/account/ledger/audit/receipt behavior, controlled broker/persistence + peer aging and 15000ms/future gates; inspect both exact-head push/PR CI and isolated public CLI timings.",
+    "if_pass": "Independently accept SA1 source-only candidate for separate flat-arm operator validation with backup/hash/readback, never deploy or merge automatically.",
+    "if_fail": "Report exact failing test/trace and HEAD; return narrow allowlist repair. Do not lower gates or reset windows.",
+    "blockers": [
+      "No local full-suite run or public isolated dry-run available here",
+      "No controlled slow-client/slow-broker differential proof yet",
+      "Exact final-head push and PR CI not both verified",
+      "PR59/60 experimental database schemas are not automatically interchangeable"
+    ]
+  }
+}
