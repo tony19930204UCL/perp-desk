@@ -12,7 +12,7 @@ LAB = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(LAB))
 
 from paper_market import book_event, mark_event, fresh_source
-from paper_runtime_v2 import PaperRuntime, canonical
+from paper_runtime_v2 import PaperRuntime, canonical, digest
 from sim_broker import SimBroker, InstrumentSettings
 
 
@@ -123,7 +123,7 @@ class SolOfftickRepairTests(unittest.TestCase):
         self.assertEqual(events[0]["receipt_ms"], 1792124551153)
         self.assertEqual(events[0]["receipt_audit_request_start_ms"], start["request_start_ms"])
         self.assertEqual(events[0]["receipt_audit_request_return_ms"], start["request_return_ms"])
-        self.assertEqual(events[0]["original_receipt_sha256"], PaperRuntime.__globals__["digest"](depth) if hasattr(PaperRuntime, "__globals__") else __import__("paper_runtime_v2").digest(depth))
+        self.assertEqual(events[0]["original_receipt_sha256"], digest(depth))
         db.close()
 
 
