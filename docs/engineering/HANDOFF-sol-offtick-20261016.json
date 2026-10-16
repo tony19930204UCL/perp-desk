@@ -4,61 +4,65 @@
   "pr_number": 68,
   "branch": "fix/sol-offtick-20261016",
   "task_id": "sol-offtick-20261016",
-  "instruction_id": "SO1-r0",
-  "status": "BLOCKED",
-  "source_head_sha": "60ea63adcdde3afa5ed22f9b20468eda156e2fb5",
-  "summary": "Implemented fail-closed broker throw-site provenance and runtime audit correlation against exact previously recorded public depth. Golden illegal level 105.5290 vs tick 0.0100 remainder 0.0090 remains rejected. Correlation in historical fixture is not a recorded original stack trace. No filter/gate relaxation, recollection, deployment, trading, state reset or strategy change.",
+  "instruction_id": "SO1-r1",
+  "status": "WAITING_CI",
+  "source_head_sha": "e1dacf4c0f391452b7cb4f36835ff66bc1f29352",
+  "summary": "Corrected r0 test-only time-domain error: original depth received_at 1792124551153 is the incoming book event ts, source_ms 1792124551070 is preserved, simulated dispatch 1792124551825 remains separate. Added deterministic rejection receipt match/nonmatch, reference absent/present hash and age, valid dispatch, and future/stale negatives. Immutable fixture and runtime/broker/market code unchanged in r1; off-grid depth with unchanged 0.0100 tick stays rejected. Independent original r0 failure was a test fixture regression, not demonstrated production timing break.",
   "changed_files": [
-    "lab/sim_broker.py",
-    "lab/paper_runtime_v2.py",
     "lab/tests/test_sol_offtick_repair.py",
     "docs/engineering/SOL_OFFTICK_REPAIR.md",
     "docs/engineering/HANDOFF-sol-offtick-20261016.json"
   ],
   "tests": [
     {
-      "command": "python3 -m unittest -v tests.test_sol_offtick_repair (from lab/)",
-      "result": "NOT_RUN",
-      "evidence": "GitHub connector provides source updates, not command execution; remote container cannot clone repository due DNS. No executed test IDs claimed."
+      "command": "Clean-clone r0 complete suite (Main independent)",
+      "result": "FAIL (489/490 pass; 1 failed, 918.576s)",
+      "evidence": "Main-supplied independent result at head bb7606c636b3c3d0e99394a2e13afad8891720f7; one fixture timing assertion expected 1792124551153, observed 1792124551825."
     },
     {
-      "command": "python3 -m unittest discover -s automation/tests (from repo root)",
-      "result": "NOT_RUN",
-      "evidence": "No authorized repository execution facility."
+      "command": "GitHub Actions r0 PR run 38854743392",
+      "result": "FAIL",
+      "evidence": "Connector verified completed failure: exporter contract SUCCESS; PAPER isolated suite FAILURE; later steps skipped."
     },
     {
-      "command": "python3 -m unittest discover -s tests (from lab/)",
+      "command": "python3 -m unittest discover -s tests -p test_sol_offtick_repair.py -v (from lab/)",
       "result": "NOT_RUN",
-      "evidence": "No authorized repository execution facility."
+      "evidence": "No authorized repository execution shell in this session; 10 r1 test methods added/updated, not claimed executed."
     },
     {
-      "command": "GitHub Actions exact-head PR68",
-      "result": "NOT_CONFIRMED",
-      "evidence": "At pre-mailbox commit 60ea63adcdde3afa5ed22f9b20468eda156e2fb5 no completed workflow run evidence observed; new mailbox commit needs separate checks."
+      "command": "Final r1 exact-head GitHub PR CI",
+      "result": "WAITING_CI",
+      "evidence": "Source head e1dacf4c0f391452b7cb4f36835ff66bc1f29352 before mailbox; final mailbox commit changes HEAD. Check CI for exact resulting final head."
     },
     {
-      "command": "Isolated public raw-receipt probe",
+      "command": "Genuine public isolated source/receipt/dispatch probe",
       "result": "NOT_RUN",
-      "evidence": "No permitted public probe runtime with real timestamped source/receipt and dispatch instrumentation was available."
+      "evidence": "No public-probe runtime executed in this turn."
+    },
+    {
+      "command": "Old/new valid-path cost/risk/fill/ledger differential and slow-peer/ref refresh",
+      "result": "NOT_RUN",
+      "evidence": "r1 only adds timing/provenance focused regressions; do not infer full issue67 acceptance."
     }
   ],
   "remaining_work": [
-    "Run focused golden suite and fix any real failures, without changing frozen fixture.",
-    "Run complete repo automation/lab suites and independent old/new valid-path cost/risk/fill/ledger differential.",
-    "Run controlled legal/illegal books, slow reference and peer aging, changed vs unchanged reference, 15000 ms/future/arrival/clock gates, bounded refresh-negative probes.",
-    "Capture genuine public isolated source receipts/hashes and exact source/receipt/dispatch event timings; prove actual rejection link, not adjacency.",
-    "Obtain exact final PR68 HEAD CI green and Main CIO independent acceptance; invalid upstream with unchanged tick remains blocker."
+    "Run focused discovery at final source head; diagnose actual failures, if any.",
+    "Confirm both final-head push and pull-request CI succeed at exact mailbox commit and named checks; don't reuse r0 failed result.",
+    "Run independent old/new valid execution/fill/cost/risk/ledger differential.",
+    "Run slow reference and peer aging, arrival, all freshness/future/clock boundaries and bounded failed refresh negatives, including changed-versus-unchanged filter contract.",
+    "Collect genuine isolated public depth/reference/receipt and dispatch timing, original raw hashes and causal broker throw-site evidence; fixture adjacency is not original stack trace.",
+    "Main CIO independent acceptance; upstream off-grid depth with unchanged exchange filter remains a real blocker."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review branch PR68 actual HEAD, broker first-offending-level diagnostic, runtime receipt-match rejection audit, immutable fixture and named focused/full CI checks; independently run public probe and old/new behavioral differential.",
-    "if_pass": "Accept only verified engineering patch and separately decide deployment after public evidence and complete CI.",
-    "if_fail": "Leave blocked; request exact failure ID and minimally scoped corrective instructions on same branch.",
+    "verify_now": "Read final PR68 commit, confirm fixture blob SHA e7b15d556ae267a71319cf0c147ecb102b65d17f is unchanged, and execute 10 focused discovery tests with receipt/source/dispatch separation; inspect final-head workflow job step IDs and results.",
+    "if_pass": "Verify remaining issue67 differential/public probe and separately decide engineering acceptance; deployment remains unauthorized.",
+    "if_fail": "Maintain BLOCKED and send exact failed test/step plus SHA for minimally scoped r2 on same branch.",
     "blockers": [
-      "No executed focused/full suites or exact-head green CI evidence",
-      "No genuine isolated public probe with original source/receipt/dispatch timing",
-      "No independently executed old/new valid-path differential",
-      "Unchanged upstream off-grid depth with unchanged 0.0100 filter remains rejected"
+      "Focused r1 discovery not yet executed in this session",
+      "Final exact-head CI not yet confirmed green",
+      "Missing original public isolated probe and old/new valid-path differential",
+      "Unchanged upstream illegal off-grid depth remains rejected"
     ]
   }
 }
