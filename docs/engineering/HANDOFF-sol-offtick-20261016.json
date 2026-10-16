@@ -1,1 +1,64 @@
-{"placeholder": true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 68,
+  "branch": "fix/sol-offtick-20261016",
+  "task_id": "sol-offtick-20261016",
+  "instruction_id": "SO1-r0",
+  "status": "BLOCKED",
+  "source_head_sha": "60ea63adcdde3afa5ed22f9b20468eda156e2fb5",
+  "summary": "Implemented fail-closed broker throw-site provenance and runtime audit correlation against exact previously recorded public depth. Golden illegal level 105.5290 vs tick 0.0100 remainder 0.0090 remains rejected. Correlation in historical fixture is not a recorded original stack trace. No filter/gate relaxation, recollection, deployment, trading, state reset or strategy change.",
+  "changed_files": [
+    "lab/sim_broker.py",
+    "lab/paper_runtime_v2.py",
+    "lab/tests/test_sol_offtick_repair.py",
+    "docs/engineering/SOL_OFFTICK_REPAIR.md",
+    "docs/engineering/HANDOFF-sol-offtick-20261016.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest -v tests.test_sol_offtick_repair (from lab/)",
+      "result": "NOT_RUN",
+      "evidence": "GitHub connector provides source updates, not command execution; remote container cannot clone repository due DNS. No executed test IDs claimed."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests (from repo root)",
+      "result": "NOT_RUN",
+      "evidence": "No authorized repository execution facility."
+    },
+    {
+      "command": "python3 -m unittest discover -s tests (from lab/)",
+      "result": "NOT_RUN",
+      "evidence": "No authorized repository execution facility."
+    },
+    {
+      "command": "GitHub Actions exact-head PR68",
+      "result": "NOT_CONFIRMED",
+      "evidence": "At pre-mailbox commit 60ea63adcdde3afa5ed22f9b20468eda156e2fb5 no completed workflow run evidence observed; new mailbox commit needs separate checks."
+    },
+    {
+      "command": "Isolated public raw-receipt probe",
+      "result": "NOT_RUN",
+      "evidence": "No permitted public probe runtime with real timestamped source/receipt and dispatch instrumentation was available."
+    }
+  ],
+  "remaining_work": [
+    "Run focused golden suite and fix any real failures, without changing frozen fixture.",
+    "Run complete repo automation/lab suites and independent old/new valid-path cost/risk/fill/ledger differential.",
+    "Run controlled legal/illegal books, slow reference and peer aging, changed vs unchanged reference, 15000 ms/future/arrival/clock gates, bounded refresh-negative probes.",
+    "Capture genuine public isolated source receipts/hashes and exact source/receipt/dispatch event timings; prove actual rejection link, not adjacency.",
+    "Obtain exact final PR68 HEAD CI green and Main CIO independent acceptance; invalid upstream with unchanged tick remains blocker."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Review branch PR68 actual HEAD, broker first-offending-level diagnostic, runtime receipt-match rejection audit, immutable fixture and named focused/full CI checks; independently run public probe and old/new behavioral differential.",
+    "if_pass": "Accept only verified engineering patch and separately decide deployment after public evidence and complete CI.",
+    "if_fail": "Leave blocked; request exact failure ID and minimally scoped corrective instructions on same branch.",
+    "blockers": [
+      "No executed focused/full suites or exact-head green CI evidence",
+      "No genuine isolated public probe with original source/receipt/dispatch timing",
+      "No independently executed old/new valid-path differential",
+      "Unchanged upstream off-grid depth with unchanged 0.0100 filter remains rejected"
+    ]
+  }
+}
