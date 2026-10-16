@@ -319,9 +319,7 @@ class PaperRuntime(BaseRuntime):
         ref = self.reference()
         spec_traded = instrument(ref, self.symbol, "crypto", self.config["fee_assumptions"]["crypto"])
         self.funding(spec_traded)
-        markets, spec_traded = self.collect_markets(ref)
-        self.state["markets"] = markets
-        age = self.config["execution_model"]["max_source_age_ms"]
+        # Finish closed-candle work before collecting fresh decision quotes.
         self.bootstrap()
         start = self.state["cursor"] if self.state["cursor"] is not None else self.state.get("decision_cutoff_ms", self.state["forward_start_ms"]) // self.INTERVAL_MS * self.INTERVAL_MS
         rows = []
@@ -353,9 +351,8 @@ class PaperRuntime(BaseRuntime):
         with closing(sqlite3.connect(self.root / "signals.sqlite3")) as db:
             row = db.execute("SELECT bars FROM h1_state WHERE version_id=? AND symbol=?", (self.config["version_id"], self.symbol)).fetchone()
         self.state["warmup"] = len(json.loads(row[0])) if row else 0
-        if any(not 0 <= self.clock() - ts <= age for market in markets for ts in market["source_timestamps_ms"].values()):
-            markets, spec_traded = self.collect_markets(ref)
-            self.state["markets"] = markets
+        markets, spec_traded = self.collect_markets(ref)
+        self.state["markets"] = markets
         self.validate_sources(markets, "decision after candle work")
         self.route_signals(spec_traded)
         self.state["last_success_ms"] = self.clock()
