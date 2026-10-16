@@ -1,0 +1,42 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 0,
+  "branch": "fix/progress-alert-semantics-20261016",
+  "task_id": "progress-alert-semantics-20261016",
+  "instruction_id": "PA1-r0",
+  "status": "BLOCKED",
+  "source_head_sha": "158f8bb7cc710cf7a8bf091d70a1cb49752dedef",
+  "summary": "Pure evaluator and synthetic unittest fixtures committed; execution not verified, integration gaps remain.",
+  "changed_files": [
+    "engineering/progress_semantics/__init__.py",
+    "engineering/progress_semantics/progress_semantics.py",
+    "engineering/progress_semantics/tests/__init__.py",
+    "engineering/progress_semantics/tests/test_progress_semantics.py",
+    "docs/engineering/PROGRESS_ALERT_SEMANTICS.md",
+    "docs/engineering/HANDOFF-progress-alert-semantics-20261016.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s engineering/progress_semantics/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No repository checkout or test execution performed; no result claimed."
+    }
+  ],
+  "remaining_work": [
+    "Execute new unittest suite",
+    "Fix discovered defects; validate journal per-item coverage and scheduled-slot semantics",
+    "Owner to run private acceptance suite",
+    "CI workflow does not discover new tests"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Run focused suite and validate integration contracts before acceptance.",
+    "if_pass": "Review owner acceptance and open draft PR.",
+    "if_fail": "Return exact failing test IDs and expected outputs.",
+    "blockers": [
+      "Focused tests not executed",
+      "Per-item journal coverage not validated"
+    ]
+  }
+}
