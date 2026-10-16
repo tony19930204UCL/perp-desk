@@ -210,7 +210,7 @@ class PaperRuntime:
             if event.get('type') == 'book' and str(exc).startswith('off-tick quote:'):
                 # Correlate the actual broker throw with an identical, persisted
                 # source receipt; never infer causality from adjacency alone.
-                matched = None
+                candidates = []
                 for (payload,) in self.db.execute(
                         "SELECT payload FROM audit ORDER BY id DESC LIMIT 64"):
                     recorded = json.loads(payload)
@@ -220,9 +220,14 @@ class PaperRuntime:
                             and receipt.get('params', {}).get('symbol') == event['symbol']
                             and receipt.get('source_timestamp_ms') == event.get('source_ts')
                             and receipt.get('payload', {}).get('bids') == event['bids']
-                            and receipt.get('payload', {}).get('asks') == event['asks']):
-                        matched = recorded
-                        break
+                            and receipt.get('payload', {}).get('asks') == event['asks']
+                            # The incoming observed time belongs to this event.
+                            # Equal source/body alone does not prove a receipt.
+                            and receipt_ms(receipt) == event.get('received_ms')):
+                        candidates.append(recorded)
+                # The event carries millisecond observation precision, so two
+                # matching records cannot safely identify one original receipt.
+                matched = candidates[0] if len(candidates) == 1 else None
                 reference = self.state.get('reference')
                 reference_received = receipt_ms(reference) if reference else None
                 rejection = dict(
