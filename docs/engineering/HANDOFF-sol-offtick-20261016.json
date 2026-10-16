@@ -1,0 +1,74 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 68,
+  "branch": "fix/sol-offtick-20261016",
+  "task_id": "sol-offtick-20261016",
+  "instruction_id": "SO1-r2",
+  "status": "WAITING_CI",
+  "source_head_sha": "21d8d9e4fc98ebfc11e9460fc4f3df8c3301038f",
+  "summary": "SO1-r2 remedies independently reproduced false attribution: a different stored depth receipt with same endpoint/symbol/source/book but +100 ms received_at could be credited to incoming original event. Runtime now requires original incoming observed receipt millisecond as well as all preexisting fields, and only one matching candidate; missing or ambiguous identity yields receipt_audit_match=false and null original hash/request timing. No execution-price/source/tick/fee/risk change; illegal upstream depth remains rejected. Immutable fixture and sim_broker.py/paper_market.py unchanged.",
+  "changed_files": [
+    "lab/paper_runtime_v2.py",
+    "lab/tests/test_sol_offtick_repair.py",
+    "docs/engineering/SOL_OFFTICK_REPAIR.md",
+    "docs/engineering/HANDOFF-sol-offtick-20261016.json"
+  ],
+  "tests": [
+    {
+      "command": "Independent r1 clean-clone complete run",
+      "result": "PASS 494/494; 0 skips; 1097.785s (r1 ONLY)",
+      "evidence": "Main-provided independent r1 execution for f730f80dafe9dcf3c5a40fb7bf3cb9ac42cfc688."
+    },
+    {
+      "command": "GitHub PR workflow 38860290650",
+      "result": "SUCCESS (r1 ONLY)",
+      "evidence": "Connector verified completed success; PAPER isolated suite and exporter contract successful."
+    },
+    {
+      "command": "GitHub push workflow 38860285629",
+      "result": "SUCCESS (r1 ONLY)",
+      "evidence": "Connector verified completed success; PAPER isolated suite and exporter contract successful."
+    },
+    {
+      "command": "Independent Main only-decoy emit probe (r1)",
+      "result": "REPRODUCED FALSE MATCH",
+      "evidence": "Main injected alternate depth receipt with identical symbol/source/book but received_at +100ms; old emit falsely reported match and attributed decoy hash/request times."
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -p test_sol_offtick_repair.py -v (from lab/)",
+      "result": "NOT_RUN (r2)",
+      "evidence": "No permitted repository command execution shell in this GitHub connector session. Four new discriminating regression methods added (14 total); not claimed executed."
+    },
+    {
+      "command": "Final r2 exact-head push and PR CI",
+      "result": "WAITING_CI",
+      "evidence": "Pre-mailbox source commit 21d8d9e4fc98ebfc11e9460fc4f3df8c3301038f; final head is subsequent mailbox commit and must be checked independently."
+    },
+    {
+      "command": "Public isolated original-source receipt probe and old/new valid-path differential",
+      "result": "NOT_RUN (r2)",
+      "evidence": "No independent genuine new public raw-receipt probe or fill/cost/risk/ledger differential executed here."
+    }
+  ],
+  "remaining_work": [
+    "Run 14 focused tests on final head and inspect original/decoy cases; verify exact recorded original canonical hash against Main's independent value.",
+    "Confirm both final-head push and PR CI successful with actual job IDs; CI not inherited from r1.",
+    "Independently verify fixture blob SHA e7b15d556ae267a71319cf0c147ecb102b65d17f, broker and market blob unchanged.",
+    "Run full issue67 legal valid-path old/new execution, fill, fee/cost, risk and ledger differential.",
+    "Run slow reference/peer aging, source/future/arrival boundaries, reference-change and bounded failed-refresh scenarios.",
+    "Run genuine public isolated probe preserving raw source/receipt/dispatch and hashes; adjacency does not prove historical throw site.",
+    "Leave still-offtick unchanged-filter depth rejected; Main CIO owns independent acceptance and eventual deployment gate."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Review exact final PR68 HEAD and 14 focused methods, require only the actual incoming observed receipt as unique audit match; check only-decoy and original+newer-decoy cases, compare original canonical digest and both final-head CI run IDs.",
+    "if_pass": "Accept only verified diagnostic provenance patch, while keeping issue67 differential/public-probe and separate deployment acceptance obligations open.",
+    "if_fail": "Keep BLOCKED and send precise test ID, observed attribution or CI failure with exact HEAD; repair only same branch/allowlist.",
+    "blockers": [
+      "r2 focused suite and final-head CI not yet independently executed/confirmed",
+      "Genuine public isolated probe plus old/new cost/risk/fill/ledger differential remain open",
+      "Unchanged upstream off-grid data with unchanged tickSize 0.0100 must remain rejected"
+    ]
+  }
+}
