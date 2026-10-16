@@ -438,9 +438,9 @@ class PaperRuntime:
         ref=self.reference()
         eth=instrument(ref,'ETHUSDT','crypto',self.config['fee_assumptions']['crypto'])
         self.funding(eth)
-        markets, spec_eth=self.collect_markets(ref)
-        self.state['markets']=markets
-        age=self.config['execution_model']['max_source_age_ms']
+        # Perform bounded closed-candle work before acquiring decision quotes.
+        # Previously these requests aged a valid batch and forced a second
+        # market collection (and two extra broker deliveries) on slow cycles.
         self.bootstrap()
         start=self.state['cursor'] if self.state['cursor'] is not None else self.state.get('decision_cutoff_ms',self.state['forward_start_ms'])//self.INTERVAL_MS*self.INTERVAL_MS
         # The durable cursor is the next bar open. Retry missing due bars, but
@@ -473,11 +473,8 @@ class PaperRuntime:
         with closing(sqlite3.connect(self.root/'signals.sqlite3')) as db:
             row=db.execute('SELECT bars FROM h1_state WHERE version_id=? AND symbol=?',(self.config['version_id'],'ETHUSDT')).fetchone()
         self.state['warmup']=len(json.loads(row[0])) if row else 0
-        if any(not 0<=self.clock()-ts<=age for market in markets for ts in market['source_timestamps_ms'].values()):
-            # One bounded refresh of actual public inputs after slow candle work.
-            # Never retimestamp old receipts or relax the decision-age gate.
-            markets, spec_eth=self.collect_markets(ref)
-            self.state['markets']=markets
+        markets, spec_eth=self.collect_markets(ref)
+        self.state['markets']=markets
         self.validate_sources(markets, 'decision after candle work')
         self.route_signals(spec_eth)
         self.state['last_success_ms']=self.clock()
