@@ -1,0 +1,446 @@
+{
+  "purpose": "Original public rejected receipts; reference fields unmodified; no account data",
+  "poll_error": {
+    "at_ms": 1792124551825,
+    "error": "ValueError: off-tick quote",
+    "type": "poll_error",
+    "audit_id": 135974
+  },
+  "receipts": {
+    "/fapi/v1/premiumIndex": {
+      "audit_id": 135972,
+      "raw": {
+        "receipt": {
+          "endpoint": "/fapi/v1/premiumIndex",
+          "params": {
+            "symbol": "SOLUSDT"
+          },
+          "payload": {
+            "estimatedSettlePrice": "105.26337408",
+            "indexPrice": "105.53531055",
+            "interestRate": "0.00010000",
+            "lastFundingRate": "0.00006708",
+            "markPrice": "105.51000000",
+            "nextFundingTime": 1792137600000,
+            "symbol": "SOLUSDT",
+            "time": 1792124551000
+          },
+          "received_at": "2026-10-16T04:22:31.790882Z",
+          "source_timestamp_ms": 1792124551000
+        },
+        "request_return_monotonic_ms": 198556428.158631,
+        "request_return_ms": 1792124551790,
+        "request_start_monotonic_ms": 198555821.34660798,
+        "request_start_ms": 1792124551184,
+        "type": "public_receipt"
+      },
+      "payload_sha256": "488172195c68636ca251bd256c29de301283193b6501182e89901adcd5bd6354"
+    },
+    "/fapi/v1/ticker/bookTicker": {
+      "audit_id": 135970,
+      "raw": {
+        "receipt": {
+          "endpoint": "/fapi/v1/ticker/bookTicker",
+          "params": {
+            "symbol": "SOLUSDT"
+          },
+          "payload": {
+            "askPrice": "105.5100",
+            "askQty": "448.29",
+            "bidPrice": "105.5000",
+            "bidQty": "1727.61",
+            "lastUpdateId": 11833306713227,
+            "symbol": "SOLUSDT",
+            "time": 1792124550258
+          },
+          "received_at": "2026-10-16T04:22:30.504713Z",
+          "source_timestamp_ms": 1792124550258
+        },
+        "request_return_monotonic_ms": 198555141.985157,
+        "request_return_ms": 1792124550504,
+        "request_start_monotonic_ms": 198554562.057044,
+        "request_start_ms": 1792124549924,
+        "type": "public_receipt"
+      },
+      "payload_sha256": "c1aa5c32c01e71af0168d8cbff24991d950854635196bf2faa0873c9e9017624"
+    },
+    "/fapi/v1/depth": {
+      "audit_id": 135971,
+      "raw": {
+        "receipt": {
+          "endpoint": "/fapi/v1/depth",
+          "params": {
+            "limit": 20,
+            "symbol": "SOLUSDT"
+          },
+          "payload": {
+            "E": 1792124551070,
+            "T": 1792124551061,
+            "asks": [
+              [
+                "105.5100",
+                "694.04"
+              ],
+              [
+                "105.5200",
+                "936.78"
+              ],
+              [
+                "105.5290",
+                "1.00"
+              ],
+              [
+                "105.5300",
+                "1127.87"
+              ],
+              [
+                "105.5400",
+                "1988.14"
+              ],
+              [
+                "105.5500",
+                "3169.03"
+              ],
+              [
+                "105.5600",
+                "927.19"
+              ],
+              [
+                "105.5700",
+                "2398.15"
+              ],
+              [
+                "105.5800",
+                "2485.06"
+              ],
+              [
+                "105.5900",
+                "1573.57"
+              ],
+              [
+                "105.6000",
+                "2649.49"
+              ],
+              [
+                "105.6100",
+                "3403.15"
+              ],
+              [
+                "105.6200",
+                "3210.37"
+              ],
+              [
+                "105.6300",
+                "994.58"
+              ],
+              [
+                "105.6400",
+                "6666.88"
+              ],
+              [
+                "105.6500",
+                "728.23"
+              ],
+              [
+                "105.6600",
+                "3769.67"
+              ],
+              [
+                "105.6700",
+                "4073.58"
+              ],
+              [
+                "105.6800",
+                "904.32"
+              ],
+              [
+                "105.6900",
+                "2491.27"
+              ]
+            ],
+            "bids": [
+              [
+                "105.5000",
+                "1537.84"
+              ],
+              [
+                "105.4900",
+                "1372.03"
+              ],
+              [
+                "105.4800",
+                "1074.46"
+              ],
+              [
+                "105.4700",
+                "3353.33"
+              ],
+              [
+                "105.4600",
+                "2734.92"
+              ],
+              [
+                "105.4500",
+                "1781.62"
+              ],
+              [
+                "105.4400",
+                "1545.95"
+              ],
+              [
+                "105.4300",
+                "785.46"
+              ],
+              [
+                "105.4200",
+                "2790.70"
+              ],
+              [
+                "105.4100",
+                "1524.19"
+              ],
+              [
+                "105.4000",
+                "608.59"
+              ],
+              [
+                "105.3900",
+                "3369.91"
+              ],
+              [
+                "105.3800",
+                "1337.73"
+              ],
+              [
+                "105.3700",
+                "2854.63"
+              ],
+              [
+                "105.3600",
+                "8587.30"
+              ],
+              [
+                "105.3500",
+                "574.24"
+              ],
+              [
+                "105.3400",
+                "1121.97"
+              ],
+              [
+                "105.3300",
+                "2470.07"
+              ],
+              [
+                "105.3200",
+                "687.25"
+              ],
+              [
+                "105.3100",
+                "313.59"
+              ]
+            ],
+            "lastUpdateId": 11833306810892
+          },
+          "received_at": "2026-10-16T04:22:31.153082Z",
+          "source_timestamp_ms": 1792124551070
+        },
+        "request_return_monotonic_ms": 198555790.356461,
+        "request_return_ms": 1792124551153,
+        "request_start_monotonic_ms": 198555159.737537,
+        "request_start_ms": 1792124550522,
+        "type": "public_receipt"
+      },
+      "payload_sha256": "451e8a5cc7c49cf39c6c8f309b5d4babcaec3ba9eed25a81786d82422f31d5ef"
+    }
+  },
+  "exchangeInfo_SOL_reference": {
+    "audit_id": 126453,
+    "receipt_sha256": "c14762346f34c2be848ec21e949417ea8822d99dc37d8e37acbe64952eba833b",
+    "received_at": "2026-10-15T21:54:22.336399Z",
+    "source_timestamp_ms": 1792048821300,
+    "request_start_ms": 1792101261506,
+    "request_return_ms": 1792101262336,
+    "contract": {
+      "baseAsset": "SOL",
+      "baseAssetPrecision": 8,
+      "contractType": "PERPETUAL",
+      "deliveryDate": 4133404800000,
+      "filters": [
+        {
+          "filterType": "PRICE_FILTER",
+          "maxPrice": "6857",
+          "minPrice": "0.4200",
+          "tickSize": "0.0100"
+        },
+        {
+          "filterType": "LOT_SIZE",
+          "maxQty": "1000000",
+          "minQty": "0.01",
+          "stepSize": "0.01"
+        },
+        {
+          "filterType": "MARKET_LOT_SIZE",
+          "maxQty": "80000",
+          "minQty": "0.01",
+          "stepSize": "0.01"
+        },
+        {
+          "filterType": "MAX_NUM_ORDERS",
+          "limit": 200
+        },
+        {
+          "filterType": "MIN_NOTIONAL",
+          "notional": "5"
+        },
+        {
+          "filterType": "PERCENT_PRICE",
+          "multiplierDecimal": "4",
+          "multiplierDown": "0.9500",
+          "multiplierUp": "1.0500"
+        },
+        {
+          "filterType": "POSITION_RISK_CONTROL",
+          "positionControlSide": "NONE"
+        }
+      ],
+      "liquidationFee": "0.015000",
+      "maintMarginPercent": "2.5000",
+      "marginAsset": "USDT",
+      "marketTakeBound": "0.05",
+      "maxMoveOrderLimit": 10000,
+      "onboardDate": 1600066800000,
+      "orderTypes": [
+        "LIMIT",
+        "MARKET",
+        "STOP",
+        "STOP_MARKET",
+        "TAKE_PROFIT",
+        "TAKE_PROFIT_MARKET",
+        "TRAILING_STOP_MARKET"
+      ],
+      "pair": "SOLUSDT",
+      "permissionSets": [
+        "GRID",
+        "COPY",
+        "DCA",
+        "PSB"
+      ],
+      "pricePrecision": 4,
+      "quantityPrecision": 2,
+      "quoteAsset": "USDT",
+      "quotePrecision": 8,
+      "requiredMarginPercent": "5.0000",
+      "status": "TRADING",
+      "symbol": "SOLUSDT",
+      "timeInForce": [
+        "GTC",
+        "IOC",
+        "FOK",
+        "GTX",
+        "GTD"
+      ],
+      "triggerProtect": "0.0500",
+      "underlyingSubType": [
+        "Layer-1",
+        "Crypto"
+      ],
+      "underlyingType": "COIN"
+    }
+  },
+  "independent_later_public_reference": {
+    "endpoint": "/fapi/v1/exchangeInfo",
+    "request_start_ms": 1792126979535.7148,
+    "received_ms": 1792126979987.857,
+    "elapsed_monotonic_ms": 488.36167800426483,
+    "sha256": "c607b6ffd3470b1e3d38d8d1b20e30b60b63cf1cda66ffa58ce6831a9b8bb04a",
+    "http": 200,
+    "serverTime": 1792122627660,
+    "SOL": {
+      "symbol": "SOLUSDT",
+      "pair": "SOLUSDT",
+      "contractType": "PERPETUAL",
+      "deliveryDate": 4133404800000,
+      "onboardDate": 1600066800000,
+      "status": "TRADING",
+      "maintMarginPercent": "2.5000",
+      "requiredMarginPercent": "5.0000",
+      "baseAsset": "SOL",
+      "quoteAsset": "USDT",
+      "marginAsset": "USDT",
+      "pricePrecision": 4,
+      "quantityPrecision": 2,
+      "baseAssetPrecision": 8,
+      "quotePrecision": 8,
+      "underlyingType": "COIN",
+      "underlyingSubType": [
+        "Layer-1",
+        "Crypto"
+      ],
+      "triggerProtect": "0.0500",
+      "liquidationFee": "0.015000",
+      "marketTakeBound": "0.05",
+      "maxMoveOrderLimit": 10000,
+      "filters": [
+        {
+          "filterType": "PRICE_FILTER",
+          "minPrice": "0.4200",
+          "tickSize": "0.0100",
+          "maxPrice": "6857"
+        },
+        {
+          "minQty": "0.01",
+          "filterType": "LOT_SIZE",
+          "stepSize": "0.01",
+          "maxQty": "1000000"
+        },
+        {
+          "maxQty": "80000",
+          "minQty": "0.01",
+          "filterType": "MARKET_LOT_SIZE",
+          "stepSize": "0.01"
+        },
+        {
+          "limit": 200,
+          "filterType": "MAX_NUM_ORDERS"
+        },
+        {
+          "filterType": "MIN_NOTIONAL",
+          "notional": "5"
+        },
+        {
+          "multiplierDecimal": "4",
+          "multiplierUp": "1.0500",
+          "multiplierDown": "0.9500",
+          "filterType": "PERCENT_PRICE"
+        },
+        {
+          "filterType": "POSITION_RISK_CONTROL",
+          "positionControlSide": "NONE"
+        }
+      ],
+      "orderTypes": [
+        "LIMIT",
+        "MARKET",
+        "STOP",
+        "STOP_MARKET",
+        "TAKE_PROFIT",
+        "TAKE_PROFIT_MARKET",
+        "TRAILING_STOP_MARKET"
+      ],
+      "timeInForce": [
+        "GTC",
+        "IOC",
+        "FOK",
+        "GTX",
+        "GTD"
+      ],
+      "permissionSets": [
+        "GRID",
+        "COPY",
+        "DCA",
+        "PSB"
+      ]
+    }
+  }
+}
