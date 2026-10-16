@@ -1,4 +1,4 @@
-# SO1-r1: SOL off-tick fail-closed provenance (engineering; not deployed)
+# SO1-r2: SOL off-tick fail-closed provenance (engineering; not deployed)
 
 ## Evidence and actual code path
 
@@ -21,6 +21,14 @@ The independently executed r0 clean-clone run completed 490 tests in 918.576s wi
 The corrected fixture builder sets incoming `ts=1792124551153`, separately retains `source_ts=1792124551070`, and uses simulated delivery clock `1792124551825`. Thus source-to-receipt is 83 ms, receipt-to-dispatch 672 ms and source-to-dispatch 755 ms. All are derived from original public evidence and an explicit *simulated* dispatch, not a claim that the historical poll_error audit is a broker dispatch trace. Exact illegal ask and unchanged filter still reject. Added deterministic missing/changed-source/changed-body receipt mismatch cases, present/absent reference age/hash checks, valid event dispatch and stale/future fail-closed dispatch cases. Reference runtime receipt envelope constructed from the golden contract is synthetic; canonical runtime receipt hashes must not be confused with original externally recorded SHA-256 hash definitions.
 
 SO1-r1 edits only this documentation, the focused regression test and the existing handoff mailbox. Production modules and immutable golden receipt bytes remain unchanged.
+
+## SO1-r2 independently reproduced attribution defect
+
+Independent r1 clean-clone run: 494/494 passed, 0 skipped, 1097.785s; exact-head PR workflow 38860290650 and push workflow 38860285629 both succeeded. Neither is an r2 test result. A separate Main probe persisted another validly timed depth receipt with exactly the same endpoint, symbol, source timestamp, bids and asks as the golden, but a different received_at (+100ms). The r1 runtime erroneously marked the incoming original receipt as matched to that other stored receipt and attributed its canonical hash and request timings. This is a provenance-only bug: it does not establish an execution-price, tick, cost, source-gate or receipt-freshness defect.
+
+The narrow r2 change to `PaperRuntime.emit` requires **receipt_ms(stored receipt) == event.received_ms** in addition to exact endpoint, symbol, source and entire book. It only credits a unique candidate from the existing bounded audit search; zero or multiple indistinguishable candidates must report receipt_audit_match=false and null attributed original hash/request timestamps. The code does not retimestamp sources, recollect or modify broker execution. The exact first off-grid ask `105.5290 % 0.0100 = 0.0090` remains rejected. Source=1792124551070, incoming receipt=1792124551153 and simulated dispatch=1792124551825 remain separate. The later decoy receipt at 1792124551253 is within time gates but is **not** the incoming observation. Additional synthetic same-millisecond ambiguity intentionally fails closed.
+
+The new regression methods explicitly exercise only-decoy, original plus newer decoy, independently shifted incoming event receipt, and indistinguishable same-millisecond candidates. The ten r1 focused tests remain present. Tests and probes in r2 require new execution evidence; do not substitute the successful r1 runs. The original immutable fixture, `sim_broker.py` and `paper_market.py` remain byte-identical.
 
 ## Verification boundaries
 
