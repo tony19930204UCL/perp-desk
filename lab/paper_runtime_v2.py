@@ -204,7 +204,46 @@ class PaperRuntime:
             event['event_id']=digest(event)
         if timing:
             timing['call_monotonic_ms']=self.monotonic()*1000
-        self.broker.on_event(event)
+        try:
+            self.broker.on_event(event)
+        except ValueError as exc:
+            if event.get('type') == 'book' and str(exc).startswith('off-tick quote:'):
+                # Correlate the actual broker throw with an identical, persisted
+                # source receipt; never infer causality from adjacency alone.
+                matched = None
+                for (payload,) in self.db.execute(
+                        "SELECT payload FROM audit ORDER BY id DESC LIMIT 64"):
+                    recorded = json.loads(payload)
+                    receipt = recorded.get('receipt', {})
+                    if (recorded.get('type') == 'public_receipt'
+                            and receipt.get('endpoint') == '/fapi/v1/depth'
+                            and receipt.get('params', {}).get('symbol') == event['symbol']
+                            and receipt.get('source_timestamp_ms') == event.get('source_ts')
+                            and receipt.get('payload', {}).get('bids') == event['bids']
+                            and receipt.get('payload', {}).get('asks') == event['asks']):
+                        matched = recorded
+                        break
+                reference = self.state.get('reference')
+                reference_received = receipt_ms(reference) if reference else None
+                rejection = dict(
+                    type='broker_offtick_rejection', validator='SimBroker._validate_event',
+                    exception=str(exc), symbol=event['symbol'], endpoint='/fapi/v1/depth',
+                    event_id=event['event_id'], source_ms=event.get('source_ts'),
+                    receipt_ms=event.get('received_ms'), dispatch_ms=event['ts'],
+                    dispatch_monotonic_ms=timing['dispatch_monotonic_ms'] if timing else None,
+                    reference_receipt_ms=reference_received,
+                    reference_age_ms=(event['ts']-reference_received) if reference_received is not None else None,
+                    reference_receipt_sha256=digest(reference) if reference else None,
+                    reference_hash_kind='canonical_runtime_receipt_sha256',
+                    receipt_audit_match=matched is not None,
+                    original_receipt_sha256=digest(matched['receipt']) if matched else None,
+                    original_receipt_hash_kind='canonical_runtime_receipt_sha256' if matched else None,
+                    receipt_audit_request_start_ms=matched.get('request_start_ms') if matched else None,
+                    receipt_audit_request_return_ms=matched.get('request_return_ms') if matched else None,
+                    source_age_at_dispatch_ms=event['ts']-event['source_ts'])
+                self.audit(rejection)
+                self._timing_record(rejection)
+            raise
         if timing:
             timing['return_monotonic_ms']=self.monotonic()*1000
             self.audit(timing)
