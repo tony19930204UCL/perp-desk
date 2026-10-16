@@ -8,6 +8,7 @@ import sqlite3
 import sys
 import unittest
 from decimal import Decimal
+from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -55,8 +56,12 @@ def original_reference():
 
 class SolOfftickRepairTests(unittest.TestCase):
     def replay(self, *, stored="original", with_reference=False, legal=False,
-               dispatch_ms=None):
-        """Replay actual PaperRuntime.emit with an isolated in-memory audit."""
+               dispatch_ms=None, event_received_ms=None):
+        """Replay actual PaperRuntime.emit with an isolated in-memory audit.
+
+        The injected event observation and each persisted receipt observation
+        are independent, not inferred from the same fixture mutation.
+        """
         fixture = golden()
         depth_raw = fixture["receipts"]["/fapi/v1/depth"]["raw"]
         original = depth_raw["receipt"]
@@ -64,20 +69,35 @@ class SolOfftickRepairTests(unittest.TestCase):
                        if dispatch_ms is None else dispatch_ms)
         db = sqlite3.connect(":memory:")
         db.execute("CREATE TABLE audit(id INTEGER PRIMARY KEY, payload TEXT NOT NULL)")
-        if stored != "missing":
+        variants = (("original", "decoy_later")
+                    if stored == "original_plus_newer_decoy" else
+                    ("original", "decoy_same_ms")
+                    if stored == "ambiguous_same_ms" else
+                    () if stored == "missing" else (stored,))
+        for variant in variants:
             recorded = copy.deepcopy(original)
-            if stored == "changed_source":
+            delay_ms = 0
+            if variant == "changed_source":
                 recorded["source_timestamp_ms"] += 1
-            elif stored == "changed_body":
+            elif variant == "changed_body":
                 recorded["payload"]["asks"][2][0] = "105.5300"
-            elif stored != "original":
+            elif variant in ("decoy_later", "decoy_same_ms"):
+                delay = (timedelta(milliseconds=100) if variant == "decoy_later"
+                         else timedelta(microseconds=100))
+                received_at = datetime.fromisoformat(
+                    original["received_at"].replace("Z", "+00:00")) + delay
+                recorded["received_at"] = received_at.isoformat().replace("+00:00", "Z")
+                delay_ms = 100 if variant == "decoy_later" else 0
+            elif variant != "original":
                 raise AssertionError("unsupported replay case")
             db.execute("INSERT INTO audit(payload) VALUES(?)", (canonical(dict(
                 type="public_receipt", receipt=recorded,
-                request_start_ms=depth_raw["request_start_ms"],
-                request_return_ms=depth_raw["request_return_ms"])),))
+                request_start_ms=depth_raw["request_start_ms"] + delay_ms,
+                request_return_ms=depth_raw["request_return_ms"] + delay_ms)),))
         audits, delivered, timings = [], [], []
         event = event_from_original()
+        if event_received_ms is not None:
+            event["ts"] = event_received_ms
         if legal:
             event["asks"][2][0] = "105.5300"
             event["asks"].pop(3)
@@ -204,6 +224,61 @@ class SolOfftickRepairTests(unittest.TestCase):
                 self.assertEqual(rejection["source_ms"], original["source_timestamp_ms"])
                 self.assertEqual(rejection["receipt_ms"], receipt_ms(original))
                 self.assertEqual(rejection["dispatch_ms"], 1792124551825)
+
+    def test_other_valid_receipt_same_source_and_body_never_claims_original(self):
+        """The previous correlation incorrectly matched this only-decoy case."""
+        original = golden()["receipts"]["/fapi/v1/depth"]["raw"]["receipt"]
+        control = self.replay(stored="original")["audits"][0]
+        decoy = self.replay(stored="decoy_later")
+        rejection = decoy["audits"][0]
+        self.assertEqual(len(decoy["delivered"]), 1)
+        self.assertIn("side=asks level=2 price=105.5290", decoy["error"])
+        self.assertEqual(rejection["source_ms"], original["source_timestamp_ms"])
+        self.assertEqual(rejection["receipt_ms"], receipt_ms(original))
+        self.assertEqual(rejection["dispatch_ms"], 1792124551825)
+        self.assertEqual(rejection["source_age_at_dispatch_ms"], 755)
+        self.assertTrue(control["receipt_audit_match"])
+        self.assertFalse(rejection["receipt_audit_match"])
+        self.assertIsNone(rejection["original_receipt_sha256"])
+        self.assertIsNone(rejection["receipt_audit_request_start_ms"])
+        self.assertIsNone(rejection["receipt_audit_request_return_ms"])
+
+    def test_original_receipt_found_below_newer_same_book_decoy(self):
+        """Latest unrelated GET must not steal the original audit attribution."""
+        original = golden()["receipts"]["/fapi/v1/depth"]["raw"]["receipt"]
+        raw = golden()["receipts"]["/fapi/v1/depth"]["raw"]
+        result = self.replay(stored="original_plus_newer_decoy")
+        rejection = result["audits"][0]
+        self.assertIn("side=asks level=2", result["error"])
+        self.assertTrue(rejection["receipt_audit_match"])
+        self.assertEqual(rejection["receipt_ms"], receipt_ms(original))
+        self.assertEqual(rejection["original_receipt_sha256"], digest(original))
+        self.assertEqual(rejection["receipt_audit_request_start_ms"],
+                         raw["request_start_ms"])
+        self.assertEqual(rejection["receipt_audit_request_return_ms"],
+                         raw["request_return_ms"])
+
+    def test_independent_event_observation_must_equal_recorded_receipt(self):
+        """Matching body/source cannot override event-provided receipt time."""
+        original = golden()["receipts"]["/fapi/v1/depth"]["raw"]["receipt"]
+        actual_observed = receipt_ms(original)
+        shifted = self.replay(stored="original",
+                              event_received_ms=actual_observed + 100)
+        self.assertIn("side=asks level=2", shifted["error"])
+        self.assertEqual(shifted["delivered"][0]["received_ms"], actual_observed + 100)
+        self.assertEqual(shifted["audits"][0]["receipt_ms"], actual_observed + 100)
+        self.assertFalse(shifted["audits"][0]["receipt_audit_match"])
+        self.assertIsNone(shifted["audits"][0]["original_receipt_sha256"])
+
+    def test_ambiguous_same_millisecond_receipts_fail_closed(self):
+        """Event millisecond granularity cannot distinguish two such records."""
+        result = self.replay(stored="ambiguous_same_ms")
+        rejection = result["audits"][0]
+        self.assertIn("side=asks level=2", result["error"])
+        self.assertFalse(rejection["receipt_audit_match"])
+        self.assertIsNone(rejection["original_receipt_sha256"])
+        self.assertIsNone(rejection["receipt_audit_request_start_ms"])
+        self.assertIsNone(rejection["receipt_audit_request_return_ms"])
 
     def test_reference_receipt_age_present_and_absent(self):
         reference = original_reference()
