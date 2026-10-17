@@ -4,89 +4,73 @@
   "pr_number": 69,
   "branch": "fix/persist-storage-remediation-20261017",
   "task_id": "storage-remediation-20261017",
-  "instruction_id": "SR1-r1",
+  "instruction_id": "SR1-r2",
   "status": "WAITING_CI",
-  "source_head_sha": "fa011d2401140aa4bcb60e14003effb6081f5952",
-  "summary": "Implemented the SR1 storage candidate on PR69 using GitHub file edits only. Reused accepted PR59/60 broker dedup, append-only equity and exchangeInfo archive; restored later deployed off-tick diagnostics; added immutable fundingInfo receipt observations with payload SHA256 dedup and fail-closed reconstruction; added independent bounded noncausal raw storage and executable rollback/dedup tests. No service, live DB, deployment, source sampling, strategy/risk threshold, account/window or main mutation occurred. Local execution is forbidden by this revision, so acceptance evidence and CI remain pending.",
+  "source_head_sha": "89538930628e9811dde4c5edc8de48ef08fc4316",
+  "summary": "SR1-r2 repairs the two independently observed r1 CI fixture errors and completes the bounded storage integration. Runtime fetch now archives every decision-bearing public receipt as immutable reconstructible causal evidence with payload SHA256 dedup, while /fapi/v1/time uses the bounded ordinary-raw table; existing audit rows are not deleted and off-tick diagnostics reconstruct exact depth evidence through the causal pointer. Added pinned deployed-broker differential/rejection/restart coverage, explicit runtime 15000ms stale/future boundary coverage, payload corruption/reopen refusal, base+derived raw-expiry/causal-linkage coverage, and a real-elapsed >=600s opt-in contribution-separated Linux write_bytes harness. Migration docs map the twelve F1H/W1/T1 arms to actual runtime/config families and broker.sqlite3, use non-polling open/close plus SQLite backup API, and prefer code rollback over restoring old account data. No command execution, service, live DB, deployment, public sampling, account/window reset, main mutation, or configuration/risk change occurred.",
   "changed_files": [
-    "lab/runtime_receipt_storage.py",
-    "lab/sim_broker.py",
     "lab/paper_runtime_v2.py",
-    "lab/tests/test_runtime_receipt_storage.py",
+    "lab/runtime_receipt_storage.py",
     "lab/tests/test_sim_broker_persistence.py",
     "lab/tests/test_runtime_equity_history.py",
+    "lab/tests/test_runtime_receipt_storage.py",
     "docs/engineering/PERSIST_STORAGE_REMEDIATION.md",
     "docs/engineering/HANDOFF-storage-remediation-20261017.json"
   ],
-  "file_hashes": {
-    "lab/sim_broker.py": "b1037c5982680db067b406eda235f83ce6049da1",
-    "lab/paper_runtime_v2.py": "7d21ac033867fb19e8bfe1c1ed6f5d0376f7f51b",
-    "lab/runtime_equity_history.py": "9eb7ef391c9a8b4fbfd28d5767306361aaf45ec8",
-    "lab/runtime_receipt_storage.py": "81a7836cf4f4abcf01fdfb84e7b7f6dc7425fa0b",
-    "lab/tests/test_sim_broker_persistence.py": "39d42edc6ce77983a1426186c0b55dfc2358c3fb",
-    "lab/tests/test_runtime_equity_history.py": "d7d67b9e6d0270bf0034dadc35f2a7200bf2d039",
-    "lab/tests/test_runtime_receipt_storage.py": "4b228368ce6759c3b83a20dd61a8baa344aa1ad2",
-    "docs/engineering/PERSIST_STORAGE_REMEDIATION.md": "dc76e904681bc51dace4af35063d01e935b892c5"
-  },
   "tests": [
-    {
-      "command": "cd lab && python3 -m unittest -v tests.test_sim_broker_persistence",
-      "result": "NOT_RUN",
-      "evidence": "SR1-r1 tool contract forbids local execution; executable tests were edited for CI."
-    },
-    {
-      "command": "cd lab && python3 -m unittest -v tests.test_runtime_equity_history",
-      "result": "NOT_RUN",
-      "evidence": "SR1-r1 tool contract forbids local execution."
-    },
-    {
-      "command": "cd lab && python3 -m unittest -v tests.test_runtime_receipt_storage",
-      "result": "NOT_RUN",
-      "evidence": "SR1-r1 tool contract forbids local execution; new receipt tests cover payload dedup, reconstruction, bounded raw storage, rollback and deferred COMMIT."
-    },
-    {
-      "command": "cd lab && SIM_BROKER_P2_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_parent_differential_2048_events",
-      "result": "NOT_RUN",
-      "evidence": "Required >=2000-event differential remains independent acceptance evidence."
-    },
-    {
-      "command": "cd lab && SIM_BROKER_P2_WRITE_PROBE=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_linux_write_bytes_40000_history",
-      "result": "NOT_RUN",
-      "evidence": "Required measured 40000+20 Linux write_bytes remains independent acceptance evidence."
-    },
     {
       "command": "python3 -m unittest discover -s automation/tests",
       "result": "NOT_RUN",
-      "evidence": "Full original automation suite must be executed by CI/Main."
+      "evidence": "SR1-r2 GitHub-file-only contract forbids local execution. Independent r1 push 39040348464 and PR 39040351848 previously failed PAPER; exporter 52 passed; those rejected-head results are not reused as r2 results."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "NOT_RUN",
-      "evidence": "Full original lab suite must be executed by CI/Main."
+      "evidence": "Must be run on exact r2 head. r1 independently ran 656/672 with errors=2 skipped=2; both named new-fixture errors were repaired. Main reported 13 multiline-output named-ID parsing gaps per r1 run, so no count reconciliation is claimed."
+    },
+    {
+      "command": "cd lab && STORAGE_SR1_DEPLOYED_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.SR1DeployedDifferentialTests.test_2048_events_restart_and_rejection_matrix tests.test_runtime_equity_history.ReferenceRuntimeTests.test_runtime_stale_future_source_rejection_matrix",
+      "result": "NOT_RUN",
+      "evidence": "Executable r2 entrypoint verifies immutable local deployed broker Git blob b34ef7e7a30e35c51019420937f505513679c29c before >2000-event comparison; covers fills/stops/finalized funding, exact duplicate, conflicting ID, out-of-order/off-tick, deployed risk rejection, restart/permanent funding replay plus runtime future/>15000ms stale/exact-boundary source<=dispatch semantics."
+    },
+    {
+      "command": "cd lab && SIM_BROKER_P2_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_parent_differential_2048_events",
+      "result": "NOT_RUN",
+      "evidence": "Existing accepted partial PR51 differential remains opt-in; r1 CI skipped it because environment flag was unset."
+    },
+    {
+      "command": "cd lab && SIM_BROKER_P2_WRITE_PROBE=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_linux_write_bytes_40000_history",
+      "result": "NOT_RUN",
+      "evidence": "Existing 40000+20 measured Linux write_bytes threshold (<1MB/event and <5% old) remains opt-in; r1 CI skipped it because environment flag was unset."
+    },
+    {
+      "command": "cd lab && STORAGE_SR1_TEN_MINUTE=1 python3 -m unittest -v tests.test_runtime_receipt_storage.TenMinuteStorageEvidenceTests.test_ten_minute_contribution_separated_storage_rate",
+      "result": "NOT_RUN",
+      "evidence": "New executable isolated non-network harness requires real elapsed >=600s and reports attributed Linux write_bytes/s and SQLite file sizes for broker-hot/history/reference/fundingInfo, asserting each <50000 B/s, repeated fundingInfo payload dedup and raw<=256."
+    },
+    {
+      "command": "cd lab && python3 -m unittest -v tests.test_runtime_receipt_storage tests.test_runtime_equity_history.ReferenceRuntimeTests tests.test_sim_broker_persistence.P3RetentionTests",
+      "result": "NOT_RUN",
+      "evidence": "Focused migration/corruption/restart/raw-expiry/permanent-funding and repaired fixture tests are executable but not run locally under this contract."
     },
     {
       "command": "exact-head push and pull_request CI",
       "result": "NOT_RUN",
-      "evidence": "Independent GitHub CI has not been claimed or observed by this mailbox write."
-    },
-    {
-      "command": "isolated synthetic 10-minute workload bytes/s per arm",
-      "result": "NOT_RUN",
-      "evidence": "Required measured contribution-separated storage-rate evidence remains pending; 1h/24h live stability is explicitly not claimed."
+      "evidence": "No r2 exact-head CI result is fabricated; Main must independently check both events after mailbox head exists."
     }
   ],
   "remaining_work": [
-    "Main CIO/CI must execute the unchanged full automation and lab suites and inspect all skips.",
-    "Run >=2000-event differential including fills/stops/funding/duplicate/conflict/stale/future/out-of-order/offtick and compare cash/orders/positions/fills/ledger/marks/funding/day baseline/causal audit plus deployed risk paths.",
-    "Run real SQLite legacy full/digest migrations, restart, missing/corrupt pointer refusal, rollback/deferred COMMIT and permanent funding replay probes.",
-    "Measure 40000+20 broker write_bytes (<1MB/event and <5% old) and isolated synthetic ten-minute workload (<50000B/s/arm), separating broker/history/reference/fundingInfo contributions.",
-    "Verify exact-head push and pull_request CI. Do not infer 1h/24h live stability from fixtures or stopped services."
+    "Main CIO/CI must run the focused tests and unchanged full automation/lab suites on exact r2 head, report named test IDs/skips, and preserve the known multiline-output accounting caveat.",
+    "Run the r2 pinned deployed differential plus runtime freshness matrix and the existing PR51 partial differential.",
+    "Run real SQLite legacy full/digest migration, restart, missing-pointer and payload-byte corruption refusal, rollback/deferred COMMIT, account/window/cash/ledger continuity and permanent funding replay checks.",
+    "Run measured 40000+20 broker write_bytes and the real >=600s contribution-separated storage harness; do not substitute projections.",
+    "Independently verify exact-head push and pull_request CI. No 1h/24h live stability or paper restart is claimed or authorized."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review source head fa011d2401140aa4bcb60e14003effb6081f5952, confirm only the SR1 allowlist changed, execute required focused/differential/migration/write-volume/full suites, and independently check exact-head push and pull_request CI.",
-    "if_pass": "Accept the engineering candidate only after all required measured evidence and exact-head CI are green; keep all twelve paper services stopped until separately authorized operator migration/deployment.",
-    "if_fail": "Keep services stopped; return the exact failing test/evidence and source head for a bounded SR1 repair without changing frozen files or safety/risk contracts.",
+    "verify_now": "Review source head 89538930628e9811dde4c5edc8de48ef08fc4316 and allowlist diff; run the named focused, deployed differential/freshness, migration/corruption, 40000+20, >=600s storage-rate and unchanged full suites; then inspect exact-head push and pull_request CI with explicit skips/named IDs.",
+    "if_pass": "Accept SR1-r2 engineering only after all requested measured evidence and exact-head CI are green. Keep all twelve paper services stopped/disabled until a separately authorized operator migration/deployment decision.",
+    "if_fail": "Keep services stopped. Return the exact failing test/evidence and exact source/full head for a bounded repair; do not weaken freshness, risk, tick/step, funding, durability or evidence contracts.",
     "blockers": []
   }
 }
