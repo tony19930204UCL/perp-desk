@@ -775,16 +775,19 @@ class ReferenceRuntimeTests(RuntimeIntegrationTests):
 
 
     def test_recent_window_never_deletes_append_only_archive(self):
-        self.migrate([])
-        self.db.execute('BEGIN')
+        root, _ = self.seeded(BaseRuntime, 'append-only-window', history=[])
+        obj = self.open_runtime(BaseRuntime, root)
+        history = obj._equity_history_store
+        obj.db.execute('BEGIN')
         for n in range(RECENT_LIMIT + 17):
-            self.history.append(point('t' + str(n), str(n)))
-        self.db.execute('COMMIT')
-        self.assertEqual(self.history.count(), RECENT_LIMIT + 17)
-        recent = self.history.recent()
+            history.append(point('t' + str(n), str(n)))
+        obj.db.execute('COMMIT')
+        self.assertEqual(history.count(), RECENT_LIMIT + 17)
+        recent = history.recent()
         self.assertEqual(len(recent), RECENT_LIMIT)
         self.assertEqual(recent[0]['ts'], 't17')
         self.assertEqual(recent[-1]['ts'], 't' + str(RECENT_LIMIT + 16))
+        obj.close()
 
 
 if __name__ == '__main__':
