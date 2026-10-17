@@ -127,8 +127,12 @@ def assess_item(item, now, job, outputs, requirements=None):
         due = due_slot(now, schedule)
         grace = timedelta(minutes=float(schedule["grace_minutes"]))
         current = [r for r in outputs if aware(r["at"]) >= due]
+        # The slot is overdue only after its own bounded grace. Before that,
+        # absence is not yet a missed run even if the previous slot is old.
         if aware(now) > due + grace and not current:
             return closed("OVERDUE", "CRON_OVERDUE", job_id)
+        if not current:
+            return closed("OK", "WITHIN_GRACE", job_id)
         # evaluate against a synthetic one-off slot without changing evidence.
         local = due.astimezone(ZoneInfo(timezone_name))
         schedule = {"timezone": timezone_name, "frequency": "daily",
