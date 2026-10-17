@@ -223,10 +223,12 @@ def successor_lines():
     rows = scan_successors()
     return ["NEEDS_SUCCESSOR %s %s: %s" % (x["id"], x["kind"], x["evidence"]) for x in rows]
 
+_base_main = base.main
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[-1] in ("check", "attention"):
-        rc = base.main(argv)
+        rc = _base_main(argv)
         try:
             for line in successor_lines():
                 print(line)
@@ -234,7 +236,9 @@ def main(argv=None):
             print("NEEDS_SUCCESSOR_SCAN_ERROR: %s" % str(exc)[:160])
             return 4
         return rc
-    return base.main(argv)
+    return _base_main(argv)
+
+base.main = main
 
 def __getattr__(name):
     """Preserve the original commit.py public module API for legacy importers.
