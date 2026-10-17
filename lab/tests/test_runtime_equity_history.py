@@ -822,6 +822,8 @@ class ReferenceRuntimeTests(RuntimeIntegrationTests):
                 self.calls = []
             def on_event(self, event):
                 self.calls.append(dict(event))
+            def close(self):
+                pass
         obj.broker = Broker()
         age = obj.config['execution_model']['max_source_age_ms']
         self.assertEqual(age, 15000)
