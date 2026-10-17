@@ -776,7 +776,7 @@ class ReferenceRuntimeTests(RuntimeIntegrationTests):
 
     def test_recent_window_never_deletes_append_only_archive(self):
         root, _ = self.seeded(BaseRuntime, 'append-only-window', history=[])
-        obj = self.open_runtime(BaseRuntime, root)
+        obj = self.runtime(BaseRuntime, root)
         history = obj._equity_history_store
         obj.db.execute('BEGIN')
         for n in range(RECENT_LIMIT + 17):
