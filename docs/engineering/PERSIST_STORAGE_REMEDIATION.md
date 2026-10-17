@@ -119,11 +119,12 @@ covers >2000 events with fills/stops/finalized funding, duplicate/conflicting
 IDs, out-of-order/off-tick rejection, risk rejection, restart and permanent
 funding replay while comparing broker causal state/audit:
 
-    cd lab && STORAGE_SR1_DEPLOYED_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.SR1DeployedDifferentialTests.test_2048_events_restart_and_rejection_matrix
+    cd lab && STORAGE_SR1_DEPLOYED_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.SR1DeployedDifferentialTests.test_2048_events_restart_and_rejection_matrix tests.test_runtime_equity_history.ReferenceRuntimeTests.test_runtime_stale_future_source_rejection_matrix
 
-The runtime suites retain the explicit stale/future source<=dispatch and
-off-tick receipt/source/dispatch tests; the deployed differential does not
-pretend broker-only code owns the 15000ms runtime freshness gate.
+The second named test explicitly exercises future, >15000ms stale, exact-boundary
+acceptance and source<=dispatch without pretending broker-only code owns the
+runtime freshness gate. Existing off-tick runtime tests retain exact
+receipt/source/dispatch linkage.
 
 The ten-minute entrypoint runs for real elapsed >=600 seconds, performs no
 network I/O, uses isolated SQLite files, attributes Linux process write_bytes
