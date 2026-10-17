@@ -56,3 +56,41 @@ r8 adds only module-level missing-attribute delegation to that loaded original m
 The existing install mapping and rollback are unchanged. After independent exact-head acceptance, install the complete accepted `installed_commit.py` replacement at `plugins/commitment-gate/commit.py` alongside the byte-identical original `commit.py.pa1-base` and existing accepted PA1 siblings, then read back the replacement/backup hashes. Import readback must additionally confirm legacy `commit.Ledger`, `commit.DISPATCHED`, `commit.handle_status`, `commit.OPEN`, `commit.VERIFIED`, `commit.main`, `commit.touch`, and `commit.home` resolve to the original module objects while `commit.base.evaluate is commit.evaluate`. No live installation is claimed here.
 
 The r7 launcher integration remains separately BLOCKED by the recorded safety denial. r8 neither retries nor supplies `installed_auto_accept.py` or any other r7 launcher candidate, and it does not establish whole-workflow or unattended acceptance.
+
+
+## r9 deployed evidence integration
+
+r9 repairs two demonstrated defects in the existing shared watcher seam; it does not add a launcher or parallel evidence CLI.
+
+### Bounded cron-output identity
+
+`assess_profile` still reads only `cron/output/<job-id>/*.md`, but each record is now parsed independently. The path-selected job id must agree with an optional serialized `**Job ID:**`. Filename wall time remains timezone-validated and DST ambiguity fails closed. The writer may independently serialize filename and `**Run Time:**` one second apart; only an absolute difference of at most one second is accepted. Both raw times, the path, and a SHA-256 of the original text are retained. Larger skew and body-job disagreement are malformed evidence.
+
+A malformed historical record no longer aborts assessment of a newer due slot. A malformed record at/after the current due slot is `MALFORMED_CURRENT_OUTPUT`. Conflicting different records in the same current serialized second are `CONFLICTING_CURRENT_OUTPUT`. Current Response `[CRON_FAILURE]` remains a failure; a quoted Prompt marker remains inert. No-agent silent records retain the existing silent-response normalization. The r6 fractional-anchor same-second rule remains bounded to persisted second identity.
+
+### Dynamic artifact/journal resolver
+
+`assess_profile` re-reads configured evidence on every invocation, including invocations reached through installed `commit.py list/attention/check` and the installed watcher. `required_artifacts` names do not prove anything by themselves. Each required name may have an `artifact_sources.<name>` object with:
+
+- `path`: safe profile-relative file path. Absolute paths, traversal outside the profile, symlink targets, missing files, and non-files are rejected.
+- `format`: `jsonl` or `json`.
+- `time_field`: dotted field selector. For the real append-only journal serialization use `time_format: "journal_utc"` for values like `2026-10-16 19:11 UTC`.
+- one or more explicit binding selectors: `item_field`, `job_field`, or `slot_field`. A title, timestamp, or comma-separated `refs` mention is not inferred as a binding.
+- optional `status_field` plus explicit `success_values`; when configured, nonmatching/nonzero-like results are not success.
+- optional `content_field` plus `required_text` for content coverage.
+
+Resolved evidence must be at/after the current due slot and not in the future. Exactly one qualifying candidate is required for a required artifact. Missing, malformed, stale, unbound, conflicting, failed, or content-incomplete evidence remains `MISSING_ARTIFACT`/UNKNOWN rather than success; future evidence remains SAFETY. The resolver never treats file existence or mtime alone as coverage.
+
+The production journal shape `lab/journal/entries.jsonl` has `id`, `at`, `kind`, `title`, optional string body/data/result/verdict/next/refs, and optional script/script_sha. It has no default structured item/job/run/rc binding, and `refs` is a comma-separated string. Therefore existing entries such as J-0015 or J-0433..J-0437 are not automatically promoted to current coverage. Synthetic tests add explicit binding fields solely to prove the configurable resolver contract.
+
+Operational consequences remain conservative: C0003 `coverage=not_implemented` remains GAP; C0026 `durable_scorecard_alert_checked_result` remains missing until a real producer emits evidence matching an explicitly configured binding contract; timezone-only C0027/C0028/C0041/C0062/C0069/C0095 remain `REQUIREMENTS_UNKNOWN`. Paused paper research is not reclassified as healthy progress.
+
+### Quota-held interval scheduler shape
+
+For an interval job whose `last_status=error` and explicit `quota_hold_until` moves `next_run_at` away from the nominal cadence, the adapter recognizes `quota_held` rather than reporting `INVALID_SCHEDULE`. It does not rewrite cadence, mutate the hold, or infer current health: absent current output returns `QUOTA_HELD_UNKNOWN`. Actual current output, including Response failure, is still evaluated and is not masked by the hold. Historical failure is preserved as source history; current availability remains unknown without current evidence.
+
+### Live entrypoint and acceptance mapping
+
+The source path is `engineering/progress_semantics/watcher_adapter.py` plus the pure checks in `progress_semantics.py`. After independent acceptance, those complete bytes map to the already documented installed sibling `plugins/commitment-gate/pa1/progress_semantics/watcher_adapter.py` and `progress_semantics.py`; the accepted r8 `plugins/commitment-gate/commit.py` wrapper remains unchanged and calls this same `assess_profile` seam. Existing operator read-only acceptance commands remain the installed `commit.py list`, `commit.py attention`, and `commit.py check`, plus the existing installed watcher check path. No r9 installation is claimed here.
+
+r7 remains separately BLOCKED by its recorded OpenAI safety denial. r9 does not create, retry, rename, split, or emulate `engineering/workflow_pipeline/installed_auto_accept.py`, and does not establish full-workflow C0376 or unattended completion.
