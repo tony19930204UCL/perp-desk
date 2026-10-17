@@ -203,6 +203,32 @@ class WatcherAdapterTests(unittest.TestCase):
             (journal/"entries.jsonl").write_text(json.dumps(bound)+"\n","utf-8")
             self.assertEqual(assess_profile(root,"C0026",NOW,spec)["state"],"OK")
 
+    def test_conflicting_current_candidates_fail_closed(self):
+        good=out()
+        bad=dict(good,ref="cron/output/job1/duplicate.md",
+                 raw_sha256="different",content="## Response\n[CRON_FAILURE]")
+        r=assess_item(item(),NOW,interval(),[good,bad],self.req())
+        self.assertEqual((r["state"],r["reason_code"]),("SAFETY","CONFLICTING_CURRENT_OUTPUT"))
+
+    def test_multiple_artifact_candidates_are_not_accepted(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/"commitments").mkdir()
+            outdir=root/"cron"/"output"/"job1"; outdir.mkdir(parents=True)
+            journal=root/"lab"/"journal"; journal.mkdir(parents=True)
+            (root/"commitments"/"ledger.json").write_text(json.dumps({"items":[item()]}),"utf-8")
+            (root/"cron"/"jobs.json").write_text(json.dumps({"jobs":[interval()]}),"utf-8")
+            (outdir/"2026-10-17_13-10-33.md").write_text("## Response\n[SILENT]","utf-8")
+            spec={"timezone":ZONE,"coverage":"implemented","required_artifacts":["checked"],
+                  "artifact_sources":{"checked":{"path":"lab/journal/entries.jsonl","format":"jsonl",
+                    "time_field":"at","time_format":"journal_utc","item_field":"item_id",
+                    "job_field":"job_id","status_field":"result","success_values":["ok"],
+                    "content_field":"body","required_text":"complete"}}}
+            row={"at":"2026-10-17 11:11 UTC","item_id":"C0026","job_id":"job1",
+                 "result":"ok","body":"complete"}
+            (journal/"entries.jsonl").write_text(json.dumps(dict(row,id="J-1"))+"\n"+
+                                                  json.dumps(dict(row,id="J-2"))+"\n","utf-8")
+            self.assertEqual(assess_profile(root,"C0026",NOW,spec)["reason_code"],"MISSING_ARTIFACT")
+
     def test_quota_held_interval_is_unknown_not_invalid_schedule(self):
         job=interval(last_status="error",last_error="Codex quota429",
                      next_run_at="2026-10-22T08:36:43.515815+02:00",
