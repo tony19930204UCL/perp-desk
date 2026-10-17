@@ -65,6 +65,13 @@ def due_slot(now, schedule):
     count = int((now - nxt).total_seconds() // step.total_seconds())
     return nxt + count * step
 
+def serialized_second(value):
+    """Floor an aware timestamp to the writer's persisted second precision."""
+    return aware(value).replace(microsecond=0)
+
+def same_serialized_second(left, right):
+    return serialized_second(left) == serialized_second(right)
+
 def output_record(job_id, path, text, timezone_name, status="ok"):
     if not timezone_name:
         raise ValueError("timezone required")
@@ -126,8 +133,14 @@ def assess_item(item, now, job, outputs, requirements=None):
             return closed("SAFETY", "CRON_DISABLED", job_id)
         due = due_slot(now, schedule)
         grace = timedelta(minutes=float(schedule["grace_minutes"]))
-        current = [r for r in outputs if aware(r["at"]) >= due]
-        # The slot is overdue only after its own bounded grace. Before that,
+        current = [
+            r for r in outputs
+            if aware(r["at"]) >= due or same_serialized_second(r["at"], due)
+        ]
+        # Persistence truncates output identity to seconds while anchors retain
+        # fractions. Only equality in that exact serialized second is widened;
+        # there is no general timing slack. The slot is overdue only after its
+        # own bounded grace. Before that,
         # absence is not yet a missed run even if the previous slot is old.
         if aware(now) > due + grace and not current:
             return closed("OVERDUE", "CRON_OVERDUE", job_id)
