@@ -239,12 +239,12 @@ def assess_item(item, now, job, outputs, requirements=None, artifacts=None):
         due = due_slot(now, schedule)
         current = [r for r in outputs if r.get("job_id") == job_id and
                    (aware(r["at"]) >= due or same_serialized_second(r["at"], due))]
-        failed = [r for r in current if r.get("status") == "failed" or
-                  "[CRON_FAILURE]" == str(r.get("content", "")).split("## Response")[-1].strip().splitlines()[0] if str(r.get("content", "")).split("## Response")[-1].strip().splitlines()]
-        if failed:
-            evidence["runs"] = current
-        elif schedule.get("quota_held"):
-            return closed("GAP", "QUOTA_HELD_UNKNOWN", job_id)
+        if schedule.get("quota_held"):
+            # A quota hold explains why cadence anchors are intentionally
+            # separated; it does not rewrite cadence or prove current health.
+            # Actual current output is still evaluated below, including failure.
+            if not current:
+                return closed("GAP", "QUOTA_HELD_UNKNOWN", job_id)
         grace = timedelta(minutes=float(schedule["grace_minutes"]))
         if aware(now) > due + grace and not current:
             return closed("OVERDUE", "CRON_OVERDUE", job_id)
