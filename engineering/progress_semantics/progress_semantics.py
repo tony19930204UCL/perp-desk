@@ -7,7 +7,7 @@ def parse_output(text):
     """Return (success, reason) from the Response section only."""
     if not isinstance(text, str):
         return False, "MISSING_OUTPUT"
-    parts = re.split(r"(?m)^## Response\\s*$", text, maxsplit=1)
+    parts = re.split(r"(?m)^## Response\s*$", text, maxsplit=1)
     if len(parts) != 2:
         return False, "MISSING_RESPONSE"
     response = parts[1].split("\n## ", 1)[0].strip()
