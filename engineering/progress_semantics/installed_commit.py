@@ -132,5 +132,21 @@ def evaluate(led, now=None):
 
 base.evaluate = evaluate
 
+def __getattr__(name):
+    """Preserve the original commit.py public module API for legacy importers.
+
+    The wrapper owns only its explicit PA1 names; every otherwise missing public
+    attribute is delegated to the byte-for-byte original module. This keeps
+    existing consumers on the original Ledger/constants/helpers without copying
+    or reimplementing their authority.
+    """
+    try:
+        return getattr(base, name)
+    except AttributeError:
+        raise AttributeError("module %r has no attribute %r" % (__name__, name)) from None
+
+def __dir__():
+    return sorted(set(globals()) | set(dir(base)))
+
 if __name__ == "__main__":
     sys.exit(base.main())
