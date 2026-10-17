@@ -118,11 +118,15 @@ def evaluate(item, now, schedule, evidence, state, cooldown_hours=6):
     if state.get("coverage") == "not_implemented":
         return result("GAP", "COVERAGE_NOT_IMPLEMENTED", latest.get("ref") if latest else None, stamp)
     for name in state.get("required_artifacts", []):
-        matches = [f for f in evidence.get("files", []) if f.get("name") == name and f.get("content") and f.get("rc", 0) == 0]
-        if not matches:
-            return result("STALE", "MISSING_ARTIFACT", name)
-        if any(_time(f["at"]) > now for f in matches if f.get("at")):
+        candidates = [f for f in evidence.get("files", []) if f.get("name") == name]
+        if any(f.get("at") and _time(f["at"]) > now for f in candidates):
             return result("SAFETY", "FUTURE_EVIDENCE", name)
+        matches = [f for f in candidates
+                   if f.get("content") and f.get("rc") == 0
+                   and f.get("binding") == "explicit"
+                   and f.get("at") and _time(f["at"]) >= due]
+        if len(matches) != 1:
+            return result("STALE", "MISSING_ARTIFACT", name)
     if latest and stamp >= due:
         return result("OK", "EVIDENCE_CURRENT", latest.get("ref"), stamp)
     if now.astimezone(timezone.utc) <= due + grace:
