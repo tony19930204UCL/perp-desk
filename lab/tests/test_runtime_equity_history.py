@@ -1,5 +1,6 @@
 """B1 isolated SQLite tests; no paper runtime mutation or outbound I/O."""
 import json
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -808,6 +809,35 @@ class ReferenceRuntimeTests(RuntimeIntegrationTests):
                     self.assertEqual(
                         ReceiptStorage(db).reconstruct(pointer['receipt_seq']), depth)
                 obj.close()
+
+
+
+    @unittest.skipUnless(os.environ.get('STORAGE_SR1_DEPLOYED_DIFFERENTIAL') == '1',
+                         'opt-in with deployed differential matrix')
+    def test_runtime_stale_future_source_rejection_matrix(self):
+        root, _ = self.seeded(BaseRuntime, 'runtime-source-rejections')
+        obj = self.runtime(BaseRuntime, root)
+        class Broker:
+            def __init__(self):
+                self.calls = []
+            def on_event(self, event):
+                self.calls.append(dict(event))
+        obj.broker = Broker()
+        age = obj.config['execution_model']['max_source_age_ms']
+        self.assertEqual(age, 15000)
+        now = self.now[0]
+        with self.assertRaisesRegex(ValueError, 'future source'):
+            obj.emit(dict(type='mark', symbol='ETHUSDT', ts=now,
+                          source_ts=now + 1, price='100'))
+        with self.assertRaisesRegex(ValueError, 'stale source'):
+            obj.emit(dict(type='mark', symbol='ETHUSDT', ts=now,
+                          source_ts=now - age - 1, price='100'))
+        self.assertEqual(obj.broker.calls, [])
+        obj.emit(dict(type='mark', symbol='ETHUSDT', ts=now,
+                      source_ts=now - age, price='100'))
+        self.assertEqual(len(obj.broker.calls), 1)
+        self.assertLessEqual(obj.broker.calls[0]['source_ts'],
+                             obj.broker.calls[0]['ts'])
 
 
     def test_recent_window_never_deletes_append_only_archive(self):
