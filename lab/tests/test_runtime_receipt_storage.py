@@ -181,30 +181,8 @@ class TenMinuteStorageEvidenceTests(unittest.TestCase):
             raise unittest.SkipTest("Linux /proc/self/io unavailable: " + str(exc))
         raise unittest.SkipTest("Linux write_bytes unavailable")
 
-    def measure(self, writer):
-        start = time.monotonic()
-        before = self.write_bytes()
-        count = 0
-        while time.monotonic() - start < self.DURATION_SECONDS:
-            writer(count)
-            count += 1
-            os.sync()
-            # One synthetic five-second receipt cadence; elapsed time is real.
-            remaining = 5.0 - ((time.monotonic() - start) % 5.0)
-            if remaining < 4.9:
-                time.sleep(remaining)
-        elapsed = time.monotonic() - start
-        total = self.write_bytes() - before
-        self.assertGreaterEqual(elapsed, self.DURATION_SECONDS)
-        rate = total / elapsed
-        self.assertLess(rate, self.TARGET_BYTES_PER_SECOND,
-                        dict(bytes=total, seconds=elapsed, bytes_per_second=rate))
-        return dict(bytes=total, seconds=elapsed, bytes_per_second=rate,
-                    operations=count)
-
     def test_ten_minute_contribution_separated_storage_rate(self):
         from runtime_equity_history import EquityHistoryStore, ExactReceiptStore
-        results = {}
         with tempfile.TemporaryDirectory(prefix="sr1-ten-minute-") as directory:
             root = Path(directory)
             def connection(name):
@@ -214,57 +192,78 @@ class TenMinuteStorageEvidenceTests(unittest.TestCase):
 
             broker_db = connection("broker-hot")
             broker_db.execute("CREATE TABLE hot(id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT)")
+            history_db = connection("history")
+            history_db.execute("BEGIN")
+            history = EquityHistoryStore(history_db); history.prepare()
+            history.migrate_legacy([]); history_db.execute("COMMIT")
+            reference_db = connection("reference")
+            reference_db.execute("BEGIN")
+            reference = ExactReceiptStore(reference_db); reference.prepare()
+            reference_db.execute("COMMIT")
+            funding_db = connection("fundingInfo")
+            funding_db.execute("BEGIN")
+            funding = ReceiptStorage(funding_db); funding.prepare()
+            funding_db.execute("COMMIT")
+            fixed_reference = {"endpoint":"/fapi/v1/exchangeInfo","params":{},
+                               "payload":{"symbols":[]},"received_at":"synthetic",
+                               "source_timestamp_ms":1}
+            funding_payload = [{"symbol":"ETHUSDT","fundingIntervalHours":8}]
+
             def broker_writer(n):
                 broker_db.execute("BEGIN")
                 broker_db.execute("INSERT OR REPLACE INTO hot VALUES(1,?)",
                                   (json.dumps({"cash":"100","last_ts":n}),))
                 broker_db.execute("COMMIT")
-            results["broker_hot"] = self.measure(broker_writer)
-            broker_db.close()
-
-            history_db = connection("history")
-            history_db.execute("BEGIN")
-            history = EquityHistoryStore(history_db); history.prepare()
-            history.migrate_legacy([]); history_db.execute("COMMIT")
             def history_writer(n):
                 history_db.execute("BEGIN")
                 history.append({"ts":str(n),"equity_usdt":"100","valuation_stale":False})
                 history_db.execute("COMMIT")
-            results["history"] = self.measure(history_writer)
-            history_db.close()
-
-            reference_db = connection("reference")
-            reference_db.execute("BEGIN")
-            reference = ExactReceiptStore(reference_db); reference.prepare()
-            reference_db.execute("COMMIT")
-            fixed_reference = {"endpoint":"/fapi/v1/exchangeInfo","params":{},
-                               "payload":{"symbols":[]},"received_at":"synthetic",
-                               "source_timestamp_ms":1}
             def reference_writer(n):
                 reference_db.execute("BEGIN"); reference.put(fixed_reference)
                 reference_db.execute("COMMIT")
-            results["reference"] = self.measure(reference_writer)
-            reference_db.close()
-
-            funding_db = connection("fundingInfo")
-            funding_db.execute("BEGIN")
-            funding = ReceiptStorage(funding_db); funding.prepare()
-            funding_db.execute("COMMIT")
-            payload = [{"symbol":"ETHUSDT","fundingIntervalHours":8}]
             def funding_writer(n):
-                value = receipt(payload, received="synthetic:" + str(n), source=n)
+                value = receipt(funding_payload, received="synthetic:" + str(n), source=n)
                 funding_db.execute("BEGIN")
                 funding.record_causal("/fapi/v1/fundingInfo", {}, value)
                 funding_db.execute("COMMIT")
-            results["fundingInfo"] = self.measure(funding_writer)
-            payload_rows = funding_db.execute(
-                "SELECT COUNT(*) FROM runtime_receipt_payloads").fetchone()[0]
-            raw_rows = funding_db.execute(
-                "SELECT COUNT(*) FROM runtime_noncausal_raw_receipts").fetchone()[0]
-            self.assertEqual(payload_rows, 1)
-            self.assertLessEqual(raw_rows, 256)
-            funding_db.close()
-        print("SR1 TEN_MINUTE " + json.dumps(results, sort_keys=True), flush=True)
+
+            writers = {"broker_hot":broker_writer, "history":history_writer,
+                       "reference":reference_writer, "fundingInfo":funding_writer}
+            attributed = {name:0 for name in writers}
+            operations = {name:0 for name in writers}
+            start = time.monotonic()
+            cycle = 0
+            while time.monotonic() - start < self.DURATION_SECONDS:
+                for name, writer in writers.items():
+                    before = self.write_bytes()
+                    writer(cycle)
+                    os.sync()
+                    attributed[name] += self.write_bytes() - before
+                    operations[name] += 1
+                cycle += 1
+                deadline = start + cycle * 5.0
+                delay = deadline - time.monotonic()
+                if delay > 0:
+                    time.sleep(delay)
+            elapsed = time.monotonic() - start
+            self.assertGreaterEqual(elapsed, self.DURATION_SECONDS)
+            results = {}
+            for name in writers:
+                rate = attributed[name] / elapsed
+                results[name] = dict(bytes=attributed[name], seconds=elapsed,
+                                     bytes_per_second=rate, operations=operations[name])
+                self.assertLess(rate, self.TARGET_BYTES_PER_SECOND, results)
+            self.assertEqual(funding_db.execute(
+                "SELECT COUNT(*) FROM runtime_receipt_payloads").fetchone()[0], 1)
+            self.assertLessEqual(funding_db.execute(
+                "SELECT COUNT(*) FROM runtime_noncausal_raw_receipts").fetchone()[0], 256)
+            sizes = {name:(root / (name + ".sqlite3")).stat().st_size
+                     for name in writers}
+            print("SR1 TEN_MINUTE " + json.dumps(
+                {"contributions":results,"sqlite_file_bytes":sizes},
+                sort_keys=True), flush=True)
+            for db in (broker_db, history_db, reference_db, funding_db):
+                db.close()
 
 
 if __name__ == "__main__":
