@@ -17,6 +17,7 @@ from signals_v2 import Detector
 from sim_broker import SimBroker, InstrumentSettings, ExecutionModel, RiskContract, Intent
 from dashboard import validate_snapshot
 from runtime_equity_history import EquityHistoryStore, ExactReceiptStore, RECENT_LIMIT
+from runtime_receipt_storage import ReceiptStorage
 
 D = Decimal
 
@@ -101,6 +102,11 @@ class PaperRuntime:
             receipts = ExactReceiptStore(self.db)
             self._exact_reference_store = receipts
             self._exact_reference_prepared = False
+        receipt_storage = getattr(self, '_receipt_storage', None)
+        if receipt_storage is None or receipt_storage.db is not self.db:
+            receipt_storage = ReceiptStorage(self.db)
+            self._receipt_storage = receipt_storage
+            self._receipt_storage_prepared = False
         begun = False
         try:
             self.db.execute('BEGIN')
@@ -109,6 +115,8 @@ class PaperRuntime:
                 history.prepare()
             if not self._exact_reference_prepared:
                 receipts.prepare()
+            if not self._receipt_storage_prepared:
+                receipt_storage.prepare()
 
             # A digest-only singleton is the on-disk representation. Resolve
             # before any runtime consumer can see it, also through v5's init.
@@ -140,9 +148,11 @@ class PaperRuntime:
             # Do not reuse prepared flags after any failed transaction.
             self._equity_history_prepared = False
             self._exact_reference_prepared = False
+            self._receipt_storage_prepared = False
             raise
         self._equity_history_prepared = True
         self._exact_reference_prepared = True
+        self._receipt_storage_prepared = True
         self.state['history'] = recent
         if from_digest:
             self.state.pop('reference_digest')
@@ -178,7 +188,40 @@ class PaperRuntime:
                 events.append({'kind':'instrumentation_unavailable','reason':'client_fixture_has_no_get_timed'})
             returned_ms=self.clock()
             returned_mono=self.monotonic()
-            self.audit(dict(type='public_receipt',receipt=receipt,
+            audit_receipt = receipt
+            if endpoint == '/fapi/v1/fundingInfo':
+                # Preserve every receipt observation and all timing metadata, but
+                # content-address the repeated payload.  The audit pointer is
+                # immutable and reconstructible; missing/corrupt payloads fail
+                # closed through ReceiptStorage.reconstruct().
+                store = getattr(self, '_receipt_storage', None)
+                if store is None or store.db is not self.db:
+                    store = ReceiptStorage(self.db)
+                    self._receipt_storage = store
+                    self._receipt_storage_prepared = False
+                begun = False
+                try:
+                    self.db.execute('BEGIN')
+                    begun = True
+                    if not self._receipt_storage_prepared:
+                        store.prepare()
+                    pointer = store.record_causal(endpoint, params, receipt)
+                    self.db.commit()
+                except BaseException:
+                    if begun:
+                        self.db.rollback()
+                    self._receipt_storage_prepared = False
+                    raise
+                self._receipt_storage_prepared = True
+                audit_receipt = dict(
+                    storage='runtime_causal_receipts',
+                    receipt_seq=pointer['seq'],
+                    payload_sha256=pointer['payload_sha256'],
+                    endpoint=receipt.get('endpoint'),
+                    params=receipt.get('params', {}),
+                    received_at=receipt.get('received_at'),
+                    source_timestamp_ms=receipt.get('source_timestamp_ms'))
+            self.audit(dict(type='public_receipt',receipt=audit_receipt,
                             request_start_ms=outer_start_ms,
                             request_start_monotonic_ms=outer_start_mono*1000,
                             request_return_ms=returned_ms,
@@ -266,7 +309,46 @@ class PaperRuntime:
             event['event_id']=digest(event)
         if timing:
             timing['call_monotonic_ms']=self.monotonic()*1000
-        self.broker.on_event(event)
+        try:
+            self.broker.on_event(event)
+        except ValueError as exc:
+            if event.get('type') == 'book' and str(exc).startswith('off-tick quote:'):
+                # Preserve the deployed source-to-rejection diagnostic path.
+                candidates = []
+                for (payload,) in self.db.execute(
+                        "SELECT payload FROM audit ORDER BY id DESC LIMIT 64"):
+                    recorded = json.loads(payload)
+                    receipt = recorded.get('receipt', {})
+                    if (recorded.get('type') == 'public_receipt'
+                            and receipt.get('endpoint') == '/fapi/v1/depth'
+                            and receipt.get('params', {}).get('symbol') == event['symbol']
+                            and receipt.get('source_timestamp_ms') == event.get('source_ts')
+                            and receipt.get('payload', {}).get('bids') == event['bids']
+                            and receipt.get('payload', {}).get('asks') == event['asks']
+                            and receipt_ms(receipt) == event.get('received_ms')):
+                        candidates.append(recorded)
+                matched = candidates[0] if len(candidates) == 1 else None
+                reference = self.state.get('reference')
+                reference_received = receipt_ms(reference) if reference else None
+                rejection = dict(
+                    type='broker_offtick_rejection', validator='SimBroker._validate_event',
+                    exception=str(exc), symbol=event['symbol'], endpoint='/fapi/v1/depth',
+                    event_id=event['event_id'], source_ms=event.get('source_ts'),
+                    receipt_ms=event.get('received_ms'), dispatch_ms=event['ts'],
+                    dispatch_monotonic_ms=timing['dispatch_monotonic_ms'] if timing else None,
+                    reference_receipt_ms=reference_received,
+                    reference_age_ms=(event['ts']-reference_received) if reference_received is not None else None,
+                    reference_receipt_sha256=digest(reference) if reference else None,
+                    reference_hash_kind='canonical_runtime_receipt_sha256',
+                    receipt_audit_match=matched is not None,
+                    original_receipt_sha256=digest(matched['receipt']) if matched else None,
+                    original_receipt_hash_kind='canonical_runtime_receipt_sha256' if matched else None,
+                    receipt_audit_request_start_ms=matched.get('request_start_ms') if matched else None,
+                    receipt_audit_request_return_ms=matched.get('request_return_ms') if matched else None,
+                    source_age_at_dispatch_ms=event['ts']-event['source_ts'])
+                self.audit(rejection)
+                self._timing_record(rejection)
+            raise
         if timing:
             timing['return_monotonic_ms']=self.monotonic()*1000
             self.audit(timing)
