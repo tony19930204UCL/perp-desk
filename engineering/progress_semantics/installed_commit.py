@@ -136,9 +136,9 @@ SUCCESSOR_SCHEMA = 1
 SUCCESSOR_NAME = "needs_successor.json"
 MANUAL_LEASE_S = float(os.environ.get("COMMIT_MANUAL_LEASE_S", 6 * 3600))
 
-def _successor_paths():
+def _successor_paths(ledger_path=None):
     root = Path(base.home())
-    return root / "commitments" / "ledger.json", root / "commitments" / SUCCESSOR_NAME
+    return Path(ledger_path) if ledger_path else base.default_ledger(), root / "commitments" / SUCCESSOR_NAME
 
 def _manual_heartbeat(root, item):
     h = item.get("handle") or {}
@@ -177,11 +177,11 @@ def _successor_reason(root, item, now, lease_s):
             return "blocked item has no checkable blocker"
     return None
 
-def scan_successors(now=None, lease_s=None):
+def scan_successors(now=None, lease_s=None, ledger_path=None):
     """Read ledger under its existing lock and atomically refresh successor queue."""
     now = time.time() if now is None else float(now)
     lease_s = MANUAL_LEASE_S if lease_s is None else float(lease_s)
-    ledger_path, queue_path = _successor_paths()
+    ledger_path, queue_path = _successor_paths(ledger_path)
     lock_path = Path(str(ledger_path) + ".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock = open(lock_path, "a+")
@@ -219,8 +219,8 @@ def scan_successors(now=None, lease_s=None):
         base.fcntl.flock(lock, base.fcntl.LOCK_UN)
         lock.close()
 
-def successor_lines():
-    rows = scan_successors()
+def successor_lines(ledger_path=None):
+    rows = scan_successors(ledger_path=ledger_path)
     return ["NEEDS_SUCCESSOR %s %s: %s" % (x["id"], x["kind"], x["evidence"]) for x in rows]
 
 _base_main = base.main
@@ -229,8 +229,13 @@ def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[-1] in ("check", "attention"):
         rc = _base_main(argv)
+        ledger_path = None
+        if "--ledger" in argv:
+            i = argv.index("--ledger")
+            if i + 1 < len(argv):
+                ledger_path = argv[i + 1]
         try:
-            for line in successor_lines():
+            for line in successor_lines(ledger_path):
                 print(line)
         except Exception as exc:
             print("NEEDS_SUCCESSOR_SCAN_ERROR: %s" % str(exc)[:160])
