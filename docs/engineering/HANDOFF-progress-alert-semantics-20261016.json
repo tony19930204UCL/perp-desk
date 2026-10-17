@@ -4,39 +4,56 @@
   "pr_number": 0,
   "branch": "fix/progress-alert-semantics-20261016",
   "task_id": "progress-alert-semantics-20261016",
-  "instruction_id": "PA1-r0",
-  "status": "BLOCKED",
-  "source_head_sha": "158f8bb7cc710cf7a8bf091d70a1cb49752dedef",
-  "summary": "Pure evaluator and synthetic unittest fixtures committed; execution not verified, integration gaps remain.",
+  "instruction_id": "PA1-r1-WF1",
+  "status": "WAITING_CI",
+  "source_head_sha": "30a7c6ebb04ff2bdd42b6ecdd4b55243c822366e",
+  "summary": "PA1 semantics repaired and made CI-discoverable; added pure workflow projection, lease/reconcile rules, source adapter grounded in exported PR65 ledger/wake source, read-only operator CLI, and install/rollback contracts. No deployment or private watcher integration performed.",
   "changed_files": [
-    "engineering/progress_semantics/__init__.py",
     "engineering/progress_semantics/progress_semantics.py",
-    "engineering/progress_semantics/tests/__init__.py",
     "engineering/progress_semantics/tests/test_progress_semantics.py",
-    "docs/engineering/PROGRESS_ALERT_SEMANTICS.md",
+    "engineering/workflow_pipeline/__init__.py",
+    "engineering/workflow_pipeline/pipeline.py",
+    "engineering/workflow_pipeline/cli.py",
+    "engineering/workflow_pipeline/source_adapter.py",
+    "lab/tests/test_workflow_pipeline.py",
+    "docs/engineering/WORKFLOW_PIPELINE_CONTRACT.md",
+    "docs/engineering/WORKFLOW_PIPELINE_OPERATOR.md",
+    ".github/workflows/ci.yml",
     "docs/engineering/HANDOFF-progress-alert-semantics-20261016.json"
   ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/progress_semantics/tests -v",
       "result": "NOT_RUN",
-      "evidence": "No repository checkout or test execution performed; no result claimed."
+      "evidence": "Added as GitHub Actions step Progress semantics acceptance at source head 30a7c6e; no exact-head run is visible through the connected Actions view yet."
+    },
+    {
+      "command": "python3 -m unittest -v lab.tests.test_workflow_pipeline",
+      "result": "NOT_RUN",
+      "evidence": "Added as GitHub Actions step Workflow pipeline acceptance at source head 30a7c6e; no exact-head run is visible through the connected Actions view yet."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests -v && cd lab && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "Existing CI commands preserved; no exact-head run result claimed."
     }
   ],
   "remaining_work": [
-    "Execute new unittest suite",
-    "Fix discovered defects; validate journal per-item coverage and scheduled-slot semantics",
-    "Owner to run private acceptance suite",
-    "CI workflow does not discover new tests"
+    "Obtain exact-head CI run and per-test results before READY_FOR_REVIEW.",
+    "Private local watcher source is unavailable; adapter installation requires its read-only entrypoint, item-to-schedule mapping, cron/output reader, journal/state readers and alert-state persistence schema.",
+    "Owner private 36-test acceptance is not executable here and remains independent.",
+    "unattended_proven is false: no genuine no-new-user-message handback/acceptance/install/readback interval was observed.",
+    "Existing obligations C0053/C0071/C0079/C0080/C0093/C0112/C0122/C0136/C0168/C0178/C0169/C0180 remain untouched."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run focused suite and validate integration contracts before acceptance.",
-    "if_pass": "Review owner acceptance and open draft PR.",
-    "if_fail": "Return exact failing test IDs and expected outputs.",
+    "verify_now": "Wait for and inspect exact source-head CI; do not interpret prior run 38926207449 as PA1 evidence.",
+    "if_pass": "Independently review isolated evidence, supply/inspect private watcher source contract, then authorize installation/readback separately.",
+    "if_fail": "Return exact failing test IDs/log evidence for same-scope repair.",
     "blockers": [
-      "Focused tests not executed",
-      "Per-item journal coverage not validated"
+      "Exact-head CI result not yet visible",
+      "Private watcher source contract unavailable",
+      "No unattended production proof"
     ]
   }
 }
