@@ -74,8 +74,7 @@ def output_record(job_id, path, text, timezone_name, status="ok"):
         raise ValueError("invalid cron output name")
     zone = ZoneInfo(timezone_name)
     wall = datetime.strptime(marker.group(1), "%Y-%m-%d_%H-%M-%S")
-    at = wall.replace(tzinfo=zone)
-    run = re.search(r"(?m)^\*\*Run Time:\*\*\s*(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s*$", text)
+    first = wall.replace(tzinfo=zone, fold=0)\n    second = wall.replace(tzinfo=zone, fold=1)\n    if first.utcoffset() != second.utcoffset():\n        raise ValueError("ambiguous wall timestamp")\n    at = first\n    run = re.search(r"(?m)^\*\*Run Time:\*\*\s*(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s*$", text)
     if run:
         body_wall = datetime.strptime(run.group(1), "%Y-%m-%d %H:%M:%S")
         if body_wall != wall:
