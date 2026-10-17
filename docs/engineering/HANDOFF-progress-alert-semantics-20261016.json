@@ -4,58 +4,58 @@
   "pr_number": 0,
   "branch": "fix/progress-alert-semantics-20261016",
   "task_id": "progress-alert-semantics-20261016",
-  "instruction_id": "PA1-r3-WF1",
+  "instruction_id": "PA1-r4-WF1",
   "status": "WAITING_CI",
-  "source_head_sha": "32e140ce0995b26b5fbeb18b8fc5510547826376",
-  "summary": "Repaired real lab-cwd import discovery; added deployable read-only watcher adapter for supplied ledger/jobs/output contract, replay integration tests, and concrete install/rollback seam preserving existing deterministic verification, history and alert dedupe. No deployment performed.",
+  "source_head_sha": "ad284a936f0d277480485ac88b850fd72e25dbd2",
+  "summary": "Preserved r3 successful candidate and delivered complete installable commitment checker/watcher replacements. The checker delegates unchanged CLI/locks/acceptance semantics to a byte-for-byte pre-install backup and integrates recurring source evidence before generic staleness. Adapter now supports actual cron expressions, anchored intervals, explicit Europe/Berlin wall timestamps, DST ambiguity rejection and explicit requirements mapping. No installation performed.",
   "changed_files": [
-    "lab/tests/test_workflow_pipeline.py",
-    "engineering/progress_semantics/__init__.py",
     "engineering/progress_semantics/watcher_adapter.py",
     "engineering/progress_semantics/tests/test_watcher_adapter.py",
+    "engineering/progress_semantics/installed_commit.py",
+    "engineering/progress_semantics/installed_commit_watch.py",
+    "engineering/progress_semantics/tests/test_installed_entrypoints.py",
     "docs/engineering/PROGRESS_ALERT_SEMANTICS.md",
-    "docs/engineering/WORKFLOW_PIPELINE_OPERATOR.md",
     "docs/engineering/HANDOFF-progress-alert-semantics-20261016.json"
   ],
   "tests": [
     {
+      "command": "python3 -m unittest discover -s automation/tests -v",
+      "result": "PASS_R3_ONLY",
+      "evidence": "r3 exact final-head push CI 39027636350 job 117381652525 completed SUCCESS; r4 exact-head pending."
+    },
+    {
       "command": "python3 -m unittest discover -s engineering/progress_semantics/tests -v",
-      "result": "NOT_RUN_R3",
-      "evidence": "r2 run 39026889511 focused progress step SUCCESS; r3 adds watcher adapter tests and requires a new exact-head run."
+      "result": "PASS_R3_BASE_PLUS_R4_NOT_RUN",
+      "evidence": "r3 exact CI 39027636350 succeeded. r4 adds actual-entrypoint, cron-schema, anchored interval and timezone tests; exact r4 run not visible yet."
     },
     {
       "command": "python3 -m unittest -v lab.tests.test_workflow_pipeline",
-      "result": "NOT_RUN_R3",
-      "evidence": "r2 focused workflow step SUCCESS, but PAPER cwd discovery failed to import the same test. r3 adds repo-root sys.path setup; exact-head execution pending."
+      "result": "PASS_R3_ONLY",
+      "evidence": "r3 exact CI 39027636350 succeeded; unchanged in r4."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
-      "result": "FAILED_R2_REPAIRED_PENDING",
-      "evidence": "r2 final-head run 39026889511 job 117379538740: 485 tests in 82.591s, errors=1; loader import error test_workflow_pipeline ModuleNotFoundError engineering. Source push 39026873306 also failed. r3 repair pending exact-head CI."
-    },
-    {
-      "command": "python3 -m unittest discover -s automation/tests -v",
-      "result": "PASS_R2_ONLY",
-      "evidence": "Exporter contract SUCCESS in r2 run 39026889511; preserved historical evidence, not r3 exact-head evidence."
+      "result": "PASS_R3_ONLY",
+      "evidence": "r3 exact CI 39027636350 succeeded including repaired lab cwd discovery; r4 exact-head baseline pending."
     }
   ],
   "remaining_work": [
-    "Require complete r3 exact-head CI: exporter, progress including watcher adapter, workflow focused, PAPER discovery, and every unchanged later acceptance step.",
-    "Concrete integration contract still missing only the authoritative per-item requirements_for_item mapping/source: timezone plus required artifact names and coverage state for each recurring item. No journal/coverage reader was supplied, so adapter fails closed when absent.",
-    "Existing commit.py check must retain accept_ok deterministic verification, ledger history/touch semantics, and alert_sig/alerted persistence/dedupe around the PA1 recurring classification seam; PA1 does not replace that authority.",
-    "PR0 remains branch-only; existing coordinator profile_runner PR_FORMAT/JOB_REQUIRED_FIELDS incompatibility is external and unchanged.",
-    "start/stop/install/rollback remain PLAN_ONLY; installed=false and unattended_proven=false.",
-    "Prior failures remain evidence: r1 39026462353/39026442767; r2 39026889511/39026873306.",
-    "Existing twelve C obligations remain incomplete/unmodified."
+    "Require r4 exact-head CI for source ad284a936f0d277480485ac88b850fd72e25dbd2 and complete unchanged later acceptance steps before READY_FOR_REVIEW.",
+    "Installation is not performed. Accepted install mapping is installed_commit.py -> plugins/commitment-gate/commit.py with byte-for-byte original backup commit.py.pa1-base; installed_commit_watch.py -> scripts/commit_watch.py with backup; plus pa1/progress_semantics sibling closure.",
+    "Authoritative commitments/progress_requirements.json values must be validated by the operator. Missing item mapping preserves original baseline stale/dead/due semantics; no coverage is fabricated.",
+    "Broader workflow remains outside delivered source: exact-chat approval/receipt, GitHub delivery watcher, auto_accept/accept_unit/ledger_wake owner-loss recovery, launcher/skills/prompts/dependencies, quota pending-work recovery, and genuine unattended closed loop. Smallest required contracts are documented in PROGRESS_ALERT_SEMANTICS.md.",
+    "PR0 coordinator JOB_REQUIRED_FIELDS/PR_FORMAT incompatibility remains external. AP3 SEND_UNKNOWN is preserved without resend.",
+    "installed=false; unattended_proven=false; twelve existing C obligations remain incomplete/unmodified.",
+    "Preserve failures r1 39026462353/39026442767 and r2 39026889511/39026873306, and success r3 39027636350."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Inspect the next exact source-head/final-head CI and require complete baseline, including real lab cwd discovery and new watcher adapter tests.",
-    "if_pass": "Independently review accepted bytes and authoritative requirements mapping, then perform separately authorized profile installation/readback using documented seam and backups.",
-    "if_fail": "Return exact failing test IDs/logs for same-branch repair; do not install.",
+    "verify_now": "Inspect the automatically triggered r4 exact-head CI when available; require new installed-entrypoint/cron/timezone tests plus full unchanged baseline.",
+    "if_pass": "Independently accept source, validate requirements mapping, then use the documented separately authorized copy/readback/rollback procedure; no coding glue is required.",
+    "if_fail": "Return exact r4 failing test IDs/log evidence for same-branch repair; do not install.",
     "blockers": [
-      "r3 exact-head CI not yet visible",
-      "authoritative per-item requirements_for_item mapping/source not supplied",
+      "r4 exact-head CI not yet visible",
+      "broader Hermes workflow source contracts remain unavailable",
       "no installed or unattended proof"
     ]
   }
