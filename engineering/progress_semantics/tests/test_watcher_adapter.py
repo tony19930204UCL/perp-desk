@@ -38,6 +38,38 @@ class WatcherAdapterTests(unittest.TestCase):
         r=assess_item(item(),NOW,interval(),[out()],self.req())
         self.assertEqual(r["state"],"OK")
 
+    def test_exact_second_anchor_accepts_exact_second_output(self):
+        job = interval(
+            last_run_at="2026-10-17T12:10:33+02:00",
+            next_run_at="2026-10-17T13:10:33+02:00")
+        r = assess_item(item(), NOW, job, [out()], self.req())
+        self.assertEqual(r["state"], "OK")
+
+    def test_previous_second_is_not_current_slot(self):
+        previous = out("2026-10-17_13-10-32")
+        r = assess_item(item(), NOW, interval(), [previous], self.req())
+        self.assertEqual((r["state"], r["reason_code"]), ("OVERDUE", "CRON_OVERDUE"))
+
+    def test_next_second_is_current_without_slack(self):
+        later = out("2026-10-17_13-10-34")
+        r = assess_item(item(), NOW, interval(), [later], self.req())
+        self.assertEqual(r["state"], "OK")
+
+    def test_wrong_job_record_cannot_satisfy_slot(self):
+        wrong = dict(out())
+        wrong["job_id"] = "other"
+        r = assess_item(item(), NOW, interval(), [wrong], self.req())
+        self.assertEqual((r["state"], r["reason_code"]), ("OVERDUE", "CRON_OVERDUE"))
+
+    def test_long_script_completion_uses_completion_anchor_bucket(self):
+        job = interval(
+            last_run_at="2026-10-17T13:10:59.900000+02:00",
+            next_run_at="2026-10-17T14:10:59.900000+02:00")
+        record = out("2026-10-17_13-10-59")
+        now = datetime(2026, 10, 17, 13, 27, tzinfo=ZoneInfo(ZONE))
+        r = assess_item(item(), now, job, [record], self.req())
+        self.assertEqual(r["state"], "OK")
+
     def test_cron_daily_schema(self):
         s=schedule_from_job(cron("0 21 * * *"),ZONE)
         self.assertEqual((s["frequency"],s["hour"],s["minute"]),("daily",21,0))
@@ -96,6 +128,12 @@ class WatcherAdapterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             output_record("job1", "cron/output/job1/2026-10-25_02-30-00.md",
                           "## Response\n[SILENT]", ZONE)
+
+    def test_wrong_output_path_job_is_rejected(self):
+        record = out()
+        record["ref"] = "cron/output/other/2026-10-17_13-10-33.md"
+        r = assess_item(item(), NOW, interval(), [record], self.req())
+        self.assertEqual(r["reason_code"], "INVALID_OUTPUT_PATH")
 
     def test_body_filename_mismatch_fails(self):
         text="**Run Time:** 2026-10-17 01:20:29\n**Mode:** no_agent (script)\n**Status:** silent (empty output)"
