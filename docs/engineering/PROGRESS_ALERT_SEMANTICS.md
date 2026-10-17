@@ -120,3 +120,68 @@ The formal contracts are intentionally distinct. The Response parser may classif
 No production source changes are made in r11. In particular, r10's valid matching-current scheduler failure remains `SAFETY/CRON_FAILED`, genuinely invalid anchors remain `SAFETY/INVALID_SCHEDULE`, historical scheduler status remains scoped to its matching persisted run, and quota-held intervals remain a separate conservative identity. All r9 bounded one-second writer identity/raw provenance, malformed/conflicting-current behavior, dynamic JSON/JSONL resolver, explicit item/job/slot binding, freshness/result/content requirements, path traversal/symlink confinement, multiple-candidate negatives, and r8 public API delegation remain unchanged.
 
 The deployment mapping is also unchanged: accepted `engineering/progress_semantics/watcher_adapter.py` maps to `plugins/commitment-gate/pa1/progress_semantics/watcher_adapter.py`; accepted `engineering/progress_semantics/progress_semantics.py` maps to `plugins/commitment-gate/pa1/progress_semantics/progress_semantics.py`; the accepted r8 wrapper remains `plugins/commitment-gate/commit.py`. Candidate acceptance remains `python3 -m unittest discover -s engineering/progress_semantics/tests -v`. Existing deployed read-only acceptance remains `plugins/commitment-gate/commit.py list`, `plugins/commitment-gate/commit.py attention`, `plugins/commitment-gate/commit.py check`, plus the existing installed watcher check path. r11 is a candidate only: NOT_INSTALLED and UNATTENDED_NOT_PROVEN.
+
+
+## r12 workflow ownership and patrol root-cause candidate
+
+r12 is a new candidate built on the operator-seeded installed baselines. It does not retry, recreate, rename, split, or emulate the separately denied r7 launcher operation.
+
+### Locked ledger compare-and-set
+
+The installed base CLI keeps the existing \`Ledger\` lock and adds optional \`--expect-state\` to \`done\`, \`block\`, and \`drop\`. Allowed values are the real states \`OPEN\`, \`DISPATCHED\`, \`VERIFIED\`, \`BLOCKED\`, and \`DROPPED\`; argparse rejects unknown names. State comparison occurs after the ledger has been read under its existing exclusive file lock and before mutation. A mismatch prints id/current state/handle status/last history note and exits with \`CAS_REFUSED=3\`. Raising inside the lock context prevents \`Ledger.__exit__\` from rewriting the file. Ordinary unknown id remains the baseline error.
+
+Independently of the flag, \`block\` refuses a \`VERIFIED\` item with code 3. \`done\` on \`VERIFIED\` refuses different evidence; identical evidence returns success after printing current state but deliberately raises before context exit, so it does not rewrite evidence/history or the ledger bytes. Non-terminal transitions without the flag retain baseline behavior.
+
+### Deterministic NEEDS_SUCCESSOR queue
+
+The accepted wrapper candidate exposes \`scan_successors()\` and runs it after existing \`commit.py check\` and \`attention\`. The scan takes a shared lock on the same \`ledger.json.lock\`, reads but never mutates the ledger, and atomically replaces only \`commitments/needs_successor.json\`:
+
+\`{"schema_version":1,"items":[{"id":"C-0001","kind":"pid|manual|blocked","evidence":"...","first_seen":<epoch>,"last_seen":<epoch>}]}\`.
+
+Entries exist only for: a DISPATCHED pid whose existing \`handle_status\` is \`dead\` (not \`finished\`); a DISPATCHED \`manual:*\` handle older than the configurable \`COMMIT_MANUAL_LEASE_S\` default six hours without a fresh heartbeat; or a BLOCKED item lacking a checkable \`item:/file:/user:/cmd:\` blocker. \`updated\` is never treated as heartbeat. Manual heartbeat is an executor-owned read-only input at \`commitments/heartbeats/<handle-ref>.json\` with \`{"item_id":"C-0001","handle_ref":"sa-name","at":<epoch>}\`; it is fresh only when its item/ref match and its timestamp is no more than the lease old and not materially future. Queue \`first_seen\` is preserved while an entry remains; recovered/closed items disappear on the next scan.
+
+Unreadable/corrupt ledger raises a scan error, leaves the existing queue untouched, and makes the invoking check/attention return nonzero. The queue is surfaced as \`NEEDS_SUCCESSOR ...\` lines. The existing \`commit_watch.py\` needs no behavior change because it already invokes installed \`commit.py check\` and prints that output. This is ownership triage only: it never closes, blocks, drops, restates, refreshes, or dispatches an item.
+
+### Owner-pause patrol marker
+
+The patrol reads optional \`lab/journal/paused_units.json\`:
+
+\`{"schema_version":1,"units":{"t1-btcusdt":{"reason":"owner pause","authorized_by":"operator","authorized_at":"2026-10-17T12:00:00+02:00","review_by":"2026-10-18T12:00:00+02:00"}}}\`.
+
+All four strings are required and both timestamps must be ISO-8601 with offsets. Unknown unit names produce \`PAUSE_UNKNOWN_UNIT\`. Wrong schema/malformed records produce \`PAUSE_MARKER_INVALID\` and suppress nothing. An expired \`review_by\` produces \`PAUSE_EXPIRED\` and the unit is treated exactly as unpaused.
+
+For a valid unexpired pause on an inactive unit, only the baseline inactive \`SERVICE\` and stale-file \`STALE_STATUS\` findings are suppressed. POLL_ERRORS, WRITE_RATE, DISK_FREE, MACHINE_GAP, FINDING and repeat suppression remain on their baseline paths. A marked unit that is actually active emits \`PAUSE_UNIT_ACTIVE\` and all normal checks, including SERVICE restart, STALE_STATUS and POLL_ERRORS, apply.
+
+Exposure is fail-closed and read-only. Patrol opens \`lab/data/paper-v4/runtime.sqlite3\` for h2 or \`lab/data/paper-<unit>/runtime.sqlite3\` otherwise in SQLite read-only mode, reads \`state(id=1,payload)\`, recursively recognizes serialized \`position\`, \`positions\`, and \`open_orders\` fields, and reports \`PAUSE_OPEN_EXPOSURE\` if a recognized field is nonzero/nonempty. It reports \`PAUSE_EXPOSURE_UNKNOWN\` for missing/unreadable SQLite, absent state row, malformed JSON, unrecognized state shape, or an unclassifiable recognized value. It never assumes an unfamiliar runtime is flat.
+
+When the marker does not exist, the original systemctl/status/poll/write/disk/heartbeat and patrol-state paths are unchanged; no service or systemd state is written.
+
+### r12 source-to-installed mapping and copy replay
+
+Candidate mapping after independent acceptance only:
+
+- \`engineering/progress_semantics/installed_commit.py\` -> \`plugins/commitment-gate/commit.py\`
+- \`engineering/progress_semantics/installed_commit_base.py\` -> \`plugins/commitment-gate/commit.py.pa1-base\`
+- \`engineering/progress_semantics/installed_commit_watch.py\` -> \`scripts/commit_watch.py\`
+- \`engineering/progress_semantics/installed_desk_patrol.py\` -> \`scripts/desk_patrol.py\`
+- \`engineering/progress_semantics/{__init__.py,progress_semantics.py,watcher_adapter.py}\` -> \`plugins/commitment-gate/pa1/progress_semantics/\`
+
+Main's copy replay should use a temporary \`HERMES_HOME\`, reproduce that exact layout, and use only temporary ledger/runtime/status files. Existing candidate test command remains \`python3 -m unittest discover -s engineering/progress_semantics/tests -v\`. Deployed-layout replay commands are:
+
+\`HERMES_HOME=<tmp> python3 <tmp>/plugins/commitment-gate/commit.py --ledger <tmp>/commitments/test-ledger.json done C-0001 --expect-state DISPATCHED --evidence proof\`
+
+\`HERMES_HOME=<tmp> python3 <tmp>/plugins/commitment-gate/commit.py --ledger <tmp>/commitments/test-ledger.json block C-0001 --expect-state DISPATCHED --reason synthetic\`
+
+\`HERMES_HOME=<tmp> python3 <tmp>/plugins/commitment-gate/commit.py --ledger <tmp>/commitments/test-ledger.json drop C-0001 --expect-state BLOCKED --reason synthetic\`
+
+\`HERMES_HOME=<tmp> python3 <tmp>/plugins/commitment-gate/commit.py check\`
+
+\`HERMES_HOME=<tmp> python3 <tmp>/plugins/commitment-gate/commit.py attention\`
+
+\`HERMES_HOME=<tmp> python3 <tmp>/scripts/commit_watch.py\`
+
+\`PATH=<fake-systemctl-dir>:$PATH HERMES_HOME=<tmp> python3 <tmp>/scripts/desk_patrol.py\`
+
+Run the last command once with no \`paused_units.json\`, then with a synthetic valid marker and synthetic read-only runtime SQLite fixture. The replay must also provide the stub \`scripts/heartbeat_gate.py\` used by tests. These are candidate/deployed-layout verification commands, not evidence that r12 was installed or run.
+
+r12 does not change the 15-second/tick gate, cost/risk checks, scheduler quota state, PAPER services, provider/configuration, or the denied r7 launcher boundary. C0376 remains UNATTENDED_NOT_PROVEN.
