@@ -142,6 +142,13 @@ class WatcherAdapterTests(unittest.TestCase):
         self.assertEqual(rec["run_at"].second,28)
         self.assertTrue(rec["raw_sha256"])
 
+    def test_real_shape_211342_filename_211341_body_is_one_run(self):
+        text="**Job ID:** fa25edbf3834\n**Run Time:** 2026-10-16 21:13:41\n## Response\n[SILENT]"
+        rec=output_record("fa25edbf3834",
+                          "cron/output/fa25edbf3834/2026-10-16_21-13-42.md",text,ZONE)
+        self.assertEqual(rec["at"].isoformat(),"2026-10-16T21:13:42+02:00")
+        self.assertEqual(rec["run_at"].second,41)
+
     def test_body_filename_larger_unexplained_skew_fails(self):
         text="**Job ID:** job1\n**Run Time:** 2026-10-17 01:19:27\n**Mode:** no_agent (script)\n**Status:** silent (empty output)"
         with self.assertRaises(ValueError):
@@ -169,6 +176,18 @@ class WatcherAdapterTests(unittest.TestCase):
             (outdir/"2026-10-17_13-10-33.md").write_text(
                 "**Job ID:** job1\n**Run Time:** 2026-10-17 13:10:32\n## Response\n[SILENT]","utf-8")
             self.assertEqual(assess_profile(root,"C0026",NOW,self.req())["state"],"OK")
+
+    def test_latest_scheduler_error_applies_only_to_matching_run(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/"commitments").mkdir()
+            outdir=root/"cron"/"output"/"job1"; outdir.mkdir(parents=True)
+            (root/"commitments"/"ledger.json").write_text(json.dumps({"items":[item()]}),"utf-8")
+            job=interval(last_status="error",last_run_at="2026-10-17T13:10:33.375004+02:00")
+            (root/"cron"/"jobs.json").write_text(json.dumps({"jobs":[job]}),"utf-8")
+            (outdir/"2026-10-17_12-10-33.md").write_text("## Response\n[SILENT]","utf-8")
+            (outdir/"2026-10-17_13-10-33.md").write_text("## Response\n[SILENT]","utf-8")
+            r=assess_profile(root,"C0026",NOW,self.req())
+            self.assertEqual((r["state"],r["reason_code"]),("SAFETY","CRON_FAILED"))
 
     def test_profile_current_malformed_fails_closed(self):
         with tempfile.TemporaryDirectory() as td:
