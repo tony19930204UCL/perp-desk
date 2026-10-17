@@ -60,7 +60,21 @@ class ProgressTests(unittest.TestCase):
         item["one_shot"]=True
         state={"last_alerts":{"C0003:ONE_SHOT_MISLABELLED":"2026-10-16T20:00:00+00:00"}}
         self.assertTrue(evaluate(item, NOW, sched, {}, state)["suppressed_by_cooldown"])
-    def test_required_artifact_missing(self):\n        item, sched = check("C0027", "fa25edbf3834")\n        r=evaluate(item,NOW,sched,{"runs":[run(sched["job_id"])]},{"required_artifacts":["score.json"]})\n        self.assertEqual(r["reason_code"],"MISSING_ARTIFACT")\n    def test_script_mismatch(self):\n        item, sched = check("C0027", "fa25edbf3834")\n        r=run(sched["job_id"]); r["script_hash"]="old"\n        self.assertEqual(evaluate(item,NOW,sched,{"runs":[r]},{"expected_hash":"new"})["reason_code"],"SCRIPT_MISMATCH")\n    def test_disabled_not_suppressed(self):
+    def test_required_artifact_missing(self):
+        item, sched = check("C0027", "fa25edbf3834")
+        r = evaluate(item, NOW, sched, {"runs": [run(sched["job_id"])]},
+                     {"required_artifacts": ["score.json"]})
+        self.assertEqual(r["reason_code"], "MISSING_ARTIFACT")
+
+    def test_script_mismatch(self):
+        item, sched = check("C0027", "fa25edbf3834")
+        r = run(sched["job_id"])
+        r["script_hash"] = "old"
+        self.assertEqual(evaluate(item, NOW, sched, {"runs": [r]},
+                                  {"expected_hash": "new"})["reason_code"],
+                         "SCRIPT_MISMATCH")
+
+    def test_disabled_not_suppressed(self):
         item, sched = check("C0027", "fa25edbf3834", disabled=True)
         self.assertTrue(evaluate(item, NOW, sched, {}, {})["alert"])
 if __name__ == "__main__":
