@@ -305,7 +305,17 @@ def assess_profile(home, item_id, now, requirements=None):
         for path in sorted(out_dir.glob("*.md")):
             ref = "cron/output/" + str(job_id) + "/" + path.name
             try:
-                outputs.append(output_record(job_id, ref, path.read_text("utf-8"), timezone_name))
+                record = output_record(job_id, ref, path.read_text("utf-8"), timezone_name)
+                last_run = matches[0].get("last_run_at")
+                if last_run:
+                    try:
+                        if same_serialized_second(record["at"], aware(last_run)):
+                            last_status = matches[0].get("last_status")
+                            if last_status not in (None, "ok", "silent"):
+                                record["status"] = "failed"
+                    except (TypeError, ValueError):
+                        pass
+                outputs.append(record)
             except (OSError, ValueError) as exc:
                 marker = STAMP.search("/" + ref)
                 stamp = None
