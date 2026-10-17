@@ -582,7 +582,9 @@ class P3RetentionTests(unittest.TestCase):
                 r'price=99\.05 tick=0\.1 remainder=0\.05'):
             b.on_event(event)
         self.assertNotIn('bad-tick', b.seen_events)
-        self.assertEqual(self.rows(), [])
+        events, metadata, _ = self.rows()
+        self.assertEqual(events, [])
+        self.assertEqual(metadata, [])
 
     def test_funding_id_survives_nonfunding_retention_forever(self):
         b = self.broker()
