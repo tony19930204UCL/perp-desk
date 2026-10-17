@@ -109,12 +109,9 @@ class ReceiptStorage:
             tuple(_SCHEMAS)).fetchall()
         if unexpected:
             raise ValueError("unexpected runtime receipt storage object")
-        for digest, payload_json in self.db.execute(
-                "SELECT digest,payload_json FROM runtime_receipt_payloads"):
-            if not _valid_digest(digest) or _digest(payload_json) != digest:
-                raise ValueError("corrupt receipt payload archive")
-            if _canonical(json.loads(payload_json)) != payload_json:
-                raise ValueError("noncanonical receipt payload archive")
+        # Opening cost is O(number of causal observations), not O(raw payload
+        # bytes): validate observation metadata plus each referenced payload by
+        # indexed lookup. The bounded raw diagnostics table is never scanned.
         for seq, endpoint, params_json, envelope_json, payload_digest in self.db.execute(
                 "SELECT seq,endpoint,params_json,envelope_json,payload_digest "
                 "FROM runtime_causal_receipts"):
@@ -127,10 +124,13 @@ class ReceiptStorage:
                 raise ValueError("noncanonical causal receipt metadata")
             if "payload" in envelope:
                 raise ValueError("causal envelope must not duplicate payload")
-            if self.db.execute(
-                    "SELECT 1 FROM runtime_receipt_payloads WHERE digest=?",
-                    (payload_digest,)).fetchone() is None:
+            row = self.db.execute(
+                "SELECT payload_json FROM runtime_receipt_payloads WHERE digest=?",
+                (payload_digest,)).fetchone()
+            if row is None:
                 raise ValueError("missing causal receipt payload pointer")
+            if _digest(row[0]) != payload_digest or _canonical(json.loads(row[0])) != row[0]:
+                raise ValueError("corrupt causal receipt payload pointer")
 
     def _put_payload(self, payload):
         text = _canonical(payload)
