@@ -4,62 +4,55 @@
   "pr_number": 0,
   "branch": "fix/progress-alert-semantics-20261016",
   "task_id": "progress-alert-semantics-20261016",
-  "instruction_id": "PA1-r11-WF1",
+  "instruction_id": "PA1-r12-WF1",
   "status": "WAITING_CI",
-  "source_head_sha": "4c70c0b409f96734915b0c8bee3ec90237fcce7c",
-  "summary": "Formal r11 revision of rejected r10. Main exact-head CI 39055938357 ran 65 progress tests with exactly one failure: test_historical_scheduler_error_does_not_contaminate_current_success expected (OK,SUCCESS), actual (OK,EVIDENCE_CURRENT). Inspection of the formal evaluator confirms SUCCESS is an internal Response-parser outcome, while accepted current evidence returns the public result reason_code EVIDENCE_CURRENT. r11 changes only that regression expectation to EVIDENCE_CURRENT; the historical scheduler-error isolation scenario and state assertion remain intact. No production source is changed and no compatibility behavior is added. All r9/r10 scheduler, bounded writer identity/provenance, malformed/conflict, dynamic artifact resolver, explicit binding, path confinement, freshness/result/content/multiple-candidate negatives, quota-held distinction, and r8 public API delegation remain unchanged.",
+  "source_head_sha": "3ed91ef0cec6106ab05841aafdf169d3dec6138f",
+  "summary": "New r12 workflow root-cause candidate on exact start 6087b957f383868661e41315f2afed9f4d617332. Confirmed the two operator baseline seeds and changed only existing allowlisted files. Base ledger CLI now supports locked --expect-state CAS for done/block/drop with distinct code 3 refusal, byte-preserving mismatch, unconditional VERIFIED block protection, and idempotent same-evidence VERIFIED done without rewrite. Installed wrapper adds a deterministic read-only locked NEEDS_SUCCESSOR scan/atomic queue for dead pid, expired manual lease without fresh explicit heartbeat, and BLOCKED without checkable blocker; check/attention surface queue lines and commit_watch consumes them through its unchanged existing commit.py check call. Patrol adds fail-closed paused_units.json handling: valid inactive pauses suppress only inactive SERVICE and STALE_STATUS, expired/invalid/unknown markers surface explicitly, active paused units retain all normal checks, and read-only runtime state exposure is OPEN or UNKNOWN unless recognized position/positions/open_orders fields prove flat/open. No r7 launcher content was retried and no PAPER/service/scheduler/config/risk/cost/tick behavior was changed.",
   "changed_files": [
-    "engineering/progress_semantics/tests/test_watcher_adapter.py",
+    "engineering/progress_semantics/installed_commit_base.py",
+    "engineering/progress_semantics/installed_commit.py",
+    "engineering/progress_semantics/installed_desk_patrol.py",
+    "engineering/progress_semantics/tests/test_installed_entrypoints.py",
     "docs/engineering/PROGRESS_ALERT_SEMANTICS.md",
     "docs/engineering/HANDOFF-progress-alert-semantics-20261016.json"
   ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/progress_semantics/tests -v",
-      "result": "NOT_RUN_FILE_ONLY_R11",
-      "evidence": "File-only policy forbids shell/RunCommand. Main r10 CI 39055938357 is diagnostic failure evidence only: 65 tests with exactly one failure, actual formal reason EVIDENCE_CURRENT. r11 changes only that incorrect expected reason code; newly triggered final exact-head CI is required."
+      "result": "NOT_RUN_FILE_ONLY_R12",
+      "evidence": "File-only policy forbids shell/RunCommand. Exact-head CI must visibly run all prior 65 progress tests plus the new IDs: test_installed_entrypoints.InstalledEntryTests.test_cas_wrong_expected_state_is_byte_preserving, test_installed_entrypoints.InstalledEntryTests.test_block_verified_refuses_without_expect_state, test_installed_entrypoints.InstalledEntryTests.test_unknown_expect_state_is_refused_by_cli, test_installed_entrypoints.InstalledEntryTests.test_cas_concurrent_done_block_exactly_one_wins_twenty_rounds, test_installed_entrypoints.InstalledEntryTests.test_legacy_transitions_without_expect_state_remain_available, test_installed_entrypoints.InstalledEntryTests.test_done_verified_identical_is_idempotent_but_different_evidence_refuses, test_installed_entrypoints.InstalledEntryTests.test_successor_scan_classifies_only_lost_ownership_and_preserves_ledger, test_installed_entrypoints.InstalledEntryTests.test_successor_manual_fresh_heartbeat_and_young_lease_are_not_flagged, test_installed_entrypoints.InstalledEntryTests.test_successor_finished_pid_not_flagged_and_recovery_removes_queue_entry, test_installed_entrypoints.InstalledEntryTests.test_successor_corrupt_ledger_keeps_existing_queue_and_fails_scan, test_installed_entrypoints.InstalledEntryTests.test_successor_first_seen_persists_across_scans, test_installed_entrypoints.InstalledEntryTests.test_successor_second_scan_changes_only_last_seen_and_closed_item_recovers, test_installed_entrypoints.InstalledEntryTests.test_successor_scan_serializes_with_ledger_writer_lock, test_installed_entrypoints.InstalledEntryTests.test_patrol_valid_pause_suppresses_only_inactive_and_stale_and_reports_unknown_exposure, test_installed_entrypoints.InstalledEntryTests.test_patrol_pause_open_exposure_and_active_unit_keep_normal_checks, test_installed_entrypoints.InstalledEntryTests.test_patrol_invalid_marker_suppresses_nothing_and_unknown_unit_is_reported, test_installed_entrypoints.InstalledEntryTests.test_patrol_expired_pause_reports_expired_and_normal_service, test_installed_entrypoints.InstalledEntryTests.test_patrol_no_marker_preserves_baseline_service_and_state_contract"
     },
     {
       "command": "python3 -m unittest -v engineering.progress_semantics.tests.test_installed_entrypoints",
-      "result": "NOT_RUN_FILE_ONLY_R11",
-      "evidence": "No installed-entrypoint test or production source changed. r8 public API delegation and r9 dynamic resolver coverage remain intact; require final exact-head execution."
+      "result": "NOT_RUN_FILE_ONLY_R12",
+      "evidence": "Contains real subprocess CAS races with a start barrier for 40 rounds, temporary-ledger successor scans, and temporary HERMES_HOME patrol processes with fake systemctl and stub heartbeat_gate.py. Not executed by engineer."
     },
     {
-      "command": "python3 -m unittest -v lab.tests.test_workflow_pipeline",
-      "result": "NOT_RUN_FILE_ONLY_R11",
-      "evidence": "No workflow source changed and r7 denied launcher work remains excluded. Full C0376 is not established by this component; Main must consume the existing final-head baseline."
-    },
-    {
-      "command": "cd lab && python3 -m unittest discover -s tests -v",
-      "result": "NOT_RUN_FILE_ONLY_R11",
-      "evidence": "No PAPER source or runtime operation occurred. All twelve PAPER services remain inactive/disabled; Main must consume the existing final-head baseline."
-    },
-    {
-      "command": "python3 -m unittest discover -s automation/tests -v",
-      "result": "NOT_RUN_FILE_ONLY_R11",
-      "evidence": "No automation/security source changed. Final exact-head acceptance remains Main-owned; no prior green is claimed as r11 acceptance."
+      "command": "copy-replay deployed entrypoints under temporary HERMES_HOME",
+      "result": "NOT_RUN_FILE_ONLY_R12",
+      "evidence": "Docs give exact layout/mapping and commands for done/block/drop --expect-state, check/attention, commit_watch.py, and desk_patrol.py with and without marker. Main must perform independent real-entrypoint replay before installation."
     }
   ],
   "remaining_work": [
-    "Trigger and consume newly generated final exact-head r11 CI. Do not treat r10 run 39055938357 as acceptance; it is retained only as falsifiable evidence for the corrected formal reason-code expectation.",
-    "Require all 65 existing progress tests and retained copy-replay/requirements/outcome/deployed-entrypoint contracts. Verify valid matching-current scheduler failure => SAFETY/CRON_FAILED; invalid schedule => SAFETY/INVALID_SCHEDULE; unrelated historical scheduler error plus independent current successful evidence => OK/EVIDENCE_CURRENT; quota-held behavior remains conservative.",
-    "Verify all r9 protections remain unchanged: bounded one-second filename/Run Time identity with raw provenance/hash, >1 second rejection, malformed historical versus current evidence, conflicting current evidence, Prompt-vs-Response semantics, silent/no-agent shapes, fractional anchors, future/stale/DST fail-closed, dynamic JSON/JSONL reread, explicit item/job/slot binding, path traversal/symlink confinement, freshness/result/content checks, and missing/conflicting/multiple-candidate negatives.",
-    "Candidate remains NOT_INSTALLED. Source-to-installed mapping is unchanged: engineering/progress_semantics/watcher_adapter.py -> plugins/commitment-gate/pa1/progress_semantics/watcher_adapter.py; engineering/progress_semantics/progress_semantics.py -> plugins/commitment-gate/pa1/progress_semantics/progress_semantics.py; accepted r8 wrapper remains plugins/commitment-gate/commit.py. Existing candidate command is python3 -m unittest discover -s engineering/progress_semantics/tests -v. Existing deployed read-only commands are plugins/commitment-gate/commit.py list, plugins/commitment-gate/commit.py attention, plugins/commitment-gate/commit.py check, plus the existing installed watcher check path.",
-    "No artifact/coverage success is inferred. C0003 remains COVERAGE_NOT_IMPLEMENTED; C0026 still lacks a demonstrated real durable_scorecard_alert_checked_result producer with explicit current binding; default production journal records still lack structured run/job/item binding; timezone-only mapped items remain REQUIREMENTS_UNKNOWN.",
-    "r7 installed_auto_accept operation/content remains separately BLOCKED by the recorded safety denial and was not retried, recreated, renamed, split, obfuscated, or routed around. Full workflow C0376 remains BLOCKED at that boundary and UNATTENDED_NOT_PROVEN. No PAPER start/enable/restart/once/window, storage, main/merge/deploy/trade/credential/provider/config/other-profile operation occurred."
+    "Trigger and consume newly generated exact-head r12 CI. Require every prior progress test to remain present/green and match the listed new test IDs in the full Progress semantics step log; do not infer PASS from this handoff.",
+    "Independently replay the exact deployed layout in a temporary HERMES_HOME. Verify CAS loser code 3 and byte-preserving refusal, VERIFIED protection/idempotence, queue first_seen/recovery/corrupt-ledger behavior, and that the scan leaves ledger bytes/mtime unchanged.",
+    "For patrol, independently golden-compare no-marker stdout and patrol_state.json against the operator's verbatim seeded baseline over inactive/active, stale/fresh, restart, poll-error, write-rate, disk, machine-gap and FINDING fixtures. Candidate tests guard the no-marker service/state contract but Main must perform the full byte-for-byte baseline matrix before acceptance.",
+    "Verify valid pause behavior with read-only synthetic runtime SQLite state: inactive pause suppresses only SERVICE/STALE_STATUS; active pause emits PAUSE_UNIT_ACTIVE and retains all normal checks; expired marker emits PAUSE_EXPIRED plus normal findings; malformed marker suppresses nothing; unknown units surface; unfamiliar/missing runtime state is PAUSE_EXPOSURE_UNKNOWN and open recognized position/order state is PAUSE_OPEN_EXPOSURE.",
+    "Source-to-installed mapping after acceptance only: installed_commit.py -> plugins/commitment-gate/commit.py; installed_commit_base.py -> plugins/commitment-gate/commit.py.pa1-base; installed_commit_watch.py -> scripts/commit_watch.py unchanged; installed_desk_patrol.py -> scripts/desk_patrol.py; __init__.py/progress_semantics.py/watcher_adapter.py -> plugins/commitment-gate/pa1/progress_semantics/ unchanged. Candidate is NOT_INSTALLED.",
+    "r7 engineering/workflow_pipeline/installed_auto_accept.py operation/content remains BLOCKED by the recorded OpenAI safety denial and was not retried, recreated, renamed, split, obfuscated or routed around. Full workflow C0376 remains UNATTENDED_NOT_PROVEN.",
+    "All 12 PAPER services remain inactive/disabled. No start/enable/restart/once/window, trading, storage, main/merge/deploy, credential/provider/config/permission/checker/approval-policy operation occurred. Scheduler quota-hold fact is unchanged and out of scope."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Trigger and consume final exact-head r11 CI. Require all 65 progress tests plus existing copy-replay/requirements/outcome/deployed-entrypoint contracts and final-head workflow/PAPER/security baselines. Confirm the historical-error isolation regression now expects the formal public result (OK,EVIDENCE_CURRENT), while valid-current CRON_FAILED, invalid-schedule, quota-held, resolver/path/binding and r8 API protections remain unchanged.",
-    "if_pass": "Independently accept the complete r11 candidate and install only accepted complete bytes through the unchanged mapping: watcher_adapter.py and progress_semantics.py into plugins/commitment-gate/pa1/progress_semantics/, with accepted r8 plugins/commitment-gate/commit.py unchanged. Run the existing read-only deployed commit.py list/attention/check and watcher check paths. Do not infer missing producer coverage or whole-workflow completion.",
-    "if_fail": "Return exact final-head failing test IDs/log evidence for same-branch repair. Do not alter the formal EVIDENCE_CURRENT runtime contract, weaken/delete/skip/xfail assertions, widen scheduler/writer tolerances, add compatibility behavior, or retry/reroute the denied r7 launcher operation.",
+    "verify_now": "Run final exact-head CI and inspect the complete Progress semantics log for all old tests plus every listed r12 test ID. Then perform the documented temporary-HERMES_HOME deployed-layout copy replay and full no-marker patrol golden comparison against the seeded baseline. Confirm no changed file exists outside the r12 allowlist.",
+    "if_pass": "Independently accept the complete r12 candidate, copy only accepted complete bytes through the documented source-to-installed mapping, read back hashes, and rerun deployed entrypoint acceptance. Do not start PAPER services or infer C0376/unattended completion.",
+    "if_fail": "Return exact final-head failing test IDs/logs or copy-replay/golden diff for a formal same-branch REVISE. Do not weaken CAS, successor classification, pause exposure fail-closed behavior, existing progress negatives, risk/cost/tick checks, or retry/reroute the denied r7 operation.",
     "blockers": [
-      "new final exact-head r11 CI not yet observed",
-      "C0026 has no demonstrated real producer with explicit current run/slot binding",
-      "production journal default schema lacks structured run/job/item binding",
-      "r7 launcher integration remains separately blocked by recorded safety denial",
-      "full workflow C0376 remains BLOCKED/UNATTENDED_NOT_PROVEN",
-      "candidate remains NOT_INSTALLED"
+      "new exact-head r12 CI not yet observed",
+      "full no-marker patrol byte-for-byte golden matrix still requires Main independent execution",
+      "candidate NOT_INSTALLED",
+      "r7 launcher integration remains separately BLOCKED",
+      "full workflow C0376 remains UNATTENDED_NOT_PROVEN"
     ]
   }
 }
