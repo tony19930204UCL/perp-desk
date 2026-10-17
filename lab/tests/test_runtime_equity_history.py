@@ -774,6 +774,42 @@ class ReferenceRuntimeTests(RuntimeIntegrationTests):
 
 
 
+
+    def test_base_and_v5_fetch_causal_survives_bounded_raw_expiry(self):
+        class Client:
+            def __init__(self, now):
+                self.now = now
+                self.n = 0
+            def get(self, endpoint, params):
+                self.n += 1
+                payload = ({"serverTime":self.now} if endpoint == '/fapi/v1/time'
+                           else {"bids":[["100","1"]],"asks":[["101","1"]]})
+                return {"endpoint":endpoint,"params":dict(params),"payload":payload,
+                        "received_at":stamp(self.now),
+                        "received_at_ms":self.now,"source_timestamp_ms":self.now}
+        for cls in (BaseRuntime, V5Runtime):
+            with self.subTest(cls=cls.__module__):
+                root, _ = self.seeded(cls, 'receipt-path-' + cls.__module__)
+                obj = self.runtime(cls, root)
+                obj.client = Client(self.now[0])
+                depth = obj.fetch('/fapi/v1/depth', {'symbol':'ETHUSDT','limit':5})
+                for _ in range(300):
+                    obj.fetch('/fapi/v1/time')
+                with sqlite3.connect(root / 'runtime.sqlite3') as db:
+                    self.assertLessEqual(db.execute(
+                        'SELECT COUNT(*) FROM runtime_noncausal_raw_receipts').fetchone()[0],
+                        256)
+                    row = db.execute(
+                        "SELECT payload FROM audit WHERE payload LIKE '%runtime_causal_receipts%' "
+                        "ORDER BY id LIMIT 1").fetchone()
+                    self.assertIsNotNone(row)
+                    pointer = json.loads(row[0])['receipt']
+                    from runtime_receipt_storage import ReceiptStorage
+                    self.assertEqual(
+                        ReceiptStorage(db).reconstruct(pointer['receipt_seq']), depth)
+                obj.close()
+
+
     def test_recent_window_never_deletes_append_only_archive(self):
         root, _ = self.seeded(BaseRuntime, 'append-only-window', history=[])
         obj = self.runtime(BaseRuntime, root)
