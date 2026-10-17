@@ -4,12 +4,15 @@
   "pr_number": 0,
   "branch": "fix/progress-alert-semantics-20261016",
   "task_id": "progress-alert-semantics-20261016",
-  "instruction_id": "PA1-r8-WF1",
+  "instruction_id": "PA1-r9-WF1",
   "status": "WAITING_CI",
-  "source_head_sha": "e6c4bdacc1fa1e9d78edacb749bfe2a5c1efebdd",
-  "summary": "Distinct r8 repair of the accepted r6 installed_commit.py import API defect. The wrapper now delegates otherwise-missing module attributes to the byte-for-byte original commit.py.pa1-base while retaining PA1 evaluate as the wrapper evaluator and assigning the same evaluator to base.evaluate for the unchanged original CLI. Regression stages the documented installed layout and exercises legacy Ledger/constants/helpers plus evaluator/CLI linkage. r6 progress semantics are otherwise unchanged; no installation/runtime operation and no r7 launcher retry.",
+  "source_head_sha": "4748ff73795cb15ec54d59c042e0861535c779e8",
+  "summary": "Distinct r9 repair in the existing progress/watcher seam. Output ingestion now validates path/body job identity, preserves filename/run timestamps plus raw SHA-256, accepts only bounded one-second independent writer skew, classifies malformed history per due slot, fails closed on malformed/conflicting current evidence, and binds scheduler last_status only to the matching last_run identity. assess_profile now dynamically re-reads configured profile-relative JSON/JSONL artifact evidence with path confinement, explicit item/job/slot selectors, freshness, explicit success/content checks, and exactly-one-candidate semantics; title/timestamp/refs mentions and static objects cannot prove coverage. Explicit quota-held interval anchors are recognized as current availability unknown without rewriting cadence or masking matching current failure. r8 installed public API delegation remains unchanged. No install/runtime operation and no r7 retry.",
   "changed_files": [
-    "engineering/progress_semantics/installed_commit.py",
+    "engineering/progress_semantics/watcher_adapter.py",
+    "engineering/progress_semantics/progress_semantics.py",
+    "engineering/progress_semantics/tests/test_watcher_adapter.py",
+    "engineering/progress_semantics/tests/test_progress_semantics.py",
     "engineering/progress_semantics/tests/test_installed_entrypoints.py",
     "docs/engineering/PROGRESS_ALERT_SEMANTICS.md",
     "docs/engineering/HANDOFF-progress-alert-semantics-20261016.json"
@@ -17,46 +20,48 @@
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/progress_semantics/tests -v",
-      "result": "NOT_RUN_FILE_ONLY_R8",
-      "evidence": "File-only policy forbids shell/RunCommand. New exact-head automatic CI is required; r6 green CI 39046010222/job 117434759667 is historical only and is not reused for r8."
+      "result": "NOT_RUN_FILE_ONLY_R9",
+      "evidence": "File-only policy forbids shell/RunCommand. Added real-shape 21:13:42 filename vs 21:13:41 Run Time, >1s rejection, body-job mismatch, old-malformed/current-valid, current-malformed, run-scoped scheduler failure, conflicting current outputs, dynamic JSONL explicit binding, ambiguous artifacts, traversal rejection, quota-held interval, pure explicit/fresh artifact, and installed-entrypoint resolver regressions. Newly triggered exact-head CI required."
     },
     {
       "command": "python3 -m unittest -v engineering.progress_semantics.tests.test_installed_entrypoints",
-      "result": "NOT_RUN_FILE_ONLY_R8",
-      "evidence": "Regression added to the existing discovered test file using the documented plugin/commit.py + commit.py.pa1-base + pa1/progress_semantics installed layout, with a legacy Ledger fixture and constants/helpers; execution deferred to newly triggered exact-head CI."
+      "result": "NOT_RUN_FILE_ONLY_R9",
+      "evidence": "Existing staged plugin/commit.py + byte-identical commit.py.pa1-base + pa1/progress_semantics layout retained. New test reaches dynamic resolver through installed evaluate/assess_profile; r8 Ledger/DISPATCHED/handle_status/API delegation assertions remain present."
     },
     {
       "command": "python3 -m unittest -v lab.tests.test_workflow_pipeline",
-      "result": "NOT_RUN_FILE_ONLY_R8",
-      "evidence": "No workflow source was changed in r8; unchanged baseline still requires newly triggered exact-head CI rather than r6 evidence."
+      "result": "NOT_RUN_FILE_ONLY_R9",
+      "evidence": "No workflow_pipeline source was changed. Exact-head baseline must be supplied by new CI; r7 denied launcher work is not retried or claimed."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
-      "result": "NOT_RUN_FILE_ONLY_R8",
-      "evidence": "No local execution permitted. Twelve paper services remain untouched/stopped; exact-head CI must supply baseline evidence."
+      "result": "NOT_RUN_FILE_ONLY_R9",
+      "evidence": "No local execution permitted. All twelve paper services remain inactive/disabled and no once/window/research operation was performed."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests -v",
-      "result": "NOT_RUN_FILE_ONLY_R8",
-      "evidence": "Security/exporter baseline not executed locally; require the newly triggered exact-head CI."
+      "result": "NOT_RUN_FILE_ONLY_R9",
+      "evidence": "Security/exporter baseline not executed locally; require newly triggered exact-head CI."
     }
   ],
   "remaining_work": [
-    "Require newly triggered exact-head r8 CI for the final mailbox head; do not reuse r6 green evidence. It must run the full progress suite including the new installed import compatibility regression and all preserved r6 precision/timestamp cases, then unchanged workflow/PAPER/security baselines.",
-    "No live installation occurred. After independent acceptance, install the complete accepted installed_commit.py at plugins/commitment-gate/commit.py with the byte-identical original commit.py.pa1-base and already accepted PA1 siblings; read back hashes and legacy import API plus base.evaluate/evaluate identity. Existing rollback mapping is unchanged.",
-    "r7 launcher integration remains BLOCKED by the recorded OpenAI safety denial. No installed_auto_accept.py or other r7 launcher write was retried, renamed, split, obfuscated, or supplied in r8.",
-    "Whole workflow/unattended proof remains unimplemented: launcher/selector/owner-loss, exact-chat approval/GH handback, quota pending-work recovery, patrol disposition/no-new-user-message closure, and separate PR0 coordinator incompatibility remain outside this repair.",
-    "installed=false; unattended_proven=false; PR69 storage and all twelve paper services were untouched."
+    "Require newly triggered exact-head r9 CI at the final mailbox head. Do not reuse r6/r8 green evidence. Verify all prior precision/DST/future/Prompt-vs-Response/no-agent/missing-output/dedupe/API assertions plus the new writer-skew, malformed/conflict, dynamic resolver, path-confinement and quota-held cases.",
+    "No r9 installation occurred. After independent acceptance, Main may install the complete accepted watcher_adapter.py and progress_semantics.py bytes into plugins/commitment-gate/pa1/progress_semantics/ using the existing documented mapping; accepted r8 plugins/commitment-gate/commit.py remains unchanged. Read-only acceptance remains installed commit.py list, commit.py attention, commit.py check, and the existing installed watcher check path.",
+    "Production journal entries do not contain default structured item/job/run/rc bindings. J-0015/J-0433..J-0437-style title/timestamp/refs evidence therefore remains insufficient. C0003 stays COVERAGE_NOT_IMPLEMENTED; C0026 durable_scorecard_alert_checked_result remains MISSING_ARTIFACT until a real producer and explicit binding contract exist; timezone-only C0027/C0028/C0041/C0062/C0069/C0095 stay REQUIREMENTS_UNKNOWN.",
+    "r7 launcher integration remains BLOCKED by the recorded OpenAI safety denial. No installed_auto_accept.py, auto_accept, ledger_wake, workflow_pipeline, launcher, permission or checker write was attempted in r9.",
+    "Full workflow C0376/unattended completion remains unaccepted. Exact-chat approval/GitHub handback, owner-loss/launcher selection, quota pending-work recovery and patrol disposition remain outside r9. NOT_INSTALLED; UNATTENDED_NOT_PROVEN; PR69/storage and paper runtime were untouched."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Consume only the newly triggered exact-head r8 CI. Confirm the installed-entrypoint regression proves legacy commit.Ledger/DISPATCHED/handle_status/OPEN/VERIFIED/main/touch/home access from the documented installed layout and that base.evaluate is the PA1 evaluate, while every preserved r6 progress and baseline/security test remains green.",
-    "if_pass": "Independently accept the complete r8 bytes and use the documented install/readback/rollback mapping. Install complete accepted files only; do not hand-edit operator glue and do not treat this as r7 launcher acceptance.",
-    "if_fail": "Return exact r8 failing test IDs/log evidence for same-branch repair. Do not install and do not retry the separately denied r7 launcher operation.",
+    "verify_now": "Consume only newly triggered exact-head r9 CI. Require the full progress suite and unchanged workflow/PAPER/security baselines. Inspect that the real 21:13:42/21:13:41 writer shape passes, >1s/current malformed/conflicts fail closed, latest scheduler status is scoped to matching last_run, journal refs-only evidence does not satisfy artifacts, explicit fresh bound synthetic evidence does, traversal is rejected, quota-held anchors are QUOTA_HELD_UNKNOWN absent current evidence, and r8 import API assertions remain green.",
+    "if_pass": "Independently accept complete r9 bytes and use the documented source -> plugins/commitment-gate/pa1/progress_semantics installed mapping. Run only the existing read-only commit.py list/attention/check and watcher check acceptance paths; do not hand-edit producer glue or infer success for unresolved production artifacts.",
+    "if_fail": "Return exact r9 failing test IDs/log evidence for same-branch repair. Do not install, do not weaken negative assertions, and do not retry or route around the separately denied r7 launcher operation.",
     "blockers": [
-      "new exact-head r8 CI not yet observed",
+      "new exact-head r9 CI not yet observed",
+      "C0026 has no demonstrated real producer with explicit current run/slot binding",
+      "production journal default schema lacks structured run/job/item binding",
       "r7 launcher integration remains separately blocked by recorded safety denial",
-      "no installed or unattended proof"
+      "full workflow C0376 remains unaccepted; no installed or unattended proof"
     ]
   }
 }
