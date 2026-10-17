@@ -4,61 +4,59 @@
   "pr_number": 0,
   "branch": "fix/progress-alert-semantics-20261016",
   "task_id": "progress-alert-semantics-20261016",
-  "instruction_id": "PA1-r2-WF1",
+  "instruction_id": "PA1-r3-WF1",
   "status": "WAITING_CI",
-  "source_head_sha": "faf93fe25fc07c3efb7acaa750be59985d971ba5",
-  "summary": "Repaired r1 CI-blocking literal backslash-n serialization in test_progress_semantics.py and corrected the authored Response-heading regex escape. Newly authored Python was re-read for serialization/syntax anomalies. No deployment/private watcher integration performed.",
+  "source_head_sha": "32e140ce0995b26b5fbeb18b8fc5510547826376",
+  "summary": "Repaired real lab-cwd import discovery; added deployable read-only watcher adapter for supplied ledger/jobs/output contract, replay integration tests, and concrete install/rollback seam preserving existing deterministic verification, history and alert dedupe. No deployment performed.",
   "changed_files": [
-    "engineering/progress_semantics/progress_semantics.py",
-    "engineering/progress_semantics/tests/test_progress_semantics.py",
-    "engineering/workflow_pipeline/__init__.py",
-    "engineering/workflow_pipeline/pipeline.py",
-    "engineering/workflow_pipeline/cli.py",
-    "engineering/workflow_pipeline/source_adapter.py",
     "lab/tests/test_workflow_pipeline.py",
-    "docs/engineering/WORKFLOW_PIPELINE_CONTRACT.md",
+    "engineering/progress_semantics/__init__.py",
+    "engineering/progress_semantics/watcher_adapter.py",
+    "engineering/progress_semantics/tests/test_watcher_adapter.py",
+    "docs/engineering/PROGRESS_ALERT_SEMANTICS.md",
     "docs/engineering/WORKFLOW_PIPELINE_OPERATOR.md",
-    ".github/workflows/ci.yml",
     "docs/engineering/HANDOFF-progress-alert-semantics-20261016.json"
   ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/progress_semantics/tests -v",
-      "result": "WAITING_CI",
-      "evidence": "r1 final-head push run 39026462353 job 117378300821 failed import with SyntaxError before test methods; source-head push 39026442767 also failed. r2 repair source head faf93fe25fc07c3efb7acaa750be59985d971ba5; new exact-head result not yet available through connected PR-run lookup."
+      "result": "NOT_RUN_R3",
+      "evidence": "r2 run 39026889511 focused progress step SUCCESS; r3 adds watcher adapter tests and requires a new exact-head run."
     },
     {
       "command": "python3 -m unittest -v lab.tests.test_workflow_pipeline",
-      "result": "NOT_RUN",
-      "evidence": "Skipped in r1 run 39026462353 after progress step failure; r2 exact-head execution still pending."
-    },
-    {
-      "command": "python3 -m unittest discover -s automation/tests -v",
-      "result": "PASS_R1_ONLY",
-      "evidence": "Exporter contract passed in r1 run 39026462353; this is preserved historical evidence, not an r2 exact-head pass."
+      "result": "NOT_RUN_R3",
+      "evidence": "r2 focused workflow step SUCCESS, but PAPER cwd discovery failed to import the same test. r3 adds repo-root sys.path setup; exact-head execution pending."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
-      "result": "NOT_RUN",
-      "evidence": "PAPER isolated suite and later CI steps were skipped in r1 run 39026462353; r2 exact-head baseline remains pending."
+      "result": "FAILED_R2_REPAIRED_PENDING",
+      "evidence": "r2 final-head run 39026889511 job 117379538740: 485 tests in 82.591s, errors=1; loader import error test_workflow_pipeline ModuleNotFoundError engineering. Source push 39026873306 also failed. r3 repair pending exact-head CI."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests -v",
+      "result": "PASS_R2_ONLY",
+      "evidence": "Exporter contract SUCCESS in r2 run 39026889511; preserved historical evidence, not r3 exact-head evidence."
     }
   ],
   "remaining_work": [
-    "Obtain new exact-head push CI for source head faf93fe25fc07c3efb7acaa750be59985d971ba5 and require progress, workflow, exporter, PAPER and unchanged later CI to complete.",
-    "Private watcher integration remains blocked on the smallest read-only source contract: watcher entrypoint source/path; item-id to schedule/job mapping; cron table/output record schema and reader; journal/coverage record schema and reader; state/artifact record schema and reader; alert/dedupe persistence schema and read/write boundary.",
-    "CLI start/stop/install/rollback remain PLAN_ONLY and are not operational receipts.",
-    "unattended_proven remains false; no deployed handback -> independent acceptance/revise -> authorized readback/next-owner interval or genuine paper-fault disposition was observed.",
-    "Existing obligations C0053/C0071/C0079/C0080/C0093/C0112/C0122/C0136/C0168/C0178/C0169/C0180 remain preserved and incomplete."
+    "Require complete r3 exact-head CI: exporter, progress including watcher adapter, workflow focused, PAPER discovery, and every unchanged later acceptance step.",
+    "Concrete integration contract still missing only the authoritative per-item requirements_for_item mapping/source: timezone plus required artifact names and coverage state for each recurring item. No journal/coverage reader was supplied, so adapter fails closed when absent.",
+    "Existing commit.py check must retain accept_ok deterministic verification, ledger history/touch semantics, and alert_sig/alerted persistence/dedupe around the PA1 recurring classification seam; PA1 does not replace that authority.",
+    "PR0 remains branch-only; existing coordinator profile_runner PR_FORMAT/JOB_REQUIRED_FIELDS incompatibility is external and unchanged.",
+    "start/stop/install/rollback remain PLAN_ONLY; installed=false and unattended_proven=false.",
+    "Prior failures remain evidence: r1 39026462353/39026442767; r2 39026889511/39026873306.",
+    "Existing twelve C obligations remain incomplete/unmodified."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Independently inspect the next exact-head CI when available; require the focused progress/workflow steps and complete unchanged baseline, and preserve r1 failed runs 39026462353/39026442767 as failure evidence.",
-    "if_pass": "Review candidate source and private watcher source contract; installation/readback remains a separate authorized operation.",
-    "if_fail": "Return exact failing test IDs/logs for same-branch repair; do not deploy.",
+    "verify_now": "Inspect the next exact source-head/final-head CI and require complete baseline, including real lab cwd discovery and new watcher adapter tests.",
+    "if_pass": "Independently review accepted bytes and authoritative requirements mapping, then perform separately authorized profile installation/readback using documented seam and backups.",
+    "if_fail": "Return exact failing test IDs/logs for same-branch repair; do not install.",
     "blockers": [
-      "r2 exact-head CI result not yet available",
-      "private watcher source contract unavailable",
-      "no unattended production proof"
+      "r3 exact-head CI not yet visible",
+      "authoritative per-item requirements_for_item mapping/source not supplied",
+      "no installed or unattended proof"
     ]
   }
 }
