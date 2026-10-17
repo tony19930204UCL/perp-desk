@@ -118,7 +118,7 @@ def evaluate(item, now, schedule, evidence, state, cooldown_hours=6):
     if state.get("coverage") == "not_implemented":
         return result("GAP", "COVERAGE_NOT_IMPLEMENTED", latest.get("ref") if latest else None, stamp)
     for name in state.get("required_artifacts", []):
-        matches = [f for f in evidence.get("files", []) if f.get("name") == name and f.get("content")]
+        matches = [f for f in evidence.get("files", []) if f.get("name") == name and f.get("content") and f.get("rc", 0) == 0]
         if not matches:
             return result("STALE", "MISSING_ARTIFACT", name)
         if any(_time(f["at"]) > now for f in matches if f.get("at")):
