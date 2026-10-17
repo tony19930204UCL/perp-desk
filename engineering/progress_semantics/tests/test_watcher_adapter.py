@@ -135,16 +135,80 @@ class WatcherAdapterTests(unittest.TestCase):
         r = assess_item(item(), NOW, interval(), [record], self.req())
         self.assertEqual(r["reason_code"], "INVALID_OUTPUT_PATH")
 
-    def test_body_filename_mismatch_fails(self):
-        text="**Run Time:** 2026-10-17 01:20:29\n**Mode:** no_agent (script)\n**Status:** silent (empty output)"
+    def test_body_filename_one_second_writer_skew_is_bounded(self):
+        text="**Job ID:** job1\n**Run Time:** 2026-10-17 01:19:28\n**Mode:** no_agent (script)\n**Status:** silent (empty output)"
+        rec=output_record("job1","cron/output/job1/2026-10-17_01-19-29.md",text,ZONE)
+        self.assertEqual(rec["filename_at"].second,29)
+        self.assertEqual(rec["run_at"].second,28)
+        self.assertTrue(rec["raw_sha256"])
+
+    def test_body_filename_larger_unexplained_skew_fails(self):
+        text="**Job ID:** job1\n**Run Time:** 2026-10-17 01:19:27\n**Mode:** no_agent (script)\n**Status:** silent (empty output)"
         with self.assertRaises(ValueError):
             output_record("job1","cron/output/job1/2026-10-17_01-19-29.md",text,ZONE)
+
+    def test_body_job_mismatch_fails(self):
+        with self.assertRaises(ValueError):
+            output_record("job1","cron/output/job1/2026-10-17_01-19-29.md",
+                          "**Job ID:** other\n## Response\n[SILENT]",ZONE)
 
     def test_weekly_not_due(self):
         weekly=cron("0 20 * * 0")
         old=out("2026-10-11_20-00-00")
         r=assess_item(item(),NOW,weekly,[old],self.req())
         self.assertEqual(r["state"],"OK")
+
+    def test_profile_ignores_old_malformed_when_current_output_is_valid(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/"commitments").mkdir()
+            outdir=root/"cron"/"output"/"job1"; outdir.mkdir(parents=True)
+            (root/"commitments"/"ledger.json").write_text(json.dumps({"items":[item()]}),"utf-8")
+            (root/"cron"/"jobs.json").write_text(json.dumps({"jobs":[interval()]}),"utf-8")
+            (outdir/"2026-10-16_01-19-29.md").write_text(
+                "**Job ID:** job1\n**Run Time:** 2026-10-16 01:19:20\n## Response\n[SILENT]","utf-8")
+            (outdir/"2026-10-17_13-10-33.md").write_text(
+                "**Job ID:** job1\n**Run Time:** 2026-10-17 13:10:32\n## Response\n[SILENT]","utf-8")
+            self.assertEqual(assess_profile(root,"C0026",NOW,self.req())["state"],"OK")
+
+    def test_profile_current_malformed_fails_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/"commitments").mkdir()
+            outdir=root/"cron"/"output"/"job1"; outdir.mkdir(parents=True)
+            (root/"commitments"/"ledger.json").write_text(json.dumps({"items":[item()]}),"utf-8")
+            (root/"cron"/"jobs.json").write_text(json.dumps({"jobs":[interval()]}),"utf-8")
+            (outdir/"2026-10-17_13-10-34.md").write_text(
+                "**Job ID:** other\n## Response\n[SILENT]","utf-8")
+            r=assess_profile(root,"C0026",NOW,self.req())
+            self.assertEqual((r["state"],r["reason_code"]),("SAFETY","MALFORMED_CURRENT_OUTPUT"))
+
+    def test_dynamic_jsonl_artifact_requires_explicit_binding(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/"commitments").mkdir()
+            outdir=root/"cron"/"output"/"job1"; outdir.mkdir(parents=True)
+            journal=root/"lab"/"journal"; journal.mkdir(parents=True)
+            (root/"commitments"/"ledger.json").write_text(json.dumps({"items":[item()]}),"utf-8")
+            (root/"cron"/"jobs.json").write_text(json.dumps({"jobs":[interval()]}),"utf-8")
+            (outdir/"2026-10-17_13-10-33.md").write_text("## Response\n[SILENT]","utf-8")
+            spec={"timezone":ZONE,"coverage":"implemented",
+                  "required_artifacts":["checked"],
+                  "artifact_sources":{"checked":{"path":"lab/journal/entries.jsonl","format":"jsonl",
+                    "time_field":"at","time_format":"journal_utc","item_field":"item_id",
+                    "job_field":"job_id","status_field":"result","success_values":["ok"],
+                    "content_field":"body","required_text":"coverage complete"}}}
+            mention={"id":"J-0437","at":"2026-10-17 11:11 UTC","refs":"C0026,job1",
+                     "title":"coverage complete"}
+            (journal/"entries.jsonl").write_text(json.dumps(mention)+"\n","utf-8")
+            self.assertEqual(assess_profile(root,"C0026",NOW,spec)["reason_code"],"MISSING_ARTIFACT")
+            bound=dict(mention,item_id="C0026",job_id="job1",result="ok",body="coverage complete")
+            (journal/"entries.jsonl").write_text(json.dumps(bound)+"\n","utf-8")
+            self.assertEqual(assess_profile(root,"C0026",NOW,spec)["state"],"OK")
+
+    def test_quota_held_interval_is_unknown_not_invalid_schedule(self):
+        job=interval(last_status="error",last_error="Codex quota429",
+                     next_run_at="2026-10-22T08:36:43.515815+02:00",
+                     quota_hold_until="2026-10-22T08:36:43.515815+02:00")
+        r=assess_item(item(),NOW,job,[],self.req())
+        self.assertEqual((r["state"],r["reason_code"]),("GAP","QUOTA_HELD_UNKNOWN"))
 
     def test_profile_reads_only_supplied_paths(self):
         with tempfile.TemporaryDirectory() as td:
