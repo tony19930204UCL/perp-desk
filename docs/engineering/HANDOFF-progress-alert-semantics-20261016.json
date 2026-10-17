@@ -4,10 +4,10 @@
   "pr_number": 0,
   "branch": "fix/progress-alert-semantics-20261016",
   "task_id": "progress-alert-semantics-20261016",
-  "instruction_id": "PA1-r1-WF1",
+  "instruction_id": "PA1-r2-WF1",
   "status": "WAITING_CI",
-  "source_head_sha": "30a7c6ebb04ff2bdd42b6ecdd4b55243c822366e",
-  "summary": "PA1 semantics repaired and made CI-discoverable; added pure workflow projection, lease/reconcile rules, source adapter grounded in exported PR65 ledger/wake source, read-only operator CLI, and install/rollback contracts. No deployment or private watcher integration performed.",
+  "source_head_sha": "faf93fe25fc07c3efb7acaa750be59985d971ba5",
+  "summary": "Repaired r1 CI-blocking literal backslash-n serialization in test_progress_semantics.py and corrected the authored Response-heading regex escape. Newly authored Python was re-read for serialization/syntax anomalies. No deployment/private watcher integration performed.",
   "changed_files": [
     "engineering/progress_semantics/progress_semantics.py",
     "engineering/progress_semantics/tests/test_progress_semantics.py",
@@ -24,36 +24,41 @@
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/progress_semantics/tests -v",
-      "result": "NOT_RUN",
-      "evidence": "Added as GitHub Actions step Progress semantics acceptance at source head 30a7c6e; no exact-head run is visible through the connected Actions view yet."
+      "result": "WAITING_CI",
+      "evidence": "r1 final-head push run 39026462353 job 117378300821 failed import with SyntaxError before test methods; source-head push 39026442767 also failed. r2 repair source head faf93fe25fc07c3efb7acaa750be59985d971ba5; new exact-head result not yet available through connected PR-run lookup."
     },
     {
       "command": "python3 -m unittest -v lab.tests.test_workflow_pipeline",
       "result": "NOT_RUN",
-      "evidence": "Added as GitHub Actions step Workflow pipeline acceptance at source head 30a7c6e; no exact-head run is visible through the connected Actions view yet."
+      "evidence": "Skipped in r1 run 39026462353 after progress step failure; r2 exact-head execution still pending."
     },
     {
-      "command": "python3 -m unittest discover -s automation/tests -v && cd lab && python3 -m unittest discover -s tests -v",
+      "command": "python3 -m unittest discover -s automation/tests -v",
+      "result": "PASS_R1_ONLY",
+      "evidence": "Exporter contract passed in r1 run 39026462353; this is preserved historical evidence, not an r2 exact-head pass."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "Existing CI commands preserved; no exact-head run result claimed."
+      "evidence": "PAPER isolated suite and later CI steps were skipped in r1 run 39026462353; r2 exact-head baseline remains pending."
     }
   ],
   "remaining_work": [
-    "Obtain exact-head CI run and per-test results before READY_FOR_REVIEW.",
-    "Private local watcher source is unavailable; adapter installation requires its read-only entrypoint, item-to-schedule mapping, cron/output reader, journal/state readers and alert-state persistence schema.",
-    "Owner private 36-test acceptance is not executable here and remains independent.",
-    "unattended_proven is false: no genuine no-new-user-message handback/acceptance/install/readback interval was observed.",
-    "Existing obligations C0053/C0071/C0079/C0080/C0093/C0112/C0122/C0136/C0168/C0178/C0169/C0180 remain untouched."
+    "Obtain new exact-head push CI for source head faf93fe25fc07c3efb7acaa750be59985d971ba5 and require progress, workflow, exporter, PAPER and unchanged later CI to complete.",
+    "Private watcher integration remains blocked on the smallest read-only source contract: watcher entrypoint source/path; item-id to schedule/job mapping; cron table/output record schema and reader; journal/coverage record schema and reader; state/artifact record schema and reader; alert/dedupe persistence schema and read/write boundary.",
+    "CLI start/stop/install/rollback remain PLAN_ONLY and are not operational receipts.",
+    "unattended_proven remains false; no deployed handback -> independent acceptance/revise -> authorized readback/next-owner interval or genuine paper-fault disposition was observed.",
+    "Existing obligations C0053/C0071/C0079/C0080/C0093/C0112/C0122/C0136/C0168/C0178/C0169/C0180 remain preserved and incomplete."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Wait for and inspect exact source-head CI; do not interpret prior run 38926207449 as PA1 evidence.",
-    "if_pass": "Independently review isolated evidence, supply/inspect private watcher source contract, then authorize installation/readback separately.",
-    "if_fail": "Return exact failing test IDs/log evidence for same-scope repair.",
+    "verify_now": "Independently inspect the next exact-head CI when available; require the focused progress/workflow steps and complete unchanged baseline, and preserve r1 failed runs 39026462353/39026442767 as failure evidence.",
+    "if_pass": "Review candidate source and private watcher source contract; installation/readback remains a separate authorized operation.",
+    "if_fail": "Return exact failing test IDs/logs for same-branch repair; do not deploy.",
     "blockers": [
-      "Exact-head CI result not yet visible",
-      "Private watcher source contract unavailable",
-      "No unattended production proof"
+      "r2 exact-head CI result not yet available",
+      "private watcher source contract unavailable",
+      "no unattended production proof"
     ]
   }
 }
