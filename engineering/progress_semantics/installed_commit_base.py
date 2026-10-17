@@ -27,6 +27,7 @@ TERMINAL = {VERIFIED, DROPPED}
 OPEN_GRACE_H = float(os.environ.get('COMMIT_OPEN_GRACE_H', 24))
 STALE_H = float(os.environ.get('COMMIT_STALE_H', 72))
 REPEAT_H = float(os.environ.get('COMMIT_REPEAT_H', 6))
+CAS_REFUSED = 3
 
 FUTURE = re.compile(
     r"(我會|我將|我要|我來|我去|接下來|下一步|之後會|稍後|待會|隨後|馬上|下次|會自動|等.{0,6}再|"
@@ -379,6 +380,7 @@ def main(argv=None):
         p.add_argument('id')
         if name != 'show' and name != 'stamp':
             p.add_argument('--evidence' if name == 'done' else '--reason', default='')
+            p.add_argument('--expect-state', choices=[OPEN, DISPATCHED, VERIFIED, BLOCKED, DROPPED])
     args = ap.parse_args(argv)
     led = Ledger(args.ledger)
 
@@ -407,9 +409,24 @@ def main(argv=None):
             it = led.get(args.id)
             if not it:
                 raise SystemExit('unknown id')
+            def current():
+                hs = handle_status(it.get('handle'))[0] if it['state'] == DISPATCHED else '-'
+                hist = (it.get('history') or [[None, 'none']])[-1]
+                print('%s state=%s handle=%s history=%s' % (it['id'], it['state'], hs, hist[1]))
+            if args.expect_state and it['state'] != args.expect_state:
+                current()
+                raise SystemExit(CAS_REFUSED)
+            if args.cmd == 'block' and it['state'] == VERIFIED:
+                current()
+                raise SystemExit(CAS_REFUSED)
             if args.cmd == 'done':
                 if not args.evidence:
                     raise SystemExit('refused: done needs --evidence (what you read back)')
+                if it['state'] == VERIFIED:
+                    current()
+                    if it.get('evidence') == args.evidence:
+                        raise SystemExit(0)
+                    raise SystemExit(CAS_REFUSED)
                 it['state'], it['evidence'] = VERIFIED, args.evidence
             elif args.cmd == 'block':
                 it['state'], it['reason'] = BLOCKED, args.reason or 'blocked'
