@@ -574,8 +574,8 @@ class P3RetentionTests(unittest.TestCase):
 
     def test_deployed_offtick_diagnostic_preserved(self):
         b = self.broker()
-        event = self.book('bad-tick', 100)
-        event['bids'] = [['99.05', '1']]
+        event = dict(type='book', event_id='bad-tick', symbol='TEST', ts=100,
+                     bids=[['99.05', '1']], asks=[['100.0', '1']])
         with self.assertRaisesRegex(
                 ValueError,
                 r'off-tick quote: validator=SimBroker\._validate_event side=bids level=0 '
