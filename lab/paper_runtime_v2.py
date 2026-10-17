@@ -16,6 +16,8 @@ from paper_sizing import size_long
 from signals_v2 import Detector
 from sim_broker import SimBroker, InstrumentSettings, ExecutionModel, RiskContract, Intent
 from dashboard import validate_snapshot
+from runtime_equity_history import EquityHistoryStore, ExactReceiptStore, RECENT_LIMIT
+from runtime_receipt_storage import ReceiptStorage
 
 D = Decimal
 
@@ -83,9 +85,79 @@ class PaperRuntime:
         except Exception:
             self.close()
             raise
-    def save(self):
-        with self.db:
-            self.db.execute('INSERT OR REPLACE INTO state VALUES(1,?)', (canonical(self.state),))
+    def save(self, *, equity_point=None):
+        """Atomically persist bounded equity and the exact exchangeInfo reference.
+
+        Both stores are lazy because v5 initializes SQLite independently before
+        calling inherited save(). Never mutate save-owned memory before COMMIT.
+        A durable digest is hydrated into the full in-memory reference on reopen.
+        """
+        history = getattr(self, '_equity_history_store', None)
+        if history is None or history.db is not self.db:
+            history = EquityHistoryStore(self.db)
+            self._equity_history_store = history
+            self._equity_history_prepared = False
+        receipts = getattr(self, '_exact_reference_store', None)
+        if receipts is None or receipts.db is not self.db:
+            receipts = ExactReceiptStore(self.db)
+            self._exact_reference_store = receipts
+            self._exact_reference_prepared = False
+        receipt_storage = getattr(self, '_receipt_storage', None)
+        if receipt_storage is None or receipt_storage.db is not self.db:
+            receipt_storage = ReceiptStorage(self.db)
+            self._receipt_storage = receipt_storage
+            self._receipt_storage_prepared = False
+        begun = False
+        try:
+            self.db.execute('BEGIN')
+            begun = True
+            if not self._equity_history_prepared:
+                history.prepare()
+            if not self._exact_reference_prepared:
+                receipts.prepare()
+            if not self._receipt_storage_prepared:
+                receipt_storage.prepare()
+
+            # A digest-only singleton is the on-disk representation. Resolve
+            # before any runtime consumer can see it, also through v5's init.
+            from_digest = 'reference_digest' in self.state
+            if from_digest:
+                if 'reference' in self.state:
+                    raise ValueError('conflicting durable and in-memory reference')
+                full_reference = receipts.get(self.state['reference_digest'])
+            else:
+                full_reference = self.state.get('reference')
+
+            history.migrate_legacy(self.state.get('history', []))
+            if equity_point is not None:
+                history.append_snapshot(equity_point)
+            recent = history.recent()
+            total = history.count()
+            state_to_write = dict(self.state, history=recent)
+            state_to_write.pop('reference_digest', None)
+            if from_digest or (('reference' in self.state) and full_reference is not None):
+                # Store the complete original receipt, never just its payload.
+                state_to_write.pop('reference', None)
+                state_to_write['reference_digest'] = receipts.put(full_reference)
+            self.db.execute('INSERT OR REPLACE INTO state VALUES(1,?)', (canonical(state_to_write),))
+            self.db.commit()
+        except BaseException:
+            if begun:
+                self.db.rollback()
+            # DDL, writes, or deferred COMMIT may have been rolled back.
+            # Do not reuse prepared flags after any failed transaction.
+            self._equity_history_prepared = False
+            self._exact_reference_prepared = False
+            self._receipt_storage_prepared = False
+            raise
+        self._equity_history_prepared = True
+        self._exact_reference_prepared = True
+        self._receipt_storage_prepared = True
+        self.state['history'] = recent
+        if from_digest:
+            self.state.pop('reference_digest')
+            self.state['reference'] = full_reference
+        self._equity_history_count = total
     def audit(self, event):
         payload=canonical(event)
         row=self.db.execute('SELECT hash FROM audit ORDER BY id DESC LIMIT 1').fetchone()
@@ -116,7 +188,55 @@ class PaperRuntime:
                 events.append({'kind':'instrumentation_unavailable','reason':'client_fixture_has_no_get_timed'})
             returned_ms=self.clock()
             returned_mono=self.monotonic()
-            self.audit(dict(type='public_receipt',receipt=receipt,
+            # Every source that can affect a signal/order/fill/funding decision
+            # is immutable causal evidence. /time is transport/clock diagnostics
+            # only and uses the independently bounded raw store.
+            causal = endpoint != '/fapi/v1/time'
+            # Frozen transport-timing unit fixtures construct only the fetch
+            # seam with object.__new__ and intentionally have no durable DB.
+            # Every normally constructed runtime has self.db and must use the
+            # storage path below; the seam-only fixture retains the original
+            # complete receipt in its supplied audit callback.
+            if not hasattr(self, 'db'):
+                audit_receipt = receipt
+            else:
+                store = getattr(self, '_receipt_storage', None)
+                if store is None or store.db is not self.db:
+                    store = ReceiptStorage(self.db)
+                    self._receipt_storage = store
+                    self._receipt_storage_prepared = False
+                begun = False
+                try:
+                    self.db.execute('BEGIN')
+                    begun = True
+                    if not self._receipt_storage_prepared:
+                        store.prepare()
+                    if causal:
+                        pointer = store.record_causal(endpoint, params, receipt)
+                        audit_receipt = dict(
+                            storage='runtime_causal_receipts',
+                            receipt_seq=pointer['seq'],
+                            payload_sha256=pointer['payload_sha256'],
+                            endpoint=receipt.get('endpoint'),
+                            params=receipt.get('params', {}),
+                            received_at=receipt.get('received_at'),
+                            source_timestamp_ms=receipt.get('source_timestamp_ms'))
+                    else:
+                        raw_seq = store.record_noncausal_raw(endpoint, receipt)
+                        audit_receipt = dict(
+                            storage='runtime_noncausal_raw_receipts',
+                            raw_seq=raw_seq, endpoint=receipt.get('endpoint'),
+                            params=receipt.get('params', {}),
+                            received_at=receipt.get('received_at'),
+                            source_timestamp_ms=receipt.get('source_timestamp_ms'))
+                    self.db.commit()
+                except BaseException:
+                    if begun:
+                        self.db.rollback()
+                    self._receipt_storage_prepared = False
+                    raise
+                self._receipt_storage_prepared = True
+            self.audit(dict(type='public_receipt',receipt=audit_receipt,
                             request_start_ms=outer_start_ms,
                             request_start_monotonic_ms=outer_start_mono*1000,
                             request_return_ms=returned_ms,
@@ -204,7 +324,49 @@ class PaperRuntime:
             event['event_id']=digest(event)
         if timing:
             timing['call_monotonic_ms']=self.monotonic()*1000
-        self.broker.on_event(event)
+        try:
+            self.broker.on_event(event)
+        except ValueError as exc:
+            if event.get('type') == 'book' and str(exc).startswith('off-tick quote:'):
+                # Preserve the deployed source-to-rejection diagnostic path.
+                candidates = []
+                for (payload,) in self.db.execute(
+                        "SELECT payload FROM audit ORDER BY id DESC LIMIT 64"):
+                    recorded = json.loads(payload)
+                    receipt = recorded.get('receipt', {})
+                    original = receipt
+                    if receipt.get('storage') == 'runtime_causal_receipts':
+                        original = self._receipt_storage.reconstruct(receipt['receipt_seq'])
+                    if (recorded.get('type') == 'public_receipt'
+                            and original.get('endpoint') == '/fapi/v1/depth'
+                            and original.get('params', {}).get('symbol') == event['symbol']
+                            and original.get('source_timestamp_ms') == event.get('source_ts')
+                            and original.get('payload', {}).get('bids') == event['bids']
+                            and original.get('payload', {}).get('asks') == event['asks']
+                            and receipt_ms(original) == event.get('received_ms')):
+                        candidates.append((recorded, original))
+                matched = candidates[0] if len(candidates) == 1 else None
+                reference = self.state.get('reference')
+                reference_received = receipt_ms(reference) if reference else None
+                rejection = dict(
+                    type='broker_offtick_rejection', validator='SimBroker._validate_event',
+                    exception=str(exc), symbol=event['symbol'], endpoint='/fapi/v1/depth',
+                    event_id=event['event_id'], source_ms=event.get('source_ts'),
+                    receipt_ms=event.get('received_ms'), dispatch_ms=event['ts'],
+                    dispatch_monotonic_ms=timing['dispatch_monotonic_ms'] if timing else None,
+                    reference_receipt_ms=reference_received,
+                    reference_age_ms=(event['ts']-reference_received) if reference_received is not None else None,
+                    reference_receipt_sha256=digest(reference) if reference else None,
+                    reference_hash_kind='canonical_runtime_receipt_sha256',
+                    receipt_audit_match=matched is not None,
+                    original_receipt_sha256=digest(matched[1]) if matched else None,
+                    original_receipt_hash_kind='canonical_runtime_receipt_sha256' if matched else None,
+                    receipt_audit_request_start_ms=matched[0].get('request_start_ms') if matched else None,
+                    receipt_audit_request_return_ms=matched[0].get('request_return_ms') if matched else None,
+                    source_age_at_dispatch_ms=event['ts']-event['source_ts'])
+                self.audit(rejection)
+                self._timing_record(rejection)
+            raise
         if timing:
             timing['return_monotonic_ms']=self.monotonic()*1000
             self.audit(timing)
@@ -577,10 +739,15 @@ class PaperRuntime:
             runtime_state='blocked' if error or risk_blocks else 'warming_up' if warm else 'observing'
             now=self.clock()
             point=dict(ts=stamp(now),equity_usdt=str(equity),valuation_stale=bool(error))
-            if not self.state['history'] or self.state['history'][-1]['ts']!=point['ts']:
-                self.state['history'].append(point)
-            self.save()
+            # Adjacent same-ts snapshots remain idempotent across restart.
+            # Both the archive append and singleton cache update commit together.
+            self.save(equity_point=point)
             s=dict(schema_version=1,mode='paper',fixture=self.fixture,fixture_label='ARTIFICIAL ENGINEERING FIXTURE NOT PERFORMANCE' if self.fixture else None,updated_at=stamp(now),initial_equity_usdt=str(initial),cash_usdt=str(cash),equity_usdt=str(equity),realized_pnl_usdt=str(net),unrealized_pnl_usdt=str(unreal),total_pnl_usdt=str(net+unreal),gross_realized_pnl_usdt=str(sum((D(x['amount']) for x in b.ledger if x['type']=='realized'),D(0)) if b else D(0)),fees_usdt=str(-sum((D(x['amount']) for x in b.ledger if x['type']=='fee'),D(0)) if b else D(0)),funding_pnl_usdt=str(sum((D(x['amount']) for x in b.ledger if x['type']=='funding'),D(0)) if b else D(0)),paper_trading_enabled=not bool(error or risk_blocks) and not warm,live_trading_enabled=False,runtime_state=runtime_state,engine=dict(implementation='paper-engine-v1',version_id=c['version_id'],forward_start_at=stamp(self.state['forward_start_ms']),model_sha256=digest(dict(config_hash=self.config_hash,sources=self.source_hashes)),source_sha256=self.source_hashes,status='error' if error else 'halted' if risk_blocks else 'warmup' if warm else 'running',warmup_received=self.state['warmup'],warmup_required=61),risk=dict(approved=True,risk_version=c['risk_version'],risk_config_sha256=self.config_hash),positions=positions,fills_count=len(b.fills) if b else 0,fills=b.fills if b else [],signals_count=len(self.state.get('handled_signals',{})),blocked_signals_count=sum(x['status']=='rejected' for x in self.state.get('handled_signals',{}).values()),rejections=[dict(signal_id=k,**v) for k,v in self.state.get('handled_signals',{}).items() if v['status']=='rejected'],blockers=([error] if error else [])+risk_blocks+(['fresh_forward_warmup'] if warm else []),feed=dict(transport='REST polling',connected=not bool(error),last_success_at=stamp(self.state['last_success_ms']) if self.state['last_success_ms'] else None,errors_count=self.state['errors'],gaps_count=self.state['gaps']),markets=self.state['markets'],versions=[dict(version_id=c['version_id'],created_at=stamp(self.state['forward_start_ms']),status=runtime_state)],equity_history=self.state['history'],latest_error=error,cost_ledger=b.ledger if b else [])
+            if self._equity_history_count > RECENT_LIMIT:
+                s['equity_history_window'] = dict(
+                    complete_lifetime=False, recent_points=len(self.state['history']),
+                    archived_points=self._equity_history_count,
+                    ordering='oldest_to_newest', archive='runtime_equity_history')
             s['orders']=list(b.orders.values()) if b else []
             s['rejections'] += [dict(order_id=o['order_id'],signal_id=o['intent_id'],reason=o['reason'],status=o['status']) for o in s['orders'] if o['status']=='REJECTED']
             s['blocked_signals_count']=len({x['signal_id'] for x in s['rejections'] if x['signal_id'] in self.state.get('handled_signals',{})})
