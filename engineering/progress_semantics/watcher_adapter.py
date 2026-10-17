@@ -135,7 +135,8 @@ def assess_item(item, now, job, outputs, requirements=None):
         grace = timedelta(minutes=float(schedule["grace_minutes"]))
         current = [
             r for r in outputs
-            if aware(r["at"]) >= due or same_serialized_second(r["at"], due)
+            if r.get("job_id") == job_id
+            and (aware(r["at"]) >= due or same_serialized_second(r["at"], due))
         ]
         # Persistence truncates output identity to seconds while anchors retain
         # fractions. Only equality in that exact serialized second is widened;
