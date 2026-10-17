@@ -425,13 +425,20 @@ class SimBroker:
                 if not isinstance(event.get(side), list):
                     raise ValueError('book levels required')
                 prices = []
-                for level in event[side]:
+                for level_index, level in enumerate(event[side]):
                     if not isinstance(level, (list, tuple)) or len(level) != 2:
                         raise ValueError('price/quantity level required')
                     price = self._decimal(level[0], positive=True)
                     self._decimal(level[1], positive=True)
-                    if price % self.instruments[event['symbol']].tick:
-                        raise ValueError('off-tick quote')
+                    tick = self.instruments[event['symbol']].tick
+                    remainder = price % tick
+                    if remainder:
+                        # Preserve deployed rejection diagnostics verbatim: this
+                        # changes no tick gate and performs no rounding/fallback.
+                        raise ValueError(
+                            'off-tick quote: validator=SimBroker._validate_event '
+                            f'side={side} level={level_index} price={level[0]} '
+                            f'tick={tick} remainder={remainder}')
                     prices.append(price)
                 if len(set(prices)) != len(prices) or prices != sorted(prices, reverse=side=='bids'):
                     raise ValueError('levels must be unique and best-first')
