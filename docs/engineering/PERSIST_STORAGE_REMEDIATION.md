@@ -1,6 +1,6 @@
 # PERSIST storage remediation — SR1-r2
 
-SR1-r2 integrates accepted PR59/PR60 persistence into the later deployed
+SR1-r3 preserves SR1-r2 integration of accepted PR59/PR60 persistence into the later deployed
 storage/risk/off-tick contract. It does not deploy, start a paper service, read a
 live DB, sample public sources, reset an account/window, or change strategy,
 fees, risk, freshness, tick/step, arrival or funding rules.
@@ -112,7 +112,7 @@ Existing PR51 partial differential and 40000+20 write probes remain available:
     cd lab && SIM_BROKER_P2_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_parent_differential_2048_events
     cd lab && SIM_BROKER_P2_WRITE_PROBE=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_linux_write_bytes_40000_history
 
-SR1-r2 adds a pinned deployed-source differential. The local immutable deployed
+SR1-r2/r3 retains a pinned deployed-source differential. The local immutable deployed
 broker blob must equal Git blob
 `b34ef7e7a30e35c51019420937f505513679c29c`; the test refuses otherwise. It
 covers >2000 events with fills/stops/finalized funding, duplicate/conflicting
@@ -129,8 +129,12 @@ receipt/source/dispatch linkage.
 The ten-minute entrypoint runs for real elapsed >=600 seconds, performs no
 network I/O, uses isolated SQLite files, attributes Linux process write_bytes
 around each broker-hot/history/reference/fundingInfo write, reports each
-bytes/s contribution and SQLite file size, asserts each contribution
-<50000 B/s, one fundingInfo payload row for repeated content, and raw <=256:
+bytes/s contribution and the actual SQLite files broker-hot.sqlite3,
+history.sqlite3, reference.sqlite3 and fundingInfo.sqlite3, asserts each
+contribution <50000 B/s, one fundingInfo payload row for repeated content, and
+raw <=256. The r2 independent run reached 600.056s but then failed only while
+stat'ing the nonexistent broker_hot.sqlite3 spelling, so it proved neither rate
+nor bounded-size acceptance and must not be called a PASS:
 
     cd lab && STORAGE_SR1_TEN_MINUTE=1 python3 -m unittest -v tests.test_runtime_receipt_storage.TenMinuteStorageEvidenceTests.test_ten_minute_contribution_separated_storage_rate
 
@@ -139,8 +143,14 @@ Full suites remain:
     python3 -m unittest discover -s automation/tests
     cd lab && python3 -m unittest discover -s tests
 
-SR1-r2 is GitHub-file-only, so every command above is **NOT_RUN** here. CI must
-report named test IDs and skips; the independently observed r1 Ran counts had 13
-multiline-output parsing gaps per run, so no count reconciliation is claimed.
+SR1-r3 is GitHub-file-only, so every command above is **NOT_RUN** here. Preserve
+independently completed r2 evidence: PR51 differential PASS (2061 events,
+entry fills 3, explicit exit 1, stop fills 2, nonzero funding 3; 61.663s);
+40000+20 write probe PASS (old 84537344 bytes/20, new 1363968/20 =
+68198.4 bytes/event, ratio 0.016135; 4.279s); focused documented 45 tests PASS
+in 48.731s with two separately opted-in skips. Exact r2 push 39041099063 and PR
+39041102132 each had PAPER ERROR1/SKIP5 and exporter52 PASS; their named IDs
+were fully reconciled to Ran totals. r3 requires new exact-head push/PR CI but
+does not reinterpret the failed r2 deployed matrix or ten-minute run as PASS.
 Fixture evidence cannot establish 1h/24h live stability, and no paper restart is
 authorized.
