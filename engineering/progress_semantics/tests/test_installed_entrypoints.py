@@ -387,5 +387,16 @@ class InstalledEntryTests(unittest.TestCase):
             self.assertEqual(state["restarts"],{u:0 for u in ("h2","f1h-btcusdt","f1h-solusdt","f1h-xrpusdt","w1-btcusdt","w1-ethusdt","w1-solusdt","w1-xrpusdt","t1-btcusdt","t1-ethusdt","t1-solusdt","t1-xrpusdt")})
 
 
+    def test_done_verified_identical_is_idempotent_but_different_evidence_refuses(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); cli=self.real_layout(root); ledger=root/"ledger.json"; env=dict(os.environ,HERMES_HOME=str(root))
+            it=self.ledger_item("VERIFIED"); it["evidence"]="proof"
+            ledger.write_text(json.dumps({"next":2,"items":[it]}),"utf-8"); before=ledger.read_bytes()
+            same=subprocess.run([sys.executable,str(cli),"--ledger",str(ledger),"done","C-0001","--evidence","proof"],capture_output=True,text=True,env=env)
+            self.assertEqual(same.returncode,0); self.assertIn("state=VERIFIED",same.stdout); self.assertEqual(ledger.read_bytes(),before)
+            diff=subprocess.run([sys.executable,str(cli),"--ledger",str(ledger),"done","C-0001","--evidence","other"],capture_output=True,text=True,env=env)
+            self.assertEqual(diff.returncode,3); self.assertIn("state=VERIFIED",diff.stdout); self.assertEqual(ledger.read_bytes(),before)
+
+
 if __name__=="__main__":
     unittest.main()
