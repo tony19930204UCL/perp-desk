@@ -66,6 +66,22 @@ class ProgressTests(unittest.TestCase):
                      {"required_artifacts": ["score.json"]})
         self.assertEqual(r["reason_code"], "MISSING_ARTIFACT")
 
+    def test_static_or_unbound_artifact_cannot_prove_current_coverage(self):
+        item, sched = check("C0026", "fa25edbf3834")
+        static={"name":"durable_scorecard_alert_checked_result","content":"old success",
+                "rc":0,"at":"2026-10-16T21:05:00+00:00"}
+        r=evaluate(item,NOW,sched,{"runs":[run(sched["job_id"])],"files":[static]},
+                   {"required_artifacts":["durable_scorecard_alert_checked_result"]})
+        self.assertEqual(r["reason_code"],"MISSING_ARTIFACT")
+
+    def test_explicit_fresh_artifact_must_have_zero_result(self):
+        item, sched = check("C0026", "fa25edbf3834")
+        bad={"name":"checked","content":"complete","binding":"explicit",
+             "rc":1,"at":"2026-10-16T21:05:00+00:00"}
+        r=evaluate(item,NOW,sched,{"runs":[run(sched["job_id"])],"files":[bad]},
+                   {"required_artifacts":["checked"]})
+        self.assertEqual(r["reason_code"],"MISSING_ARTIFACT")
+
     def test_script_mismatch(self):
         item, sched = check("C0027", "fa25edbf3834")
         r = run(sched["job_id"])
