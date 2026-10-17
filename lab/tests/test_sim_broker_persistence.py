@@ -572,6 +572,36 @@ class P3RetentionTests(unittest.TestCase):
         self.assertEqual(set(b._seen_event_meta), {'new'})
 
 
+    def test_deployed_offtick_diagnostic_preserved(self):
+        b = self.broker()
+        event = self.book('bad-tick', 100)
+        event['bids'] = [['99.05', '1']]
+        with self.assertRaisesRegex(
+                ValueError,
+                r'off-tick quote: validator=SimBroker\._validate_event side=bids level=0 '
+                r'price=99\.05 tick=0\.1 remainder=0\.05'):
+            b.on_event(event)
+        self.assertNotIn('bad-tick', b.seen_events)
+        self.assertEqual(self.rows(), [])
+
+    def test_funding_id_survives_nonfunding_retention_forever(self):
+        b = self.broker()
+        funding = dict(type='funding', event_id='funding-permanent', symbol='TEST',
+                       ts=100, settlement_ts=100, rate='.001', mark='100',
+                       finalized=True)
+        b.on_event(funding)
+        for n in range(1, 40):
+            b.on_event(self.mark('ordinary:' + str(n), 100 + n))
+        b.close()
+        b = self.broker()
+        before = (str(b.cash), list(b.ledger), dict(b.funding_events))
+        b.on_event(funding)
+        self.assertEqual((str(b.cash), b.ledger, b.funding_events), before)
+        self.assertIn('funding-permanent', b.seen_events)
+        self.assertEqual(b._seen_event_meta['funding-permanent'][0], 'funding')
+
+
+
 # P2 differential / write-volume evidence. Kept separate from P1 unit tests.
 # Commands from repo root:
 # cd lab && SIM_BROKER_P2_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_parent_differential_2048_events
