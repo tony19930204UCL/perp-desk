@@ -6,7 +6,7 @@
   "task_id": "progress-alert-semantics-20261016",
   "instruction_id": "PA1-r8-WF1",
   "status": "WAITING_CI",
-  "source_head_sha": "d1cc672a5e45324deae5e0cb5a02bbc22cf57355",
+  "source_head_sha": "e6c4bdacc1fa1e9d78edacb749bfe2a5c1efebdd",
   "summary": "Distinct r8 repair of the accepted r6 installed_commit.py import API defect. The wrapper now delegates otherwise-missing module attributes to the byte-for-byte original commit.py.pa1-base while retaining PA1 evaluate as the wrapper evaluator and assigning the same evaluator to base.evaluate for the unchanged original CLI. Regression stages the documented installed layout and exercises legacy Ledger/constants/helpers plus evaluator/CLI linkage. r6 progress semantics are otherwise unchanged; no installation/runtime operation and no r7 launcher retry.",
   "changed_files": [
     "engineering/progress_semantics/installed_commit.py",
@@ -23,7 +23,7 @@
     {
       "command": "python3 -m unittest -v engineering.progress_semantics.tests.test_installed_entrypoints",
       "result": "NOT_RUN_FILE_ONLY_R8",
-      "evidence": "Regression added to the existing discovered test file using the documented plugin/commit.py + commit.py.pa1-base + pa1/progress_semantics installed layout; execution deferred to newly triggered exact-head CI."
+      "evidence": "Regression added to the existing discovered test file using the documented plugin/commit.py + commit.py.pa1-base + pa1/progress_semantics installed layout, with a legacy Ledger fixture and constants/helpers; execution deferred to newly triggered exact-head CI."
     },
     {
       "command": "python3 -m unittest -v lab.tests.test_workflow_pipeline",
