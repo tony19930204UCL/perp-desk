@@ -248,6 +248,22 @@ class WatcherAdapterTests(unittest.TestCase):
                                                   json.dumps(dict(row,id="J-2"))+"\n","utf-8")
             self.assertEqual(assess_profile(root,"C0026",NOW,spec)["reason_code"],"MISSING_ARTIFACT")
 
+    def test_artifact_path_traversal_does_not_satisfy_requirement(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/"profile"; root.mkdir(); (root/"commitments").mkdir()
+            outdir=root/"cron"/"output"/"job1"; outdir.mkdir(parents=True)
+            outside=root.parent/"outside.json"; outside.write_text(json.dumps({"at":"2026-10-17T11:11:00+00:00",
+                "item_id":"C0026","job_id":"job1","result":"ok","body":"complete"}),"utf-8")
+            (root/"commitments"/"ledger.json").write_text(json.dumps({"items":[item()]}),"utf-8")
+            (root/"cron"/"jobs.json").write_text(json.dumps({"jobs":[interval()]}),"utf-8")
+            (outdir/"2026-10-17_13-10-33.md").write_text("## Response\n[SILENT]","utf-8")
+            spec={"timezone":ZONE,"coverage":"implemented","required_artifacts":["checked"],
+                  "artifact_sources":{"checked":{"path":"../outside.json","format":"json",
+                    "time_field":"at","item_field":"item_id","job_field":"job_id",
+                    "status_field":"result","success_values":["ok"],"content_field":"body",
+                    "required_text":"complete"}}}
+            self.assertEqual(assess_profile(root,"C0026",NOW,spec)["reason_code"],"MISSING_ARTIFACT")
+
     def test_quota_held_interval_is_unknown_not_invalid_schedule(self):
         job=interval(last_status="error",last_error="Codex quota429",
                      next_run_at="2026-10-22T08:36:43.515815+02:00",
