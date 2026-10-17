@@ -17,7 +17,7 @@ This is evidence configuration, not task authority. It must contain only validat
 ## Exact install mapping
 No engineer-side installation was performed. After independent acceptance, the authorized installer copies accepted bytes as follows while keeping all original state files untouched:
 
-1. Back up `plugins/commitment-gate/commit.py` byte-for-byte to sibling `commit.py.pa1-base`. The replacement refuses to start without it.
+1. Back up `plugins/commitment-gate/commit.py` byte-for-byte to sibling `commit.py.pa1-base`. The replacement refuses to start without it and loads this intentionally non-`.py` backup name with Python's explicit source loader; the backup remains the original checker bytes, never a wrapper/self-copy.
 2. Create `plugins/commitment-gate/pa1/progress_semantics/` and copy accepted `__init__.py`, `progress_semantics.py`, and `watcher_adapter.py` there.
 3. Copy accepted `installed_commit.py` to `plugins/commitment-gate/commit.py`.
 4. Back up `scripts/commit_watch.py` byte-for-byte to `scripts/commit_watch.py.pa1-base`; copy accepted `installed_commit_watch.py` to `scripts/commit_watch.py`.
@@ -37,3 +37,6 @@ PA1 does not repair mechanical exact-chat approval, GitHub delivery watching, ol
 Smallest additional privacy-safe contracts needed are: exact approval dispatch/receipt function; GitHub delivery watcher entrypoint and receipt schema; auto_accept/accept_unit/ledger_wake selector functions and owner/attempt fields; launcher dependency/handback selector; quota-error classifier plus pending-work persistence/recovery acceptance; and the patrol entrypoint that owns unattended handback-to-next-owner transitions. AP3 SEND_UNKNOWN remains unresolved and is not resent.
 
 PR0 coordinator rejection at JOB_REQUIRED_FIELDS/PR_FORMAT is a separate compatibility boundary and is unchanged.
+
+## r5 measured repair
+Exact r4 CI 39045199259/job 117432430545 exposed two integration defects. The installed checker now uses an explicit source loader for the required sibling `commit.py.pa1-base`; missing backup still raises the same install-invalid refusal. Anchored interval absence becomes OVERDUE only after the most recent due slot plus configured grace; absence inside grace is healthy pending execution, while disabled/failed/coverage states remain independent safety/gap classifications.
