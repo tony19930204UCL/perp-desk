@@ -92,6 +92,21 @@ class InstalledEntryTests(unittest.TestCase):
                 mod.evaluate(Led(it),400000)
                 self.assertEqual((it["state"],it["evidence"]),("VERIFIED","proof"))
 
+    def test_missing_base_refuses_install(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            plugin = root / "plugins" / "commitment-gate"
+            plugin.mkdir(parents=True)
+            shutil.copy(SRC / "installed_commit.py", plugin / "commit.py")
+            pa1 = plugin / "pa1" / "progress_semantics"
+            pa1.mkdir(parents=True)
+            for name in ("__init__.py", "progress_semantics.py", "watcher_adapter.py"):
+                shutil.copy(SRC / name, pa1 / name)
+            spec = importlib.util.spec_from_file_location("missing_base", plugin / "commit.py")
+            mod = importlib.util.module_from_spec(spec)
+            with self.assertRaisesRegex(SystemExit, "base checker backup unavailable"):
+                spec.loader.exec_module(mod)
+
     def test_watch_wrapper_targets_installed_checker(self):
         source=(SRC/"installed_commit_watch.py").read_text("utf-8")
         self.assertIn('plugins/commitment-gate/commit.py',source)
