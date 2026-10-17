@@ -182,12 +182,38 @@ class WatcherAdapterTests(unittest.TestCase):
             root=Path(td); (root/"commitments").mkdir()
             outdir=root/"cron"/"output"/"job1"; outdir.mkdir(parents=True)
             (root/"commitments"/"ledger.json").write_text(json.dumps({"items":[item()]}),"utf-8")
-            job=interval(last_status="error",last_run_at="2026-10-17T13:10:33.375004+02:00")
+            # A matching current scheduler failure needs a valid 60-minute
+            # anchor pair. r9 accidentally retained next=13:10 after moving
+            # last from 12:10 to 13:10, which correctly made that fixture invalid.
+            job=interval(last_status="error",
+                         last_run_at="2026-10-17T13:10:33.375004+02:00",
+                         next_run_at="2026-10-17T14:10:33.375004+02:00",
+                         last_error="synthetic current failure")
             (root/"cron"/"jobs.json").write_text(json.dumps({"jobs":[job]}),"utf-8")
             (outdir/"2026-10-17_12-10-33.md").write_text("## Response\n[SILENT]","utf-8")
             (outdir/"2026-10-17_13-10-33.md").write_text("## Response\n[SILENT]","utf-8")
             r=assess_profile(root,"C0026",NOW,self.req())
             self.assertEqual((r["state"],r["reason_code"]),("SAFETY","CRON_FAILED"))
+
+    def test_genuinely_invalid_interval_anchor_is_invalid_schedule(self):
+        job=interval(last_run_at="2026-10-17T13:10:33.375004+02:00",
+                     next_run_at="2026-10-17T13:10:33.375004+02:00")
+        r=assess_item(item(),NOW,job,[out()],self.req())
+        self.assertEqual((r["state"],r["reason_code"]),("SAFETY","INVALID_SCHEDULE"))
+
+    def test_historical_scheduler_error_does_not_contaminate_current_success(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/"commitments").mkdir()
+            outdir=root/"cron"/"output"/"job1"; outdir.mkdir(parents=True)
+            (root/"commitments"/"ledger.json").write_text(json.dumps({"items":[item()]}),"utf-8")
+            # last_status belongs only to persisted last_run_at=12:10. The
+            # independently present 13:10 output must not inherit that status.
+            job=interval(last_status="error",last_error="synthetic historical failure")
+            (root/"cron"/"jobs.json").write_text(json.dumps({"jobs":[job]}),"utf-8")
+            (outdir/"2026-10-17_12-10-33.md").write_text("## Response\n[SILENT]","utf-8")
+            (outdir/"2026-10-17_13-10-33.md").write_text("## Response\n[SILENT]","utf-8")
+            r=assess_profile(root,"C0026",NOW,self.req())
+            self.assertEqual((r["state"],r["reason_code"]),("OK","SUCCESS"))
 
     def test_profile_current_malformed_fails_closed(self):
         with tempfile.TemporaryDirectory() as td:
