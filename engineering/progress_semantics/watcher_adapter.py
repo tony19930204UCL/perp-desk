@@ -146,7 +146,18 @@ def assess_item(item, now, job, outputs, requirements=None):
             return closed("OVERDUE", "CRON_OVERDUE", job_id)
         if not current:
             return closed("OK", "WITHIN_GRACE", job_id)
-        # evaluate against a synthetic one-off slot without changing evidence.
+        # Evaluate only evidence attributed to this slot. Normalize the
+        # attributed persisted timestamp to the true fractional anchor for the
+        # pure evaluator; the original source timestamp/ref remains unchanged
+        # in outputs and is still used for provenance/future checks.
+        selected = []
+        for record in current:
+            copy = dict(record)
+            if same_serialized_second(record["at"], due):
+                copy["source_at"] = record["at"]
+                copy["at"] = due
+            selected.append(copy)
+        evidence["runs"] = selected
         local = due.astimezone(ZoneInfo(timezone_name))
         schedule = {"timezone": timezone_name, "frequency": "daily",
                     "hour": local.hour, "minute": local.minute, "job_id": job_id,
