@@ -9,7 +9,7 @@ from engineering.progress_semantics.watcher_adapter import (
     assess_item, assess_profile, output_record, schedule_from_job)
 
 ZONE = "Europe/Berlin"
-NOW = datetime(2026, 10, 17, 13, 20, tzinfo=ZoneInfo(ZONE))
+NOW = datetime(2026, 10, 17, 13, 26, tzinfo=ZoneInfo(ZONE))
 
 def item(ident="C0026", job_id="job1"):
     return {"id": ident, "state": "DISPATCHED", "updated": 1,
@@ -82,6 +82,11 @@ class WatcherAdapterTests(unittest.TestCase):
     def test_overdue_missing_output(self):
         r=assess_item(item(),NOW,interval(),[],self.req())
         self.assertEqual(r["state"],"OVERDUE")
+
+    def test_missing_output_within_grace_is_not_overdue(self):
+        now = datetime(2026, 10, 17, 13, 20, tzinfo=ZoneInfo(ZONE))
+        r = assess_item(item(), now, interval(), [], self.req())
+        self.assertEqual((r["state"], r["reason_code"]), ("OK", "WITHIN_GRACE"))
 
     def test_wall_timestamp_requires_explicit_zone(self):
         with self.assertRaises(ValueError):
