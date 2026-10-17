@@ -4,64 +4,62 @@
   "pr_number": 0,
   "branch": "fix/progress-alert-semantics-20261016",
   "task_id": "progress-alert-semantics-20261016",
-  "instruction_id": "PA1-r9-WF1",
+  "instruction_id": "PA1-r10-WF1",
   "status": "WAITING_CI",
-  "source_head_sha": "4748ff73795cb15ec54d59c042e0861535c779e8",
-  "summary": "Distinct r9 repair in the existing progress/watcher seam. Output ingestion now validates path/body job identity, preserves filename/run timestamps plus raw SHA-256, accepts only bounded one-second independent writer skew, classifies malformed history per due slot, fails closed on malformed/conflicting current evidence, and binds scheduler last_status only to the matching last_run identity. assess_profile now dynamically re-reads configured profile-relative JSON/JSONL artifact evidence with path confinement, explicit item/job/slot selectors, freshness, explicit success/content checks, and exactly-one-candidate semantics; title/timestamp/refs mentions and static objects cannot prove coverage. Explicit quota-held interval anchors are recognized as current availability unknown without rewriting cadence or masking matching current failure. r8 installed public API delegation remains unchanged. No install/runtime operation and no r7 retry.",
+  "source_head_sha": "95dee2d9421441461022a4f4d2194054493f2424",
+  "summary": "Formal r10 revision of rejected r9. Main CI run 39055385989 ran 63 progress tests with exactly one failure: the r9 matching-current scheduler-error test expected CRON_FAILED but constructed an impossible 60-minute interval by overriding last_run_at to 13:10:33.375004 while retaining helper next_run_at at the same 13:10:33.375004. Production correctly returned INVALID_SCHEDULE because next<=last. r10 changes no production evaluator/adapter bytes and no precedence/tolerance. The fixture now uses valid 13:10:33.375004 -> 14:10:33.375004 anchors and retains expected SAFETY/CRON_FAILED for last_status=error bound to matching last_run output. Separate regressions require equal anchors => INVALID_SCHEDULE and ensure an error bound to historical 12:10 last_run cannot contaminate an independent successful 13:10 output. All r9 writer-skew/provenance, malformed/conflict, dynamic artifact resolver, explicit binding, path confinement, freshness/result/content/multiple-candidate negatives, quota-held distinction, and r8 API delegation remain intact. r9 was not accepted or installed; exporter passed but later workflow/PAPER/security baselines were skipped.",
   "changed_files": [
-    "engineering/progress_semantics/watcher_adapter.py",
-    "engineering/progress_semantics/progress_semantics.py",
     "engineering/progress_semantics/tests/test_watcher_adapter.py",
-    "engineering/progress_semantics/tests/test_progress_semantics.py",
-    "engineering/progress_semantics/tests/test_installed_entrypoints.py",
     "docs/engineering/PROGRESS_ALERT_SEMANTICS.md",
     "docs/engineering/HANDOFF-progress-alert-semantics-20261016.json"
   ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/progress_semantics/tests -v",
-      "result": "NOT_RUN_FILE_ONLY_R9",
-      "evidence": "File-only policy forbids shell/RunCommand. Added real-shape 21:13:42 filename vs 21:13:41 Run Time, >1s rejection, body-job mismatch, old-malformed/current-valid, current-malformed, run-scoped scheduler failure, conflicting current outputs, dynamic JSONL explicit binding, ambiguous artifacts, traversal rejection, quota-held interval, pure explicit/fresh artifact, and installed-entrypoint resolver regressions. Newly triggered exact-head CI required."
+      "result": "NOT_RUN_FILE_ONLY_R10",
+      "evidence": "File-only policy forbids shell/RunCommand. Main's prior r9 CI 39055385989 is failure evidence only: 63 tests, exactly 1 FAIL at test_latest_scheduler_error_applies_only_to_matching_run, actual INVALID_SCHEDULE. r10 repairs the impossible fixture and adds independent invalid-anchor plus historical-error/non-contamination regressions. Newly triggered final exact-head CI is required."
     },
     {
       "command": "python3 -m unittest -v engineering.progress_semantics.tests.test_installed_entrypoints",
-      "result": "NOT_RUN_FILE_ONLY_R9",
-      "evidence": "Existing staged plugin/commit.py + byte-identical commit.py.pa1-base + pa1/progress_semantics layout retained. New test reaches dynamic resolver through installed evaluate/assess_profile; r8 Ledger/DISPATCHED/handle_status/API delegation assertions remain present."
+      "result": "NOT_RUN_FILE_ONLY_R10",
+      "evidence": "r8 public API/delegation and r9 installed dynamic resolver coverage are unchanged; require final exact-head execution."
     },
     {
       "command": "python3 -m unittest -v lab.tests.test_workflow_pipeline",
-      "result": "NOT_RUN_FILE_ONLY_R9",
-      "evidence": "No workflow_pipeline source was changed. Exact-head baseline must be supplied by new CI; r7 denied launcher work is not retried or claimed."
+      "result": "NOT_RUN_FILE_ONLY_R10",
+      "evidence": "Prior r9 workflow baseline was skipped after progress failure. No workflow_pipeline source changed and r7 denied scope was not retried. Main must run this existing acceptance on final exact head."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
-      "result": "NOT_RUN_FILE_ONLY_R9",
-      "evidence": "No local execution permitted. All twelve paper services remain inactive/disabled and no once/window/research operation was performed."
+      "result": "NOT_RUN_FILE_ONLY_R10",
+      "evidence": "Prior r9 PAPER baseline was skipped after progress failure. No paper operation or source change occurred; Main must run existing acceptance on final exact head."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests -v",
-      "result": "NOT_RUN_FILE_ONLY_R9",
-      "evidence": "Security/exporter baseline not executed locally; require newly triggered exact-head CI."
+      "result": "NOT_RUN_FILE_ONLY_R10",
+      "evidence": "Prior r9 exporter step passed, but final exact-head security/automation baseline is still required because r9 was not accepted."
     }
   ],
   "remaining_work": [
-    "Require newly triggered exact-head r9 CI at the final mailbox head. Do not reuse r6/r8 green evidence. Verify all prior precision/DST/future/Prompt-vs-Response/no-agent/missing-output/dedupe/API assertions plus the new writer-skew, malformed/conflict, dynamic resolver, path-confinement and quota-held cases.",
-    "No r9 installation occurred. After independent acceptance, Main may install the complete accepted watcher_adapter.py and progress_semantics.py bytes into plugins/commitment-gate/pa1/progress_semantics/ using the existing documented mapping; accepted r8 plugins/commitment-gate/commit.py remains unchanged. Read-only acceptance remains installed commit.py list, commit.py attention, commit.py check, and the existing installed watcher check path.",
-    "Production journal entries do not contain default structured item/job/run/rc bindings. J-0015/J-0433..J-0437-style title/timestamp/refs evidence therefore remains insufficient. C0003 stays COVERAGE_NOT_IMPLEMENTED; C0026 durable_scorecard_alert_checked_result remains MISSING_ARTIFACT until a real producer and explicit binding contract exist; timezone-only C0027/C0028/C0041/C0062/C0069/C0095 stay REQUIREMENTS_UNKNOWN.",
-    "r7 launcher integration remains BLOCKED by the recorded OpenAI safety denial. No installed_auto_accept.py, auto_accept, ledger_wake, workflow_pipeline, launcher, permission or checker write was attempted in r9.",
-    "Full workflow C0376/unattended completion remains unaccepted. Exact-chat approval/GitHub handback, owner-loss/launcher selection, quota pending-work recovery and patrol disposition remain outside r9. NOT_INSTALLED; UNATTENDED_NOT_PROVEN; PR69/storage and paper runtime were untouched."
+    "Consume only newly triggered final exact-head r10 CI. The prior r9 run 39055385989 is not acceptance evidence beyond diagnosing the impossible fixture; its exporter passed but later workflow/PAPER/security steps were skipped.",
+    "Verify scheduler contract explicitly: valid 60-minute 13:10->14:10 anchors plus last_status error bound to matching 13:10 last_run/output => SAFETY/CRON_FAILED; next<=last or non-60-minute anchors without explicit quota hold => SAFETY/INVALID_SCHEDULE; historical last_status error bound to 12:10 must not contaminate an independently successful 13:10 output; explicit quota hold remains distinct and cannot imply health or mask current failure.",
+    "Verify all retained r9 protections: real 21:13:42 filename vs 21:13:41 Run Time bounded writer skew, >1 second rejection, raw times/hash provenance, old malformed versus current malformed/conflicting evidence, Prompt-vs-Response failure semantics, no-agent shapes, fractional anchors, future/stale/DST fail-closed, dynamic JSON/JSONL reread, explicit binding, path traversal/symlink confinement, freshness/result/content checks, multiple-candidate/missing/wrong-job negatives, and r8 installed API delegation.",
+    "Source remains NOT_INSTALLED. Candidate source engineering/progress_semantics/watcher_adapter.py maps after independent acceptance to plugins/commitment-gate/pa1/progress_semantics/watcher_adapter.py; engineering/progress_semantics/progress_semantics.py maps to plugins/commitment-gate/pa1/progress_semantics/progress_semantics.py. Accepted r8 wrapper remains plugins/commitment-gate/commit.py unchanged. Existing candidate command: python3 -m unittest discover -s engineering/progress_semantics/tests -v. Existing deployed read-only commands: plugins/commitment-gate/commit.py list; plugins/commitment-gate/commit.py attention; plugins/commitment-gate/commit.py check; plus the existing installed watcher check path.",
+    "C0003 remains COVERAGE_NOT_IMPLEMENTED. C0026 still lacks a demonstrated real durable_scorecard_alert_checked_result producer with explicit current binding. Production journal default schema still lacks structured run/job/item binding; title/timestamp/refs alone remain insufficient. Timezone-only mapped items remain REQUIREMENTS_UNKNOWN. Do not infer current supervisor unavailability from historical quota examples; Main reports an authorized current official supervisor run succeeded, and r10 makes no scheduler/provider/config mutation.",
+    "r7 installed_auto_accept/launcher operation remains separately BLOCKED by the recorded OpenAI safety denial and was not retried, recreated, renamed, split, or routed around. Full workflow C0376 remains UNATTENDED_NOT_PROVEN. No paper start/enable/restart/once/window, storage rework, main/merge/deploy/trade/credential/provider/config operation occurred."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Consume only newly triggered exact-head r9 CI. Require the full progress suite and unchanged workflow/PAPER/security baselines. Inspect that the real 21:13:42/21:13:41 writer shape passes, >1s/current malformed/conflicts fail closed, latest scheduler status is scoped to matching last_run, journal refs-only evidence does not satisfy artifacts, explicit fresh bound synthetic evidence does, traversal is rejected, quota-held anchors are QUOTA_HELD_UNKNOWN absent current evidence, and r8 import API assertions remain green.",
-    "if_pass": "Independently accept complete r9 bytes and use the documented source -> plugins/commitment-gate/pa1/progress_semantics installed mapping. Run only the existing read-only commit.py list/attention/check and watcher check acceptance paths; do not hand-edit producer glue or infer success for unresolved production artifacts.",
-    "if_fail": "Return exact r9 failing test IDs/log evidence for same-branch repair. Do not install, do not weaken negative assertions, and do not retry or route around the separately denied r7 launcher operation.",
+    "verify_now": "Trigger and consume final exact-head r10 CI. Require progress semantics fully green, then the previously skipped workflow/PAPER/security baselines. Confirm the repaired valid matching-current scheduler failure returns CRON_FAILED, the independent impossible-anchor case returns INVALID_SCHEDULE, historical scheduler error does not contaminate current success, quota-held distinction remains conservative, and every retained r9/r8 negative/API assertion stays green.",
+    "if_pass": "Independently accept the complete r10 candidate. Install only through the existing approved mapping: accepted watcher_adapter.py and progress_semantics.py bytes to plugins/commitment-gate/pa1/progress_semantics/, with accepted r8 plugins/commitment-gate/commit.py unchanged. Run the existing read-only deployed commit.py list/attention/check and watcher check acceptance paths. Do not infer artifact producer success or unattended workflow completion.",
+    "if_fail": "Return exact final-head failing test IDs and logs for same-branch repair. Do not weaken scheduler validation, broaden writer skew/tolerance, change precedence blindly, delete/skip/xfail negative tests, install failed bytes, or retry/reroute the denied r7 launcher operation.",
     "blockers": [
-      "new exact-head r9 CI not yet observed",
+      "new final exact-head r10 CI not yet observed",
+      "previous r9 workflow/PAPER/security baselines were skipped after progress failure",
       "C0026 has no demonstrated real producer with explicit current run/slot binding",
       "production journal default schema lacks structured run/job/item binding",
       "r7 launcher integration remains separately blocked by recorded safety denial",
-      "full workflow C0376 remains unaccepted; no installed or unattended proof"
+      "full workflow C0376 remains unaccepted; NOT_INSTALLED and UNATTENDED_NOT_PROVEN"
     ]
   }
 }
