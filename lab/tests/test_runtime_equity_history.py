@@ -773,5 +773,19 @@ class ReferenceRuntimeTests(RuntimeIntegrationTests):
                 self.now[0] = 1700000000000
 
 
+
+    def test_recent_window_never_deletes_append_only_archive(self):
+        self.migrate([])
+        self.db.execute('BEGIN')
+        for n in range(RECENT_LIMIT + 17):
+            self.history.append(point('t' + str(n), str(n)))
+        self.db.execute('COMMIT')
+        self.assertEqual(self.history.count(), RECENT_LIMIT + 17)
+        recent = self.history.recent()
+        self.assertEqual(len(recent), RECENT_LIMIT)
+        self.assertEqual(recent[0]['ts'], 't17')
+        self.assertEqual(recent[-1]['ts'], 't' + str(RECENT_LIMIT + 16))
+
+
 if __name__ == '__main__':
     unittest.main()
