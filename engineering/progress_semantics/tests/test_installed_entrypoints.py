@@ -122,6 +122,29 @@ class InstalledEntryTests(unittest.TestCase):
                 self.assertEqual(mod.handle_status({"kind":"cron"})[0],"alive")
                 self.assertEqual(mod.main([]),0)
 
+    def test_installed_evaluate_reloads_bound_artifact_through_profile_seam(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); self.profile(root)
+            it=self.item()
+            (root/"commitments"/"ledger.json").write_text(json.dumps({"items":[it]}),"utf-8")
+            (root/"cron"/"output"/"job1"/"2026-10-16_21-00-00.md").write_text(
+                "**Job ID:** job1\n## Response\n[SILENT]","utf-8")
+            journal=root/"lab"/"journal"; journal.mkdir(parents=True)
+            row={"at":"2026-10-17 11:11 UTC","item_id":"C0026","job_id":"job1",
+                 "result":"ok","body":"checked complete"}
+            (journal/"entries.jsonl").write_text(json.dumps(row)+"\n","utf-8")
+            req={"schema_version":1,"items":{"C0026":{"timezone":"Europe/Berlin",
+                 "coverage":"implemented","required_artifacts":["checked"],
+                 "artifact_sources":{"checked":{"path":"lab/journal/entries.jsonl","format":"jsonl",
+                 "time_field":"at","time_format":"journal_utc","item_field":"item_id",
+                 "job_field":"job_id","status_field":"result","success_values":["ok"],
+                 "content_field":"body","required_text":"checked complete"}}}}}
+            (root/"commitments"/"progress_requirements.json").write_text(json.dumps(req),"utf-8")
+            with mock.patch.dict("os.environ",{"HERMES_HOME":str(root)}):
+                mod=self.load(root)
+                now=mod.base.datetime.fromisoformat("2026-10-17T20:00:00+02:00").timestamp()
+                self.assertEqual(mod.evaluate(Led(it),now),[])
+
     def test_watch_wrapper_targets_installed_checker(self):
         source=(SRC/"installed_commit_watch.py").read_text("utf-8")
         self.assertIn('plugins/commitment-gate/commit.py',source)
