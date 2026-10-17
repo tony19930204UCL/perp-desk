@@ -919,5 +919,103 @@ class P2EvidenceTests(unittest.TestCase):
               ' new_bytes_per_event_small_large=' + format(new_small, '.1f') +
               '/' + format(new_large, '.1f'), flush=True)
 
+
+_DEPLOYED_BROKER_BLOB = 'b34ef7e7a30e35c51019420937f505513679c29c'
+
+
+def _sr1_deployed_module():
+    source = (Path(__file__).resolve().parents[2] /
+              'operator-input/deployed/sim_broker.py').read_bytes()
+    blob = hashlib.sha1(b'blob ' + str(len(source)).encode() + b'\0' + source).hexdigest()
+    if blob != _DEPLOYED_BROKER_BLOB:
+        raise AssertionError('deployed broker source blob mismatch: ' + blob)
+    name = '_sr1_deployed_sim_broker'
+    module = types.ModuleType(name)
+    module.__file__ = 'operator-input/deployed/sim_broker.py'
+    sys.modules[name] = module
+    exec(compile(source, module.__file__, 'exec'), module.__dict__)
+    return module
+
+
+@unittest.skipUnless(os.environ.get('STORAGE_SR1_DEPLOYED_DIFFERENTIAL') == '1',
+                     'opt-in STORAGE_SR1_DEPLOYED_DIFFERENTIAL=1')
+class SR1DeployedDifferentialTests(unittest.TestCase):
+    """Current storage versus pinned deployed broker semantics, no network."""
+
+    def test_2048_events_restart_and_rejection_matrix(self):
+        deployed = _sr1_deployed_module()
+        with tempfile.TemporaryDirectory(prefix='sr1-deployed-diff-') as directory:
+            root = Path(directory)
+            old = _p2_broker(deployed, root / 'old.sqlite')
+            new = _p2_broker(p2_current, root / 'new.sqlite', compact=True)
+            try:
+                # Funding readiness plus actual entries/exits/stops/finalized funding.
+                for action, value in _p2_workload():
+                    if action == 'intent':
+                        key, ts, side, reduce, stop = value
+                        a = old.submit(_p2_intent(deployed, key, ts, side,
+                                                  reduce=reduce, stop=stop))
+                        b = new.submit(_p2_intent(p2_current, key, ts, side,
+                                                 reduce=reduce, stop=stop))
+                        self.assertEqual(_p2_canonical(a), _p2_canonical(b), key)
+                    else:
+                        old.on_event(value); new.on_event(value)
+                self.assertEqual(_p2_snapshot(old), _p2_snapshot(new))
+                coverage = _p2_coverage(new)
+                self.assertGreaterEqual(coverage['events'], 2000)
+                for key in ('entry_fills','explicit_exit_fills','stop_fills',
+                            'nonzero_funding_settlements'):
+                    self.assertGreater(coverage[key], 0, coverage)
+
+                # Exact duplicate remains idempotent across both implementations.
+                duplicate = _p2_event('mark', new.last_ts + 1, 'duplicate', price='100')
+                old.on_event(duplicate); new.on_event(duplicate)
+                old_before, new_before = _p2_snapshot(old), _p2_snapshot(new)
+                old.on_event(duplicate); new.on_event(duplicate)
+                self.assertEqual(_p2_snapshot(old), old_before)
+                self.assertEqual(_p2_snapshot(new), new_before)
+
+                # Same ID/different content, out-of-order and off-tick reject in
+                # both. Off-tick text is intentionally later-deployed diagnostic.
+                conflict = dict(duplicate, price='101')
+                for broker in (old, new):
+                    with self.assertRaisesRegex(ValueError, 'conflicting event ID'):
+                        broker.on_event(conflict)
+                    with self.assertRaisesRegex(ValueError, 'event timestamp older'):
+                        broker.on_event(_p2_event('mark', 100, 'old-ts', price='100'))
+                off = _p2_book(new.last_ts + 2, 'offtick', bid='99.05', ask='100')
+                with self.assertRaisesRegex(ValueError, 'off-tick quote'):
+                    old.on_event(off)
+                with self.assertRaisesRegex(
+                        ValueError, 'validator=SimBroker._validate_event'):
+                    new.on_event(off)
+
+                # Risk rejection contract remains unchanged by storage.
+                bad_old = deployed.RiskContract()
+                bad_new = p2_current.RiskContract()
+                old.risk, new.risk = bad_old, bad_new
+                ts = max(old.last_ts, new.last_ts) + 1
+                oa = old.submit(_p2_intent(deployed, 'risk-reject', ts))
+                nb = new.submit(_p2_intent(p2_current, 'risk-reject', ts))
+                self.assertEqual(oa['reason'], 'risk_missing_or_unapproved')
+                self.assertEqual(nb['reason'], oa['reason'])
+
+                # Restart current storage and permanently replay finalized funding.
+                permanent = _p2_event('funding', new.last_ts + 3, 'permanent-funding',
+                                      settlement_ts=new.last_ts + 3, rate='.0001',
+                                      mark='100', finalized=True)
+                old.on_event(permanent); new.on_event(permanent)
+                expected = _p2_snapshot(new)
+                old.close(); new.close()
+                old = _p2_broker(deployed, root / 'old.sqlite')
+                new = _p2_broker(p2_current, root / 'new.sqlite', compact=True)
+                self.assertEqual(_p2_snapshot(old), _p2_snapshot(new))
+                new.on_event(permanent)
+                self.assertEqual(_p2_snapshot(new), expected)
+                print('SR1 DEPLOYED DIFFERENTIAL blob=' + _DEPLOYED_BROKER_BLOB +
+                      ' coverage=' + json.dumps(coverage, sort_keys=True), flush=True)
+            finally:
+                old.close(); new.close()
+
 if __name__ == '__main__':
     unittest.main()
