@@ -15,7 +15,9 @@ from datetime import datetime
 from pathlib import Path
 OPEN,DISPATCHED,VERIFIED,BLOCKED,DROPPED="OPEN","DISPATCHED","VERIFIED","BLOCKED","DROPPED"
 TERMINAL={VERIFIED,DROPPED}; OPEN_GRACE_H=24; STALE_H=72; REPEAT_H=6
-class Ledger:\n    pass\ndef home(): return Path(os.environ["HERMES_HOME"])
+class Ledger:
+    pass
+def home(): return Path(os.environ["HERMES_HOME"])
 def handle_status(h): return ("alive","cron")
 def accept_ok(a,item=None): return (False,"no")
 def touch(item,note): item["updated"]=time.time(); item.setdefault("history",[]).append([time.time(),note])
