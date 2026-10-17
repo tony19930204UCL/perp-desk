@@ -213,7 +213,7 @@ class WatcherAdapterTests(unittest.TestCase):
             (outdir/"2026-10-17_12-10-33.md").write_text("## Response\n[SILENT]","utf-8")
             (outdir/"2026-10-17_13-10-33.md").write_text("## Response\n[SILENT]","utf-8")
             r=assess_profile(root,"C0026",NOW,self.req())
-            self.assertEqual((r["state"],r["reason_code"]),("OK","SUCCESS"))
+            self.assertEqual((r["state"],r["reason_code"]),("OK","EVIDENCE_CURRENT"))
 
     def test_profile_current_malformed_fails_closed(self):
         with tempfile.TemporaryDirectory() as td:
