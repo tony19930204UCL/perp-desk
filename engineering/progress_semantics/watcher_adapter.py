@@ -239,6 +239,14 @@ def assess_item(item, now, job, outputs, requirements=None, artifacts=None):
         due = due_slot(now, schedule)
         current = [r for r in outputs if r.get("job_id") == job_id and
                    (aware(r["at"]) >= due or same_serialized_second(r["at"], due))]
+        buckets = {}
+        for record in current:
+            buckets.setdefault(serialized_second(record["at"]), []).append(record)
+        for records in buckets.values():
+            identities = {(r.get("raw_sha256"), r.get("ref")) for r in records}
+            contents = {r.get("raw_sha256") or r.get("content") for r in records}
+            if len(identities) > 1 and len(contents) > 1:
+                return closed("SAFETY", "CONFLICTING_CURRENT_OUTPUT", job_id)
         if schedule.get("quota_held"):
             # A quota hold explains why cadence anchors are intentionally
             # separated; it does not rewrite cadence or prove current health.
