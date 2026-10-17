@@ -237,15 +237,18 @@ class InstalledEntryTests(unittest.TestCase):
             dead=self.ledger_item(handle={"kind":"pid","pid":99999999,"start":1,"ref":"99999999"}); dead["id"]="C-0001"
             manual=self.ledger_item(handle={"kind":"manual","ref":"sa-test"}); manual.update(id="C-0002",created=now-50000)
             blocked=self.ledger_item("BLOCKED",None); blocked.update(id="C-0003",blocked_by=None,reason="free text")
-            checked=self.ledger_item("BLOCKED",None); checked.update(id="C-0004",blocked_by="item:C-9999")
-            verified=self.ledger_item("VERIFIED",None); verified["id"]="C-0005"
-            ledger=commitments/"ledger.json"; ledger.write_text(json.dumps({"next":6,"items":[dead,manual,blocked,checked,verified]}),"utf-8")
+            checked=[]
+            for i, blocker in enumerate(("item:C-9999","file:/tmp/x","user:question","cmd:false"),4):
+                row=self.ledger_item("BLOCKED",None); row.update(id="C-%04d"%i,blocked_by=blocker); checked.append(row)
+            verified=self.ledger_item("VERIFIED",None); verified["id"]="C-0008"
+            dropped=self.ledger_item("DROPPED",None); dropped["id"]="C-0009"
+            ledger=commitments/"ledger.json"; ledger.write_text(json.dumps({"next":10,"items":[dead,manual,blocked]+checked+[verified,dropped]}),"utf-8")
             before=ledger.read_bytes(); mt=ledger.stat().st_mtime_ns
             env=dict(os.environ,HERMES_HOME=str(root),COMMIT_MANUAL_LEASE_S="3600")
             r=subprocess.run([sys.executable,str(cli),"attention"],capture_output=True,text=True,env=env)
             self.assertEqual(r.returncode,0,r.stderr)
             self.assertIn("NEEDS_SUCCESSOR C-0001 pid",r.stdout); self.assertIn("C-0002 manual",r.stdout); self.assertIn("C-0003 blocked",r.stdout)
-            self.assertNotIn("NEEDS_SUCCESSOR C-0004",r.stdout); self.assertNotIn("NEEDS_SUCCESSOR C-0005",r.stdout)
+            for cid in ("C-0004","C-0005","C-0006","C-0007","C-0008","C-0009"): self.assertNotIn("NEEDS_SUCCESSOR "+cid,r.stdout)
             self.assertEqual(ledger.read_bytes(),before); self.assertEqual(ledger.stat().st_mtime_ns,mt)
 
     def test_successor_manual_fresh_heartbeat_and_young_lease_are_not_flagged(self):
@@ -376,8 +379,9 @@ class InstalledEntryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); self.patrol_layout(root)
             r=self.run_patrol(root)
-            lines=set(x.split(":",1)[0] for x in r.stdout.splitlines() if x)
-            self.assertEqual(lines,{"SERVICE "+u for u in ("h2","f1h-btcusdt","f1h-solusdt","f1h-xrpusdt","w1-btcusdt","w1-ethusdt","w1-solusdt","w1-xrpusdt","t1-btcusdt","t1-ethusdt","t1-solusdt","t1-xrpusdt")})
+            for u in ("h2","f1h-btcusdt","f1h-solusdt","f1h-xrpusdt","w1-btcusdt","w1-ethusdt","w1-solusdt","w1-xrpusdt","t1-btcusdt","t1-ethusdt","t1-solusdt","t1-xrpusdt"):
+                self.assertIn("SERVICE "+u+": unit is inactive",r.stdout)
+            self.assertNotIn("PAUSE_",r.stdout)
             state=json.loads((root/"lab"/"journal"/"patrol_state.json").read_text("utf-8"))
             self.assertEqual(set(state),{"last_run","restarts","pidw","sent"})
             self.assertEqual(state["restarts"],{u:0 for u in ("h2","f1h-btcusdt","f1h-solusdt","f1h-xrpusdt","w1-btcusdt","w1-ethusdt","w1-solusdt","w1-xrpusdt","t1-btcusdt","t1-ethusdt","t1-solusdt","t1-xrpusdt")})
