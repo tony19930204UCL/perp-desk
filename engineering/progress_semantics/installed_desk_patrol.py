@@ -13,10 +13,11 @@ Checks (all local files and systemctl, read-only):
 Each key is repeated at most once per 6 hours unless its text changes. State: lab/journal/patrol_state.json
 """
 import json, os, shutil, sqlite3, subprocess, sys, time
+from datetime import datetime
 from pathlib import Path
 
 HOME = Path(os.environ.get('HERMES_HOME', str(Path.home() / '.hermes/profiles/perp-desk'))).resolve()
-LAB = HOME / 'lab'; STATE = LAB / 'journal' / 'patrol_state.json'
+LAB = HOME / 'lab'; STATE = LAB / 'journal' / 'patrol_state.json'; PAUSES = LAB / 'journal' / 'paused_units.json'
 UNITS = ['h2', 'f1h-btcusdt', 'f1h-solusdt', 'f1h-xrpusdt', 'w1-btcusdt', 'w1-ethusdt', 'w1-solusdt', 'w1-xrpusdt', 't1-btcusdt', 't1-ethusdt', 't1-solusdt', 't1-xrpusdt']
 LIVE = {'h2': 'paper_v4_live.json'}
 DATA = {'h2': 'paper-v4'}
@@ -50,20 +51,91 @@ def poll_rate(unit):
         return None, None
 
 
+
+def pause_markers(now):
+    if not PAUSES.exists():
+        return {}, {}
+    try:
+        data = json.loads(PAUSES.read_text('utf-8'))
+        if data.get('schema_version') != 1 or not isinstance(data.get('units'), dict):
+            raise ValueError('schema')
+        valid = {}; notices = {}
+        for unit, row in data['units'].items():
+            if unit not in UNITS:
+                notices['PAUSE_UNKNOWN_UNIT ' + str(unit)] = 'marker names a unit not monitored by patrol'
+                continue
+            if not isinstance(row, dict) or not all(isinstance(row.get(k), str) and row[k] for k in ('reason','authorized_by','authorized_at','review_by')):
+                raise ValueError('unit record')
+            auth = datetime.fromisoformat(row['authorized_at'])
+            review = datetime.fromisoformat(row['review_by'])
+            if auth.tzinfo is None or review.tzinfo is None:
+                raise ValueError('offset required')
+            if review.timestamp() <= now:
+                notices['PAUSE_EXPIRED ' + unit] = 'owner pause review_by has passed'
+            else:
+                valid[unit] = row
+        return valid, notices
+    except Exception as exc:
+        return {}, {'PAUSE_MARKER_INVALID': 'paused_units.json invalid: %s' % str(exc)[:80]}
+
+
+def pause_exposure(unit):
+    p = LAB / 'data' / DATA.get(unit, 'paper-' + unit) / 'runtime.sqlite3'
+    try:
+        c = sqlite3.connect('file:%s?mode=ro' % p, uri=True, timeout=10)
+        row = c.execute('select payload from state where id=1').fetchone()
+        c.close()
+        if not row:
+            return None
+        payload = json.loads(row[0])
+    except Exception:
+        return None
+    seen = False; opened = False
+    def walk(value):
+        nonlocal seen, opened
+        if isinstance(value, dict):
+            for key, val in value.items():
+                if key in ('position','positions','open_orders'):
+                    seen = True
+                    if isinstance(val, (int, float)) and not isinstance(val, bool):
+                        opened = opened or val != 0
+                    elif isinstance(val, (list, dict, str)):
+                        opened = opened or bool(val)
+                    else:
+                        return False
+                if walk(val) is False:
+                    return False
+        elif isinstance(value, list):
+            for val in value:
+                if walk(val) is False:
+                    return False
+        return True
+    if walk(payload) is False or not seen:
+        return None
+    return opened
+
 def main():
     now = time.time(); st = json.loads(STATE.read_text()) if STATE.exists() else {}
     prev_run = st.get('last_run'); out = {}
     if prev_run and now - prev_run > GAP_MIN:
         gap = (now - prev_run) / 60
         out['MACHINE_GAP'] = 'no patrol for %.0f minutes (machine or scheduler was down)%s' % (gap, '; exceeds the 180 minute void limit for any window that was running' if now - prev_run > VOID else '')
+    pauses, pause_notices = pause_markers(now); out.update(pause_notices)
     restarts = {}; pidw = {}; tot = 0
     for u in UNITS:
         act = subprocess.run(['systemctl', '--user', 'is-active', 'perp-paper-%s.service' % u], capture_output=True, text=True, timeout=20).stdout.strip()
         n = int(sysd(u, 'NRestarts') or 0); restarts[u] = n
-        if act != 'active': out['SERVICE ' + u] = 'unit is %s' % act
+        paused = u in pauses
+        if paused:
+            exposure = pause_exposure(u)
+            if exposure is True: out['PAUSE_OPEN_EXPOSURE ' + u] = 'paused unit has open position or open orders'
+            elif exposure is None: out['PAUSE_EXPOSURE_UNKNOWN ' + u] = 'paused unit exposure cannot be established from runtime state'
+            if act == 'active': out['PAUSE_UNIT_ACTIVE ' + u] = 'owner-paused unit is active; normal checks apply'
+        if act != 'active':
+            if not paused: out['SERVICE ' + u] = 'unit is %s' % act
         elif n > st.get('restarts', {}).get(u, n): out['SERVICE ' + u] = 'restarted %d time(s) since the last patrol' % (n - st['restarts'][u])
         f = LAB / 'shared' / LIVE.get(u, 'paper_%s_live.json' % u.replace('-', '_'))
-        if f.exists() and now - f.stat().st_mtime > 180: out['STALE_STATUS ' + u] = 'status file not rewritten for %.0f s' % (now - f.stat().st_mtime)
+        if f.exists() and now - f.stat().st_mtime > 180 and (not paused or act == 'active'): out['STALE_STATUS ' + u] = 'status file not rewritten for %.0f s' % (now - f.stat().st_mtime)
         e, o = poll_rate(u)
         if e is not None and e + o and e / (e + o) > 0.05: out['POLL_ERRORS ' + u] = '%.1f%% (%d errors, %d validated) in the newest 2000 audit rows' % (100 * e / (e + o), e, o)
         pid = int(sysd(u, 'MainPID') or 0); w = wbytes(pid) if pid else None
