@@ -4,14 +4,12 @@
   "pr_number": 0,
   "branch": "fix/progress-alert-semantics-20261016",
   "task_id": "progress-alert-semantics-20261016",
-  "instruction_id": "PA1-r5-WF1",
+  "instruction_id": "PA1-r6-WF1",
   "status": "WAITING_CI",
-  "source_head_sha": "f64660bb0197cde7462081c5cd5b14b3bdff069f",
-  "summary": "Repaired exact r4 CI failures without weakening integration: installed_commit now explicitly loads the authoritative non-.py sibling backup commit.py.pa1-base while still refusing a genuinely missing base; anchored interval tests/classification now distinguish within-grace absence from a missed slot after grace. No installation or runtime operation performed.",
+  "source_head_sha": "d6a0054cd425a1667dec055910f3d96dd2620db0",
+  "summary": "Complete-contract repair for exact r5 adapter failures. Preserved installed-entrypoint loader/missing-base repair. Anchored interval evidence now reconciles fractional scheduler anchors with the installed writer's second-precision filename/Run Time using exact same-job serialized-second identity only; previous-second/wrong-job evidence cannot satisfy a slot. Same-second comparison is normalized to the true anchor while original source timestamp/ref remain provenance. No installation/runtime operation.",
   "changed_files": [
-    "engineering/progress_semantics/installed_commit.py",
     "engineering/progress_semantics/watcher_adapter.py",
-    "engineering/progress_semantics/tests/test_installed_entrypoints.py",
     "engineering/progress_semantics/tests/test_watcher_adapter.py",
     "docs/engineering/PROGRESS_ALERT_SEMANTICS.md",
     "docs/engineering/HANDOFF-progress-alert-semantics-20261016.json"
@@ -19,40 +17,40 @@
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/progress_semantics/tests -v",
-      "result": "FAILED_R4_REPAIRED_R5_NOT_RUN",
-      "evidence": "Exact r4 push CI 39045199259 job 117432430545: Ran 40 in 0.024s, FAILED failures=1 errors=4. Four installed-entrypoint loader errors and watcher overdue assertion were repaired. r5 exact-head CI not yet visible."
+      "result": "FAILED_R5_REPAIRED_R6_NOT_RUN",
+      "evidence": "Exact r5 push CI 39045557067 job 117433447463: Ran 42 in 0.025s, FAILED failures=6, all watcher adapter precision-boundary cases. r6 adds same-job serialized-second caller-chain repair and boundary tests; exact r6 CI not yet visible."
     },
     {
       "command": "python3 -m unittest -v lab.tests.test_workflow_pipeline",
-      "result": "NOT_RUN_R4_AFTER_EARLY_FAILURE",
-      "evidence": "Skipped after r4 Progress semantics acceptance failure; no r5 result borrowed from prior runs."
+      "result": "NOT_RUN_R5_AFTER_EARLY_FAILURE",
+      "evidence": "Skipped after r5 Progress semantics acceptance failure; no earlier PASS is relabeled as r6."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
-      "result": "NOT_RUN_R4_AFTER_EARLY_FAILURE",
-      "evidence": "Skipped after r4 Progress semantics acceptance failure; r5 exact-head baseline pending."
+      "result": "NOT_RUN_R5_AFTER_EARLY_FAILURE",
+      "evidence": "Skipped after r5 Progress semantics acceptance failure; r6 exact-head PAPER/baseline pending."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests -v",
-      "result": "PASS_R4",
-      "evidence": "Exporter contract passed before the r4 progress failure in exact run 39045199259; this is historical r4 evidence only, not r5."
+      "result": "PASS_R5_HISTORICAL_ONLY",
+      "evidence": "Exporter/security gate preceding progress acceptance passed in r5 run 39045557067; not r6 evidence."
     }
   ],
   "remaining_work": [
-    "Require automatically triggered r5 exact-head CI for source f64660bb0197cde7462081c5cd5b14b3bdff069f: progress suite including missing-base refusal and slot-grace cases, workflow focused test, PAPER cwd suite, and every unchanged later baseline/security step.",
-    "No workflow installation occurred. Accepted replacement still requires byte-for-byte original plugins/commitment-gate/commit.py backed up as sibling commit.py.pa1-base plus documented PA1 sibling closure; never use wrapper/self-copy as base.",
-    "Broader workflow remains open and unclaimed: auto_accept/accept_unit/ledger_wake, launcher/skills/prompts, quota recovery, exact-chat/GH delivery integration and genuine unattended loop. Minimum missing contracts remain documented.",
-    "PR0 coordinator JOB_REQUIRED_FIELDS/PR_FORMAT boundary and AP3 SEND_UNKNOWN remain unchanged. Twelve paper obligations remain incomplete; paper services were not touched.",
-    "installed=false; unattended_proven=false. Preserve r1/r2 failures, r3 success 39027636350, and r4 failure 39045199259/117432430545."
+    "Require automatically triggered r6 exact-head CI for source d6a0054cd425a1667dec055910f3d96dd2620db0: full progress suite including fractional/exact-second, previous/next-second, long-script bucket, wrong job/path, missing/within-grace, Response/Prompt failure, coverage/artifact, timezone/DST; then workflow, lab-cwd PAPER and all unchanged later baseline/security steps.",
+    "No installation occurred. installed_commit.py/installed_commit_watch.py and authoritative byte-for-byte commit.py.pa1-base contract are preserved unchanged from completed r5 loader repair.",
+    "Whole workflow remains unimplemented where actual sources are unavailable: auto_accept/accept_unit/ledger_wake owner-loss selectors; launcher/skills/prompts dependency/handback selection; quota classifier plus pending-work persistence/recovery; exact-chat approval receipt and GitHub delivery watcher; unattended patrol handback-to-next-owner proof. Minimum actual source contracts remain documented separately.",
+    "PR0 coordinator JOB_REQUIRED_FIELDS/PR_FORMAT boundary, AP3 SEND_UNKNOWN, and twelve paper obligations remain unchanged. Paper services/storage PR69 were not touched.",
+    "installed=false; unattended_proven=false. Preserve r4 CI 39045199259 failure and r5 CI 39045557067 failure as executed evidence."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Consume the next exact-head r5 CI automatically; require complete progress/workflow/PAPER/later baseline and preserve r4 failure evidence.",
-    "if_pass": "Independently accept exact bytes and use the documented authorized install/readback/rollback mapping; no coding glue is required.",
-    "if_fail": "Return exact failing r5 test IDs/log evidence for same-branch repair; do not install.",
+    "verify_now": "Consume the automatically triggered exact-head r6 CI; require complete progress/workflow/PAPER/later baseline and inspect the new precision-boundary test IDs.",
+    "if_pass": "Independently accept exact bytes and use the already documented authorized install/readback/rollback mapping; do not author glue.",
+    "if_fail": "Return exact r6 failing test IDs/log evidence for same-branch repair; do not install.",
     "blockers": [
-      "r5 exact-head CI result not yet visible",
-      "broader Hermes workflow source contracts remain unavailable",
+      "r6 exact-head CI result not yet visible",
+      "broader Hermes workflow actual source contracts remain unavailable",
       "no installed or unattended proof"
     ]
   }
