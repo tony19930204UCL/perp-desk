@@ -980,11 +980,17 @@ class SR1DeployedDifferentialTests(unittest.TestCase):
                 # Same ID/different content, out-of-order and off-tick reject in
                 # both. Off-tick text is intentionally later-deployed diagnostic.
                 conflict = dict(duplicate, price='101')
-                for broker in (old, new):
+                for label, broker in (('deployed', old), ('candidate', new)):
                     with self.assertRaisesRegex(ValueError, 'conflicting event ID'):
                         broker.on_event(conflict)
-                    with self.assertRaisesRegex(ValueError, 'event timestamp older'):
+                    with self.assertRaises(ValueError) as caught:
                         broker.on_event(_p2_event('mark', 100, 'old-ts', price='100'))
+                    # The later deployed broker wording is the accepted contract;
+                    # candidate persistence must not weaken chronology rejection.
+                    expected = ('out-of-order event; supply chronological observation timestamps'
+                                if label == 'deployed'
+                                else 'out-of-order event; supply chronological observation timestamps')
+                    self.assertEqual(str(caught.exception), expected)
                 off = _p2_book(new.last_ts + 2, 'offtick', bid='99.05', ask='100')
                 with self.assertRaisesRegex(ValueError, 'off-tick quote'):
                     old.on_event(off)
