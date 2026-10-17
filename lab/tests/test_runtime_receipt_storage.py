@@ -257,11 +257,17 @@ class TenMinuteStorageEvidenceTests(unittest.TestCase):
                 "SELECT COUNT(*) FROM runtime_receipt_payloads").fetchone()[0], 1)
             self.assertLessEqual(funding_db.execute(
                 "SELECT COUNT(*) FROM runtime_noncausal_raw_receipts").fetchone()[0], 256)
-            sizes = {name:(root / (name + ".sqlite3")).stat().st_size
-                     for name in writers}
-            print("SR1 TEN_MINUTE " + json.dumps(
-                {"contributions":results,"sqlite_file_bytes":sizes},
-                sort_keys=True), flush=True)
+            db_paths = {
+                "broker_hot": root / "broker-hot.sqlite3",
+                "history": root / "history.sqlite3",
+                "reference": root / "reference.sqlite3",
+                "fundingInfo": root / "fundingInfo.sqlite3",
+            }
+            sizes = {name:path.stat().st_size for name, path in db_paths.items()}
+            output = {"contributions":results, "sqlite_file_bytes":sizes,
+                      "elapsed_seconds":elapsed,
+                      "target_bytes_per_second":self.TARGET_BYTES_PER_SECOND}
+            print("SR1 TEN_MINUTE " + json.dumps(output, sort_keys=True), flush=True)
             for db in (broker_db, history_db, reference_db, funding_db):
                 db.close()
 
