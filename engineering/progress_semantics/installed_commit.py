@@ -132,6 +132,110 @@ def evaluate(led, now=None):
 
 base.evaluate = evaluate
 
+SUCCESSOR_SCHEMA = 1
+SUCCESSOR_NAME = "needs_successor.json"
+MANUAL_LEASE_S = float(os.environ.get("COMMIT_MANUAL_LEASE_S", 6 * 3600))
+
+def _successor_paths():
+    root = Path(base.home())
+    return root / "commitments" / "ledger.json", root / "commitments" / SUCCESSOR_NAME
+
+def _manual_heartbeat(root, item):
+    h = item.get("handle") or {}
+    ref = str(h.get("ref") or "")
+    if not ref or "/" in ref or "\\" in ref or ref in (".", ".."):
+        return None
+    p = root / "commitments" / "heartbeats" / (ref + ".json")
+    try:
+        data = json.loads(p.read_text("utf-8"))
+        at = float(data["at"])
+        if data.get("item_id") != item.get("id") or data.get("handle_ref") != ref:
+            return None
+        return at
+    except Exception:
+        return None
+
+def _successor_reason(root, item, now, lease_s):
+    if item.get("state") == base.DISPATCHED:
+        h = item.get("handle") or {}
+        if h.get("kind") == "pid":
+            state, detail = base.handle_status(h)
+            if state == "dead":
+                return "dead pid handle: " + detail
+            return None
+        if h.get("kind") == "manual":
+            age = now - float(item.get("created") or now)
+            if age < lease_s:
+                return None
+            beat = _manual_heartbeat(root, item)
+            if beat is not None and -1 <= now - beat <= lease_s:
+                return None
+            return "manual executor lease expired without fresh heartbeat"
+    if item.get("state") == base.BLOCKED:
+        blocker = item.get("blocked_by")
+        if not isinstance(blocker, str) or not blocker.startswith(("item:", "file:", "user:", "cmd:")):
+            return "blocked item has no checkable blocker"
+    return None
+
+def scan_successors(now=None, lease_s=None):
+    """Read ledger under its existing lock and atomically refresh successor queue."""
+    now = time.time() if now is None else float(now)
+    lease_s = MANUAL_LEASE_S if lease_s is None else float(lease_s)
+    ledger_path, queue_path = _successor_paths()
+    lock_path = Path(str(ledger_path) + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock = open(lock_path, "a+")
+    try:
+        base.fcntl.flock(lock, base.fcntl.LOCK_SH)
+        try:
+            data = json.loads(ledger_path.read_text("utf-8"))
+        except Exception as exc:
+            raise RuntimeError("successor scan cannot read ledger: %s" % str(exc)[:100])
+        if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+            raise RuntimeError("successor scan ledger schema invalid")
+        prior = {}
+        if queue_path.exists():
+            try:
+                q = json.loads(queue_path.read_text("utf-8"))
+                if q.get("schema_version") == SUCCESSOR_SCHEMA:
+                    prior = {x["id"]: x for x in q.get("items", []) if isinstance(x, dict) and "id" in x}
+            except Exception:
+                prior = {}
+        rows = []
+        root = Path(base.home())
+        for item in data["items"]:
+            reason = _successor_reason(root, item, now, lease_s)
+            if reason:
+                old = prior.get(item.get("id"), {})
+                rows.append({"id": item.get("id"), "kind": (item.get("handle") or {}).get("kind") or "blocked",
+                             "evidence": reason, "first_seen": old.get("first_seen", now), "last_seen": now})
+        rows.sort(key=lambda x: x["id"])
+        queue_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = queue_path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"schema_version": SUCCESSOR_SCHEMA, "items": rows}, ensure_ascii=False, indent=1), "utf-8")
+        os.replace(tmp, queue_path)
+        return rows
+    finally:
+        base.fcntl.flock(lock, base.fcntl.LOCK_UN)
+        lock.close()
+
+def successor_lines():
+    rows = scan_successors()
+    return ["NEEDS_SUCCESSOR %s %s: %s" % (x["id"], x["kind"], x["evidence"]) for x in rows]
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[-1] in ("check", "attention"):
+        rc = base.main(argv)
+        try:
+            for line in successor_lines():
+                print(line)
+        except Exception as exc:
+            print("NEEDS_SUCCESSOR_SCAN_ERROR: %s" % str(exc)[:160])
+            return 4
+        return rc
+    return base.main(argv)
+
 def __getattr__(name):
     """Preserve the original commit.py public module API for legacy importers.
 
@@ -149,4 +253,4 @@ def __dir__():
     return sorted(set(globals()) | set(dir(base)))
 
 if __name__ == "__main__":
-    sys.exit(base.main())
+    sys.exit(main())
