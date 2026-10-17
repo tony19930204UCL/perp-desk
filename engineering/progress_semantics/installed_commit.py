@@ -5,6 +5,7 @@ This replacement loads the byte-for-byte pre-install checker backup, overrides
 only evaluate(), and delegates its unchanged CLI/locks/acceptance operations.
 """
 import importlib.util
+from importlib.machinery import SourceFileLoader
 import json
 import os
 import sys
@@ -17,11 +18,14 @@ PA1 = HERE.with_name("pa1")
 if str(PA1.parent) not in sys.path:
     sys.path.insert(0, str(PA1.parent))
 
-spec = importlib.util.spec_from_file_location("_pa1_commit_base", BASE)
-if not spec or not spec.loader:
+if not BASE.is_file():
+    raise SystemExit("PA1 install invalid: base checker backup unavailable")
+loader = SourceFileLoader("_pa1_commit_base", str(BASE))
+spec = importlib.util.spec_from_loader(loader.name, loader)
+if not spec:
     raise SystemExit("PA1 install invalid: base checker backup unavailable")
 base = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(base)
+loader.exec_module(base)
 
 # Installed sibling directory is <plugin>/pa1/progress_semantics/.
 from pa1.progress_semantics.watcher_adapter import assess_profile
