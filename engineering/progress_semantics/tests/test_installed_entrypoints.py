@@ -107,6 +107,19 @@ class InstalledEntryTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "base checker backup unavailable"):
                 spec.loader.exec_module(mod)
 
+    def test_import_preserves_legacy_commit_public_api_and_evaluator(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); self.profile(root,False)
+            with mock.patch.dict("os.environ",{"HERMES_HOME":str(root)}):
+                mod=self.load(root)
+                for name in ("Ledger","DISPATCHED","handle_status","OPEN","VERIFIED","main","touch","home"):
+                    self.assertTrue(hasattr(mod,name), name)
+                    self.assertIs(getattr(mod,name), getattr(mod.base,name))
+                self.assertIs(mod.base.evaluate,mod.evaluate)
+                self.assertEqual(mod.DISPATCHED,"DISPATCHED")
+                self.assertEqual(mod.handle_status({"kind":"cron"})[0],"alive")
+                self.assertEqual(mod.main([]),0)
+
     def test_watch_wrapper_targets_installed_checker(self):
         source=(SRC/"installed_commit_watch.py").read_text("utf-8")
         self.assertIn('plugins/commitment-gate/commit.py',source)
