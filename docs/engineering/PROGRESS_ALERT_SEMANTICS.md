@@ -1,23 +1,39 @@
-# Progress alert semantics (PA1)
+# PA1 progress alert semantics
 
-Pure stdlib source: `progress_semantics.py` plus `watcher_adapter.py`. Public imports are `evaluate`, `parse_output`, `assess_item`, and `assess_profile`.
+## Delivered bytes
+Source package: `progress_semantics.py`, `watcher_adapter.py`.
+Install replacements: `installed_commit.py`, `installed_commit_watch.py`.
+Tests cover Response-only failure parsing, real cron expressions, anchored intervals, Europe/Berlin wall timestamps, missing requirements, coverage gaps, disabled/overdue jobs, weekly not-due, original stale fallback, deterministic acceptance and alert dedupe.
 
-`parse_output(text)` considers `[CRON_FAILURE]` a failure only when it is the first non-empty line of the Response section. Prompt quotations do not count. `[SILENT]` is successful execution evidence.
+The actual schedule contract is `kind=cron` with five-field expressions such as `0 21 * * *`, `0 20 * * 0`, `30 20 * * *`, or `kind=interval` with 1/2/5/10/15/60/1440 minutes. Intervals use the supplied `last_run_at`/`next_run_at` anchors; they are never rounded to clock hours. Cron output filenames and Run Time are interpreted only with an explicit requirements timezone. This delivery uses `Europe/Berlin` in replay fixtures; missing timezone fails closed.
 
-`evaluate(item, now, schedule, evidence, state, cooldown_hours=6)` returns state, reason_code, evidence_ref, evidence_age_hours, alert, suppressed_by_cooldown and suggested_kind. Reclassification remains advisory.
+A no-agent silent record proves execution only. Prompt text containing `[CRON_FAILURE]` is ignored; only the first non-empty Response line can signal that failure. Missing requirements mapping returns truthful unknown at the adapter level. In the installed checker, an unmapped recurring item preserves the original generic stale/dead/due semantics; it is not auto-verified or globally exempted. A mapped `coverage=not_implemented` produces GAP.
 
-`assess_profile(home, item_id, now, requirements=None)` reads only `commitments/ledger.json`, `cron/jobs.json`, and `cron/output/<job_id>/*.md` under the explicit profile home. It never writes the ledger, runs subprocesses, or dispatches commands. `assess_item` accepts already-read records for isolated integration.
+## Requirements contract
+Profile-relative `commitments/progress_requirements.json`:
+`{"schema_version":1,"items":{"C-0001":{"timezone":"Europe/Berlin","coverage":"implemented","required_artifacts":[]}}}`.
+This is evidence configuration, not task authority. It must contain only validated requirements. No journal/coverage success is inferred. Absence means original checker semantics remain active.
 
-The installed watcher contract keeps `scripts/commit_watch.py` as the scheduled no-agent entrypoint and keeps the existing commitment gate `commit.py check` as authority for deterministic auto-verification, history/touch behavior, and persisted `alert_sig`/`alerted` dedupe. The adapter is called by that existing check only for recurring cron progress classification; it does not replace one-shot acceptance or mutation logic.
+## Exact install mapping
+No engineer-side installation was performed. After independent acceptance, the authorized installer copies accepted bytes as follows while keeping all original state files untouched:
 
-Cron job schedules supported by the adapter: interval minutes, daily hour/minute, weekly weekday/hour/minute, with an explicit timezone supplied by integration. Disabled/paused/missing jobs fail closed. A no-agent silent output proves only that execution occurred. If a recurring item has no supplied coverage/artifact requirement, assessment fails closed with missing evidence rather than treating rc0 as product progress. Known `coverage=not_implemented` returns GAP.
+1. Back up `plugins/commitment-gate/commit.py` byte-for-byte to sibling `commit.py.pa1-base`. The replacement refuses to start without it.
+2. Create `plugins/commitment-gate/pa1/progress_semantics/` and copy accepted `__init__.py`, `progress_semantics.py`, and `watcher_adapter.py` there.
+3. Copy accepted `installed_commit.py` to `plugins/commitment-gate/commit.py`.
+4. Back up `scripts/commit_watch.py` byte-for-byte to `scripts/commit_watch.py.pa1-base`; copy accepted `installed_commit_watch.py` to `scripts/commit_watch.py`.
+5. Read back hashes of both replacements, both backups, and the three PA1 sibling dependencies before allowing the unchanged scheduler to invoke them.
+6. Read-only verification: invoke the installed `commit.py list`, `attention`, and `check` against the existing profile and verify C ids/history remain intact. Do not use arbitrary acceptance commands as a PA1 readback.
 
-## Install bytes and mapping
+Rollback: restore `commit.py.pa1-base` to `commit.py` and `commit_watch.py.pa1-base` to `commit_watch.py`; remove only the installed `pa1/progress_semantics` directory after hash/readback confirmation. Never roll back or rewrite ledger/jobs/output/requirements state.
 
-Install the accepted bytes of these sibling files together: `engineering/progress_semantics/__init__.py`, `progress_semantics.py`, and `watcher_adapter.py`. Their hashes must be recorded by the installer before activation. The existing private `commit.py check` needs one call seam: for a nonterminal DISPATCHED cron item, before its generic `now-updated > STALE_H` problem is produced, call `assess_profile(profile_home, item["id"], aware_now, requirements_for_item)`. Keep existing `accept_ok` auto-verification before this seam and keep existing `alert_sig`/`alerted` suppression/persistence after it. Do not refresh `updated` merely because cron ran.
+The exact filesystem copy/hash commands depend on the operator's existing approved file-copy mechanism; PA1 supplies source/destination mapping rather than pretending installation occurred.
 
-The only still-unavailable concrete field is **`requirements_for_item` mapping/source**: per recurring item, timezone and any required artifact names/coverage state. The supplied profile contract contains no journal/coverage reader or mapping. Therefore missing mapping must fail closed; C0003 can be explicitly configured `coverage=not_implemented` by the owner only from authoritative configuration/evidence.
+## Authority preservation
+`installed_commit.py` loads the byte-for-byte backup and delegates its complete CLI. Only `evaluate` is replaced. The replacement retains deterministic `accept_ok` auto-verification, `touch` history, blockers/defer, dead/finished/due checks and the original `alert_sig`/`alerted` REPEAT_H persistence. Recurring evidence is consulted only before generic STALE_H.
 
-Rollback restores the backed-up `commit.py` and removes the three installed PA1 sibling files if they were newly installed. Ledger/jobs/output files are never rolled back or rewritten by PA1.
+## Remaining system boundaries
+PA1 does not repair mechanical exact-chat approval, GitHub delivery watching, old auto_accept/accept_unit/ledger_wake owner-loss selectors, launcher/skills/prompts/dependency orchestration, quota disposition, or unattended closed-loop proof. Their actual Hermes sources are not in this repository.
 
-CI discovers `python3 -m unittest discover -s engineering/progress_semantics/tests -v`.
+Smallest additional privacy-safe contracts needed are: exact approval dispatch/receipt function; GitHub delivery watcher entrypoint and receipt schema; auto_accept/accept_unit/ledger_wake selector functions and owner/attempt fields; launcher dependency/handback selector; quota-error classifier plus pending-work persistence/recovery acceptance; and the patrol entrypoint that owns unattended handback-to-next-owner transitions. AP3 SEND_UNKNOWN remains unresolved and is not resent.
+
+PR0 coordinator rejection at JOB_REQUIRED_FIELDS/PR_FORMAT is a separate compatibility boundary and is unchanged.
