@@ -87,6 +87,11 @@ class WatcherAdapterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             output_record("job1","cron/output/job1/2026-10-17_01-19-29.md","x","")
 
+    def test_ambiguous_dst_wall_time_fails_closed(self):
+        with self.assertRaises(ValueError):
+            output_record("job1", "cron/output/job1/2026-10-25_02-30-00.md",
+                          "## Response\n[SILENT]", ZONE)
+
     def test_body_filename_mismatch_fails(self):
         text="**Run Time:** 2026-10-17 01:20:29\n**Mode:** no_agent (script)\n**Status:** silent (empty output)"
         with self.assertRaises(ValueError):
