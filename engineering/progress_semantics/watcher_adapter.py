@@ -201,6 +201,7 @@ def resolve_artifacts(home, requirements, item_id, job_id, due, now):
             if required_text and required_text not in str(content or ""):
                 continue
             candidates.append({"name": name, "at": stamp, "rc": 0,
+                               "binding": "explicit",
                                "content": str(content or "bound"),
                                "ref": str(spec["path"])})
         if len(candidates) == 1:
