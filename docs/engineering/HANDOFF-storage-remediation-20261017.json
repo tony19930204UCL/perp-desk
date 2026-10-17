@@ -4,57 +4,89 @@
   "pr_number": 69,
   "branch": "fix/persist-storage-remediation-20261017",
   "task_id": "storage-remediation-20261017",
-  "instruction_id": "SR1-r0",
-  "status": "BLOCKED",
-  "source_head_sha": "db8630010aba39f4a62a89b72e484a57cb2915e4",
-  "summary": "BLOCKED before source edits. During read/assessment, this executor mistakenly issued one prohibited shell invocation (`bash -lc echo prohibited`) despite SR1-r0 explicitly forbidding shell/RunCommand through any tool. The command only printed a literal word and did not read/write the repository, databases, services, credentials, network sources, or runtime state. Because the executor contract was violated, this run stopped immediately without modifying any product source/test/doc path. PR69 source remains the prepared pinned head.",
+  "instruction_id": "SR1-r1",
+  "status": "WAITING_CI",
+  "source_head_sha": "fa011d2401140aa4bcb60e14003effb6081f5952",
+  "summary": "Implemented the SR1 storage candidate on PR69 using GitHub file edits only. Reused accepted PR59/60 broker dedup, append-only equity and exchangeInfo archive; restored later deployed off-tick diagnostics; added immutable fundingInfo receipt observations with payload SHA256 dedup and fail-closed reconstruction; added independent bounded noncausal raw storage and executable rollback/dedup tests. No service, live DB, deployment, source sampling, strategy/risk threshold, account/window or main mutation occurred. Local execution is forbidden by this revision, so acceptance evidence and CI remain pending.",
   "changed_files": [
+    "lab/runtime_receipt_storage.py",
+    "lab/sim_broker.py",
+    "lab/paper_runtime_v2.py",
+    "lab/tests/test_runtime_receipt_storage.py",
+    "lab/tests/test_sim_broker_persistence.py",
+    "lab/tests/test_runtime_equity_history.py",
+    "docs/engineering/PERSIST_STORAGE_REMEDIATION.md",
     "docs/engineering/HANDOFF-storage-remediation-20261017.json"
   ],
+  "file_hashes": {
+    "lab/sim_broker.py": "b1037c5982680db067b406eda235f83ce6049da1",
+    "lab/paper_runtime_v2.py": "7d21ac033867fb19e8bfe1c1ed6f5d0376f7f51b",
+    "lab/runtime_equity_history.py": "9eb7ef391c9a8b4fbfd28d5767306361aaf45ec8",
+    "lab/runtime_receipt_storage.py": "81a7836cf4f4abcf01fdfb84e7b7f6dc7425fa0b",
+    "lab/tests/test_sim_broker_persistence.py": "39d42edc6ce77983a1426186c0b55dfc2358c3fb",
+    "lab/tests/test_runtime_equity_history.py": "d7d67b9e6d0270bf0034dadc35f2a7200bf2d039",
+    "lab/tests/test_runtime_receipt_storage.py": "4b228368ce6759c3b83a20dd61a8baa344aa1ad2",
+    "docs/engineering/PERSIST_STORAGE_REMEDIATION.md": "dc76e904681bc51dace4af35063d01e935b892c5"
+  },
   "tests": [
     {
-      "command": "cd lab && python3 -m unittest discover -s tests -p test_sim_broker_persistence.py -v",
+      "command": "cd lab && python3 -m unittest -v tests.test_sim_broker_persistence",
       "result": "NOT_RUN",
-      "evidence": "Execution stopped before source edits because the no-shell executor contract was violated."
+      "evidence": "SR1-r1 tool contract forbids local execution; executable tests were edited for CI."
     },
     {
-      "command": "cd lab && python3 -m unittest discover -s tests -p test_runtime_equity_history.py -v",
+      "command": "cd lab && python3 -m unittest -v tests.test_runtime_equity_history",
       "result": "NOT_RUN",
-      "evidence": "Execution stopped before source edits because the no-shell executor contract was violated."
+      "evidence": "SR1-r1 tool contract forbids local execution."
     },
     {
-      "command": "cd lab && python3 -m unittest discover -s tests -p test_runtime_receipt_storage.py -v",
+      "command": "cd lab && python3 -m unittest -v tests.test_runtime_receipt_storage",
       "result": "NOT_RUN",
-      "evidence": "Execution stopped before source edits because the no-shell executor contract was violated."
+      "evidence": "SR1-r1 tool contract forbids local execution; new receipt tests cover payload dedup, reconstruction, bounded raw storage, rollback and deferred COMMIT."
+    },
+    {
+      "command": "cd lab && SIM_BROKER_P2_DIFFERENTIAL=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_parent_differential_2048_events",
+      "result": "NOT_RUN",
+      "evidence": "Required >=2000-event differential remains independent acceptance evidence."
+    },
+    {
+      "command": "cd lab && SIM_BROKER_P2_WRITE_PROBE=1 python3 -m unittest -v tests.test_sim_broker_persistence.P2EvidenceTests.test_linux_write_bytes_40000_history",
+      "result": "NOT_RUN",
+      "evidence": "Required measured 40000+20 Linux write_bytes remains independent acceptance evidence."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests",
       "result": "NOT_RUN",
-      "evidence": "No test execution attempted."
+      "evidence": "Full original automation suite must be executed by CI/Main."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests",
       "result": "NOT_RUN",
-      "evidence": "No test execution attempted."
+      "evidence": "Full original lab suite must be executed by CI/Main."
     },
     {
       "command": "exact-head push and pull_request CI",
       "result": "NOT_RUN",
-      "evidence": "No source candidate was produced in this run."
+      "evidence": "Independent GitHub CI has not been claimed or observed by this mailbox write."
+    },
+    {
+      "command": "isolated synthetic 10-minute workload bytes/s per arm",
+      "result": "NOT_RUN",
+      "evidence": "Required measured contribution-separated storage-rate evidence remains pending; 1h/24h live stability is explicitly not claimed."
     }
   ],
   "remaining_work": [
-    "Restart SR1-r0 in a clean executor conversation that uses GitHub read-file and update_file/create_file only and never invokes shell/RunCommand.",
-    "Re-read the full remediation request and all seven immutable operator-input/deployed Python files, then implement and test the complete allowlisted storage remediation.",
-    "Main CIO must independently run the required differential replay, SQLite migration/failure probes, write-byte evidence, full frozen suites and both exact-head CI before acceptance."
+    "Main CIO/CI must execute the unchanged full automation and lab suites and inspect all skips.",
+    "Run >=2000-event differential including fills/stops/funding/duplicate/conflict/stale/future/out-of-order/offtick and compare cash/orders/positions/fills/ledger/marks/funding/day baseline/causal audit plus deployed risk paths.",
+    "Run real SQLite legacy full/digest migrations, restart, missing/corrupt pointer refusal, rollback/deferred COMMIT and permanent funding replay probes.",
+    "Measure 40000+20 broker write_bytes (<1MB/event and <5% old) and isolated synthetic ten-minute workload (<50000B/s/arm), separating broker/history/reference/fundingInfo contributions.",
+    "Verify exact-head push and pull_request CI. Do not infer 1h/24h live stability from fixtures or stopped services."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Confirm PR69 product source remains at prepared head db8630010aba39f4a62a89b72e484a57cb2915e4 except this BLOCKED mailbox commit; no source implementation from this run should be reviewed as a candidate.",
-    "if_pass": "Dispatch a clean independent SR1-r0 executor constrained to GitHub file reads/writes only.",
-    "if_fail": "Keep paper stopped and report any unexpected branch/source mutation before redispatch.",
-    "blockers": [
-      "Executor contract violation: one prohibited no-op shell invocation occurred before any source write; this run is not valid for SR1-r0 implementation."
-    ]
+    "verify_now": "Review source head fa011d2401140aa4bcb60e14003effb6081f5952, confirm only the SR1 allowlist changed, execute required focused/differential/migration/write-volume/full suites, and independently check exact-head push and pull_request CI.",
+    "if_pass": "Accept the engineering candidate only after all required measured evidence and exact-head CI are green; keep all twelve paper services stopped until separately authorized operator migration/deployment.",
+    "if_fail": "Keep services stopped; return the exact failing test/evidence and source head for a bounded SR1 repair without changing frozen files or safety/risk contracts.",
+    "blockers": []
   }
 }
