@@ -344,5 +344,44 @@ class InstalledEntryTests(unittest.TestCase):
             r=self.run_patrol(root); self.assertIn("PAUSE_EXPIRED h2",r.stdout); self.assertIn("SERVICE h2",r.stdout)
 
 
+    def test_successor_second_scan_changes_only_last_seen_and_closed_item_recovers(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); self.real_layout(root); commitments=root/"commitments"; commitments.mkdir()
+            it=self.ledger_item("BLOCKED"); it["blocked_by"]=None
+            ledger=commitments/"ledger.json"; ledger.write_text(json.dumps({"next":2,"items":[it]}),"utf-8")
+            with mock.patch.dict("os.environ",{"HERMES_HOME":str(root)}):
+                spec=importlib.util.spec_from_file_location("scan_candidate",root/"plugins"/"commitment-gate"/"commit.py")
+                mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+                a=mod.scan_successors(now=1000); b=mod.scan_successors(now=1001)
+                aa=dict(a[0]); bb=dict(b[0]); aa.pop("last_seen"); bb.pop("last_seen"); self.assertEqual(aa,bb)
+                self.assertEqual((a[0]["last_seen"],b[0]["last_seen"]),(1000,1001))
+                data=json.loads(ledger.read_text("utf-8")); data["items"][0]["state"]="VERIFIED"; ledger.write_text(json.dumps(data),"utf-8")
+                self.assertEqual(mod.scan_successors(now=1002),[])
+
+    def test_successor_scan_serializes_with_ledger_writer_lock(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); self.real_layout(root); commitments=root/"commitments"; commitments.mkdir()
+            it=self.ledger_item("BLOCKED"); it["blocked_by"]=None
+            ledger=commitments/"ledger.json"; ledger.write_text(json.dumps({"next":2,"items":[it]}),"utf-8")
+            code="import json,sys,time,fcntl\\np=sys.argv[1]; l=open(p+'.lock','a+'); fcntl.flock(l,fcntl.LOCK_EX); d=json.load(open(p)); d['items'][0]['reason']='writer'; time.sleep(.2); open(p,'w').write(json.dumps(d)); fcntl.flock(l,fcntl.LOCK_UN)\\n"
+            writer=subprocess.Popen([sys.executable,"-c",code,str(ledger)])
+            time.sleep(.05)
+            env=dict(os.environ,HERMES_HOME=str(root))
+            r=subprocess.run([sys.executable,str(root/"plugins"/"commitment-gate"/"commit.py"),"attention"],capture_output=True,text=True,env=env,timeout=10)
+            writer.wait(timeout=10)
+            self.assertEqual(r.returncode,0,r.stderr); self.assertEqual(json.loads(ledger.read_text("utf-8"))["items"][0]["reason"],"writer")
+            self.assertEqual(json.loads((commitments/"needs_successor.json").read_text("utf-8"))["schema_version"],1)
+
+    def test_patrol_no_marker_preserves_baseline_service_and_state_contract(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); self.patrol_layout(root)
+            r=self.run_patrol(root)
+            lines=set(x.split(":",1)[0] for x in r.stdout.splitlines() if x)
+            self.assertEqual(lines,{"SERVICE "+u for u in ("h2","f1h-btcusdt","f1h-solusdt","f1h-xrpusdt","w1-btcusdt","w1-ethusdt","w1-solusdt","w1-xrpusdt","t1-btcusdt","t1-ethusdt","t1-solusdt","t1-xrpusdt")})
+            state=json.loads((root/"lab"/"journal"/"patrol_state.json").read_text("utf-8"))
+            self.assertEqual(set(state),{"last_run","restarts","pidw","sent"})
+            self.assertEqual(state["restarts"],{u:0 for u in ("h2","f1h-btcusdt","f1h-solusdt","f1h-xrpusdt","w1-btcusdt","w1-ethusdt","w1-solusdt","w1-xrpusdt","t1-btcusdt","t1-ethusdt","t1-solusdt","t1-xrpusdt")})
+
+
 if __name__=="__main__":
     unittest.main()
