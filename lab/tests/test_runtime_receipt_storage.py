@@ -1,7 +1,9 @@
 """Isolated SQLite tests for receipt storage; no network or runtime services."""
 import json
+import os
 import sqlite3
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -117,6 +119,152 @@ class ReceiptStorageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "partial"):
             ReceiptStorage(other).prepare()
         other.execute("ROLLBACK")
+
+
+    def test_corrupt_payload_bytes_refuse_reopen_without_mutation(self):
+        pointer = self.record(receipt([{"symbol":"ETHUSDT","fundingIntervalHours":8}]))
+        before = self.db.execute(
+            "SELECT seq,endpoint,params_json,envelope_json,payload_digest "
+            "FROM runtime_causal_receipts").fetchall()
+        self.db.execute("PRAGMA ignore_check_constraints=ON")
+        self.db.execute("UPDATE runtime_receipt_payloads SET payload_json='[]' "
+                        "WHERE digest=?", (pointer["payload_sha256"],))
+        self.db.close()
+        self.db = sqlite3.connect(self.path, isolation_level=None)
+        self.db.execute("PRAGMA foreign_keys=ON")
+        self.db.execute("BEGIN")
+        with self.assertRaisesRegex(ValueError, "corrupt causal"):
+            ReceiptStorage(self.db).prepare()
+        self.db.execute("ROLLBACK")
+        after = self.db.execute(
+            "SELECT seq,endpoint,params_json,envelope_json,payload_digest "
+            "FROM runtime_causal_receipts").fetchall()
+        self.assertEqual(after, before)
+        self.assertEqual(self.db.execute(
+            "SELECT payload_json FROM runtime_receipt_payloads").fetchone()[0], "[]")
+
+    def test_restart_keeps_causal_rows_after_raw_expiry(self):
+        causal = self.record(receipt([{"symbol":"ETHUSDT","fundingIntervalHours":8}]))
+        self.db.execute("BEGIN")
+        for n in range(20):
+            self.store.record_noncausal_raw("/fapi/v1/time", {
+                "endpoint":"/fapi/v1/time","params":{},"payload":{"serverTime":n},
+                "received_at":"2026-10-17T00:00:00+00:00","source_timestamp_ms":n})
+        self.db.execute("COMMIT")
+        self.db.close()
+        self.db = sqlite3.connect(self.path, isolation_level=None)
+        self.db.execute("PRAGMA foreign_keys=ON")
+        self.db.execute("BEGIN")
+        reopened = ReceiptStorage(self.db, raw_limit=3)
+        reopened.prepare()
+        self.db.execute("COMMIT")
+        self.assertEqual(reopened.reconstruct(causal["seq"])["payload"][0]["symbol"],
+                         "ETHUSDT")
+        self.assertEqual(self.db.execute(
+            "SELECT COUNT(*) FROM runtime_noncausal_raw_receipts").fetchone()[0], 3)
+
+
+@unittest.skipUnless(os.environ.get("STORAGE_SR1_TEN_MINUTE") == "1",
+                     "opt-in STORAGE_SR1_TEN_MINUTE=1; Linux /proc/self/io required")
+class TenMinuteStorageEvidenceTests(unittest.TestCase):
+    DURATION_SECONDS = 600
+    TARGET_BYTES_PER_SECOND = 50000
+
+    @staticmethod
+    def write_bytes():
+        try:
+            with open("/proc/self/io", encoding="ascii") as stream:
+                for line in stream:
+                    if line.startswith("write_bytes:"):
+                        return int(line.split(":", 1)[1])
+        except OSError as exc:
+            raise unittest.SkipTest("Linux /proc/self/io unavailable: " + str(exc))
+        raise unittest.SkipTest("Linux write_bytes unavailable")
+
+    def measure(self, writer):
+        start = time.monotonic()
+        before = self.write_bytes()
+        count = 0
+        while time.monotonic() - start < self.DURATION_SECONDS:
+            writer(count)
+            count += 1
+            os.sync()
+            # One synthetic five-second receipt cadence; elapsed time is real.
+            remaining = 5.0 - ((time.monotonic() - start) % 5.0)
+            if remaining < 4.9:
+                time.sleep(remaining)
+        elapsed = time.monotonic() - start
+        total = self.write_bytes() - before
+        self.assertGreaterEqual(elapsed, self.DURATION_SECONDS)
+        rate = total / elapsed
+        self.assertLess(rate, self.TARGET_BYTES_PER_SECOND,
+                        dict(bytes=total, seconds=elapsed, bytes_per_second=rate))
+        return dict(bytes=total, seconds=elapsed, bytes_per_second=rate,
+                    operations=count)
+
+    def test_ten_minute_contribution_separated_storage_rate(self):
+        from runtime_equity_history import EquityHistoryStore, ExactReceiptStore
+        results = {}
+        with tempfile.TemporaryDirectory(prefix="sr1-ten-minute-") as directory:
+            root = Path(directory)
+            def connection(name):
+                db = sqlite3.connect(root / (name + ".sqlite3"), isolation_level=None)
+                db.execute("PRAGMA foreign_keys=ON")
+                return db
+
+            broker_db = connection("broker-hot")
+            broker_db.execute("CREATE TABLE hot(id INTEGER PRIMARY KEY CHECK(id=1), payload TEXT)")
+            def broker_writer(n):
+                broker_db.execute("BEGIN")
+                broker_db.execute("INSERT OR REPLACE INTO hot VALUES(1,?)",
+                                  (json.dumps({"cash":"100","last_ts":n}),))
+                broker_db.execute("COMMIT")
+            results["broker_hot"] = self.measure(broker_writer)
+            broker_db.close()
+
+            history_db = connection("history")
+            history_db.execute("BEGIN")
+            history = EquityHistoryStore(history_db); history.prepare()
+            history.migrate_legacy([]); history_db.execute("COMMIT")
+            def history_writer(n):
+                history_db.execute("BEGIN")
+                history.append({"ts":str(n),"equity_usdt":"100","valuation_stale":False})
+                history_db.execute("COMMIT")
+            results["history"] = self.measure(history_writer)
+            history_db.close()
+
+            reference_db = connection("reference")
+            reference_db.execute("BEGIN")
+            reference = ExactReceiptStore(reference_db); reference.prepare()
+            reference_db.execute("COMMIT")
+            fixed_reference = {"endpoint":"/fapi/v1/exchangeInfo","params":{},
+                               "payload":{"symbols":[]},"received_at":"synthetic",
+                               "source_timestamp_ms":1}
+            def reference_writer(n):
+                reference_db.execute("BEGIN"); reference.put(fixed_reference)
+                reference_db.execute("COMMIT")
+            results["reference"] = self.measure(reference_writer)
+            reference_db.close()
+
+            funding_db = connection("fundingInfo")
+            funding_db.execute("BEGIN")
+            funding = ReceiptStorage(funding_db); funding.prepare()
+            funding_db.execute("COMMIT")
+            payload = [{"symbol":"ETHUSDT","fundingIntervalHours":8}]
+            def funding_writer(n):
+                value = receipt(payload, received="synthetic:" + str(n), source=n)
+                funding_db.execute("BEGIN")
+                funding.record_causal("/fapi/v1/fundingInfo", {}, value)
+                funding_db.execute("COMMIT")
+            results["fundingInfo"] = self.measure(funding_writer)
+            payload_rows = funding_db.execute(
+                "SELECT COUNT(*) FROM runtime_receipt_payloads").fetchone()[0]
+            raw_rows = funding_db.execute(
+                "SELECT COUNT(*) FROM runtime_noncausal_raw_receipts").fetchone()[0]
+            self.assertEqual(payload_rows, 1)
+            self.assertLessEqual(raw_rows, 256)
+            funding_db.close()
+        print("SR1 TEN_MINUTE " + json.dumps(results, sort_keys=True), flush=True)
 
 
 if __name__ == "__main__":
