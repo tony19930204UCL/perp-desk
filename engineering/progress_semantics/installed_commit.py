@@ -225,15 +225,39 @@ def successor_lines(ledger_path=None):
 
 _base_main = base.main
 
+def _selected_ledger(argv):
+    if "--ledger" in argv:
+        i = argv.index("--ledger")
+        if i + 1 < len(argv):
+            return Path(argv[i + 1])
+    return base.default_ledger()
+
+def _attention_readonly(ledger_path):
+    """Run attention under the ledger lock without entering its write-back context."""
+    led = base.Ledger(ledger_path)
+    ledger_path = Path(ledger_path)
+    lock_path = Path(str(ledger_path) + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock = open(lock_path, "a+")
+    try:
+        base.fcntl.flock(lock, base.fcntl.LOCK_EX)
+        led.data = json.loads(ledger_path.read_text("utf-8")) if ledger_path.exists() else {"next": 1, "items": []}
+        for line in base.attention(led):
+            print(line)
+        return 0
+    finally:
+        base.fcntl.flock(lock, base.fcntl.LOCK_UN)
+        lock.close()
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
-    if argv and argv[-1] in ("check", "attention"):
-        rc = _base_main(argv)
-        ledger_path = None
-        if "--ledger" in argv:
-            i = argv.index("--ledger")
-            if i + 1 < len(argv):
-                ledger_path = argv[i + 1]
+    cmd = argv[-1] if argv else None
+    if cmd in ("check", "attention"):
+        ledger_path = _selected_ledger(argv)
+        try:
+            rc = _attention_readonly(ledger_path) if cmd == "attention" else _base_main(argv)
+        except Exception:
+            rc = 1
         try:
             for line in successor_lines(ledger_path):
                 print(line)
