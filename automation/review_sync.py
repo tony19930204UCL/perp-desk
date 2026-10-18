@@ -170,14 +170,14 @@ def tighten_private_git_tree(repository, *, owner_uid=None, output=print):
     def visit(path, relative):
         with directory(path) as fd:
             info=os.fstat(fd)
-            if info.st_uid!=uid or info.st_nlink!=1 or not stat.S_ISDIR(info.st_mode):
+            if info.st_uid!=uid or not stat.S_ISDIR(info.st_mode):
                 raise Blocked('unsafe Git repair directory: '+relative)
             planned.append((path,relative,info.st_dev,info.st_ino,info.st_mode))
             for name in os.listdir(fd):
                 child=path/name
                 item=os.stat(name,dir_fd=fd,follow_symlinks=False)
                 rel=(Path(relative)/name).as_posix()
-                if item.st_uid!=uid or item.st_nlink!=1 or not (stat.S_ISREG(item.st_mode) or stat.S_ISDIR(item.st_mode)):
+                if item.st_uid!=uid or (stat.S_ISREG(item.st_mode) and item.st_nlink!=1) or not (stat.S_ISREG(item.st_mode) or stat.S_ISDIR(item.st_mode)):
                     raise Blocked('unsafe Git repair entry: '+rel)
                 if stat.S_ISDIR(item.st_mode):visit(child,rel)
                 else:planned.append((child,rel,item.st_dev,item.st_ino,item.st_mode))
@@ -187,10 +187,10 @@ def tighten_private_git_tree(repository, *, owner_uid=None, output=print):
         for path,rel,dev,ino,mode in planned:
             with directory(path.parent) as parent:
                 info=os.stat(path.name,dir_fd=parent,follow_symlinks=False)
-                if (info.st_dev,info.st_ino,info.st_mode)!=(dev,ino,mode) or info.st_uid!=uid or info.st_nlink!=1:
+                if (info.st_dev,info.st_ino,info.st_mode)!=(dev,ino,mode) or info.st_uid!=uid or (stat.S_ISREG(info.st_mode) and info.st_nlink!=1):
                     raise Blocked('Git repair tree changed: '+rel)
         for path,rel,dev,ino,mode in planned:
-            narrowed=stat.S_IMODE(mode)&~0o022
+            narrowed=stat.S_IMODE(mode)&~0o077
             if narrowed==stat.S_IMODE(mode):continue
             with directory(path.parent) as parent:
                 flags=os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK
@@ -198,7 +198,7 @@ def tighten_private_git_tree(repository, *, owner_uid=None, output=print):
                 fd=os.open(path.name,flags,dir_fd=parent)
                 try:
                     info=os.fstat(fd)
-                    if (info.st_dev,info.st_ino,info.st_mode)!=(dev,ino,mode) or info.st_uid!=uid or info.st_nlink!=1:
+                    if (info.st_dev,info.st_ino,info.st_mode)!=(dev,ino,mode) or info.st_uid!=uid or (stat.S_ISREG(info.st_mode) and info.st_nlink!=1):
                         raise Blocked('Git repair entry changed: '+rel)
                     os.fchmod(fd,narrowed)
                 finally:os.close(fd)
