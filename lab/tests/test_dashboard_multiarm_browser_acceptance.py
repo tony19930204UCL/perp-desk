@@ -55,4 +55,17 @@ class BrowserContracts(unittest.TestCase):
         self.assertNotIn('playwright install',text)
 
 
+    def test_dom_is_executed(self):
+        self.assertTrue(b.DOM.startswith('(()=>('))
+        self.assertTrue(b.DOM.endswith('))()'))
+
+    def test_populated_accepts_stale_label(self):
+        self.assertTrue(any(item.startswith('w1-xrpusdt')
+                            for item in ['w1-xrpusdt · STALE']))
+
+    def test_multiarm_interceptor_present(self):
+        self.assertTrue(issubclass(b.MultiCDP,b.cd.ChromeCDP))
+        self.assertIn('/api/multiarm',b.MultiCDP._event.__code__.co_consts)
+
+
 if __name__=='__main__':unittest.main()
