@@ -319,7 +319,9 @@ class PaperRuntime(BaseRuntime):
         ref = self.reference()
         spec_traded = instrument(ref, self.symbol, "crypto", self.config["fee_assumptions"]["crypto"])
         self.funding(spec_traded)
-        # Finish closed-candle work before collecting fresh decision quotes.
+        # Process actual traded books and protective exits before candle work.
+        markets, spec_traded = self.collect_markets(ref)
+        self.state["markets"] = markets
         self.bootstrap()
         start = self.state["cursor"] if self.state["cursor"] is not None else self.state.get("decision_cutoff_ms", self.state["forward_start_ms"]) // self.INTERVAL_MS * self.INTERVAL_MS
         rows = []
@@ -351,7 +353,7 @@ class PaperRuntime(BaseRuntime):
         with closing(sqlite3.connect(self.root / "signals.sqlite3")) as db:
             row = db.execute("SELECT bars FROM h1_state WHERE version_id=? AND symbol=?", (self.config["version_id"], self.symbol)).fetchone()
         self.state["warmup"] = len(json.loads(row[0])) if row else 0
-        markets, spec_traded = self.collect_markets(ref)
+        markets, spec_traded = self.refresh_decision_markets(ref, markets, spec_traded)
         self.state["markets"] = markets
         self.validate_sources(markets, "decision after candle work")
         self.route_signals(spec_traded)
