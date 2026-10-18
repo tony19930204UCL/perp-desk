@@ -119,9 +119,12 @@ def _git_entry_detail(info, relative):
     return kind+' '+relative+' mode '+format(stat.S_IMODE(info.st_mode),'04o')
 
 
-def _check_private_tree_once(path, _root=None):
+def _check_private_tree_once(path):
+    return _check_private_tree_pass(path,Path(path))
+
+
+def _check_private_tree_pass(path, _root):
     """Require one complete permission/type pass over a stable directory snapshot."""
-    if _root is None:_root=Path(path)
     with directory(path) as fd:
         before=os.fstat(fd)
         relative=Path(path).relative_to(_root).as_posix()
@@ -136,7 +139,7 @@ def _check_private_tree_once(path, _root=None):
             if entry.st_uid!=os.getuid() or entry.st_mode&0o022:
                 raise Blocked('unsafe Git entry permissions: '+_git_entry_detail(entry,(Path(path).relative_to(_root)/name).as_posix()))
             if stat.S_ISDIR(entry.st_mode):
-                try:_check_private_tree_once(Path(path)/name,_root)
+                try:_check_private_tree_pass(Path(path)/name,_root)
                 except FileNotFoundError as error:raise _TransientGitTreeChange(name) from error
             elif not stat.S_ISREG(entry.st_mode) or entry.st_nlink!=1:
                 raise Blocked('unsafe Git entry')
