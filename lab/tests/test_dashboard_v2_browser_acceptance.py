@@ -107,5 +107,20 @@ class D2BrowserHarnessContracts(unittest.TestCase):
         self.assertNotIn('playwright', sys.modules)
 
 
+    def test_private_chromium_launch_hides_scrollbars(self):
+        # Exercise the real launch argument construction without starting a browser.
+        with tempfile.TemporaryDirectory() as td:
+            with patch.object(acceptance.subprocess, 'Popen',
+                              side_effect=RuntimeError('launch captured')) as launch:
+                with self.assertRaisesRegex(RuntimeError, 'launch captured'):
+                    acceptance.ChromeCDP('/synthetic/chromium', Path(td),
+                                         'http://127.0.0.1:54321',
+                                         acceptance.Deadline(3))
+        launch.assert_called_once()
+        flags = launch.call_args.args[0]
+        self.assertIn('--headless=new', flags)
+        self.assertEqual(flags.count('--hide-scrollbars'), 1)
+
+
 if __name__ == '__main__':
     unittest.main()
