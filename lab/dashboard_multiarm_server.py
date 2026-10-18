@@ -10,8 +10,8 @@ ASSETS = Path(__file__).resolve().parent
 ROUTES = {'/': ('dashboard_multiarm.html', 'text/html; charset=utf-8'),
           '/dashboard_multiarm.html': ('dashboard_multiarm.html', 'text/html; charset=utf-8'),
           '/dashboard_multiarm_ui.js': ('dashboard_multiarm_ui.js', 'application/javascript; charset=utf-8')}
-ERRORS = {400:b'{"error":"請求無效"}',404:b'{"error":"找不到資源"}',
-          405:b'{"error":"不支援此方法"}',500:b'{"error":"讀取失敗"}'}
+ERRORS = {code: ('{"error":"' + reason + '"}').encode('utf-8') for code, reason in (
+    (400, '請求無效'), (404, '找不到資源'), (405, '不支援此方法'), (500, '讀取失敗'))}
 # Literals are encoded once, not parsed/unquoted from request content.
 TARGETS = {k.encode('ascii'):v for k,v in ROUTES.items()}
 
