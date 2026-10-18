@@ -4,41 +4,56 @@
   "pr_number": 58,
   "branch": "feat/dashboard-serving-d2-20261012T152945Z",
   "task_id": "dashboard-serving-d2-20261012T152945Z",
-  "instruction_id": "D2-U3B-r1",
+  "instruction_id": "D2-BROWSER-ENTRY-r0",
   "status": "WAITING_CI",
-  "source_head_sha": "84c49a68493b00c4d93369c0c7f0c6de65e27cfe",
-  "summary": "Minimal migration of one existing server test after independently observed CI failure (584 tests, 1 failure at GET '/'). In test_query_encoded_absolute_traversal_routes_are_404, removed only '/' from the unchanged negative route tuple; added same-patch positive GET '/' assertions for 200, HTML MIME, no-store, nosniff and exact frozen module-relative HTML bytes. Preserved all remaining 404 checks and the final read_dashboard mock assert_not_called covering negative and positive routes. No production code or other tests edited.",
+  "source_head_sha": "e25c1096390511bf1d0329ef156a9b88d40372a4",
+  "summary": "Delivered new opt-in stdlib-only D2 real-Chromium CDP acceptance entrypoint, deterministic synthetic source-shaped fixture, 11 discovery-safe unittest contract methods, and operator command/report documentation. Uses existing D2 loopback HTTP server/reader/model and frozen HTML/JS, CDP real page navigation, 1280/390 screenshots, literal hostile DOM checks, known zero vs unknown, isolated API Fetch fault transitions/older response ordering, blocked external requests plus Network/Fetch trace, SHA256+mtime and 100 readonly source checks. No production or legacy tests/workflows changed. No browser execution claimed.",
   "changed_files": [
-    "lab/tests/test_dashboard_v2_server.py",
+    "lab/browser_dashboard_v2_acceptance.py",
+    "lab/tests/fixtures/dashboard_v2_browser.json",
+    "lab/tests/test_dashboard_v2_browser_acceptance.py",
+    "docs/engineering/D2_BROWSER_ACCEPTANCE.md",
     "docs/engineering/HANDOFF-dashboard-serving-d2-20261012T152945Z.json"
   ],
   "tests": [
     {
-      "command": "python3 -m unittest discover -s automation/tests",
+      "command": "cd lab && python3 -m unittest -v tests.test_dashboard_v2_browser_acceptance",
       "result": "NOT_RUN",
-      "evidence": "No repository checkout or command execution of this repository was performed in this revision."
+      "evidence": "Code was committed through GitHub contents API. No repository checkout or tool-executed unittest run in this delivery."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "Previous exact-head CI green supplied by Main refers to admitted starting SHA 0327c6cd2d6c093e288655c2af3ca7ba1cce11a0, not new delivery."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "No local repository test execution. Prior independent push CI run 38756832049 on previous HEAD ab36919cd159c97e7666bc11ebb114bd836b9487 ran 584 tests with one '/' 404-versus-200 failure; this is prior evidence, not a result for revised head."
+      "evidence": "Independently run CI on new source/mailbox HEAD; no tests executed by this agent."
     },
     {
-      "command": "python3 -m unittest tests.test_dashboard_v2_server.DashboardServerTests.test_query_encoded_absolute_traversal_routes_are_404 -v",
+      "command": "python3 lab/browser_dashboard_v2_acceptance.py --expected-head \"$(git rev-parse HEAD)\" --browser /usr/bin/chromium --output artifacts/d2-browser",
       "result": "NOT_RUN",
-      "evidence": "Revised test submitted through GitHub update_file; focused execution awaits exact-head CI."
+      "evidence": "Opt-in real-browser acceptance requires an operator's installed Chromium checkout; no headless Chromium run or screenshot evidence produced here."
     }
   ],
   "remaining_work": [
-    "Main CIO independently verify exact-head push and pull_request CI for revised head including mailbox, expected zero failures, and allowlist diff.",
-    "Main CIO perform real browser delivery checks through server and confirm 1280/390 rendering, hostile text, unknown-vs-zero, stale fetch clearing and no external requests.",
-    "Do not merge or deploy automatically."
+    "Independently run source-bound exact-head push and pull_request CI, including 11 new contract tests.",
+    "Operator run documented browser entrypoint with preinstalled Chromium on exact checkout; inspect five independent probe statuses, screenshots at CSS1280/390, hashes, request trace, cleanup and exit code.",
+    "Treat any browser assertion failures as FAIL evidence; do not change frozen production code under this instruction.",
+    "Perform separate product/visual acceptance; no merge/deploy from this handback."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Check test-only migration and mailbox diff, then exact-head push and pull_request CI and all previously specified real HTTP/Chromium acceptance.",
-    "if_pass": "Record independent acceptance; any integration, merge or deployment remains separate owner authorization.",
-    "if_fail": "Report exact failing test/run/head and provide narrowly scoped repair instruction; preserve production GET '/' HTML 200 and all security invariants.",
+    "verify_now": [
+      "Check exact source HEAD e25c1096390511bf1d0329ef156a9b88d40372a4 and later mailbox HEAD and exact five-path allowlist.",
+      "cd lab && python3 -m unittest -v tests.test_dashboard_v2_browser_acceptance",
+      "cd lab && python3 -m unittest discover -s tests -v; verify push+pull_request CI",
+      "python3 lab/browser_dashboard_v2_acceptance.py --expected-head \"$(git rev-parse HEAD)\" --browser /usr/bin/chromium --output artifacts/d2-browser",
+      "Review D2-BROWSER-POPULATED-1280-390, D2-BROWSER-HOSTILE-TEXT, D2-BROWSER-UNKNOWN-VS-ZERO, D2-BROWSER-STALE-FETCH-CLEARING and D2-BROWSER-NO-EXTERNAL-REQUESTS; compare source/asset hashes and 100 reads."
+    ],
+    "if_pass": "independently accept entrypoint scope only; no merge/deploy; original product/visual acceptance remains separate",
+    "if_fail": "report demonstrated new harness/fixture defects with source-bound evidence; no production edits",
     "blockers": []
   }
 }
