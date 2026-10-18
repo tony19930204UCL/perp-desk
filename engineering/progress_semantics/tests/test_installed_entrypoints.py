@@ -407,7 +407,7 @@ class InstalledEntryTests(unittest.TestCase):
         self.assertTrue(source.is_file(),str(source))
         import re
         code=source.read_text("utf-8")
-        literals=set(re.findall(r"""(?:status\s*=\s*|\['status'\]\s*(?:!=|==)\s*)['"]([A-Z]+)['"]""",code))
+        literals=set(re.findall(r"""(?:\bstatus\s*=\s*|\['status'\]\s*(?:=|!=|==)\s*)['"]([A-Z]+)['"]""",code))
         literals.update(re.findall(r"""\b(?:in|not in)\s*\(([^)]*)\)""",code) and [])
         for group in re.findall(r"""\['status'\]\s*(?:in|not in)\s*\(([^)]*)\)""",code):
             literals.update(re.findall(r"""['"]([A-Z]+)['"]""",group))
@@ -417,6 +417,14 @@ class InstalledEntryTests(unittest.TestCase):
         self.assertTrue(active)
         self.assertIn("('PENDING', 'RESTING')",patrol)
         self.assertIn("('FILLED', 'CANCELED', 'EXPIRED', 'REJECTED')",patrol)
+        import ast
+        active_expr=re.search(r"^BROKER_ACTIVE_STATUSES = (frozenset\\(.*\\))$",patrol,re.M)
+        terminal_expr=re.search(r"^BROKER_TERMINAL_STATUSES = (frozenset\\(.*\\))$",patrol,re.M)
+        self.assertIsNotNone(active_expr)
+        self.assertIsNotNone(terminal_expr)
+        active_values=set(ast.literal_eval(active_expr.group(1)[len("frozenset("):-1]))
+        terminal_values=set(ast.literal_eval(terminal_expr.group(1)[len("frozenset("):-1]))
+        self.assertEqual(literals,active_values | terminal_values)
 
     def test_patrol_invalid_marker_suppresses_nothing_and_unknown_unit_is_reported(self):
         with tempfile.TemporaryDirectory() as td:
