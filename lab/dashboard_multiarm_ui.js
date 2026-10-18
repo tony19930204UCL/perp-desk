@@ -1,0 +1,24 @@
+/* All source strings are textContent, never interpreted as markup. */
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const ids=['h2','f1h-btcusdt','f1h-solusdt','f1h-xrpusdt','w1-btcusdt','w1-ethusdt','w1-solusdt','w1-xrpusdt','t1-btcusdt','t1-ethusdt','t1-solusdt','t1-xrpusdt'];
+const tabs=[['positions','持倉'],['closed','已平倉'],['open_orders','待處理委託'],['orders','委託歷史'],['fills','成交歷史']];
+const columns={positions:[['symbol','商品'],['side','方向'],['qty','數量'],['entry','均價'],['mark','標記價'],['stop','停損'],['unrealized','未實現']],closed:[['symbol','商品'],['side','方向'],['quantity','數量'],['entry','進場價'],['exit','平倉價'],['realized','已實現'],['fees','費用'],['funding','資金費'],['net','淨損益'],['hold_ms','持有毫秒'],['exit_reason','原因']],open_orders:[['id','單號'],['status','狀態'],['symbol','商品'],['side','方向'],['qty','數量'],['remaining','剩餘'],['price','限價']],orders:[['id','單號'],['status','狀態'],['symbol','商品'],['side','方向'],['qty','數量'],['remaining','剩餘'],['reason','原因']],fills:[['id','成交號'],['symbol','商品'],['side','方向'],['qty','數量'],['price','價格'],['fee','費用'],['liquidity','流動性']]};
+const node=(tag,label,parent)=>{const el=document.createElement(tag);if(label!==undefined)el.textContent=label;if(parent)parent.appendChild(el);return el};
+let selected=ids[0],tab=tabs[0][0],snapshot=null,serial=0;
+const val=x=>x===null||x===undefined||x===''?'未知':String(x);
+const pretty=x=>{if(typeof x!=='string'||!/^-?\d+(?:\.\d+)?$/.test(x))return val(x);const [whole,frac='']=x.split('.');return frac?whole+'.'+frac.slice(0,6).replace(/0+$/,'').replace(/\.$/,''):whole};
+const money=(box,label,exact)=>{const cell=node('div',undefined,box);cell.className='metric';node('span',label,cell);const value=node('strong',pretty(exact),cell);if(typeof exact==='string')value.title=exact;if(label.includes('損益')||label==='權益變動')value.className=typeof exact==='string'?(exact.startsWith('-')?'down':'up'):''};
+function arm(){return snapshot&&Array.isArray(snapshot.arms)?snapshot.arms.find(a=>a.id===selected):null}
+function unknown(reason){snapshot=null;$('chosen').textContent=selected+' · 未知';$('reason').textContent=reason;$('account').replaceChildren();$('thead').replaceChildren();$('tbody').replaceChildren();$('count').textContent='未知';renderNav()}
+function renderNav(){const wrap=$('arms');wrap.replaceChildren();ids.forEach(id=>{const a=snapshot?.arms?.find(x=>x.id===id);const badge=a?.stale===true?' · STALE':a?.state==='unknown'?' · 未知':'';const b=node('button',id+badge,wrap);b.type='button';b.setAttribute('aria-pressed',String(selected===id));b.addEventListener('click',()=>{selected=id;render()})})}
+function renderTabs(){const wrap=$('tabs');wrap.replaceChildren();tabs.forEach(([name,label])=>{const b=node('button',label,wrap);b.type='button';b.setAttribute('aria-pressed',String(name===tab));b.addEventListener('click',()=>{tab=name;render()})})}
+function render(){const top=window.scrollY;renderNav();renderTabs();const a=arm();$('account').replaceChildren();$('thead').replaceChildren();$('tbody').replaceChildren();if(!a||a.state==='unknown'){$('chosen').textContent=selected+' · 未知';$('reason').textContent=a?.reason||'SOURCE_UNAVAILABLE';$('count').textContent='未知';window.scrollTo(0,top);return}
+$('chosen').textContent=selected+' · '+(a.stale===true?'STALE · 過期快照':a.stale===false?'快照':'新鮮度未知');$('reason').textContent='資料年齡：'+val(a.age_s)+' 秒；帳本核對：'+val(a.reconcile?.state)+'；'+val(a.reconcile?.reason);
+const account=a.account||{};[['初始現金',account.initial_cash],['現金',account.cash],['權益',account.equity],['未實現損益',account.unrealized],['保證金','未建模'],['可用保證金','未建模'],['強平價','未建模'],['ROE','未建模'],['模式','未建模']].forEach(x=>money($('account'),...x));
+const table=a[tab],heads=columns[tab];const tr=node('tr',undefined,$('thead'));heads.forEach(([,label])=>node('th',label,tr));if(!table||table.state==='unknown'){$('count').textContent='未知';node('tr','未知',$('tbody'));window.scrollTo(0,top);return}
+table.rows.forEach(row=>{const tr=node('tr',undefined,$('tbody'));heads.forEach(([key])=>{const data=row[key];const td=node('td',pretty(data),tr);if(typeof data==='string')td.title=data;if(['net','unrealized','realized'].includes(key)&&typeof data==='string')td.className=data.startsWith('-')?'down':'up'})});$('count').textContent='總筆數 '+table.total+(table.truncated?' · 已截斷':'')+(table.total===0?' · 無紀錄':'');window.scrollTo(0,top)}
+async function refresh(){const id=++serial;try{const r=await fetch('/api/multiarm',{cache:'no-store'});if(!r.ok)throw Error('http');const data=await r.json();if(id!==serial)return;if(!data||!Array.isArray(data.arms)||data.arms.length!==12)throw Error('model');snapshot=data;render()}catch(_){if(id===serial)unknown('讀取失敗 · 未知')}}
+window.multiarmRefresh=refresh;document.addEventListener('DOMContentLoaded',()=>{renderNav();renderTabs();$('refresh').addEventListener('click',refresh);refresh();setInterval(refresh,15000)});
+})();
