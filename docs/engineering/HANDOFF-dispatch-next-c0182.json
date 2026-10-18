@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 71,
+  "branch": "feat/dispatch-next-c0182-clean-20261018",
+  "task_id": "C0182-dispatch-next",
+  "instruction_id": "C0182-DISPATCH-NEXT-REBASE1",
+  "status": "WAITING_CI",
+  "source_head_sha": "0345632824dbd26c4f8a8d43c679ee7edcb16ddf",
+  "summary": "Clean main-based source-only branch at pre-mailbox HEAD 0345632824dbd26c4f8a8d43c679ee7edcb16ddf; new draft PR #71. Three source files copied byte-for-byte from old PR70 at 5fe4ab3949673af833492366f1f6589a56898cb2; source blob SHA values matched. CI result NOT_OBSERVED (combined commit statuses returned empty list). Engineering only, not deployed, not merged, no trading.",
+  "changed_files": [
+    "engineering/relay/dispatch_next.py",
+    "lab/tests/test_dispatch_next.py",
+    "docs/engineering/DISPATCH_NEXT_C0182.md",
+    "docs/engineering/HANDOFF-dispatch-next-c0182.json"
+  ],
+  "tests": [
+    {
+      "command": "(cd lab && python3 -m unittest -v tests.test_dispatch_next)",
+      "result": "NOT_RUN",
+      "evidence": "No test execution performed; GitHub commit status query for pre-mailbox HEAD returned statuses=[]; CI NOT_OBSERVED."
+    }
+  ],
+  "remaining_work": [
+    {
+      "topic": "ledger_stamp",
+      "description": "Current dispatch_next.py accepts any nonempty successful ledger stdout as a stamp; exact installed ledger stamp format and binding remain unverified."
+    },
+    {
+      "topic": "process_start_identity",
+      "description": "Current dispatch_next.py does not independently capture and validate process start identity or handle lifecycle for detached observer."
+    },
+    {
+      "topic": "exact_target_approval_owner",
+      "description": "Current dispatch_next.py checks for a nonempty owner string, not a verifiable exact-target approval ownership contract."
+    }
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Inspect PR #71 exact head and four-file diff against main base 6933faf17521494856328e3fd2bb541c25425369; verify three copied blob SHAs; execute requested unittest and inspect actual CI.",
+    "if_pass": "Review source-only candidate and known limitations independently; do not merge, deploy, schedule or trade.",
+    "if_fail": "Return a bounded revision request against clean branch; leave old PR70 untouched.",
+    "blockers": [
+      "CI NOT_OBSERVED",
+      "Requested unittest NOT_RUN",
+      "Installed ledger stamp contract not verified",
+      "Process start identity not verified",
+      "Exact-target approval ownership not independently verified"
+    ]
+  }
+}
