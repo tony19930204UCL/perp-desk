@@ -119,10 +119,10 @@ class CandidateDOMTests(unittest.TestCase):
         self.session=self.CdpSession(self.chrome,Path(self.chrome_tmp.name))
         self.page=self._Page(self.session)
         self.page.goto(Path(__file__).resolve().parent.joinpath("fixtures/collapsed_approval_dom.html").as_uri())
-        self.page.evaluate("""() => {document.getElementById('operation-dialog').innerText='call_tool\\n'+JSON.stringify({
+        self.page.evaluate("""document.getElementById('operation-dialog').innerText='call_tool\\n'+JSON.stringify({
             path:'github/update_file',
             args:{repository_full_name:'example/repo',branch:'test',path:'path.txt',content:'safe'}
-        })}""")
+        })""")
         self.temp=tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.p=Path(self.temp.name)
