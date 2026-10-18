@@ -708,3 +708,30 @@ paper 是假錢，它的價值在於盡快產生可判斷的樣本。
 ## T1 趨勢突破家族 2026-10-11（預先登記完成，工程進行中）
 - lab/PAPER_T1_PREREGISTRATION.md：日線 Donchian 20 進 10 低出，純多，BTC/ETH/SOL/XRP 各一臂，不加槓桿。來源為 39 個設定的系統研究（樣本內 2019-2022、樣本外 2023 起，切分日事先決定）。
 - 工程：PR 51（草稿，不合併）。U1 偵測器附黃金資料重放，U2 紙盤 runtime v7。尚無任何窗口開始。
+
+## OWNER-ACTIVITY-DASHBOARD-PR63-r3（2026-10-15，唯讀工作觀察頁已部署）
+- 精確來源 `0bb1e5cb6570290d2b18968b3f66165aa9c6e638`，source commit `4d0709447c0db249576b6da588fa8cd1d3a66aa3`，mailbox blob `a428676714a27290161acaa212c4c79f3a54b931`。外部 ChatGPT 完成工程，operator 沒有修改產品 source/tests。PR63保持非main、未merge，PR62/AP3未操作，原UNKNOWN與政策拒絕歷史保留。
+- r2先修既有root HTML200與舊錯測404契約矛盾，真正query/encoded/traversal404保持。r2真來源300項手機驗收發現4px溢出，16/17，已停止精確新listener回滾，並正式REVISE同PR的r3。失敗不抹除，fixture PASS不冒充真來源部署PASS。
+- r3雙精確CI `38803773560` pull_request與`38803767626` push皆success，各602測試、零skip。完整本機suite602載入、601PASS/1 Chromium PATH環境SKIP、767.833秒，原skip保留，該case以既有Chromium另行實跑PASS，合併602個獨立ID實執行覆蓋。另52 exporter、14 model、15 synthetic browser與17真來源staging/browser檢查通過。
+- 來源固定在 `owner-activity-dashboard/releases/0bb1e5cb6570290d2b18968b3f66165aa9c6e638`，340個tracked檔逐bytes對精確clone；archive SHA256 `be7e486f3b8f44d47bc3b0bedb66f17a8096f4c3cfc225383c1037e892d34657`。版本backup `backups/owner-activity-dashboard/20261015T204447Z` 保留r2來源及最初local來源backup鏈，不還原帳戶/state/ledger。
+- 部署 `http://127.0.0.1:18769/owner_activity.html`，ledger holder C0235 wrapper1900775/start17173542，真listener1900777/start17173551，只綁127.0.0.1。WSL與Windows原生curl的HTML/JS精確hash吻合、頁面/API200。真browser最終17/17，1440桌面及390手機無水平溢出，source snapshot307項時390/390/390；之後20:59:47UTC真來源ID穩定讀回308/308，11 cron joins，無缺漏／重複。數量隨真來源新增自然改變，非固定顯示。
+- 範圍是本profile ledger/cron/roadmap/work/journal工作視圖，每30秒刷新，不是新的交易台、其他帳戶或實盤。舊18767單臂看板未改。stale/unknown明示，未接獨立worker proof時不把DISPATCHED當存活。使用者視覺驗收獨立，C0224父任務未代結案。
+- 這是已運作的本機background程序，不是開機自啟或外部watchdog。`UNATTENDED_DELIVERY_ACCEPTANCE.md`的A/B閉環未證明，狀態仍為「自主持續交付未證明」。manual已完成仍DISPATCHED造成候選漏接的DB/selector證據保存，未自行改live helpers。
+- 永久證據 `lab/evidence/owner-activity-dashboard-20261015/continuation-20261015-evening/`，含正式REVISE/ACCEPTED_SCOPE、精確CI/full logs、全部12項OPEN快照、原失敗/rollback、API/browser與監督缺口稽核。WSL interop及首次CDP讀回infra timeout另存，後續正常Windows native HTTP與全新isolated Chromium讀回通過，未當成永久infra修復。
+
+## PR68-SO1-r2-DIAGNOSTIC-ACCEPTED／T1-PILOT-UPSTREAM-BLOCKED（2026-10-16）
+- 精確HEAD c71d5188838ba3e2b1acde80df395d6bcf61ea66、SO1-r2、mailbox fd53fb169e8f188ad2ee27c47866620e57208e0e，正常schema-v2 observer及正式ACCEPTED_SCOPE讀回。只接受offtick拒因診斷及原receipt唯一關聯修補，不接受stale修復或消除上游非法depth。沒有重送或新派ChatGPT。
+- 雙CI38863625820(PR)/38863621585(push) success。重用既有完整498/498 unique-ID PASS、零skip、916.861秒及840秒同程序續跑checkpoint，未重跑full suite。另14項focused、獨立原golden/decoy/future/stale回放、baseline對candidate三筆真模擬fill及fee/risk/ledger完全等價、T1/W1/F1H正確入口公開隔離--once均通過。原fixture blob e7b15d556ae267a71319cf0c147ecb102b65d17f未改。
+- 13:31:04UTC僅T1正常service受控flat試點。兩個accepted source精確bytes backup/install/hash及live source manifest讀回，PID9400→2648192，NRestarts0。原namespace、forward/strategy起點1791928431597、deadline1807480431597、cash100、8筆qty0 funding ledger及audit/fills前綴不變。W1/F1H未重啟，無策略/費率/風控/15000ms放寬，無帳戶或窗口重設。
+- 初段4有效/0錯誤之後真實復發。固定cutoff147903有12有效/9poll_error，9/21=42.86%，前30分鐘23有效/15stale錯誤(39.47%)，不等長、不宣稱改善。新錯誤全部offtick，原價105.0020/tick0.0100餘0.0020，level14/15/19等，真正broker拒絕及原raw receipt canonical hash吻合，source到dispatch760/885/779ms不是stale。再次公開filters仍0.0100。
+- 診斷試點保留，正式放行及擴臂blocked C0303，不清legacy candidate_not_deployed=true冒充正式部署完成。PR66/C0253 create_tree未授權不碰。正常mirror仍unsafe Git entry permissions、舊bytes未發布，C0304另列真阻擋，未手動push main或繞guard。父C0282/C0293未代結案。
+- 證據：lab/evidence/sol-offtick-20261016/acceptance-after-r2/，ACCEPTANCE.md、正式verdict、完整suite logs/IDs、DEPLOYMENT-READBACK.md、SOURCE_BLOCKER.json、pilot-final-fixed-cutoff-rate.json及source備份。operator兩次fixture/CLI選錯保留原失敗，修正operator輸入後成功，未改工程source。12項既有OPEN只做一次snapshot分類，未冒稱另有worker。
+
+## PR69-SR1-r3-STOPPED-STORAGE-DEPLOYED（2026-10-17）
+- 精確HEAD `4c91314f72be5f7290f58630ee1175fdc2513798`、source `71415ba0a6f4d208f193f0cb1e0926b482b5b477`、mailbox blob `14c79298b04f9583b5eb93f07462ecc209ff0072`正式ACCEPTED_SCOPE。雙CI39042481384/39042484025 success，named IDs對Ran與unique完整核實，PAPER662/678各5個opt-in skips、Exporter52零skip。父親跑同head真600秒分項、current-deployed差分/freshness、focused45與40000+20均exit0，原r2失敗保留。
+- 真正安裝4個storage production檔及3tests，operator文件精確bytes保存在DEPLOYMENT/accepted-PERSIST_STORAGE_REMEDIATION.md。原先誤放repo_sync/docs非allowlist位置被exporter正確拒絕，已撤回僅此新增mapping並保留原失敗，未改guard。25檔import閉包其餘21檔及72個protected source/config/status hash保持。runtime v2 SHA256 `207d1f3eb95d52c88459a3d10a4f29517787b5506ea65cc16c82ea5c31e6feab`、broker `a136f53a96ea0f69bf460588ff29d28a831f73c3475c19625ccd1d6e459c77ac`。沒有自行改工程碼或覆蓋後續risk/offtick家族契約。
+- SQLite backup API保存40個原有SQLite（15,106,039,808 bytes）。先12真帳戶副本nonpolling matching-family open-close全PASS，才原12namespace安全offline migration。C0357/C0358均exit0。所有原cash/orders/positions/fills/ledger/funding/namespace/window、完整audit/reference/history順序與event-ID digest hash保持，保留真虧損，沒有restore或重設帳戶，沒有刪immutable audit。12服務最終全部MainPID0/inactive/disabled，沒有poll/once/新研究窗口或paper恢復。
+- 證據 `lab/evidence/storage-remediation-20261017/DEPLOYMENT/`。live-migrations receipt SHA256 `bbe087e4f97b98018d5e30570d2dbdbcbc1413de70b8908ee8d983693790109a`，source receipt `3e04d507203bd8fdfbd1f69ae2e35655c7993991edebe817ae968dde73c240c8`，服務receipt `8e841066aeee71c79ef8e06fc44f3ffd57ca2eb3f9768b08662af7ab0caaecde`。回滾mapping與來源backup齊備，未回滾DB。
+- 隔離600.0002272350011s分項4915.198/6621.864/6553.598/54.613 B/s各低50000，40000+20為68198.4B/event、比例0.016135。這不是12live aggregate或1h/24h穩定性，live1h/24h仍NOT_RUN。C0080舊恢復試點未執行，其未授權部分C0363保留。
+- 儲存scope完成後真接回原未送PA1-r4-WF1，C0360單次submit_count1，保留原SEND_UNKNOWN並以唯一8647字normalized長前綴bubble正面reconcile。C0361首真核卡watcher_adapter.py ALLOWED_ONCE/prompt_gone true，C0362 completion receiver已handoff父。workflow尚未驗收/安裝或證明無人值守，沒有重送AP3。正常mirror publication另讀回，不以local部署冒稱公開main已更新。
+

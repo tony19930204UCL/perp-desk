@@ -29,3 +29,18 @@
 
 ## 本機量測腳本
 `scripts/probe_commit_bytes.py` 可在狀態的一致性副本（SQLite backup）上量測每次提交的寫入量，驗收時用它與測試輸出對照。
+
+## 修訂 2026-10-13 18:50（採納使用者的根因方向，並以量測補正）
+使用者論點：去重只需要事件識別碼；快照已在 runtime 原始收據；15 秒時效門檻讓只需保留最近幾分鐘；目標每臂寫入 < 50 KB/s 且不隨運行時間增長。逐項核對：
+1. 去重只需識別碼：成立。事件 id 是事件內容的 SHA-256（已驗證），現行 `compact_seen_events` 已改存摘要。P1 的獨立表附加式寫入就是這個方向。
+2. 快照已在原始收據：成立。`runtime.sqlite3` 的 audit 內 `/fapi/v1/depth` 與 `bookTicker` 收據含完整 payload。
+3. 15 秒門檻：位置不是 broker。它在 `paper_runtime_v2.py` 第 126 行，收據進入時驗證（0 <= 年齡 <= 15000 ms），之後才進 broker。broker 自己的規則是 `ts < last_ts` 的非 funding 事件拒絕為亂序，且「重複偵測在亂序檢查之前」。所以裁剪舊識別碼會改變一種行為：重送一個已被裁剪的舊事件，原本靜默忽略，裁剪後變成拋亂序錯誤。兩者都不改狀態，但例外會被呼叫端看到。要裁剪，必須明確選擇並測試這個行為。
+4. 事件類型分佈（W1-ETH）：book 17056、mark 17046、funding_status 5024、funding 4831。funding 事件不受亂序規則約束，不能依時間裁剪，須永久保留（附加式表，不重寫，體積不是問題）。book、mark、funding_status 可依 `last_ts - 保留期` 裁剪。
+5. 「狀態固定幾十 KB」只對 broker 成立。同一臂還有兩個會增長的大塊：runtime 狀態列的 `history`（1.87 MB，等於 `equity_history`）與 `reference`（1.25 MB），以及 `paper_status.json`（1.83 MB，其中 1.87 MB 同為 equity_history）。要達到每臂 < 50 KB/s，這兩塊也必須處理。
+6. 另一個增長源（磁碟空間，不是寫入速率）：audit 裡 `/fapi/v1/fundingInfo` 收據每筆約 138 KB，佔近期 audit 位元組的 93%（W1-ETH）。每個臂各存一份。內容很少變，應只在雜湊改變時存 payload。
+
+## 單元切分（修訂）
+- P1（已派，卡在寫入卡）：seen_events 獨立表加遷移。
+- P2（已排）：等價性與資源證明（測試加證據）。
+- P3（新）：(a) 非 funding 的識別碼依保留期裁剪（預設 1 小時，需重送舊事件的行為測試）；(b) runtime 狀態列的 history／reference 與 paper_status.json 的 equity_history 改為有上限或附加式；(c) fundingInfo 收據只在內容雜湊改變時存 payload。範圍會動 `paper_runtime_v2.py` 與各臂 runtime，是已部署引擎檔，須逐位等價或差分證明，獨立窗口註記。
+- 最終驗收（部署後，負責人量測）：每臂 `/proc/PID/io` 的 write_bytes 連續 10 分鐘平均 < 50 KB/s；第 1 小時與第 24 小時各量一次，差距 < 10%；12 個服務合計 < 600 KB/s。
