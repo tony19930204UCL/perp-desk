@@ -542,22 +542,25 @@ request=json.load(sys.stdin)
 with Path(os.environ['SYNTHETIC_TRANSPORT_LOG']).open('a') as out:
  out.write(json.dumps({'op':request['op']})+'\\n')
 if request['op']=='snapshot':
- print(json.dumps({'url':'https://chatgpt.com/c/synthetic-test','text':'No pending card','busy':False}))
+ result={'url':'https://chatgpt.com/c/synthetic-test','text':'No pending card','busy':False}
 elif request['op']=='evaluate':
- print(json.dumps({'state':'NO_PENDING'}))
+ result={'state':'NO_PENDING'}
 else: sys.exit(4)
+print(json.dumps({'adapter':'trusted_cdp_v1',
+ 'browser':{'url':'https://chatgpt.com/c/synthetic-test','target_id':'synthetic-target'},
+ 'result':result}))
 """)
             j={"task_id":"synthetic","instruction_id":"synthetic-r2",
                "repository":"example/repo","branch":"test","write_allowlist":["path.txt"],
                "valid_until":"2099-01-01T00:00:00+00:00",
                "conversation_mode":"new","chat_url":"https://chatgpt.com/",
-               "transport_command":[sys.executable,str(transport)]}
+               "transport_command":[sys.executable,str(transport)],"target_id":"synthetic-target"}
             (jd/"job.json").write_text(json.dumps(j))
             (jd/"active_instruction.json").write_text(json.dumps({
                 "task_id":"synthetic","instruction_id":"synthetic-r2",
-                "chat_url":"https://chatgpt.com/c/synthetic-test"}))
+                "chat_url":"https://chatgpt.com/c/synthetic-test","target_id":"synthetic-target"}))
             (jd/"send_synthetic-r2.json").write_text(json.dumps({
-                "status":"CONFIRMED","chat_url":"https://chatgpt.com/c/synthetic-test"}))
+                "status":"CONFIRMED","task_id":"synthetic","instruction_id":"synthetic-r2","target_id":"synthetic-target","chat_url":"https://chatgpt.com/c/synthetic-test"}))
             env={**os.environ,"HERMES_HOME":str(home),
                  "SYNTHETIC_TRANSPORT_LOG":str(log)}
             def run(argv):
@@ -566,7 +569,7 @@ else: sys.exit(4)
             entrypoints=[
                 [sys.executable,str(scripts/"relay-allow-card.py"),str(jd)],
                 [sys.executable,str(scripts/"relay-allow-if-diff-clean.py"),str(jd),"200"],
-                [sys.executable,str(scripts/"auto_allow.py"),"--once"]]
+                [sys.executable,str(scripts/"auto_allow.py"),"--once",str(jd),"synthetic-r2","https://chatgpt.com/c/synthetic-test","synthetic-target"]]
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
                 results=list(pool.map(run,entrypoints))
             for i,result in enumerate(results):
