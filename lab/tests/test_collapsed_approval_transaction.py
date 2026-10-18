@@ -581,6 +581,80 @@ print(json.dumps({'adapter':'trusted_cdp_v1',
             self.assertFalse((home/"cache"/"approval-transaction-ledger.json").exists())
 
 
+    def test_C24_exact_cli_fail_closed(self):
+        import os, subprocess
+        root=Path(__file__).resolve().parents[2]
+        script=root/"engineering"/"relay"/"auto_allow.py"
+        chat="https://chatgpt.com/c/synthetic-test"
+        with tempfile.TemporaryDirectory() as d:
+            home=Path(d)
+            jd=home/"cache"/"scratch"/"relay-target"
+            jd.mkdir(parents=True)
+            bridge=home/"fake_bridge.py"
+            bridge.write_text("""import json,os,sys
+from pathlib import Path
+req=json.load(sys.stdin)
+with Path(os.environ['BRIDGE_LOG']).open('a') as f: f.write(req['op']+'\\n')
+mode=os.environ.get('BRIDGE_MODE','good')
+result={'url':'https://chatgpt.com/c/synthetic-test','text':'No pending card','busy':False} if req['op']=='snapshot' else {'state':'NO_PENDING'}
+if mode=='legacy': print(json.dumps(result))
+else: print(json.dumps({'adapter':'trusted_cdp_v1',
+ 'browser':{'target_id':'wrong' if mode=='wrong' else 'synthetic-target',
+ 'url':'https://chatgpt.com/c/wrong' if mode=='url' else 'https://chatgpt.com/c/synthetic-test'},
+ 'result':result}))
+""")
+            job={"task_id":"synthetic","repository":"example/repo","branch":"test",
+                 "write_allowlist":["path.txt"],"valid_until":"2099-01-01T00:00:00+00:00",
+                 "conversation_mode":"new","chat_url":"https://chatgpt.com/",
+                 "target_id":"synthetic-target","transport_command":[sys.executable,str(bridge)]}
+            active={"task_id":"synthetic","instruction_id":"synthetic-r2","chat_url":chat}
+            receipt={"task_id":"synthetic","instruction_id":"synthetic-r2","status":"CONFIRMED",
+                     "chat_url":chat,"target_id":"synthetic-target"}
+            def save():
+                (jd/"job.json").write_text(json.dumps(job))
+                (jd/"active_instruction.json").write_text(json.dumps(active))
+                (jd/"send_synthetic-r2.json").write_text(json.dumps(receipt))
+            log=home/"bridge.log"
+            def invoke(mode="good",target="synthetic-target"):
+                env={**os.environ,"HERMES_HOME":str(home),"BRIDGE_LOG":str(log),"BRIDGE_MODE":mode}
+                return subprocess.run([sys.executable,str(script),"--once",str(jd),
+                    "synthetic-r2",chat,target],cwd=str(root),env=env,
+                    capture_output=True,text=True,timeout=20)
+            save()
+            self.assertEqual(invoke().returncode,0)
+            for mode in ("legacy","wrong","url"):
+                with self.subTest(mode=mode): self.assertNotEqual(invoke(mode).returncode,0)
+            for field,value in (("target_id",None),("target_id","wrong"),
+                                ("valid_until","2000-01-01T00:00:00+00:00"),
+                                ("valid_until","2099-01-01T00:00:00")):
+                old=job.get(field)
+                if value is None: job.pop(field,None)
+                else: job[field]=value
+                save()
+                before=log.read_text()
+                self.assertNotEqual(invoke().returncode,0)
+                self.assertEqual(log.read_text(),before)
+                job[field]=old
+            save()
+            for record,field,value in ((active,"instruction_id","rotated"),
+                                       (receipt,"instruction_id","wrong"),
+                                       (receipt,"status","SEND_UNKNOWN"),
+                                       (receipt,"target_id","wrong")):
+                old=record[field]
+                record[field]=value
+                save()
+                before=log.read_text()
+                self.assertNotEqual(invoke().returncode,0)
+                self.assertEqual(log.read_text(),before)
+                record[field]=old
+            save()
+            self.assertNotEqual(invoke(target="wrong").returncode,0)
+            newer=home/"cache"/"scratch"/"relay-newer"
+            newer.mkdir()
+            (newer/"active_instruction.json").write_text(json.dumps(active))
+            self.assertEqual(invoke().returncode,0)
+
+
 class StructuralDetectorRegressionTests(unittest.TestCase):
     def setUp(self):
         import approval_transaction as ap
