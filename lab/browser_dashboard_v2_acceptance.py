@@ -158,7 +158,7 @@ class ChromeCDP:
         self.events_seen = set()
         self.sock = None
         self.process = None
-        flags = [binary, '--headless=new', '--no-first-run', '--no-default-browser-check',
+        flags = [binary, '--headless=new', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check',
                  '--disable-background-networking', '--disable-extensions',
                  '--disable-default-apps', '--disable-dev-shm-usage', '--disable-gpu',
                  '--no-proxy-server', '--no-sandbox', '--remote-debugging-address=127.0.0.1',
