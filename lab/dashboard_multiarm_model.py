@@ -25,13 +25,15 @@ def dec(value):
         return None
     try:
         out = Decimal(value)
-        return out if out.is_finite() else None
-    except (InvalidOperation, ValueError):
+        # Includes zero with an extreme exponent (for example 0E+99).
+        return out if out.is_finite() and abs(out.adjusted()) <= 40 else None
+    except (ArithmeticError, ValueError, OverflowError):
         return None
 
 
 def exact(value):
-    return str(value) if isinstance(value, Decimal) and value.is_finite() else None
+    return (str(value) if isinstance(value, Decimal) and value.is_finite()
+            and abs(value.adjusted()) <= 40 else None)
 
 
 def integer(value):
