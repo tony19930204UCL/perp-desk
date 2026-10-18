@@ -1,0 +1,15 @@
+test_script_only_public_entrypoint_authorizes_literal_exact_repo (automation.tests.test_review_sync.ReviewSyncTests.test_script_only_public_entrypoint_authorizes_literal_exact_repo) ... FAIL
+
+======================================================================
+FAIL: test_script_only_public_entrypoint_authorizes_literal_exact_repo (automation.tests.test_review_sync.ReviewSyncTests.test_script_only_public_entrypoint_authorizes_literal_exact_repo)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<engineering-repo>/automation/tests/test_review_sync.py", line 113, in test_script_only_public_entrypoint_authorizes_literal_exact_repo
+    self.assertTrue(public.is_file(),'script-only public scheduler entry missing')
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : script-only public scheduler entry missing
+
+----------------------------------------------------------------------
+Ran 1 test in 0.020s
+
+FAILED (failures=1)

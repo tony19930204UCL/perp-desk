@@ -1,0 +1,6 @@
+test_script_only_public_entrypoint_authorizes_literal_exact_repo (automation.tests.test_review_sync.ReviewSyncTests.test_script_only_public_entrypoint_authorizes_literal_exact_repo) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.020s
+
+OK
