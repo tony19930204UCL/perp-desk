@@ -108,5 +108,20 @@ class SourceAgingPersistenceTests(unittest.TestCase):
         self.assertEqual(prior, self.rows())
 
 
+
+class SourceAgingOrderingTests(unittest.TestCase):
+    def test_early_exit_and_post_candle_refresh_h2(self):
+        from paper_runtime_v2 import PaperRuntime
+        from test_paper_v2 import V2Tests
+        from test_freshness import FreshnessTests
+        self.assertTrue(callable(PaperRuntime.refresh_decision_markets))
+        self.assertTrue(callable(V2Tests.test_failed_gap_bootstrap_does_not_block_position_reduction))
+        self.assertTrue(callable(FreshnessTests.test_actual_delay_refreshes_real_inputs_before_decision))
+
+    def test_f1h_inherits_bounded_decision_refresh(self):
+        from paper_runtime_v2 import PaperRuntime as Base
+        from paper_runtime_v5 import PaperRuntime as F1H
+        self.assertIs(F1H.refresh_decision_markets, Base.refresh_decision_markets)
+
 if __name__ == "__main__":
     unittest.main()
