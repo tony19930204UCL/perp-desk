@@ -1,0 +1,62 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 66,
+  "branch": "fix/source-aging-20261015T2059Z",
+  "task_id": "source-aging-20261015T2059Z",
+  "instruction_id": "SA1-r2-CI1",
+  "status": "WAITING_CI",
+  "source_head_sha": "3e5172c8b06b15af88e769b65256b16cd5daa33f",
+  "summary": "Restored actual traded-book delivery and protective exits before bootstrap/candle processing in H2/F1H. After candle work, only symbols with source age exceeding the unchanged 15000ms gate receive one bounded real quote refresh using existing collect_markets and broker-delivery checks; unchanged sources retain original receipts. Neither sim_broker.py nor frozen tests changed. F2 is a real safety regression (context exception previously prevented a position exit); F1 enforces a valid freshness requirement despite fixture-sensitive request order. Added regression seam checks, not a claim of test execution.",
+  "changed_files": [
+    "lab/paper_runtime_v2.py",
+    "lab/paper_runtime_v5.py",
+    "lab/tests/test_source_aging_repair.py",
+    "docs/engineering/SOURCE_AGING_REPAIR.md",
+    "docs/engineering/HANDOFF-source-aging-20261015T2059Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab/tests && python3 -m unittest test_freshness test_paper_v2 test_source_aging_repair",
+      "result": "NOT_RUN",
+      "evidence": "No runnable repo checkout available in this session; tool access limited to remote GitHub file APIs and no local-host operations authorized. Added two source-aging ordering/seam test methods; no run claimed."
+    },
+    {
+      "command": "GitHub Actions pull_request at rejected d3e29e4e5ad699cb0e04fdc67cad54a01f7f3792",
+      "result": "FAILURE",
+      "evidence": "Main supplied run 38922340235: isolated-tests Ran 489 tests, failures=2; direct GitHub job inspection confirms isolated-tests completed failure (job 117045145362). Failures: test_freshness.FreshnessTests.test_actual_delay_refreshes_real_inputs_before_decision and test_paper_v2.V2Tests.test_failed_gap_bootstrap_does_not_block_position_reduction."
+    },
+    {
+      "command": "GitHub Actions push at rejected d3e29e4e5ad699cb0e04fdc67cad54a01f7f3792",
+      "result": "FAILURE",
+      "evidence": "Main supplied push run 38922334750 completed failure, same two tests; push results not independently exposed by connector."
+    },
+    {
+      "command": "GitHub Actions pull_request at source head 3e5172c8b06b15af88e769b65256b16cd5daa33f",
+      "result": "PENDING_OR_NOT_LISTED",
+      "evidence": "fetch_commit_workflow_runs returned zero runs at inspection; no exact-head run ID or success can be claimed."
+    },
+    {
+      "command": "GitHub Actions push at source head 3e5172c8b06b15af88e769b65256b16cd5daa33f",
+      "result": "NOT_VERIFIED",
+      "evidence": "Connector commit workflow listing filters to pull_request runs; exact-head push ID/conclusion unavailable."
+    }
+  ],
+  "remaining_work": [
+    "Run exact requested three-module suite plus all legacy tests on clean checkout, inspect both failure assertions and actual test IDs. Two added tests check method availability/inheritance only; not a substitute for frozen behavioral fixtures.",
+    "Check true 14999/15000/15001 and future-source rejection, re-fetch of only affected peers, slow persistence plus in-flight book/exit, F1H coverage and no unintended duplicate event delivery.",
+    "Verify exact-head push and pull_request CI after the mailbox commit with actual IDs, inspect isolated-tests, and independently validate source/receipt/dispatch timings in isolated public dry-run. No deployment.",
+    "Existing PR59/60 undeployed experimental schema compatibility remains outside this bounded repair."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Checkout exact final PR66 head, run lab/tests python3 -m unittest test_freshness test_paper_v2 test_source_aging_repair with PYTHONPATH=..:., full CI and source timing/differential gates. Verify protected F2 exit survives failed bootstrap and F1 refresh after delayed candle. Inspect exact-head push and PR runs.",
+    "if_pass": "Independently accept only SA1-r2 engineering fix pending separate operator-gated flat-arm validation, no merge/deploy/trade.",
+    "if_fail": "Return exact failing test ID, actual CI run and full head; revise only this branch and narrow allowlist.",
+    "blockers": [
+      "No in-environment test execution or behavioral proof",
+      "New exact-head push and PR CI conclusions not yet observed",
+      "Public isolated dry-run timing not performed"
+    ]
+  }
+}
