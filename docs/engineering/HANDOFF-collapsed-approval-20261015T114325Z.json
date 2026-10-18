@@ -4,76 +4,46 @@
   "pr_number": 62,
   "branch": "fix/collapsed-approval-20261015T114325Z",
   "task_id": "collapsed-approval-20261015T114325Z",
-  "instruction_id": "CA1-r3",
-  "status": "BLOCKED",
-  "source_head_sha": "d81e28e0737a88d3d263c1616f1e7b5addb95a88",
-  "summary": "Partial CA1-r3 source repair on existing PR62: missing/malformed job, active and dispatch receipt now produce AdmissionError; added explicit hydrated data-user-message-bubble and search-unit turn anchoring with UNVERIFIABLE errors; introduced narrow Python AST literal detector-template exemption while preserving ordinary sensitive/long-string strict scanning; converted CandidateDOMTests from Playwright to existing stdlib CdpSession; added AST negative cases and synthetic two-process strict-to-diff lock barrier. The C23 complete pending-card multi-entrypoint race, broad hydrated DOM cases and exact-head execution remain incomplete. This candidate is not accepted or deployable.",
+  "instruction_id": "C0104-EXACTTARGET-GPT-r1",
+  "status": "WAITING_CI",
+  "source_head_sha": "47d0aa85face0351bf1949281c9acbedbb21285e",
+  "summary": "Implemented explicit exact-job CLI and fail-closed trusted-adapter envelope gate. Legacy installed transport lacks browser-derived target attestation and must return INFRA, not successful NO_PENDING. Source and tests committed; independent execution pending.",
   "changed_files": [
-    "engineering/relay/approval_transaction.py",
+    "engineering/relay/auto_allow.py",
     "lab/tests/test_collapsed_approval_transaction.py",
-    "engineering/relay/README.md",
     "docs/engineering/HANDOFF-collapsed-approval-20261015T114325Z.json"
   ],
   "tests": [
     {
-      "command": "python3 -m unittest discover -s lab/tests -p test_collapsed_approval_transaction.py -v",
+      "command": "python3 -m unittest lab.tests.test_collapsed_approval_transaction.EntrypointProcessTests.test_C23_real_cli_no_card_isolation",
       "result": "NOT_RUN",
-      "evidence": "Source written through connected GitHub contents API. No candidate checkout in container. Existing Main results (r2 54 tests 0 FAIL, 1 ERROR, 0 SKIP) apply to previous HEAD, not CA1-r3."
+      "evidence": "GitHub file connector cannot execute commands"
     },
     {
-      "command": "python3 -m unittest discover -s automation/tests",
+      "command": "python3 -m unittest lab.tests.test_collapsed_approval_transaction.EntrypointProcessTests.test_C24_exact_cli_fail_closed",
       "result": "NOT_RUN",
-      "evidence": "No local candidate checkout; no execution claimed."
+      "evidence": "GitHub file connector cannot execute commands"
     },
     {
-      "command": "cd lab && python3 -m unittest discover -s tests",
+      "command": "python3 -m unittest lab.tests.test_collapsed_approval_transaction",
       "result": "NOT_RUN",
-      "evidence": "No local candidate checkout; Main previously found exact-head r2 push/pull_request CI FAILED with paper isolated suite step."
-    },
-    {
-      "command": "git ls-remote https://github.com/tony19930204UCL/perp-desk.git refs/heads/fix/collapsed-approval-20261015T114325Z",
-      "result": "INFRA",
-      "evidence": "Executed container git: fatal: Could not resolve host: github.com. GitHub connector remained writable and committed source."
-    },
-    {
-      "command": "python3 -m unittest lab.tests.test_collapsed_approval_transaction.CrossProcessFallbackRaceTests",
-      "result": "NOT_RUN",
-      "evidence": "New synthetic two-process test authored but unexecuted. C22 complete actual helper-entrypoint competition and C23 multi-entrypoint pending-card race remain unverified."
+      "evidence": "GitHub file connector cannot execute commands"
     }
   ],
   "remaining_work": [
-    {
-      "status": "ACTIONABLE_NOW",
-      "description": "Run candidate tests on exact source HEAD and repair syntax/runtime failures, particularly stdlib CDP adapter import and synthetic two-process barrier. Record actual per-ID durations/rc."
-    },
-    {
-      "status": "ACTIONABLE_NOW",
-      "description": "Implement full C23 pending-card competition across auto_allow --once, relay-poll, carrier/drive, profile_runner and direct helpers using synthetic JSON bridge, bounded clocks and aggregate click-target spies. Existing no-card smoke is insufficient."
-    },
-    {
-      "status": "ACTIONABLE_NOW",
-      "description": "Extend actual hydrated DOM/turn verification tests, plus C22 helper entrypoint/process competition across readback; retain unknown-state INFRA and no retry semantics."
-    },
-    {
-      "status": "ACTIONABLE_NOW",
-      "description": "Verify AST structural exception against legitimate source >200 lines, malicious changed literals, dynamic source, labels and real secrets. Do not widen approved template list without review."
-    },
-    {
-      "status": "EXTERNAL_BLOCKER",
-      "description": "Main independently verifies exact-head push/pull_request CI (prior r2 runs 38746395053 and 38746404199 failed), separate deployment mapping/readback and authenticated-live DOM; no deployment authorized."
-    }
+    "Independently execute exact-head tests and verify all tests and syntax",
+    "Audit synthetic adapter provenance contract; no production attestation currently available",
+    "Verify target binding on action transitions and active rotation with independent fault injection",
+    "Resident approver remains disabled; no installation or deployment"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "BLOCKED candidate: review actual pre-mailbox source HEAD, run all focused and standard-library Chrome CDP tests, verify C09 missing-record category and AST literal exception safety; do not treat prior failed CI as passing.",
-    "if_pass": "After completing C22/C23 entrypoint integration and independent test evidence, rerun exact-head push/pull_request CI and review source-to-deployment mapping; maintain fixture/live separation.",
-    "if_fail": "Continue bounded repair on same PR62/branch; preserve old AP3 unknown-send and prohibit live browser, trading, deployment and permission mutations.",
+    "verify_now": "Check exact branch diff, source HEAD and mailbox, run focused and full unittest, check strict/diff-clean and 200 changed-line limit",
+    "if_pass": "Review fail-closed source candidate only; separately scope audited host adapter support",
+    "if_fail": "Reject with exact test failure and request bounded repair",
     "blockers": [
-      "Unexecuted exact-head candidate tests",
-      "C23 actual pending-card cross-entrypoint test missing",
-      "Full C22 actual callers not demonstrated",
-      "No independent r3 exact-head dual CI",
-      "Authenticated-live pending card unobserved"
+      "Installed dedicated-cdp.ps1 exposes no trusted browser-origin target metadata",
+      "Tests not executed by file-only connector"
     ]
   }
 }
