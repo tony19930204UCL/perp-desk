@@ -4,41 +4,39 @@
   "pr_number": 0,
   "branch": "fix/progress-alert-semantics-20261016",
   "task_id": "progress-alert-semantics-20261016",
-  "instruction_id": "PA1-r15-WF1",
+  "instruction_id": "PA1-r16-WF1",
   "status": "WAITING_CI",
-  "source_head_sha": "cb9e2c230e66a332d0e40a92143bb02066598321",
-  "summary": "Narrow patrol exposure source correction. Installed patrol now reads broker.sqlite3 sim_broker_state singleton=1 via SQLite read-only URI; validates positions/orders/order status shape and classifies active PENDING/RESTING, terminal FILLED/CANCELED/EXPIRED/REJECTED, otherwise UNKNOWN. Removed recursive runtime.sqlite3 detector walk and fallback. Only existing fixture changed: test_patrol_pause_open_exposure_and_active_unit_keep_normal_checks now creates a broker.sqlite3 nonempty positions record; both existing assertIn checks remain. Prior reported 85 tests; three new test methods yield expected 88, pending exact-head CI. Candidate NOT_INSTALLED, full workflow UNATTENDED_NOT_PROVEN, r7 denial remains BLOCKED.",
+  "source_head_sha": "44955ed1bbd9ff76fd303fe622f1480fa8105601",
+  "summary": "Focused test-only correction: test_patrol_broker_status_literals_guard now recognizes order['status'] = 'FILLED' alongside status='X', order.update(status='X'), status comparisons and membership. Existing six-status equality and patrol text assertions remain, with additional equality to parsed actual BROKER_ACTIVE_STATUSES and BROKER_TERMINAL_STATUSES. No production patrol or documentation changes. Source candidate NOT_INSTALLED; full workflow UNATTENDED_NOT_PROVEN; r7 denial remains BLOCKED.",
   "changed_files": [
-    "engineering/progress_semantics/installed_desk_patrol.py",
     "engineering/progress_semantics/tests/test_installed_entrypoints.py",
-    "docs/engineering/PROGRESS_ALERT_SEMANTICS.md",
     "docs/engineering/HANDOFF-progress-alert-semantics-20261016.json"
   ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/progress_semantics/tests -v",
-      "result": "NOT_RUN_FILE_ONLY",
-      "evidence": "Previously reported 85 tests at ddb637fa; three new methods expected >=88. New IDs: test_installed_entrypoints.InstalledEntryTests.test_patrol_broker_exposure_real_shapes; test_installed_entrypoints.InstalledEntryTests.test_patrol_broker_exposure_invalid_shapes_fail_closed; test_installed_entrypoints.InstalledEntryTests.test_patrol_broker_status_literals_guard. Each method uses subtests for all listed shapes."
+      "result": "NOT_RUN",
+      "evidence": "File-only policy. Prior r15 exact-head CI push 39117839373 ran 88 tests: 87 PASS, test_patrol_broker_status_literals_guard FAIL because subscript assignment order['status'] = 'FILLED' was not extracted. This revision changes only that test body; expected status literals PENDING RESTING FILLED CANCELED EXPIRED REJECTED. No new test IDs."
     },
     {
-      "command": "temporary HERMES_HOME real patrol entrypoint copy replay",
-      "result": "NOT_RUN_FILE_ONLY",
-      "evidence": "Installed mapping: engineering/progress_semantics/installed_desk_patrol.py -> scripts/desk_patrol.py ONLY. No commit/ledger/watch installed bytes changed. Synthetic broker fixture required."
+      "command": "push and pull_request exact-head CI plus installed entrypoint copy replay",
+      "result": "NOT_RUN",
+      "evidence": "Requires independent Main CIO verification on final exact head; no green result claimed."
     }
   ],
   "remaining_work": [
-    "Main must verify new exact-head push and pull_request CI all green, full Progress semantics test IDs and later steps; no CI success claimed.",
-    "Main must replay broker exposure positive/negative cases with temporary HERMES_HOME and fake systemctl, including h2 paper-v4, read-only SQLite bytes/mtime and absence of journal/WAL files.",
-    "Broker status evidence: lab/sim_broker.py lines 231 PENDING/REJECTED, 245-246 PENDING/RESTING -> CANCELED, 412-413 -> EXPIRED, 440/463/485/497/504/514 -> REJECTED, 475 -> RESTING, 697 -> FILLED. Final active set PENDING/RESTING; terminal FILLED/CANCELED/EXPIRED/REJECTED.",
-    "Candidate NOT_INSTALLED; full C0376 UNATTENDED_NOT_PROVEN; r7 installed_auto_accept denial remains BLOCKED. All 12 PAPER services inactive/disabled; no other installed source or safety policy changed."
+    "Main independently verify >=88 progress tests, no skips/failures, and green push/pull_request CI including subsequent steps.",
+    "Status sources in lab/sim_broker.py: line 231 status='PENDING' if reason is None else 'REJECTED'; lines 246, 404, 413, 440, 463, 470, 475, 485, 497, 504, 514, 526 order.update(status='...'); line 697 order['status'] = 'FILLED'; comparisons and membership at lines 245, 401, 403, 412, 421, 453. Final six: PENDING RESTING FILLED CANCELED EXPIRED REJECTED.",
+    "Only test_patrol_broker_status_literals_guard body changed; all existing assertions retained, plus equality against actual patrol constants. Production patrol unchanged byte-identical; docs unchanged.",
+    "Candidate NOT_INSTALLED; full workflow C0376 UNATTENDED_NOT_PROVEN; r7 denied installed_auto_accept operation remains BLOCKED. No paper service changes."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Inspect exact-head CI, >=88 progress tests including three new IDs, all later steps, and temporary installed patrol copy replay. Compare no-marker golden output and state bytes.",
-    "if_pass": "Independently accept complete installed_desk_patrol.py bytes and copy to scripts/desk_patrol.py; verify hashes and read-only broker replay. Do not infer full workflow acceptance.",
-    "if_fail": "Return exact failing test ID/step and observed fixture output for a formal revision; do not relax shape checks or bypass r7 denial.",
+    "verify_now": "Inspect exact-head push and pull_request CI for >=88 progress tests including test_patrol_broker_status_literals_guard, no skips/failures, subsequent workflow steps, and copy-replay.",
+    "if_pass": "Independently accept candidate test correction and verify installed patrol source remains unchanged; no new production copy required by r16.",
+    "if_fail": "Return exact failing step/test and evidence for formal revision; do not bypass r7 refusal.",
     "blockers": [
-      "exact-head CI not observed",
+      "exact-head CI pending",
       "candidate NOT_INSTALLED",
       "r7 integration BLOCKED",
       "C0376 UNATTENDED_NOT_PROVEN"
