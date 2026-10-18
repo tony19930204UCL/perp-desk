@@ -4,46 +4,45 @@
   "pr_number": 62,
   "branch": "fix/collapsed-approval-20261015T114325Z",
   "task_id": "collapsed-approval-20261015T114325Z",
-  "instruction_id": "C0104-EXACTTARGET-GPT-r1",
+  "instruction_id": "C0104-EXACTTARGET-GPT-r2",
   "status": "WAITING_CI",
-  "source_head_sha": "47d0aa85face0351bf1949281c9acbedbb21285e",
-  "summary": "Implemented explicit exact-job CLI and fail-closed trusted-adapter envelope gate. Legacy installed transport lacks browser-derived target attestation and must return INFRA, not successful NO_PENDING. Source and tests committed; independent execution pending.",
+  "source_head_sha": "96c44287910b250736743e2d27063162f22d5f8b",
+  "summary": "Repaired two independently observed r1 fixture defects: direct helper synthetic transport now emits raw page results, while auto_allow receives synthetic trusted adapter envelope; DOM fixture setup now executes its initial dialog population instead of returning an uninvoked arrow function. Original seven DOM expected statuses and assertions unchanged. No production approval policy changes. Exact-job fail-closed candidate remains uninstalled.",
   "changed_files": [
-    "engineering/relay/auto_allow.py",
     "lab/tests/test_collapsed_approval_transaction.py",
     "docs/engineering/HANDOFF-collapsed-approval-20261015T114325Z.json"
   ],
   "tests": [
     {
-      "command": "python3 -m unittest lab.tests.test_collapsed_approval_transaction.EntrypointProcessTests.test_C23_real_cli_no_card_isolation",
-      "result": "NOT_RUN",
-      "evidence": "GitHub file connector cannot execute commands"
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN_THIS_ROUND",
+      "evidence": "Prior r1 exact-head CI 39135985816 and 39135980631: 544 tests, 9 failures; new r2 CI pending"
     },
     {
-      "command": "python3 -m unittest lab.tests.test_collapsed_approval_transaction.EntrypointProcessTests.test_C24_exact_cli_fail_closed",
+      "command": "python3 -m unittest lab.tests.test_collapsed_approval_transaction.EntrypointProcessTests -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub file connector cannot execute commands"
+      "evidence": "GitHub file-only connector cannot execute tests; direct-helper raw fixture repair submitted for independent verification"
     },
     {
-      "command": "python3 -m unittest lab.tests.test_collapsed_approval_transaction",
+      "command": "python3 -m unittest lab.tests.test_collapsed_approval_transaction.CandidateDOMTests -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub file connector cannot execute commands"
+      "evidence": "GitHub file-only connector cannot execute Chromium tests; uninvoked setup function corrected"
     }
   ],
   "remaining_work": [
-    "Independently execute exact-head tests and verify all tests and syntax",
-    "Audit synthetic adapter provenance contract; no production attestation currently available",
-    "Verify target binding on action transitions and active rotation with independent fault injection",
-    "Resident approver remains disabled; no installation or deployment"
+    "Run new exact-head CI and verify nine previously failing tests, plus full regression",
+    "Independently test active-rotation immediately before action and target provenance failure behavior",
+    "Installed legacy CDP transport still does not attest browser-origin target; production integration blocked",
+    "Resident approver remains disabled; no installation, deployment or live approvals"
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Check exact branch diff, source HEAD and mailbox, run focused and full unittest, check strict/diff-clean and 200 changed-line limit",
-    "if_pass": "Review fail-closed source candidate only; separately scope audited host adapter support",
-    "if_fail": "Reject with exact test failure and request bounded repair",
+    "verify_now": "Verify exact-head test-file diff, unchanged assertions, r2 fixture changes, focused C23 and seven DOM IDs and CI suite",
+    "if_pass": "Accept bounded fixture repair and fail-closed candidate for source review only; separately authorize audited transport attestation integration",
+    "if_fail": "Return exact failing IDs, reasons, logs for bounded repair; do not weaken production policy",
     "blockers": [
-      "Installed dedicated-cdp.ps1 exposes no trusted browser-origin target metadata",
-      "Tests not executed by file-only connector"
+      "Legacy dedicated-cdp.ps1 returns page by-value result without trustworthy browser-origin target metadata",
+      "File-only GitHub connector cannot run focused unittest or Chromium"
     ]
   }
 }
