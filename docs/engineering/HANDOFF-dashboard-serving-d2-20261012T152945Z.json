@@ -4,45 +4,41 @@
   "pr_number": 58,
   "branch": "feat/dashboard-serving-d2-20261012T152945Z",
   "task_id": "dashboard-serving-d2-20261012T152945Z",
-  "instruction_id": "D2-U3B-r0",
+  "instruction_id": "D2-U3B-r1",
   "status": "WAITING_CI",
-  "source_head_sha": "7b4875b425302ad15b4e345d39413c0f019259dd",
-  "summary": "Added strict literal GET/HEAD routes for module-relative dashboard_v2.html (root and named alias) and dashboard_v2_ui.js; retained read-only API, loopback binding, bounded synchronous server, sanitized fixed errors, byte lengths and no-store/nosniff headers. Added 18 real-loopback integration test methods. Existing frozen server test expects GET / to return JSON 404, contrary to new requirement GET / HTML 200; requires operator acknowledgment or separately authorized test repair.",
+  "source_head_sha": "84c49a68493b00c4d93369c0c7f0c6de65e27cfe",
+  "summary": "Minimal migration of one existing server test after independently observed CI failure (584 tests, 1 failure at GET '/'). In test_query_encoded_absolute_traversal_routes_are_404, removed only '/' from the unchanged negative route tuple; added same-patch positive GET '/' assertions for 200, HTML MIME, no-store, nosniff and exact frozen module-relative HTML bytes. Preserved all remaining 404 checks and the final read_dashboard mock assert_not_called covering negative and positive routes. No production code or other tests edited.",
   "changed_files": [
-    "lab/dashboard_v2_server.py",
-    "lab/tests/test_dashboard_v2_serving.py",
+    "lab/tests/test_dashboard_v2_server.py",
     "docs/engineering/HANDOFF-dashboard-serving-d2-20261012T152945Z.json"
   ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s automation/tests",
       "result": "NOT_RUN",
-      "evidence": "No repository checkout available in execution container; GitHub connector has no test execution action."
+      "evidence": "No repository checkout or command execution of this repository was performed in this revision."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "No repository checkout available. Existing test_dashboard_v2_server.py test_query_encoded_absolute_traversal_routes_are_404 includes '/' as 404, now incompatible with mandated static root 200."
+      "evidence": "No local repository test execution. Prior independent push CI run 38756832049 on previous HEAD ab36919cd159c97e7666bc11ebb114bd836b9487 ran 584 tests with one '/' 404-versus-200 failure; this is prior evidence, not a result for revised head."
     },
     {
-      "command": "python3 -m unittest -v test_dashboard_v2_serving test_dashboard_v2_server test_dashboard_v2_reader test_dashboard_v2_model test_dashboard_v2_ui",
+      "command": "python3 -m unittest tests.test_dashboard_v2_server.DashboardServerTests.test_query_encoded_absolute_traversal_routes_are_404 -v",
       "result": "NOT_RUN",
-      "evidence": "No local repository checkout; tests committed but not executed."
+      "evidence": "Revised test submitted through GitHub update_file; focused execution awaits exact-head CI."
     }
   ],
   "remaining_work": [
-    "Independent exact-head push and pull_request CI; fix test failures only under newly authorized file allowlist.",
-    "Resolve frozen legacy '/' 404 assertion conflict with required '/' HTML 200.",
-    "Run actual raw HTTP, Chromium real-serving rendering at 1280 and 390, source integrity, hostile text, fetch failure and 100-read observations.",
-    "Review fixed-route diff and verify no deployments, service actions or data producers."
+    "Main CIO independently verify exact-head push and pull_request CI for revised head including mailbox, expected zero failures, and allowlist diff.",
+    "Main CIO perform real browser delivery checks through server and confirm 1280/390 rendering, hostile text, unknown-vs-zero, stale fetch clearing and no external requests.",
+    "Do not merge or deploy automatically."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Check exact source head, allowlist diff and CI on both triggers; exercise new real HTTP tests and raw target attacks; confirm frozen test root-route contradiction.",
-    "if_pass": "Perform real Chromium browser acceptance and review before any independent integration decision; no automatic merge/deploy.",
-    "if_fail": "Return exact failures and narrow repair authorization. In particular resolve legacy root 404 assertion via separately permitted test change rather than weakening '/' 200 route.",
-    "blockers": [
-      "Frozen lab/tests/test_dashboard_v2_server.py asserts '/' returns 404, while D2-U3B requires '/' return HTML 200."
-    ]
+    "verify_now": "Check test-only migration and mailbox diff, then exact-head push and pull_request CI and all previously specified real HTTP/Chromium acceptance.",
+    "if_pass": "Record independent acceptance; any integration, merge or deployment remains separate owner authorization.",
+    "if_fail": "Report exact failing test/run/head and provide narrowly scoped repair instruction; preserve production GET '/' HTML 200 and all security invariants.",
+    "blockers": []
   }
 }
