@@ -323,12 +323,100 @@ class InstalledEntryTests(unittest.TestCase):
     def test_patrol_pause_open_exposure_and_active_unit_keep_normal_checks(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); self.patrol_layout(root); data=root/"lab"/"data"/"paper-t1-btcusdt"; data.mkdir(parents=True)
-            db=sqlite3.connect(data/"runtime.sqlite3"); db.execute("create table state(id integer primary key,payload text)")
-            db.execute("insert into state values(1,?)",(json.dumps({"t1_detector":{"position":1},"open_orders":[]}),)); db.commit(); db.close()
+            db=sqlite3.connect(data/"broker.sqlite3"); db.execute("create table sim_broker_state(singleton integer primary key check(singleton=1),payload text not null)")
+            db.execute("insert into sim_broker_state values(1,?)",(json.dumps({"positions":{"BTCUSDT":{"qty":"1"}},"orders":{}}),)); db.commit(); db.close()
             pause={"schema_version":1,"units":{"t1-btcusdt":{"reason":"owner pause","authorized_by":"operator","authorized_at":"2026-01-01T00:00:00+00:00","review_by":"2099-01-01T00:00:00+00:00"}}}
             (root/"lab"/"journal"/"paused_units.json").write_text(json.dumps(pause),"utf-8")
             r=self.run_patrol(root,"active")
             self.assertIn("PAUSE_OPEN_EXPOSURE t1-btcusdt",r.stdout); self.assertIn("PAUSE_UNIT_ACTIVE t1-btcusdt",r.stdout)
+
+    def test_patrol_broker_exposure_real_shapes(self):
+        for unit, positions, orders, expected in (
+            ("w1-xrpusdt",{"XRPUSDT":{"entry":"1.2949","qty":"101.0"}},{"a":{"status":"FILLED"},"b":{"status":"EXPIRED"}},"PAUSE_OPEN_EXPOSURE"),
+            ("w1-xrpusdt",{},{"a":{"status":"FILLED"},"b":{"status":"CANCELED"},"c":{"status":"EXPIRED"},"d":{"status":"REJECTED"}},"FLAT"),
+            ("w1-xrpusdt",{},{"a":{"status":"PENDING"}},"PAUSE_OPEN_EXPOSURE"),
+            ("w1-xrpusdt",{},{"a":{"status":"RESTING"}},"PAUSE_OPEN_EXPOSURE"),
+            ("w1-xrpusdt",{},{"a":{"status":"UNKNOWN"}},"PAUSE_EXPOSURE_UNKNOWN"),
+            ("w1-xrpusdt",{},{"a":{"status":"filled"}},"PAUSE_EXPOSURE_UNKNOWN"),
+            ("w1-xrpusdt",{},{"a":{"status":1}},"PAUSE_EXPOSURE_UNKNOWN"),
+            ("h2",{"XRPUSDT":{"qty":"101.0"}},{},"PAUSE_OPEN_EXPOSURE"),
+        ):
+            with self.subTest(unit=unit,expected=expected,orders=orders):
+                with tempfile.TemporaryDirectory() as td:
+                    root=Path(td); self.patrol_layout(root)
+                    folder="paper-v4" if unit=="h2" else "paper-"+unit
+                    data=root/"lab"/"data"/folder; data.mkdir()
+                    db=sqlite3.connect(data/"broker.sqlite3")
+                    db.execute("create table sim_broker_state(singleton integer primary key check(singleton=1),payload text not null)")
+                    db.execute("insert into sim_broker_state values(1,?)",(json.dumps({"positions":positions,"orders":orders}),))
+                    db.commit(); db.close()
+                    before=(data/"broker.sqlite3").read_bytes(); mt=(data/"broker.sqlite3").stat().st_mtime_ns
+                    self.write_patrol_pause(root,unit)
+                    r=self.run_patrol(root)
+                    self.assertEqual(r.returncode,0,r.stderr)
+                    if expected=="FLAT":
+                        self.assertNotIn("PAUSE_OPEN_EXPOSURE "+unit,r.stdout)
+                        self.assertNotIn("PAUSE_EXPOSURE_UNKNOWN "+unit,r.stdout)
+                    else:
+                        self.assertIn(expected+" "+unit,r.stdout)
+                        other="PAUSE_EXPOSURE_UNKNOWN" if expected=="PAUSE_OPEN_EXPOSURE" else "PAUSE_OPEN_EXPOSURE"
+                        self.assertNotIn(other+" "+unit,r.stdout)
+                    self.assertEqual((data/"broker.sqlite3").read_bytes(),before)
+                    self.assertEqual((data/"broker.sqlite3").stat().st_mtime_ns,mt)
+                    self.assertFalse((data/"broker.sqlite3-journal").exists())
+                    self.assertFalse((data/"broker.sqlite3-wal").exists())
+
+    def write_patrol_pause(self,root,unit):
+        pause={"schema_version":1,"units":{unit:{"reason":"owner pause","authorized_by":"operator","authorized_at":"2026-01-01T00:00:00+00:00","review_by":"2099-01-01T00:00:00+00:00"}}}
+        (root/"lab"/"journal"/"paused_units.json").write_text(json.dumps(pause),"utf-8")
+
+    def test_patrol_broker_exposure_invalid_shapes_fail_closed(self):
+        cases=("missing","missing_table","missing_row","bad_json","list_payload","missing_positions",
+               "list_positions","missing_orders","list_orders","invalid_order")
+        for case in cases:
+            with self.subTest(case=case):
+                with tempfile.TemporaryDirectory() as td:
+                    root=Path(td); self.patrol_layout(root); self.write_patrol_pause(root,"t1-btcusdt")
+                    data=root/"lab"/"data"/"paper-t1-btcusdt"; data.mkdir()
+                    runtime=sqlite3.connect(data/"runtime.sqlite3")
+                    runtime.execute("create table state(id integer primary key,payload text)")
+                    runtime.execute("insert into state values(1,?)",(json.dumps({"t1_detector":{"position":0},"open_orders":[]}),))
+                    runtime.commit(); runtime.close()
+                    if case!="missing":
+                        db=sqlite3.connect(data/"broker.sqlite3")
+                        if case!="missing_table":
+                            db.execute("create table sim_broker_state(singleton integer primary key check(singleton=1),payload text not null)")
+                            if case!="missing_row":
+                                payload={"positions":{},"orders":{}}
+                                if case=="bad_json": payload="{bad"
+                                elif case=="list_payload": payload=[]
+                                elif case=="missing_positions": payload.pop("positions")
+                                elif case=="list_positions": payload["positions"]=[]
+                                elif case=="missing_orders": payload.pop("orders")
+                                elif case=="list_orders": payload["orders"]=[]
+                                elif case=="invalid_order": payload["orders"]={"a":[]}
+                                db.execute("insert into sim_broker_state values(1,?)",(payload if isinstance(payload,str) else json.dumps(payload),))
+                        db.commit(); db.close()
+                    r=self.run_patrol(root)
+                    self.assertEqual(r.returncode,0,r.stderr)
+                    self.assertIn("PAUSE_EXPOSURE_UNKNOWN t1-btcusdt",r.stdout)
+                    self.assertNotIn("PAUSE_OPEN_EXPOSURE t1-btcusdt",r.stdout)
+
+    def test_patrol_broker_status_literals_guard(self):
+        source=Path(__file__).resolve().parents[3]/"lab"/"sim_broker.py"
+        self.assertTrue(source.is_file(),str(source))
+        import re
+        code=source.read_text("utf-8")
+        literals=set(re.findall(r"""(?:status\s*=\s*|\['status'\]\s*(?:!=|==)\s*)['"]([A-Z]+)['"]""",code))
+        literals.update(re.findall(r"""\b(?:in|not in)\s*\(([^)]*)\)""",code) and [])
+        for group in re.findall(r"""\['status'\]\s*(?:in|not in)\s*\(([^)]*)\)""",code):
+            literals.update(re.findall(r"""['"]([A-Z]+)['"]""",group))
+        self.assertEqual(literals,{"PENDING","RESTING","FILLED","CANCELED","EXPIRED","REJECTED"})
+        patrol=(Path(__file__).resolve().parents[1]/"installed_desk_patrol.py").read_text("utf-8")
+        active=set(re.findall(r"""BROKER_ACTIVE_STATUSES = frozenset\(\(([^)]*)\)\)""",patrol))
+        self.assertTrue(active)
+        self.assertIn("('PENDING', 'RESTING')",patrol)
+        self.assertIn("('FILLED', 'CANCELED', 'EXPIRED', 'REJECTED')",patrol)
 
     def test_patrol_invalid_marker_suppresses_nothing_and_unknown_unit_is_reported(self):
         with tempfile.TemporaryDirectory() as td:
