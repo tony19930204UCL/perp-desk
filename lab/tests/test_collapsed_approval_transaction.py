@@ -546,9 +546,11 @@ if request['op']=='snapshot':
 elif request['op']=='evaluate':
  result={'state':'NO_PENDING'}
 else: sys.exit(4)
-print(json.dumps({'adapter':'trusted_cdp_v1',
- 'browser':{'url':'https://chatgpt.com/c/synthetic-test','target_id':'synthetic-target'},
- 'result':result}))
+if os.environ.get('SYNTHETIC_ENVELOPE')=='1':
+ print(json.dumps({'adapter':'trusted_cdp_v1',
+  'browser':{'url':'https://chatgpt.com/c/synthetic-test','target_id':'synthetic-target'},
+  'result':result}))
+else: print(json.dumps(result))
 """)
             j={"task_id":"synthetic","instruction_id":"synthetic-r2",
                "repository":"example/repo","branch":"test","write_allowlist":["path.txt"],
@@ -564,7 +566,8 @@ print(json.dumps({'adapter':'trusted_cdp_v1',
             env={**os.environ,"HERMES_HOME":str(home),
                  "SYNTHETIC_TRANSPORT_LOG":str(log)}
             def run(argv):
-                return subprocess.run(argv,env=env,capture_output=True,text=True,
+                scoped={**env,"SYNTHETIC_ENVELOPE":"1" if Path(argv[1]).name=="auto_allow.py" else "0"}
+                return subprocess.run(argv,env=scoped,capture_output=True,text=True,
                                       timeout=20,cwd=str(root))
             entrypoints=[
                 [sys.executable,str(scripts/"relay-allow-card.py"),str(jd)],
