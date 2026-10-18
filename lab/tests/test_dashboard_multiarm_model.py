@@ -124,5 +124,22 @@ for ix,(field,value) in enumerate([('qty',None),('entry',None),('qty','zero'),('
     setattr(ModelTests,'test_position_invalid_%02d'%ix,make_invalid_position(ix,field,value))
 
 
+    def test_extreme_zero_exponent(self):
+        self.assertIsNone(m.dec('0E+999'))
+        self.assertIsNone(m.dec('0E-999'))
+        self.assertIsNone(m.exact(m.Decimal('0E+999')))
+
+    def test_extreme_project_fields(self):
+        for field in ('cash', 'initial_cash'):
+            s=self.source()
+            s[field]='1E+999'
+            result=m.project('x',s,now_ms=NOW)
+            self.assertIsNone(result['account']['cash' if field=='cash' else 'initial_cash'])
+        s=self.source()
+        s['positions']['XRPUSDT']['qty']='1E+999'
+        result=m.project('x',s,now_ms=NOW)
+        self.assertIsNone(result['account']['equity'])
+
+
 if __name__=='__main__':
     unittest.main()
