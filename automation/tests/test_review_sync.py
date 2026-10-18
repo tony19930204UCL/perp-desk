@@ -795,7 +795,7 @@ class ReviewSyncTests(unittest.TestCase):
     def test_permission_detail_is_relative(self):
         import review_sync as m
         with tempfile.TemporaryDirectory() as td:
-            root=Path(td)/'mirror';gitdir=root/'.git';gitdir.mkdir(parents=True)
+            root=Path(td)/'mirror';gitdir=root/'.git';gitdir.mkdir(parents=True);gitdir.chmod(0o700)
             index=gitdir/'index';index.write_bytes(b'index');index.chmod(0o664)
             with self.assertRaisesRegex(m.Blocked,r'file index mode 0664') as caught:
                 m.check_private_tree(gitdir)
