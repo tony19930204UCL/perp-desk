@@ -34,12 +34,40 @@ table:document.getElementById('tbody').textContent,
 tabs:[...document.querySelectorAll('#tabs button')].map(x=>x.textContent),
 arms:[...document.querySelectorAll('#arms button')].map(x=>x.textContent),
 bad:document.querySelectorAll('img,iframe,object,script[src^="http"]').length
-})())"""
+}))()"""
 
 
 def allowed(url,origin):
     a,b=urlsplit(url),urlsplit(origin)
     return a.scheme=='http' and a.hostname==b.hostname=='127.0.0.1' and a.port==b.port and a.path in ('/','/dashboard_multiarm.html','/dashboard_multiarm_ui.js','/api/multiarm') and not a.query and not a.fragment
+
+
+class MultiCDP(cd.ChromeCDP):
+    """Retain inherited request audit while intercepting the multiarm API."""
+    def _event(self, event):
+        if event.get('method') == 'Fetch.requestPaused':
+            p = event.get('params', {})
+            request = p.get('request', {})
+            url = request.get('url', '')
+            if urlsplit(url).path == '/api/multiarm' and allowed(url, self.origin) and self.inject:
+                self.trace.append({'event': 'Fetch.requestPaused',
+                                   'request_id': p.get('requestId'), 'url': url,
+                                   'method': request.get('method')})
+                mode = self.inject.pop(0)
+                rid = p['requestId']
+                if mode == 'network_fail':
+                    self._send('Fetch.failRequest', {'requestId': rid, 'errorReason': 'Failed'})
+                    return
+                status = 503 if mode == 'status' else 200
+                raw = b'{"error":"synthetic"}' if mode == 'status' else (
+                    b'{' if mode == 'invalid_json' else b'{"arms":[]}')
+                import base64
+                self._send('Fetch.fulfillRequest', {
+                    'requestId': rid, 'responseCode': status,
+                    'responseHeaders': [{'name': 'Content-Type', 'value': 'application/json'}],
+                    'body': base64.b64encode(raw).decode('ascii')})
+                return
+        super()._event(event)
 
 
 def write_db(folder,payload):
@@ -78,7 +106,7 @@ def run(cdp,report,paths):
         result={}
         for w,h in ((1280,800),(390,844)):
             cdp.viewport(w,h);cdp.navigate()
-            snap=cdp.wait(DOM,lambda x:x and 'w1-xrpusdt' in x['arms'] and len(x['tabs'])==5,'page')
+            snap=cdp.wait(DOM,lambda x:x and any(a.startswith('w1-xrpusdt') for a in x['arms']) and len(x['tabs'])==5,'page')
             assert_true(snap['width']==w and snap['client']==w,'viewport width mismatch')
             assert_true(snap['scroll']<=snap['client'] and snap['body']<=snap['client'],'horizontal overflow')
             shot=cdp.screenshot(Path(report['output'])/('multiarm-%s.png'%w))
@@ -163,7 +191,7 @@ def main(argv=None):
         thread=threading.Thread(target=app.serve_forever,kwargs={'poll_interval':.01},daemon=True);thread.start()
         origin='http://127.0.0.1:'+str(app.server_port)
         cd.permitted_origin=allowed
-        browser=cd.ChromeCDP(executable,root/'chrome-profile',origin,deadline)
+        browser=MultiCDP(executable,root/'chrome-profile',origin,deadline)
         run(browser,report,tracked)
         report['network_trace']=browser.trace
         report['network_violations']=browser.violations
