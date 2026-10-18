@@ -4,56 +4,56 @@
   "pr_number": 58,
   "branch": "feat/dashboard-serving-d2-20261012T152945Z",
   "task_id": "dashboard-serving-d2-20261012T152945Z",
-  "instruction_id": "D2-BROWSER-ENTRY-r0",
+  "instruction_id": "D2-BROWSER-ENTRY-r1",
   "status": "WAITING_CI",
-  "source_head_sha": "e25c1096390511bf1d0329ef156a9b88d40372a4",
-  "summary": "Delivered new opt-in stdlib-only D2 real-Chromium CDP acceptance entrypoint, deterministic synthetic source-shaped fixture, 11 discovery-safe unittest contract methods, and operator command/report documentation. Uses existing D2 loopback HTTP server/reader/model and frozen HTML/JS, CDP real page navigation, 1280/390 screenshots, literal hostile DOM checks, known zero vs unknown, isolated API Fetch fault transitions/older response ordering, blocked external requests plus Network/Fetch trace, SHA256+mtime and 100 readonly source checks. No production or legacy tests/workflows changed. No browser execution claimed.",
+  "source_head_sha": "b67b8e11fd9efc579bf99a88a5a48590ef3ecb6f",
+  "summary": "Minimal opt-in browser harness repair: added --hide-scrollbars to the private headless Chromium launch to normalize vertical scrollbar viewport behavior. All existing exact innerWidth/clientWidth and root/body overflow assertions remain unchanged. Added one stdlib browser-free unit test that intercepts the actual Popen launch argument list, preserving previous tests. Documented observed 1280/1265 scrollbar mismatch and requirement for .git checkout metadata when using git rev-parse HEAD. Production, fixtures, five probe definitions and report/hash/cleanup/exit contracts unchanged.",
   "changed_files": [
     "lab/browser_dashboard_v2_acceptance.py",
-    "lab/tests/fixtures/dashboard_v2_browser.json",
     "lab/tests/test_dashboard_v2_browser_acceptance.py",
     "docs/engineering/D2_BROWSER_ACCEPTANCE.md",
     "docs/engineering/HANDOFF-dashboard-serving-d2-20261012T152945Z.json"
   ],
   "tests": [
     {
-      "command": "cd lab && python3 -m unittest -v tests.test_dashboard_v2_browser_acceptance",
+      "command": "python3 -m unittest discover -s automation/tests",
       "result": "NOT_RUN",
-      "evidence": "Code was committed through GitHub contents API. No repository checkout or tool-executed unittest run in this delivery."
-    },
-    {
-      "command": "python3 -m unittest discover -s automation/tests -v",
-      "result": "NOT_RUN",
-      "evidence": "Previous exact-head CI green supplied by Main refers to admitted starting SHA 0327c6cd2d6c093e288655c2af3ca7ba1cce11a0, not new delivery."
+      "evidence": "GitHub contents API delivery only; no repository checkout or test execution."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "Independently run CI on new source/mailbox HEAD; no tests executed by this agent."
+      "evidence": "No test execution in this delivery. Operator independently reported r0 exact-head push/pull_request CI green; not evidence for r1."
+    },
+    {
+      "command": "cd lab && python3 -m unittest -v tests.test_dashboard_v2_browser_acceptance",
+      "result": "NOT_RUN",
+      "evidence": "Added new argv-capture contract test; requires independent execution."
     },
     {
       "command": "python3 lab/browser_dashboard_v2_acceptance.py --expected-head \"$(git rev-parse HEAD)\" --browser /usr/bin/chromium --output artifacts/d2-browser",
       "result": "NOT_RUN",
-      "evidence": "Opt-in real-browser acceptance requires an operator's installed Chromium checkout; no headless Chromium run or screenshot evidence produced here."
+      "evidence": "No real Chromium run by this agent; operator reported a scratch experiment with --hide-scrollbars made all five probes pass, not an r1 exact-head run."
     }
   ],
   "remaining_work": [
-    "Independently run source-bound exact-head push and pull_request CI, including 11 new contract tests.",
-    "Operator run documented browser entrypoint with preinstalled Chromium on exact checkout; inspect five independent probe statuses, screenshots at CSS1280/390, hashes, request trace, cleanup and exit code.",
-    "Treat any browser assertion failures as FAIL evidence; do not change frozen production code under this instruction.",
-    "Perform separate product/visual acceptance; no merge/deploy from this handback."
+    "Verify exact-head push and pull_request CI: >=595 unittest methods and zero failures.",
+    "Run the documented opt-in real Chromium acceptance on actual checkout at 1280x800 and 390x844 and independently verify all five probes, report hashes, screenshots, network trace, cleanup and exit code.",
+    "Review exact four-path allowlist diff and ensure all production assets/fixtures/other tests unchanged.",
+    "Product and visual acceptance remains independent; do not merge/deploy."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
     "verify_now": [
-      "Check exact source HEAD e25c1096390511bf1d0329ef156a9b88d40372a4 and later mailbox HEAD and exact five-path allowlist.",
+      "Check pre-mailbox source HEAD b67b8e11fd9efc579bf99a88a5a48590ef3ecb6f and final mailbox HEAD for exact four-file scope.",
+      "python3 -m unittest discover -s automation/tests",
+      "cd lab && python3 -m unittest discover -s tests -v",
       "cd lab && python3 -m unittest -v tests.test_dashboard_v2_browser_acceptance",
-      "cd lab && python3 -m unittest discover -s tests -v; verify push+pull_request CI",
       "python3 lab/browser_dashboard_v2_acceptance.py --expected-head \"$(git rev-parse HEAD)\" --browser /usr/bin/chromium --output artifacts/d2-browser",
-      "Review D2-BROWSER-POPULATED-1280-390, D2-BROWSER-HOSTILE-TEXT, D2-BROWSER-UNKNOWN-VS-ZERO, D2-BROWSER-STALE-FETCH-CLEARING and D2-BROWSER-NO-EXTERNAL-REQUESTS; compare source/asset hashes and 100 reads."
+      "Verify D2-BROWSER-POPULATED-1280-390; D2-BROWSER-HOSTILE-TEXT; D2-BROWSER-UNKNOWN-VS-ZERO; D2-BROWSER-STALE-FETCH-CLEARING; D2-BROWSER-NO-EXTERNAL-REQUESTS, both viewport widths and unchanged strict overflow checks."
     ],
-    "if_pass": "independently accept entrypoint scope only; no merge/deploy; original product/visual acceptance remains separate",
-    "if_fail": "report demonstrated new harness/fixture defects with source-bound evidence; no production edits",
+    "if_pass": "independently accept the harness fix only; no merge/deploy; original product and visual acceptance remain separate",
+    "if_fail": "report demonstrated defects with source-bound evidence; no production edits",
     "blockers": []
   }
 }
