@@ -12,6 +12,10 @@ python3 lab/browser_dashboard_v2_acceptance.py --expected-head "$(git rev-parse 
 
 Replace `/usr/bin/chromium` with the absolute path of a preinstalled Chromium binary if necessary; omit `--browser` to search common installed binary names. Do not install a browser from the harness. The `--expected-head` argument must resolve to the actual 40-hex checkout SHA. The operator must independently verify the intended PR HEAD first; no claim that `git rev-parse HEAD` itself proves branch authorization. The default deadline is 120 seconds, adjustable through `--deadline-seconds` (30–240). Run in an isolated shell without credentials or access to a logged-in browser profile. Screenshots and report files go only to the chosen output directory.
 
+Chromium scrollbar measurement: on headless Chromium a visible vertical scrollbar can reduce `document.documentElement.clientWidth` (for example, CSS innerWidth 1280 but clientWidth 1265), even when the page has no horizontal overflow. The private Chromium launch uses `--hide-scrollbars` so the existing strict `innerWidth == clientWidth == requested width` and both root/body `scrollWidth <= clientWidth` checks remain unchanged for 1280x800 and 390x844. This is a harness environment normalization, not a dashboard layout change or a relaxed assertion.
+
+The command uses `git rev-parse HEAD`: it requires an actual checkout with `.git` metadata. An exported source tree without `.git` cannot supply checkout HEAD and cannot use that exact command as written. Do not substitute a guessed SHA or treat exported-tree testing as source-bound acceptance.
+
 Bounded stdlib-only fixture/contract tests (not a browser pass):
 
 ```bash
