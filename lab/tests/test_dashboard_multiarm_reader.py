@@ -93,4 +93,26 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual(result['arms'][8]['orders']['total'],0)
 
 
+    def test_large_database_small_payload(self):
+        with sqlite3.connect(self.path) as db:
+            db.execute('CREATE TABLE padding (contents BLOB)')
+            db.execute('INSERT INTO padding VALUES (?)',(b'x'*15000,))
+        self.assertGreater(self.path.stat().st_size,5000)
+        before=(self.path.read_bytes(),self.path.stat().st_mtime_ns)
+        payload,reason=r.read_one(self.root,'paper-w1-xrpusdt',max_bytes=2048)
+        self.assertIsNone(reason)
+        self.assertEqual(payload['cash'],DATA['cash'])
+        self.assertEqual(before,(self.path.read_bytes(),self.path.stat().st_mtime_ns))
+        self.assertFalse(any(Path(str(self.path)+x).exists()
+                             for x in ('-wal','-shm','-journal')))
+
+    def test_payload_limit_prevents_payload_select(self):
+        with sqlite3.connect(self.path) as db:
+            db.execute('UPDATE sim_broker_state SET payload=?',
+                       (json.dumps(dict(DATA, extra='x'*8000)),))
+        payload,reason=r.read_one(self.root,'paper-w1-xrpusdt',max_bytes=2048)
+        self.assertIsNone(payload)
+        self.assertEqual(reason,'TOO_LARGE')
+
+
 if __name__=='__main__':unittest.main()
