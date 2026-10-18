@@ -20,12 +20,18 @@ PR59/60 are undeployed; do not merge or copy their stacked retention/history pol
   The separate table differs from undeployed PR59's constraints/schema and
   MUST NOT be pointed at a PR59/60 experimental namespace without a separate
   schema/migration compatibility review.
-- H2/F1H perform closed-candle/indicator work before fetching the batch of
-  fresh decision quotes. Original quotes are never retimestamped. The broker
-  still receives each quote before route_signals at real dispatch time; the
-  original arrival/risk/fees/window/ledger and future/15000ms gates remain.
-  Old-to-new equivalence holds for market-identical, no-gap, non-aging cycles;
-  moving quote acquisition after candle work can change market observations.
+- SA1-r2 restores the first traded-book delivery **before** bootstrap or
+  candle processing so real position reduction cannot be blocked by a failed
+  context rebuild. After candle work, only peers whose original source age is
+  greater than the unchanged 15000ms gate are fetched again (one bounded
+  refresh), using actual new receipts rather than adjusted timestamps.
+  Both H2 and F1H use the same base refresh method. All refreshes still pass
+  actual broker-delivery checks, full batch validation, and existing signal
+  arrival/cost/risk gates; future sources remain rejected.
+  Main's F2 failing fixture models a production safety regression (exit must
+  precede context work), not a bad assertion. F1's measured replay models
+  the decision-freshness contract; moving collection after klines changed its
+  request order and left the saved input too old. Neither frozen test changed.
 - When broker work itself exceeds 15000ms, subsequent source checks still
   reject; there is no automatic retry of an old input and no claim of cure
   under arbitrary broker latency.
