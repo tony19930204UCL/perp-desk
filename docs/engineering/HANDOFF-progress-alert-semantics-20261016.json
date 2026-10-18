@@ -4,47 +4,41 @@
   "pr_number": 0,
   "branch": "fix/progress-alert-semantics-20261016",
   "task_id": "progress-alert-semantics-20261016",
-  "instruction_id": "PA1-r14-WF1",
+  "instruction_id": "PA1-r15-WF1",
   "status": "WAITING_CI",
-  "source_head_sha": "6248799a3ce6e3afa8aa83028e1b1ab0c18c6bdd",
-  "summary": "Formal r14 candidate: retained b94bf1f8 wrapper change for F1 corrupt-ledger scan error rc4 and F2 byte-preserving locked attention. Fixed F3 writer subprocess SyntaxError by using a real multiline Python program; added ready-after-flock synchronization, bounded writer hold, scan wait assertion, release marker, JSON parsing and guaranteed writer cleanup. Added independent check-corrupt-ledger and indent=1 attention regressions. Candidate NOT_INSTALLED; C0376 UNATTENDED_NOT_PROVEN; r7 BLOCKED.",
+  "source_head_sha": "cb9e2c230e66a332d0e40a92143bb02066598321",
+  "summary": "Narrow patrol exposure source correction. Installed patrol now reads broker.sqlite3 sim_broker_state singleton=1 via SQLite read-only URI; validates positions/orders/order status shape and classifies active PENDING/RESTING, terminal FILLED/CANCELED/EXPIRED/REJECTED, otherwise UNKNOWN. Removed recursive runtime.sqlite3 detector walk and fallback. Only existing fixture changed: test_patrol_pause_open_exposure_and_active_unit_keep_normal_checks now creates a broker.sqlite3 nonempty positions record; both existing assertIn checks remain. Prior reported 85 tests; three new test methods yield expected 88, pending exact-head CI. Candidate NOT_INSTALLED, full workflow UNATTENDED_NOT_PROVEN, r7 denial remains BLOCKED.",
   "changed_files": [
-    "engineering/progress_semantics/installed_commit.py (retained unchanged from b94bf1f8)",
+    "engineering/progress_semantics/installed_desk_patrol.py",
     "engineering/progress_semantics/tests/test_installed_entrypoints.py",
+    "docs/engineering/PROGRESS_ALERT_SEMANTICS.md",
     "docs/engineering/HANDOFF-progress-alert-semantics-20261016.json"
   ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/progress_semantics/tests -v",
       "result": "NOT_RUN_FILE_ONLY",
-      "evidence": "Prior b94bf1f8 exact-head CI 39114236142 ran 83 tests: F1/F2 passed, F3 failed due to fixture SyntaxError. r14 not executed. New IDs: test_installed_entrypoints.InstalledEntryTests.test_successor_corrupt_ledger_check_reports_scan_error; test_installed_entrypoints.InstalledEntryTests.test_attention_indented_ledger_preserves_bytes_and_mtime. F3 original ID retained."
+      "evidence": "Previously reported 85 tests at ddb637fa; three new methods expected >=88. New IDs: test_installed_entrypoints.InstalledEntryTests.test_patrol_broker_exposure_real_shapes; test_installed_entrypoints.InstalledEntryTests.test_patrol_broker_exposure_invalid_shapes_fail_closed; test_installed_entrypoints.InstalledEntryTests.test_patrol_broker_status_literals_guard. Each method uses subtests for all listed shapes."
     },
     {
-      "command": "python3 -m unittest -v engineering.progress_semantics.tests.test_installed_entrypoints",
+      "command": "temporary HERMES_HOME real patrol entrypoint copy replay",
       "result": "NOT_RUN_FILE_ONLY",
-      "evidence": "F3 now starts valid multiline writer after exclusive flock ready signal; verifies scan wait, release, writer committed reason and both JSON files. Must confirm exact-head CI."
-    },
-    {
-      "command": "temporary HERMES_HOME deployed-entrypoint copy replay",
-      "result": "NOT_RUN_FILE_ONLY",
-      "evidence": "Mapping unchanged: installed_commit.py -> plugins/commitment-gate/commit.py; installed_commit_base.py -> plugins/commitment-gate/commit.py.pa1-base; installed_desk_patrol.py -> scripts/desk_patrol.py. Main must replay F1/F2/F3 and patrol baseline."
+      "evidence": "Installed mapping: engineering/progress_semantics/installed_desk_patrol.py -> scripts/desk_patrol.py ONLY. No commit/ledger/watch installed bytes changed. Synthetic broker fixture required."
     }
   ],
   "remaining_work": [
-    "Run new exact-head CI: >=85 progress tests, all green and subsequent workflow/PAPER/security steps complete; no reused green claim.",
-    "Independently verify F1 check and attention corrupt-ledger rc4 with queue bytes unchanged; F2 compact/indent=1 attention bytes and mtime unchanged; F3 writer-lock serialization, queue JSON and committed writer update.",
-    "Review b94bf1f8 attention implementation and replay all existing CLI/lock/API contracts; do not infer broader acceptance from focused tests.",
-    "Independently replay installed layout and no-marker patrol golden matrix before installation. Candidate NOT_INSTALLED.",
-    "r7 denied installed_auto_accept operation remains BLOCKED; full workflow C0376 remains UNATTENDED_NOT_PROVEN. Missing coverage/producer requirements remain UNKNOWN. All 12 PAPER services remain inactive/disabled."
+    "Main must verify new exact-head push and pull_request CI all green, full Progress semantics test IDs and later steps; no CI success claimed.",
+    "Main must replay broker exposure positive/negative cases with temporary HERMES_HOME and fake systemctl, including h2 paper-v4, read-only SQLite bytes/mtime and absence of journal/WAL files.",
+    "Broker status evidence: lab/sim_broker.py lines 231 PENDING/REJECTED, 245-246 PENDING/RESTING -> CANCELED, 412-413 -> EXPIRED, 440/463/485/497/504/514 -> REJECTED, 475 -> RESTING, 697 -> FILLED. Final active set PENDING/RESTING; terminal FILLED/CANCELED/EXPIRED/REJECTED.",
+    "Candidate NOT_INSTALLED; full C0376 UNATTENDED_NOT_PROVEN; r7 installed_auto_accept denial remains BLOCKED. All 12 PAPER services inactive/disabled; no other installed source or safety policy changed."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Verify exact final HEAD, mailbox blob, >=85 Progress semantics tests including F1/F2/F3 and two new IDs, then inspect all later CI steps and temporary deployed-layout copy replay.",
-    "if_pass": "Independently accept and install complete approved bytes with unchanged source-to-installed mapping; read back hashes and rerun entrypoint acceptance. Do not infer C0376 completion.",
-    "if_fail": "Return exact failing CI IDs/logs or replay differences for formal revise; preserve r7 denial and all frozen policies.",
+    "verify_now": "Inspect exact-head CI, >=88 progress tests including three new IDs, all later steps, and temporary installed patrol copy replay. Compare no-marker golden output and state bytes.",
+    "if_pass": "Independently accept complete installed_desk_patrol.py bytes and copy to scripts/desk_patrol.py; verify hashes and read-only broker replay. Do not infer full workflow acceptance.",
+    "if_fail": "Return exact failing test ID/step and observed fixture output for a formal revision; do not relax shape checks or bypass r7 denial.",
     "blockers": [
-      "new exact-head CI not observed",
-      "independent deployed-entrypoint and patrol golden replay pending",
+      "exact-head CI not observed",
       "candidate NOT_INSTALLED",
       "r7 integration BLOCKED",
       "C0376 UNATTENDED_NOT_PROVEN"
