@@ -363,17 +363,79 @@ class InstalledEntryTests(unittest.TestCase):
 
     def test_successor_scan_serializes_with_ledger_writer_lock(self):
         with tempfile.TemporaryDirectory() as td:
-            root=Path(td); self.real_layout(root); commitments=root/"commitments"; commitments.mkdir()
+            root=Path(td); cli=self.real_layout(root); commitments=root/"commitments"; commitments.mkdir()
             it=self.ledger_item("BLOCKED"); it["blocked_by"]=None
-            ledger=commitments/"ledger.json"; ledger.write_text(json.dumps({"next":2,"items":[it]}),"utf-8")
-            code="import json,sys,time,fcntl\\np=sys.argv[1]; l=open(p+'.lock','a+'); fcntl.flock(l,fcntl.LOCK_EX); d=json.load(open(p)); d['items'][0]['reason']='writer'; time.sleep(.2); open(p,'w').write(json.dumps(d)); fcntl.flock(l,fcntl.LOCK_UN)\\n"
-            writer=subprocess.Popen([sys.executable,"-c",code,str(ledger)])
-            time.sleep(.05)
-            env=dict(os.environ,HERMES_HOME=str(root))
-            r=subprocess.run([sys.executable,str(root/"plugins"/"commitment-gate"/"commit.py"),"attention"],capture_output=True,text=True,env=env,timeout=10)
-            writer.wait(timeout=10)
-            self.assertEqual(r.returncode,0,r.stderr); self.assertEqual(json.loads(ledger.read_text("utf-8"))["items"][0]["reason"],"writer")
-            self.assertEqual(json.loads((commitments/"needs_successor.json").read_text("utf-8"))["schema_version"],1)
+            ledger=commitments/"ledger.json"
+            ledger.write_text(json.dumps({"next":2,"items":[it]}),"utf-8")
+            ready=root/"writer.ready"; released=root/"writer.released"
+            code = """
+import json, sys, time, fcntl
+from pathlib import Path
+p, ready, released = map(Path, sys.argv[1:])
+with open(str(p) + '.lock', 'a+') as lock:
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    ready.write_text('locked')
+    data = json.loads(p.read_text())
+    data['items'][0]['reason'] = 'writer'
+    time.sleep(0.5)
+    p.write_text(json.dumps(data))
+    fcntl.flock(lock, fcntl.LOCK_UN)
+released.write_text('released')
+"""
+            writer=subprocess.Popen([sys.executable,"-c",code,str(ledger),str(ready),str(released)],
+                                    stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            try:
+                deadline=time.monotonic()+5
+                while not ready.exists() and writer.poll() is None and time.monotonic()<deadline:
+                    time.sleep(.01)
+                self.assertTrue(ready.exists(),"writer did not acquire lock")
+                env=dict(os.environ,HERMES_HOME=str(root))
+                started=time.monotonic()
+                r=subprocess.run([sys.executable,str(cli),"attention"],
+                                 capture_output=True,text=True,env=env,timeout=10)
+                elapsed=time.monotonic()-started
+                out,err=writer.communicate(timeout=5)
+                self.assertEqual(writer.returncode,0,err)
+                self.assertTrue(released.exists(),"writer did not release lock")
+                self.assertGreaterEqual(elapsed,0.3,"scan did not wait for ledger writer")
+                self.assertEqual(r.returncode,0,r.stderr)
+                self.assertEqual(json.loads(ledger.read_text("utf-8"))["items"][0]["reason"],"writer")
+                queue=json.loads((commitments/"needs_successor.json").read_text("utf-8"))
+                self.assertEqual(queue["schema_version"],1)
+                self.assertEqual(queue["items"][0]["id"],"C-0001")
+            finally:
+                if writer.poll() is None:
+                    writer.terminate()
+                    try:
+                        writer.communicate(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        writer.kill()
+                        writer.communicate(timeout=3)
+
+    def test_successor_corrupt_ledger_check_reports_scan_error(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); cli=self.real_layout(root); commitments=root/"commitments"; commitments.mkdir()
+            queue=commitments/"needs_successor.json"
+            queue.write_text('{"schema_version":1,"items":[{"id":"old"}]}',"utf-8")
+            before=queue.read_bytes()
+            (commitments/"ledger.json").write_text("{bad","utf-8")
+            r=subprocess.run([sys.executable,str(cli),"check"],capture_output=True,text=True,
+                             env=dict(os.environ,HERMES_HOME=str(root)),timeout=10)
+            self.assertEqual(r.returncode,4,r.stderr)
+            self.assertIn("NEEDS_SUCCESSOR_SCAN_ERROR",r.stdout)
+            self.assertEqual(queue.read_bytes(),before)
+
+    def test_attention_indented_ledger_preserves_bytes_and_mtime(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); cli=self.real_layout(root); commitments=root/"commitments"; commitments.mkdir()
+            ledger=commitments/"ledger.json"
+            ledger.write_text(json.dumps({"next":2,"items":[self.ledger_item("BLOCKED")]},indent=1),"utf-8")
+            before=ledger.read_bytes(); mtime=ledger.stat().st_mtime_ns
+            r=subprocess.run([sys.executable,str(cli),"attention"],capture_output=True,text=True,
+                             env=dict(os.environ,HERMES_HOME=str(root)),timeout=10)
+            self.assertEqual(r.returncode,0,r.stderr)
+            self.assertEqual(ledger.read_bytes(),before)
+            self.assertEqual(ledger.stat().st_mtime_ns,mtime)
 
     def test_patrol_no_marker_preserves_baseline_service_and_state_contract(self):
         with tempfile.TemporaryDirectory() as td:
