@@ -1,50 +1,91 @@
 #!/usr/bin/env python3
-"""Bounded watcher: shared transaction lock, no nested approval subprocess."""
-import datetime
+"""Exact-job allow-once worker.
+
+Usage: auto_allow.py [--once] <job_dir> <instruction_id> <chat_url> <target_id>
+The transport must be a separately trusted adapter returning an envelope:
+{"adapter":"trusted_cdp_v1","browser":{"target_id":...,"url":...},
+ "result":<original snapshot/evaluate result>}.
+This shape alone is not proof of provenance: operators must separately audit
+the adapter. The installed legacy bridge does not implement this contract.
+"""
+import argparse
 import json
-import os
 from pathlib import Path
 import sys
 import time
-from approval_transaction import approve, profile_root
+from approval_transaction import approve, admission, load_json, transport, AdmissionError, InfraError
 
-HOME=Path(os.environ.get("HERMES_HOME",str(Path.home()/".hermes/profiles/perp-desk"))).expanduser().resolve()
-SC=HOME/"cache"/"scratch"
-STATE=HOME/"lab"/"journal"/"auto_allow_state.json"
-ONCE="--once" in sys.argv
+def binding(job_dir, instruction, chat, target, expected=None):
+    job, identity = admission(job_dir, expected=expected)
+    if identity[1:] != (instruction, chat):
+        raise AdmissionError("PIN_MISMATCH")
+    active = load_json(Path(job_dir) / "active_instruction.json")
+    receipt = load_json(Path(job_dir) / ("send_" + instruction + ".json"))
+    if active.get("instruction_id") != instruction or receipt.get("instruction_id") != instruction:
+        raise AdmissionError("RECEIPT_INSTRUCTION_MISMATCH")
+    if receipt.get("task_id") != identity[0]:
+        raise AdmissionError("RECEIPT_TASK_MISMATCH")
+    if not target or job.get("target_id") != target or receipt.get("target_id") != target:
+        raise AdmissionError("TARGET_MISMATCH")
+    if active.get("target_id", target) != target:
+        raise AdmissionError("ACTIVE_TARGET_MISMATCH")
+    if not isinstance(job.get("transport_command"), list) or not job["transport_command"] or not all(isinstance(x, str) and x for x in job["transport_command"]):
+        raise AdmissionError("TRANSPORT_UNAVAILABLE")
+    return identity
 
-def active_job():
-    best=None
-    for p in SC.glob("relay-*/active_instruction.json"):
-        try:
-            job=json.loads((p.parent/"job.json").read_text())
-            exp=datetime.datetime.fromisoformat(job["valid_until"])
-            if exp.tzinfo is None or exp <= datetime.datetime.now(datetime.timezone.utc):
-                continue
-            m=p.stat().st_mtime
-            if time.time()-m<14*3600 and (best is None or m>best[0]):
-                best=(m,p.parent)
-        except (OSError,ValueError,TypeError,KeyError):
-            continue
-    return best[1] if best else None
+def run(job_dir, instruction, chat, target, once=False):
+    try:
+        pinned = binding(job_dir, instruction, chat, target)
+    except AdmissionError as exc:
+        print("BINDING_REJECTED", str(exc), file=sys.stderr)
+        return 2
 
-def main():
-    state=json.loads(STATE.read_text()) if STATE.exists() else {}
-    end=time.monotonic()+(0 if ONCE else 50)
+    def send(job, request):
+        binding(job_dir, instruction, chat, target, expected=pinned)
+        envelope = transport(job, request)
+        if not isinstance(envelope, dict) or envelope.get("adapter") != "trusted_cdp_v1":
+            raise InfraError("UNATTESTED_TRANSPORT")
+        browser = envelope.get("browser")
+        if not isinstance(browser, dict) or browser.get("target_id") != target or browser.get("url") != chat:
+            raise InfraError("TRANSPORT_IDENTITY_MISMATCH")
+        result = envelope.get("result")
+        if not isinstance(result, dict):
+            raise InfraError("TRANSPORT_RESULT_INVALID")
+        if request.get("op") == "snapshot" and result.get("url") != chat:
+            raise InfraError("SNAPSHOT_CHAT_MISMATCH")
+        return result
+
+    deadline = time.monotonic() + (0 if once else 50)
     while True:
-        job=active_job()
-        if job is not None:
-            result=approve(job,mode="auto")
-            status=result["status"]
-            if status=="APPROVED":
-                state["clicked"]=state.get("clicked",0)+1
-                print("ALLOWED_ONCE",result.get("fingerprint",""),flush=True)
-            elif status not in ("NO_PENDING",):
-                print("APPROVAL_"+status,result.get("reason",""),flush=True)
-        if time.monotonic()>=end: break
+        try:
+            binding(job_dir, instruction, chat, target, expected=pinned)
+        except AdmissionError as exc:
+            print("BINDING_REJECTED", str(exc), file=sys.stderr)
+            return 2
+        result = approve(job_dir, mode="auto", max_lines=200, send=send)
+        status = result.get("status")
+        if status == "APPROVED":
+            print("ALLOWED_ONCE", result.get("fingerprint", ""))
+            return 0
+        if status == "NO_PENDING":
+            if once:
+                return 0
+        else:
+            print("APPROVAL_" + str(status), result.get("reason", ""), file=sys.stderr)
+            return 3
+        if time.monotonic() >= deadline:
+            return 0
         time.sleep(5)
-    STATE.parent.mkdir(parents=True,exist_ok=True)
-    STATE.write_text(json.dumps(state))
 
-if __name__=="__main__":
-    main()
+def main(argv=None):
+    parser = argparse.ArgumentParser(usage="auto_allow.py [--once] <job_dir> <instruction_id> <chat_url> <target_id>")
+    parser.add_argument("--once", action="store_true")
+    parser.add_argument("job_dir")
+    parser.add_argument("instruction_id")
+    parser.add_argument("chat_url")
+    parser.add_argument("target_id")
+    args = parser.parse_args(argv)
+    return run(Path(args.job_dir).resolve(), args.instruction_id, args.chat_url, args.target_id, args.once)
+
+if __name__ == "__main__":
+    sys.exit(main())
