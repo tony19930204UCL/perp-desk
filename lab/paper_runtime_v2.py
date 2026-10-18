@@ -426,6 +426,23 @@ class PaperRuntime:
                    for m in markets]))
         self.validate_sources(markets, 'batch before decision', allow_wait=True)
         return markets, spec_eth
+    def refresh_decision_markets(self, ref, markets, spec):
+        """Refresh only expired peers once after candle work, using real receipts."""
+        age=self.config['execution_model']['max_source_age_ms']
+        now=self.clock()
+        aged=[(m['symbol'],m['category']) for m in markets
+              if any(now-ts>age for ts in m['source_timestamps_ms'].values())]
+        if not aged:
+            return markets,spec
+        self.audit(dict(type='post_candle_quote_refresh',at_ms=now,
+                        symbols=[s for s,_ in aged],
+                        sources_before=[dict(symbol=m['symbol'],sources=m['source_timestamps_ms'])
+                                        for m in markets if (m['symbol'],m['category']) in aged]))
+        fresh,new_spec=self.collect_markets(ref,symbols=aged)
+        replacements={m['symbol']:m for m in fresh}
+        return ([replacements.get(m['symbol'],m) for m in markets],
+                new_spec if new_spec is not None else spec)
+
     def deliver_markets(self, markets, events, spec_eth):
         self.ensure_broker(spec_eth)
         for event in sorted(events,key=lambda e:e['ts']):
@@ -438,9 +455,10 @@ class PaperRuntime:
         ref=self.reference()
         eth=instrument(ref,'ETHUSDT','crypto',self.config['fee_assumptions']['crypto'])
         self.funding(eth)
-        # Perform bounded closed-candle work before acquiring decision quotes.
-        # Previously these requests aged a valid batch and forced a second
-        # market collection (and two extra broker deliveries) on slow cycles.
+        # Deliver the actual traded book first: exits must survive failed
+        # candle/context work. Refresh only aged peers after that work.
+        markets, spec_eth=self.collect_markets(ref)
+        self.state['markets']=markets
         self.bootstrap()
         start=self.state['cursor'] if self.state['cursor'] is not None else self.state.get('decision_cutoff_ms',self.state['forward_start_ms'])//self.INTERVAL_MS*self.INTERVAL_MS
         # The durable cursor is the next bar open. Retry missing due bars, but
@@ -473,7 +491,7 @@ class PaperRuntime:
         with closing(sqlite3.connect(self.root/'signals.sqlite3')) as db:
             row=db.execute('SELECT bars FROM h1_state WHERE version_id=? AND symbol=?',(self.config['version_id'],'ETHUSDT')).fetchone()
         self.state['warmup']=len(json.loads(row[0])) if row else 0
-        markets, spec_eth=self.collect_markets(ref)
+        markets, spec_eth=self.refresh_decision_markets(ref,markets,spec_eth)
         self.state['markets']=markets
         self.validate_sources(markets, 'decision after candle work')
         self.route_signals(spec_eth)
