@@ -1,1 +1,35 @@
-{"placeholder": true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 72,
+  "branch": "fix/mirror-sync-perm-20261018",
+  "task_id": "MIRROR-SYNC-FIX1",
+  "instruction_id": "MIRROR-SYNC-FIX1",
+  "status": "WAITING_CI",
+  "source_head_sha": "53afc4a3035e75f06346c7d1bdba009b8f41850c",
+  "summary": "Added relative Git entry permission diagnostics, manual-only narrowing CLI, eight new tests and documentation; CI unverified.",
+  "changed_files": [
+    "automation/review_sync.py",
+    "automation/tests/test_review_sync.py",
+    "docs/engineering/MIRROR-SYNC-FIX1.md",
+    "docs/engineering/HANDOFF-mirror-sync-fix1.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s automation/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No execution environment used; CI not independently verified."
+    }
+  ],
+  "remaining_work": [
+    "Independent exact-head pull_request and push CI validation",
+    "Review preflight race and safety invariants"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Review exact-head PR and push CI, existing-test append-only diff and permission invariants.",
+    "if_pass": "Apply in local mirror only after independent acceptance.",
+    "if_fail": "Return precise failing tests for bounded revision.",
+    "blockers": []
+  }
+}
