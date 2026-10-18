@@ -808,7 +808,7 @@ class ReviewSyncTests(unittest.TestCase):
             root=Path(td);gitdir=root/'.git';gitdir.mkdir()
             index=gitdir/'index';index.write_bytes(b'index');index.chmod(0o664)
             m.tighten_private_git_tree(root,output=lambda line:None)
-            self.assertEqual(index.stat().st_mode&0o777,0o644)
+            self.assertEqual(index.stat().st_mode&0o777,0o600)
             m.check_private_tree(gitdir)
 
     def test_manual_rejects_symlink_without_changes(self):
