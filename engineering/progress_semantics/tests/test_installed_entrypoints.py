@@ -418,8 +418,8 @@ class InstalledEntryTests(unittest.TestCase):
         self.assertIn("('PENDING', 'RESTING')",patrol)
         self.assertIn("('FILLED', 'CANCELED', 'EXPIRED', 'REJECTED')",patrol)
         import ast
-        active_expr=re.search(r"^BROKER_ACTIVE_STATUSES = (frozenset\\(.*\\))$",patrol,re.M)
-        terminal_expr=re.search(r"^BROKER_TERMINAL_STATUSES = (frozenset\\(.*\\))$",patrol,re.M)
+        active_expr=re.search(r"^BROKER_ACTIVE_STATUSES = (frozenset\(.*\))$",patrol,re.M)
+        terminal_expr=re.search(r"^BROKER_TERMINAL_STATUSES = (frozenset\(.*\))$",patrol,re.M)
         self.assertIsNotNone(active_expr)
         self.assertIsNotNone(terminal_expr)
         active_values=set(ast.literal_eval(active_expr.group(1)[len("frozenset("):-1]))
