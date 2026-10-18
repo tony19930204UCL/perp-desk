@@ -128,7 +128,7 @@
     "lab/IDEAS.md": "beff9c7989e175c6d60613c69790acb4dc39de490a1e0fd28c9ace609d3125c7",
     "lab/LEARNING_SPEED_V3.md": "614cd7d306f517a833c8d21aeb46ccb8817561bfafc4cf68fab38338f81a97e6",
     "lab/LIVE_PREP_DESIGN.md": "dc75e46800d2809b1628c5e35557f19d7211af74decf75fd3630355a37b5db1b",
-    "lab/NOW.md": "0542311156eed66392f23a2df4c01822f874eed8ea644f86d39a79b4e72470ed",
+    "lab/NOW.md": "b68e3534f0874002a998bcfd8c53f6b777e23df7a129796e1bc29fca1c25e50d",
     "lab/OWNER_ACTIVITY_DASHBOARD_BRIEF.md": "aaae6be4de209decba1f1bcd930ce669b88c6370500f026b1fc85b1c82090c99",
     "lab/PAPER_ENTRY_RISK_SIZING.md": "011eedc8ae0a81d0e1a99fab1ae8c8d03c6c6309f7a37ea37f82a8e71448751b",
     "lab/PAPER_F1H_PREREGISTRATION.md": "bb9f12fb936a5451ceeef239690c8ff8c128c618c9684c95e400d23f0ee83d43",
@@ -141,7 +141,7 @@
     "lab/PARENT_DEPLOY_V3.md": "755b0e7393da14cc4435266d1f7d2d705730cf8fc9b391ecd6f3cd70053c3642",
     "lab/PERSISTENCE_EFFICIENCY_SPEC.md": "fe6515e967556f69c405d9b127a4a328dd65e2951e685558c66a8c233d58595c",
     "lab/PROPOSED_VERSIONS_APPENDIX.md": "2a16b72aaf98a90f6218e649b8095b64b384d0d707e12e6c2dbbf84256983d36",
-    "lab/RESEARCH_JOURNAL.md": "7b3237f5ad4cf6218f85b4185919d3e1644b3de2d3c093fef02946ae459c8ca9",
+    "lab/RESEARCH_JOURNAL.md": "81cfb0f902e152b07b89557dd64c7d2643043608e6482f072395fc32ed751181",
     "lab/SIGNALS_README.md": "7835c465093294ad9eee45552757ba960d8d23526cf903fa9b8b3414ea8eac54",
     "lab/SIM_BROKER_README.md": "691b60fecbebc803676748906efb581cef9947c1a29a7f297937a108dd08ce73",
     "lab/TRADE_REVIEW.md": "bd1a0107beaf5a2322f76e870859b1334ab91147db5f720a7646154d1f07b567",
@@ -337,7 +337,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "a5b7303c5f274b6ecbbd77a37580b59f65d5bfa556eafc50fbc32b63f8d9b545",
+  "fingerprint": "0aa943c6e90767284eb57b6bbe1bf4d853bdbd2bb1233e692b1a53efd14fd11c",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
