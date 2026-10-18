@@ -1,0 +1,46 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 70,
+  "branch": "feat/dispatch-next-c0182-20261018T1331",
+  "task_id": "C0182-dispatch-next",
+  "instruction_id": "C0182-DISPATCH-NEXT-OBS1",
+  "status": "BLOCKED",
+  "source_head_sha": "425b2c372e406cb38a67837986849590d4850ec6",
+  "summary": "Created source-only CLI, isolated stdlib test module and documentation. GitHub create_file observation retry succeeded. No runtime deployment. Independent review required: exact delivery hash verification, ledger stamp/handle/start identity and observer approval ownership are not yet sufficiently established.",
+  "changed_files": [
+    "engineering/relay/dispatch_next.py",
+    "lab/tests/test_dispatch_next.py",
+    "docs/engineering/DISPATCH_NEXT_C0182.md",
+    "docs/engineering/HANDOFF-dispatch-next-c0182.json"
+  ],
+  "tests": [
+    {
+      "command": "(cd lab && python3 -m unittest -v tests.test_dispatch_next)",
+      "result": "NOT_RUN",
+      "evidence": "GitHub connector exposes file operations, not a permitted test execution operation in this task. No execution result claimed."
+    }
+  ],
+  "remaining_work": [
+    {
+      "status": "ACTIONABLE_NOW",
+      "description": "Independently execute tests and inspect exact-head diff against initial 8296d48bf43b6c2f13bf8089a3e613e71090daf4."
+    },
+    {
+      "status": "BLOCKED",
+      "description": "Verify installed observer/approval owner/completion receiver contracts, ledger stamp and process identity; strengthen exact delivery hash validation before deployment."
+    }
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Read exact source HEAD and mailbox blob; run unittest and inspect fail-closed send/ledger semantics; check allowlist-only delta.",
+    "if_pass": "Request a separate bounded revision for remaining correctness gaps; no installation without host contract validation.",
+    "if_fail": "Reject and issue targeted revision on the same branch; preserve send intents and never retry unknown sends.",
+    "blockers": [
+      "Unexecuted tests",
+      "Installed observer/approval/completion contracts unavailable",
+      "Receipt matching does not yet independently verify prompt SHA256 and exact target",
+      "Ledger stamp and process start identity not independently verified"
+    ]
+  }
+}
