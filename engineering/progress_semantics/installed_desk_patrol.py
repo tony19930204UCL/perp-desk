@@ -79,40 +79,40 @@ def pause_markers(now):
         return {}, {'PAUSE_MARKER_INVALID': 'paused_units.json invalid: %s' % str(exc)[:80]}
 
 
+BROKER_ACTIVE_STATUSES = frozenset(('PENDING', 'RESTING'))
+BROKER_TERMINAL_STATUSES = frozenset(('FILLED', 'CANCELED', 'EXPIRED', 'REJECTED'))
+
 def pause_exposure(unit):
-    p = LAB / 'data' / DATA.get(unit, 'paper-' + unit) / 'runtime.sqlite3'
+    p = LAB / 'data' / DATA.get(unit, 'paper-' + unit) / 'broker.sqlite3'
     try:
         c = sqlite3.connect('file:%s?mode=ro' % p, uri=True, timeout=10)
-        row = c.execute('select payload from state where id=1').fetchone()
-        c.close()
+        try:
+            row = c.execute('select payload from sim_broker_state where singleton=1').fetchone()
+        finally:
+            c.close()
         if not row:
             return None
         payload = json.loads(row[0])
     except Exception:
         return None
-    seen = False; opened = False
-    def walk(value):
-        nonlocal seen, opened
-        if isinstance(value, dict):
-            for key, val in value.items():
-                if key in ('position','positions','open_orders'):
-                    seen = True
-                    if isinstance(val, (int, float)) and not isinstance(val, bool):
-                        opened = opened or val != 0
-                    elif isinstance(val, (list, dict, str)):
-                        opened = opened or bool(val)
-                    else:
-                        return False
-                if walk(val) is False:
-                    return False
-        elif isinstance(value, list):
-            for val in value:
-                if walk(val) is False:
-                    return False
-        return True
-    if walk(payload) is False or not seen:
+    if not isinstance(payload, dict):
         return None
-    return opened
+    positions = payload.get('positions')
+    orders = payload.get('orders')
+    if not isinstance(positions, dict) or not isinstance(orders, dict):
+        return None
+    statuses = []
+    for order in orders.values():
+        if not isinstance(order, dict) or not isinstance(order.get('status'), str):
+            return None
+        statuses.append(order['status'])
+    if positions:
+        return True
+    if any(status in BROKER_ACTIVE_STATUSES for status in statuses):
+        return True
+    if all(status in BROKER_TERMINAL_STATUSES for status in statuses):
+        return False
+    return None
 
 def main():
     now = time.time(); st = json.loads(STATE.read_text()) if STATE.exists() else {}
@@ -129,7 +129,7 @@ def main():
         if paused:
             exposure = pause_exposure(u)
             if exposure is True: out['PAUSE_OPEN_EXPOSURE ' + u] = 'paused unit has open position or open orders'
-            elif exposure is None: out['PAUSE_EXPOSURE_UNKNOWN ' + u] = 'paused unit exposure cannot be established from runtime state'
+            elif exposure is None: out['PAUSE_EXPOSURE_UNKNOWN ' + u] = 'paused unit exposure cannot be established from broker state'
             if act == 'active': out['PAUSE_UNIT_ACTIVE ' + u] = 'owner-paused unit is active; normal checks apply'
         if act != 'active':
             if not paused: out['SERVICE ' + u] = 'unit is %s' % act
