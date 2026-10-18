@@ -16,8 +16,6 @@ def read_one(root, dirname, *, max_bytes=MAX_BYTES):
         info = path.lstat()
         if not stat.S_ISREG(info.st_mode):
             return None, 'NOT_REGULAR'
-        if info.st_size > max_bytes + 4096:
-            return None, 'TOO_LARGE'
         # Read-only immutable snapshots must not silently overlook active WAL.
         if any(Path(str(path) + ext).exists() for ext in ('-wal', '-shm', '-journal')):
             return None, 'ACTIVE_SIDECAR'
@@ -26,15 +24,21 @@ def read_one(root, dirname, *, max_bytes=MAX_BYTES):
         try:
             connection.execute('PRAGMA query_only=ON')
             connection.execute('PRAGMA busy_timeout=150')
+            meta = connection.execute(
+                'SELECT typeof(payload), length(CAST(payload AS BLOB)) '
+                'FROM sim_broker_state WHERE singleton=?', (1,)).fetchone()
+            if meta is None:
+                return None, 'MISSING_ROW'
+            kind, size = meta
+            if kind != 'text' or type(size) is not int:
+                return None, 'BAD_PAYLOAD'
+            if size > max_bytes:
+                return None, 'TOO_LARGE'
             row = connection.execute(
                 'SELECT payload FROM sim_broker_state WHERE singleton=?', (1,)).fetchone()
-            if row is None:
-                return None, 'MISSING_ROW'
-            payload = row[0]
-            if type(payload) is not str:
+            if row is None or type(row[0]) is not str:
                 return None, 'BAD_PAYLOAD'
-            if len(payload.encode('utf-8')) > max_bytes:
-                return None, 'TOO_LARGE'
+            payload = row[0]
             data = json.loads(payload, parse_constant=lambda x: (_ for _ in ()).throw(ValueError(x)))
             return data, None
         finally:
