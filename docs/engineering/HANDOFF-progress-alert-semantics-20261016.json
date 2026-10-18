@@ -4,55 +4,50 @@
   "pr_number": 0,
   "branch": "fix/progress-alert-semantics-20261016",
   "task_id": "progress-alert-semantics-20261016",
-  "instruction_id": "PA1-r12-WF1",
+  "instruction_id": "PA1-r14-WF1",
   "status": "WAITING_CI",
-  "source_head_sha": "3ed91ef0cec6106ab05841aafdf169d3dec6138f",
-  "summary": "New r12 workflow root-cause candidate on exact start 6087b957f383868661e41315f2afed9f4d617332. Confirmed the two operator baseline seeds and changed only existing allowlisted files. Base ledger CLI now supports locked --expect-state CAS for done/block/drop with distinct code 3 refusal, byte-preserving mismatch, unconditional VERIFIED block protection, and idempotent same-evidence VERIFIED done without rewrite. Installed wrapper adds a deterministic read-only locked NEEDS_SUCCESSOR scan/atomic queue for dead pid, expired manual lease without fresh explicit heartbeat, and BLOCKED without checkable blocker; check/attention surface queue lines and commit_watch consumes them through its unchanged existing commit.py check call. Patrol adds fail-closed paused_units.json handling: valid inactive pauses suppress only inactive SERVICE and STALE_STATUS, expired/invalid/unknown markers surface explicitly, active paused units retain all normal checks, and read-only runtime state exposure is OPEN or UNKNOWN unless recognized position/positions/open_orders fields prove flat/open. No r7 launcher content was retried and no PAPER/service/scheduler/config/risk/cost/tick behavior was changed.",
+  "source_head_sha": "6248799a3ce6e3afa8aa83028e1b1ab0c18c6bdd",
+  "summary": "Formal r14 candidate: retained b94bf1f8 wrapper change for F1 corrupt-ledger scan error rc4 and F2 byte-preserving locked attention. Fixed F3 writer subprocess SyntaxError by using a real multiline Python program; added ready-after-flock synchronization, bounded writer hold, scan wait assertion, release marker, JSON parsing and guaranteed writer cleanup. Added independent check-corrupt-ledger and indent=1 attention regressions. Candidate NOT_INSTALLED; C0376 UNATTENDED_NOT_PROVEN; r7 BLOCKED.",
   "changed_files": [
-    "engineering/progress_semantics/installed_commit_base.py",
-    "engineering/progress_semantics/installed_commit.py",
-    "engineering/progress_semantics/installed_desk_patrol.py",
+    "engineering/progress_semantics/installed_commit.py (retained unchanged from b94bf1f8)",
     "engineering/progress_semantics/tests/test_installed_entrypoints.py",
-    "docs/engineering/PROGRESS_ALERT_SEMANTICS.md",
     "docs/engineering/HANDOFF-progress-alert-semantics-20261016.json"
   ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/progress_semantics/tests -v",
-      "result": "NOT_RUN_FILE_ONLY_R12",
-      "evidence": "File-only policy forbids shell/RunCommand. Exact-head CI must visibly run all prior 65 progress tests plus the new IDs: test_installed_entrypoints.InstalledEntryTests.test_cas_wrong_expected_state_is_byte_preserving, test_installed_entrypoints.InstalledEntryTests.test_block_verified_refuses_without_expect_state, test_installed_entrypoints.InstalledEntryTests.test_unknown_expect_state_is_refused_by_cli, test_installed_entrypoints.InstalledEntryTests.test_cas_concurrent_done_block_exactly_one_wins_twenty_rounds, test_installed_entrypoints.InstalledEntryTests.test_legacy_transitions_without_expect_state_remain_available, test_installed_entrypoints.InstalledEntryTests.test_done_verified_identical_is_idempotent_but_different_evidence_refuses, test_installed_entrypoints.InstalledEntryTests.test_successor_scan_classifies_only_lost_ownership_and_preserves_ledger, test_installed_entrypoints.InstalledEntryTests.test_successor_manual_fresh_heartbeat_and_young_lease_are_not_flagged, test_installed_entrypoints.InstalledEntryTests.test_successor_finished_pid_not_flagged_and_recovery_removes_queue_entry, test_installed_entrypoints.InstalledEntryTests.test_successor_corrupt_ledger_keeps_existing_queue_and_fails_scan, test_installed_entrypoints.InstalledEntryTests.test_successor_first_seen_persists_across_scans, test_installed_entrypoints.InstalledEntryTests.test_successor_second_scan_changes_only_last_seen_and_closed_item_recovers, test_installed_entrypoints.InstalledEntryTests.test_successor_scan_serializes_with_ledger_writer_lock, test_installed_entrypoints.InstalledEntryTests.test_patrol_valid_pause_suppresses_only_inactive_and_stale_and_reports_unknown_exposure, test_installed_entrypoints.InstalledEntryTests.test_patrol_pause_open_exposure_and_active_unit_keep_normal_checks, test_installed_entrypoints.InstalledEntryTests.test_patrol_invalid_marker_suppresses_nothing_and_unknown_unit_is_reported, test_installed_entrypoints.InstalledEntryTests.test_patrol_expired_pause_reports_expired_and_normal_service, test_installed_entrypoints.InstalledEntryTests.test_patrol_no_marker_preserves_baseline_service_and_state_contract"
+      "result": "NOT_RUN_FILE_ONLY",
+      "evidence": "Prior b94bf1f8 exact-head CI 39114236142 ran 83 tests: F1/F2 passed, F3 failed due to fixture SyntaxError. r14 not executed. New IDs: test_installed_entrypoints.InstalledEntryTests.test_successor_corrupt_ledger_check_reports_scan_error; test_installed_entrypoints.InstalledEntryTests.test_attention_indented_ledger_preserves_bytes_and_mtime. F3 original ID retained."
     },
     {
       "command": "python3 -m unittest -v engineering.progress_semantics.tests.test_installed_entrypoints",
-      "result": "NOT_RUN_FILE_ONLY_R12",
-      "evidence": "Contains real subprocess CAS races with a start barrier for 40 rounds, temporary-ledger successor scans, and temporary HERMES_HOME patrol processes with fake systemctl and stub heartbeat_gate.py. Not executed by engineer."
+      "result": "NOT_RUN_FILE_ONLY",
+      "evidence": "F3 now starts valid multiline writer after exclusive flock ready signal; verifies scan wait, release, writer committed reason and both JSON files. Must confirm exact-head CI."
     },
     {
-      "command": "copy-replay deployed entrypoints under temporary HERMES_HOME",
-      "result": "NOT_RUN_FILE_ONLY_R12",
-      "evidence": "Docs give exact layout/mapping and commands for done/block/drop --expect-state, check/attention, commit_watch.py, and desk_patrol.py with and without marker. Main must perform independent real-entrypoint replay before installation."
+      "command": "temporary HERMES_HOME deployed-entrypoint copy replay",
+      "result": "NOT_RUN_FILE_ONLY",
+      "evidence": "Mapping unchanged: installed_commit.py -> plugins/commitment-gate/commit.py; installed_commit_base.py -> plugins/commitment-gate/commit.py.pa1-base; installed_desk_patrol.py -> scripts/desk_patrol.py. Main must replay F1/F2/F3 and patrol baseline."
     }
   ],
   "remaining_work": [
-    "Trigger and consume newly generated exact-head r12 CI. Require every prior progress test to remain present/green and match the listed new test IDs in the full Progress semantics step log; do not infer PASS from this handoff.",
-    "Independently replay the exact deployed layout in a temporary HERMES_HOME. Verify CAS loser code 3 and byte-preserving refusal, VERIFIED protection/idempotence, queue first_seen/recovery/corrupt-ledger behavior, and that the scan leaves ledger bytes/mtime unchanged.",
-    "For patrol, independently golden-compare no-marker stdout and patrol_state.json against the operator's verbatim seeded baseline over inactive/active, stale/fresh, restart, poll-error, write-rate, disk, machine-gap and FINDING fixtures. Candidate tests guard the no-marker service/state contract but Main must perform the full byte-for-byte baseline matrix before acceptance.",
-    "Verify valid pause behavior with read-only synthetic runtime SQLite state: inactive pause suppresses only SERVICE/STALE_STATUS; active pause emits PAUSE_UNIT_ACTIVE and retains all normal checks; expired marker emits PAUSE_EXPIRED plus normal findings; malformed marker suppresses nothing; unknown units surface; unfamiliar/missing runtime state is PAUSE_EXPOSURE_UNKNOWN and open recognized position/order state is PAUSE_OPEN_EXPOSURE.",
-    "Source-to-installed mapping after acceptance only: installed_commit.py -> plugins/commitment-gate/commit.py; installed_commit_base.py -> plugins/commitment-gate/commit.py.pa1-base; installed_commit_watch.py -> scripts/commit_watch.py unchanged; installed_desk_patrol.py -> scripts/desk_patrol.py; __init__.py/progress_semantics.py/watcher_adapter.py -> plugins/commitment-gate/pa1/progress_semantics/ unchanged. Candidate is NOT_INSTALLED.",
-    "r7 engineering/workflow_pipeline/installed_auto_accept.py operation/content remains BLOCKED by the recorded OpenAI safety denial and was not retried, recreated, renamed, split, obfuscated or routed around. Full workflow C0376 remains UNATTENDED_NOT_PROVEN.",
-    "All 12 PAPER services remain inactive/disabled. No start/enable/restart/once/window, trading, storage, main/merge/deploy, credential/provider/config/permission/checker/approval-policy operation occurred. Scheduler quota-hold fact is unchanged and out of scope."
+    "Run new exact-head CI: >=85 progress tests, all green and subsequent workflow/PAPER/security steps complete; no reused green claim.",
+    "Independently verify F1 check and attention corrupt-ledger rc4 with queue bytes unchanged; F2 compact/indent=1 attention bytes and mtime unchanged; F3 writer-lock serialization, queue JSON and committed writer update.",
+    "Review b94bf1f8 attention implementation and replay all existing CLI/lock/API contracts; do not infer broader acceptance from focused tests.",
+    "Independently replay installed layout and no-marker patrol golden matrix before installation. Candidate NOT_INSTALLED.",
+    "r7 denied installed_auto_accept operation remains BLOCKED; full workflow C0376 remains UNATTENDED_NOT_PROVEN. Missing coverage/producer requirements remain UNKNOWN. All 12 PAPER services remain inactive/disabled."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run final exact-head CI and inspect the complete Progress semantics log for all old tests plus every listed r12 test ID. Then perform the documented temporary-HERMES_HOME deployed-layout copy replay and full no-marker patrol golden comparison against the seeded baseline. Confirm no changed file exists outside the r12 allowlist.",
-    "if_pass": "Independently accept the complete r12 candidate, copy only accepted complete bytes through the documented source-to-installed mapping, read back hashes, and rerun deployed entrypoint acceptance. Do not start PAPER services or infer C0376/unattended completion.",
-    "if_fail": "Return exact final-head failing test IDs/logs or copy-replay/golden diff for a formal same-branch REVISE. Do not weaken CAS, successor classification, pause exposure fail-closed behavior, existing progress negatives, risk/cost/tick checks, or retry/reroute the denied r7 operation.",
+    "verify_now": "Verify exact final HEAD, mailbox blob, >=85 Progress semantics tests including F1/F2/F3 and two new IDs, then inspect all later CI steps and temporary deployed-layout copy replay.",
+    "if_pass": "Independently accept and install complete approved bytes with unchanged source-to-installed mapping; read back hashes and rerun entrypoint acceptance. Do not infer C0376 completion.",
+    "if_fail": "Return exact failing CI IDs/logs or replay differences for formal revise; preserve r7 denial and all frozen policies.",
     "blockers": [
-      "new exact-head r12 CI not yet observed",
-      "full no-marker patrol byte-for-byte golden matrix still requires Main independent execution",
+      "new exact-head CI not observed",
+      "independent deployed-entrypoint and patrol golden replay pending",
       "candidate NOT_INSTALLED",
-      "r7 launcher integration remains separately BLOCKED",
-      "full workflow C0376 remains UNATTENDED_NOT_PROVEN"
+      "r7 integration BLOCKED",
+      "C0376 UNATTENDED_NOT_PROVEN"
     ]
   }
 }
