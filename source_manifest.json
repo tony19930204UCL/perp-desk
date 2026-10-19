@@ -141,7 +141,7 @@
     "lab/PARENT_DEPLOY_V3.md": "755b0e7393da14cc4435266d1f7d2d705730cf8fc9b391ecd6f3cd70053c3642",
     "lab/PERSISTENCE_EFFICIENCY_SPEC.md": "fe6515e967556f69c405d9b127a4a328dd65e2951e685558c66a8c233d58595c",
     "lab/PROPOSED_VERSIONS_APPENDIX.md": "2a16b72aaf98a90f6218e649b8095b64b384d0d707e12e6c2dbbf84256983d36",
-    "lab/RESEARCH_JOURNAL.md": "81cfb0f902e152b07b89557dd64c7d2643043608e6482f072395fc32ed751181",
+    "lab/RESEARCH_JOURNAL.md": "0c7c0b4c8c914bf1920bb31c039272461e5a3d1f0882ff867d0602c0edf00bc7",
     "lab/SIGNALS_README.md": "7835c465093294ad9eee45552757ba960d8d23526cf903fa9b8b3414ea8eac54",
     "lab/SIM_BROKER_README.md": "691b60fecbebc803676748906efb581cef9947c1a29a7f297937a108dd08ce73",
     "lab/TRADE_REVIEW.md": "bd1a0107beaf5a2322f76e870859b1334ab91147db5f720a7646154d1f07b567",
@@ -202,6 +202,14 @@
     "lab/paper_runtime_v7.py": "f863e16e4190f83b688183a8855e5ed38cedaea0e5b1a4e6fe9c16b1f0f96f4d",
     "lab/paper_sizing.py": "b74b5b38141f6dfd2d19bbc5da63d81ccdee93689678b2428606c9dfc07c553e",
     "lab/perp_collector.py": "7b24ed5ace9ee9e45b5d7d8fa9d6907b5a037aeddc6e6af51346c19a9a947940",
+    "lab/research/offline-r1/PREREG.md": "eabe0700541e2d188f60a967611d149696670bdf141bae63fdcd3c46eb204162",
+    "lab/research/offline-r1/REPORT.md": "e0732749015fb3a123f48032eabfacefa2eec50c987287460f1d23cce3e9104b",
+    "lab/research/offline-r1/baseline.py": "6b64c8471f44a0b0e2ea385c1190f3fc2aa85d5a12bbd81303863bda3df86156",
+    "lab/research/offline-r1/download.py": "e1d0328da4dcd899b60930a149973b6499d426bb96395d13311cd9e1976db638",
+    "lab/research/offline-r1/fetch_dvol.py": "82b028fcb90cec079098086c21b6591e458b33d8929738d6613af0e68c9d6d43",
+    "lab/research/offline-r1/hyp.py": "6b30364f031af876b8a046177f64a0a9f86fb69e248a18d2a7d995fe0429c612",
+    "lab/research/offline-r1/lib.py": "806035010d4873c10b1e40253546241aa644d2afe7b143265135d416f1752239",
+    "lab/research/offline-r1/verify_sim.py": "f6b3180f8181db8a0ca5f666caaf53916d787ca1f3534ba905672ad01f8bebf0",
     "lab/research_dashboard.py": "2d7c690a071216b7d3d7042d0be365fb3ca537d1622d173fc172a128d6edc952",
     "lab/research_dashboard_config.example.json": "9f6ab572b274c240f42a98a8beb723e75e296a4478f66252a7d7f4a063c015f4",
     "lab/runtime_equity_history.py": "995df91c06656234de011ca50c1bc1ea60c2e3e19886bde3005edf4287f30768",
@@ -337,7 +345,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "0aa943c6e90767284eb57b6bbe1bf4d853bdbd2bb1233e692b1a53efd14fd11c",
+  "fingerprint": "bae1ae638980b4a2d197e56a4e1ffb3d263a5b670e71fb07875cdb1831bda6e1",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }

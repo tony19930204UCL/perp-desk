@@ -2696,3 +2696,13 @@ daily_health_20261016.py以mode=ro和BEGIN掃每臂audit，整輪至19:06:46UTC�
 - 關聯：J-0440,J-0441,C-0223,C-0690,lab/evidence/workflow-pipeline-20261017/supervisor-action-repair/20261018T2100-C0223-reflection.md
 
 J0441寫入前監督owner已於21:01以J0440及reflection.md完成C0223方法重評。本輪依早先snapshot誤建C0690，drop C0223採expect-state OPEN遭CAS拒絕，故沒有改掉既有VERIFIED。讀回真artifact後撤銷C0690重複承接，G5-reflect長期後續依C0363暫停，不冒稱本輪重做方法反思。J0441與初始snapshot保留，這是附加更正。
+
+## J-0443 [experiment] RESEARCH-R1 離線研究軌一期：W1三年重測與4假說，無一通過，W1毛報酬即為負
+- 時間：2026-10-19 10:28 UTC
+- 問題：W1暴跌買進均值回歸在3年四幣1h公開K線、扣成本後、樣本外是否仍有優勢？資金費率極端值反轉、波動率/時段/DVOL過濾、上一根逆勢是否有可離線驗證的優勢？
+- 資料：data.binance.vision USD-M 1h klines BTC/ETH/SOL/XRP 2023-10-01至2026-10-18各26736根無缺口,360個zip全過sha256;資金費率3344筆/幣;Deribit DVOL BTC/ETH各26747筆1h(免費無金鑰)
+- 結果：W1凍結全期間6611筆勝率47.7%毛-7.04bp淨-21.15bp(吃單14bp);乾淨樣本外(2025-04-10至2026-08-12)2954筆淨-22.5bp分群t-8.7;掛單樂觀4bp上界仍-11.15bp;限價逆選擇情境-14.69bp;網格8組驗證全負(-19.2至-22.9);安慰劑隨機買下跌bar-19.0bp優於W1;成交順序最樂觀毛-0.23bp。H-A資金費率fade 8格、H-B波動率/時段/DVOL 9格、H-C上一根逆勢4格皆無通過,事前登記36測試Bonferroni z=3.20。Deribit DVOL免費可取但不改善W1;歷史選擇權鏈免費來源未證實(不確定)。腳本另含download.py,fetch_dvol.py,verify_sim.py,baseline.py,lib.py;事前登記PREREG.md
+- 判定：推翻 W1均值回歸有優勢(毛報酬即為負,非僅成本);4個新假說皆無通過;整體證據不足以支持任何正期望策略,G3-c前提仍未滿足
+- 下一步：階段二是否授權見C-0722(等使用者回答);未開紙盤、未實盤、未花錢
+- 關聯：lab/research/offline-r1/REPORT.md,lab/research/offline-r1/results/baseline.json,lab/research/offline-r1/results/hyp.json,lab/research/offline-r1/SHA256SUMS.txt,C-0722
+- 腳本：lab/research/offline-r1/hyp.py（sha256 前 12 碼 6b30364f031a，可重現：cd lab/research/offline-r1 && python3 download.py && python3 fetch_dvol.py && python3 verify_sim.py && python3 baseline.py && python3 hyp.py (stdlib,約1分鐘,重跑數字相同,seed 20261019);REPORT.md sha256前16碼 e0732749015fb3a1）
