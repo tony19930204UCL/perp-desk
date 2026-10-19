@@ -24,7 +24,7 @@ _tl = threading.local()
 def get(url, tries=6):
     """持久連線 (每執行緒每 host 一條)，404 回 None。"""
     u = urllib.parse.urlsplit(url)
-    path = u.path + ("?" + u.query if u.query else "")
+    path = urllib.parse.quote(u.path, safe="/%:") + ("?" + urllib.parse.quote(u.query, safe="=&/%:") if u.query else "")
     err = None
     for a in range(tries):
         conns = getattr(_tl, "c", None)
