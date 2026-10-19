@@ -230,6 +230,7 @@
     "lab/research/offline-r3/run_a.py": "3553b4fc36c4a93a37ff852d0250e9dce8e484d9846de04e69e1523dec9c3629",
     "lab/research/offline-r3/run_b.py": "c44e1b8858b11f3bbd6b3ed3e2c673edb1623d8c21e47558b1bd0d0375becb64",
     "lab/research/offline-r3/verify_r3.py": "dac8734cefaa25cc76d6ac87391297a24bea4ce119110db707398601ec23af89",
+    "lab/research/offline-r4/download4.py": "863e47130a769af7ff8de0c042e6ae8d766aec6028a9a46ba5f577e53ad509ff",
     "lab/research_dashboard.py": "2d7c690a071216b7d3d7042d0be365fb3ca537d1622d173fc172a128d6edc952",
     "lab/research_dashboard_config.example.json": "9f6ab572b274c240f42a98a8beb723e75e296a4478f66252a7d7f4a063c015f4",
     "lab/runtime_equity_history.py": "995df91c06656234de011ca50c1bc1ea60c2e3e19886bde3005edf4287f30768",
@@ -365,7 +366,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "e7ea08f45d30963dd08ae734103bc9bf0a7fb46d148006003b542249bc80b183",
+  "fingerprint": "e6c28636b921afc4407ce4b6b39f7fa5b00fc38a4f7801b84be9b51686b53ebe",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
