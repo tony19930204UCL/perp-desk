@@ -17,6 +17,14 @@ jobs:
         run: python3 --version && node --version
       - name: Exporter contract
         run: python3 -m unittest discover -s automation/tests -v
+      - name: Progress semantics acceptance
+        run: python3 -m unittest discover -s engineering/progress_semantics/tests -v
+      - name: Workflow pipeline acceptance
+        run: python3 -m unittest -v lab.tests.test_workflow_pipeline
+      - name: Installed auto-accept launcher acceptance
+        run: python3 -m unittest discover -s engineering/workflow_pipeline/tests -p 'test_installed_auto_accept.py' -v
+      - name: Workflow observer acceptance
+        run: python3 -m unittest discover -s engineering/workflow_pipeline/tests -p 'test_workflow_observer.py' -v
       - name: PAPER isolated suite
         working-directory: lab
         run: python3 -m unittest discover -s tests -v
