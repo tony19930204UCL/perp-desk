@@ -189,6 +189,42 @@ def run_1m():
     print("DONE 1m files_ok", nok, "bad", len(bad), man["per_symbol"], flush=True)
 
 
+def run_funding_rest_patch():
+    """補跑: 只為既有 data/funding/*.csv 合併 2026-10 REST 資金費率 (首版 run_funding 的 REST 段因 datetime 未匯入而失敗，月檔部分正常)。"""
+    syms = json.load(open(os.path.join(ROOT, "results", "a_universe.json")))["symbols_ever_in_top20"]
+
+    def one(sym):
+        path = os.path.join(DATA, "funding", f"{sym}.csv")
+        rows = {}
+        with open(path) as f:
+            rd = csv.reader(f); next(rd)
+            for p in rd:
+                rows[int(p[0])] = float(p[1])
+        n0 = len(rows); err = None
+        try:
+            start = 1790812800000
+            while True:
+                arr = json.loads(get(f"https://fapi.binance.com/fapi/v1/fundingRate?symbol={sym}&startTime={start}&limit=1000") or b"[]")
+                if not arr:
+                    break
+                for r in arr:
+                    rows[int(r["fundingTime"])] = float(r["fundingRate"])
+                start = int(arr[-1]["fundingTime"]) + 1
+                if len(arr) < 1000:
+                    break
+        except Exception as e:
+            err = str(e)
+        with open(path, "w", newline="") as f:
+            w = csv.writer(f); w.writerow(["funding_time_ms", "rate"]); w.writerows(sorted(rows.items()))
+        return sym, {"added": len(rows) - n0, "err": err}
+    man = {}
+    with ThreadPoolExecutor(16) as ex:
+        for sym, info in ex.map(one, syms):
+            man[sym] = info
+    json.dump(man, open(os.path.join(DATA, "MANIFEST_funding_rest_patch.json"), "w"), indent=1)
+    print("DONE rest patch symbols", len(man), "added rows", sum(v["added"] for v in man.values()), "errors", sum(1 for v in man.values() if v["err"]), flush=True)
+
+
 def run_funding():
     """只為『曾進入 PIT 前 20』的符號下載 fundingRate 月檔 (+ 2026-10 REST)。符號集合由 results/a_universe.json 機械決定。"""
     syms = json.load(open(os.path.join(ROOT, "results", "a_universe.json")))["symbols_ever_in_top20"]
@@ -209,7 +245,7 @@ def run_funding():
                         rows[int(p[0])] = float(p[2])
         # 2026-10 以 REST 補 (月檔尚未發布)
         try:
-            start = int(datetime.datetime(2026, 10, 1, tzinfo=datetime.timezone.utc).timestamp() * 1000)
+            start = 1790812800000      # 2026-10-01 00:00 UTC
             while True:
                 arr = json.loads(get(f"https://fapi.binance.com/fapi/v1/fundingRate?symbol={sym}&startTime={start}&limit=1000") or b"[]")
                 if not arr:
@@ -236,4 +272,4 @@ def run_funding():
 
 if __name__ == "__main__":
     os.makedirs(DATA, exist_ok=True)
-    {"1d": run_1d, "1m": run_1m, "funding": run_funding}[sys.argv[1]]()
+    {"1d": run_1d, "1m": run_1m, "funding": run_funding, "funding_rest": run_funding_rest_patch}[sys.argv[1]]()

@@ -17,11 +17,15 @@ for ks in (4, 6, 8, 10, 12):
             for e in ev[s]:
                 x = trade(t, o, e["i"], -e["s"], hm, funds[s])      # fade 方向 (follow 毛報酬為其相反數)
                 if x: x["sym"] = s; trs.append(x)
-        va = [x for x in trs if x["t_entry"] >= SPLIT]; al = trs
+        va = [x for x in trs if x["t_entry"] >= SPLIT]; al = trs; tr_ = [x for x in trs if x["t_entry"] < SPLIT]
+        tcv = cluster_t(va)[0] if len(va) >= 5 else None; tca = cluster_t(al)[0] if len(al) >= 5 else None
         def g(v): return round(sum(x["gross"] for x in v) / len(v), 2) if v else None
         row[f"h{hm}"] = {"fade_gross_mean_bp_all": g(al), "fade_gross_mean_bp_validation": g(va), "n_validation": len(va),
                          "fade_net_mean_validation_7bp": round(sum(x["net"] for x in va) / len(va), 2) if va else None,
                          "fade_net_mean_validation_2x": round(sum(x["net_2x"] for x in va) / len(va), 2) if va else None,
+                         "n_train": len(tr_), "fade_gross_mean_bp_train": round(sum(x["gross"] for x in tr_) / len(tr_), 2) if tr_ else None,
+                         "fade_net_mean_train_7bp": round(sum(x["net"] for x in tr_) / len(tr_), 2) if tr_ else None,
+                         "t_cluster_net_validation": round(tcv, 2) if tcv is not None else None, "t_cluster_net_all": round(tca, 2) if tca is not None else None,
                          "fade_win_pct_net_validation": round(100 * sum(1 for x in va if x["net"] > 0) / len(va), 1) if va else None}
     out[f"k_sigma_{ks}"] = row
     print(ks, json.dumps(row, ensure_ascii=False))

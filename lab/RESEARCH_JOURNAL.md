@@ -2716,3 +2716,13 @@ J0441寫入前監督owner已於21:01以J0440及reflection.md完成C0223方法重
 - 下一步：沒有東西在跑;未開紙盤、未實盤、未花錢;最接近的H2動量L7R7依賴ZEC且近期轉負,不送紙盤
 - 關聯：lab/research/offline-r2/REPORT.md,lab/research/offline-r2/PREREG.md,lab/research/offline-r2/results/summary.json,lab/research/offline-r2/SHA256SUMS.txt,lab/research/offline-r1/REPORT.md,C-0724,C-0169
 - 腳本：lab/research/offline-r2/run_h23.py（sha256 前 12 碼 54d15bc79f2c，可重現：cd lab/research/offline-r2 && python3 download2.py && python3 verify_r2.py && python3 run_h1.py && python3 run_h23.py && python3 run_h45.py && python3 summarize.py (stdlib,無隨機,重跑results sha256相同;REPORT.md sha256前16碼 6d5d246a99c0e31b);其他腳本r2lib.py,run_h1.py,run_h45.py,summarize.py,verify_r2.py,download2.py）
+
+## J-0445 [experiment] RESEARCH-R3 離線研究軌三期：PIT長歷史橫截面動量重測+1分鐘稀有大事件反轉，12格登記0通過1弱線索
+- 時間：2026-10-19 11:19 UTC
+- 問題：r2的橫截面動量符號一致為正線索，在point-in-time宇宙(含下架幣)與2020年起6年歷史下是否成立?另測1m稀有大事件(5分鐘報酬>4σ且量>=3倍)後反轉/續航，毛移動是否大於成本?
+- 資料：data.binance.vision USD-M 1d klines 900檔USDT永續(含12檔曾進前20後下架)2019-12-31至2026-10-18,零壞檔sha256;PIT前20(30日均額,只用<=j日);EV0 2020-07-30,切分2023-09-08;277檔資金費率;BTC/ETH/SOL/XRP 1m各1604160根無缺口216 zip全過sha256
+- 結果：事前登記12格(A6+B6),Bonferroni z=2.865,0通過1弱線索。A:動量L1R1驗證-5.8bp/日;L7R7 +28.1(t2.48,訓練-1.6,r2未看過段+1.0 t0.14,收益集中2025-26);L30R1 +16.9(t1.38,去最大貢獻幣t1.01);L30R7 +24.5(t2.03弱線索,去最大貢獻幣t1.37,去前二0.85,45%為少數被軋空小幣資金費率);反轉L1R1 -15.3,L7R7 -31.2(t-2.76)。L30動量在r2未看過段同號(+17.9 t2.28)。空頭腿單日最大不利+520%(ALPACA 2025-04-30)。B:事件8053筆(遠多於事前估計,不稀有),fade毛+1.7/-0.3/+2.0bp vs成本14bp,淨-12.3/-14.2/-12.0,勝率45-48%,4幣皆負,2x成本更差,隨機安慰劑毛+0.2-0.3與事件無法區分,follow淨-13.8至-16.0。探索(未登記):門檻8-12σ毛優勢上升但t<=1.16,15組合皆不顯著
+- 判定：證據不足:A無通過(1弱線索依賴被軋空小幣,47格合併z約3.27更不可能);B為強否定(成本14bp遠大於毛優勢<=2bp);快進快出與高勝率均未找到;G3-c所需正期望證據策略仍無
+- 下一步：沒有東西在跑;未開紙盤、未實盤、未花錢;弱線索A動量L30R7不送紙盤,缺新資料前瞻確認/真實小幣成交成本/空頭腿風控/日線多空橫截面工程單元
+- 關聯：lab/research/offline-r3/REPORT.md,lab/research/offline-r3/PREREG.md,lab/research/offline-r3/results/a.json,lab/research/offline-r3/results/b.json,lab/research/offline-r3/SHA256SUMS.txt,lab/research/offline-r2/REPORT.md,C-0169,C-0726,C-0727,C-0729,C-0730,C-0731
+- 腳本：lab/research/offline-r3/run_a.py（sha256 前 12 碼 3553b4fc36c4，可重現：yes: cd lab/research/offline-r3 && python3 download3.py 1m && python3 download3.py 1d && python3 a_universe.py && python3 download3.py funding && python3 download3.py funding_rest && python3 verify_r3.py && python3 run_a.py && python3 run_b.py && python3 explore_b.py && python3 diag_fund.py (stdlib,無隨機,B安慰劑種子20261019,results sha256重跑逐檔相同;REPORT.md sha256前16碼 c181eb78174911f6;其他腳本r3lib.py,r3b.py,run_b.py,verify_r3.py,download3.py,a_universe.py,explore_b.py,diag_fund.py)）
