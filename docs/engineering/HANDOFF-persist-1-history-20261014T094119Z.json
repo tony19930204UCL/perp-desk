@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 60,
+  "branch": "feat/persist-1-history-20261014T094119Z",
+  "task_id": "persist-1-history-20261014T094119Z",
+  "instruction_id": "P3-B3B-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "4b4e5ac151a8051df9cf5b4cff5032e6634cb9f5",
+  "summary": "Integrate only exchangeInfo reference receipt into inherited base PaperRuntime.save using accepted ExactReceiptStore, lazily prepared on base and independently constructed v5 SQLite. In the same transaction as equity history migration, persist complete immutable receipt in content-addressed archive and replace only singleton reference with reference_digest. Digest-based reopen fails closed if missing/corrupt; successful commit restores complete in-memory state['reference']; ordinary reference() fetch/freshness code remains byte-identical. SQL and deferred COMMIT failure rolls back save-owned changes. FundingInfo, broker, configs and derived runtimes untouched. New deterministic synthetic base/v5 and SQLite tests for legacy migration/reopen, boundaries, corruption, retry, sizes and state preservation. Not independently accepted, not deployed.",
+  "changed_files": [
+    "lab/paper_runtime_v2.py",
+    "lab/tests/test_runtime_equity_history.py",
+    "docs/engineering/HANDOFF-persist-1-history-20261014T094119Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p test_runtime_equity_history.py -v",
+      "result": "NOT_RUN",
+      "evidence": "No full runnable checkout in this environment; test additions not executed. Requires independent Main execution."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "NOT_RUN",
+      "evidence": "No full runnable checkout; previous accepted B3A exporter52 OK applies only to parent."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests",
+      "result": "NOT_RUN",
+      "evidence": "No full runnable checkout; prior accepted B3A lab634 OK does not validate B3B."
+    },
+    {
+      "command": "GitHub Actions source exact-head pull_request",
+      "result": "NOT_RUN",
+      "evidence": "[{\"id\":38595337862,\"status\":\"in_progress\",\"conclusion\":null}]; exact-head both events not independently verified."
+    },
+    {
+      "command": "GitHub Actions source exact-head push",
+      "result": "NOT_RUN",
+      "evidence": "GitHub commit workflow connector exposes only pull_request results, push event not verified."
+    }
+  ],
+  "remaining_work": [
+    "Main CIO independently run focused tests, real base/v5 restart and legacy/pointer failure probes, frozen automation/lab suites, both exact-head CI and changed-files allowlist.",
+    "Main CIO compare reference() freshness at exact 24h, just before, and future time against accepted parent and verify return/fetch/audit semantics.",
+    "Main CIO measure singleton/reference byte sizes; no fundingInfo optimization, full P3, throughput or deployment claim."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Independently clone source HEAD 4b4e5ac151a8051df9cf5b4cff5032e6634cb9f5; run focused and full frozen suites, exact-head push/PR CI and real base/v5 migration/reopen, corrupt pointer, SQL and deferred COMMIT rollback, small/large reference bytes, 24h boundary and future cached timestamps; check every frozen module byte-identical.",
+    "if_pass": "Accept only P3-B3B exchangeInfo reference integration after independent validation; no merge/deployment/trading.",
+    "if_fail": "Report failing source HEAD and first exact test/probe failure for scoped repair; no merge/deploy.",
+    "blockers": []
+  }
+}
