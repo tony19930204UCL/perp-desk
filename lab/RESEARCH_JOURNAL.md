@@ -2706,3 +2706,13 @@ J0441寫入前監督owner已於21:01以J0440及reflection.md完成C0223方法重
 - 下一步：階段二是否授權見C-0722(等使用者回答);未開紙盤、未實盤、未花錢
 - 關聯：lab/research/offline-r1/REPORT.md,lab/research/offline-r1/results/baseline.json,lab/research/offline-r1/results/hyp.json,lab/research/offline-r1/SHA256SUMS.txt,C-0722
 - 腳本：lab/research/offline-r1/hyp.py（sha256 前 12 碼 6b30364f031a，可重現：cd lab/research/offline-r1 && python3 download.py && python3 fetch_dvol.py && python3 verify_sim.py && python3 baseline.py && python3 hyp.py (stdlib,約1分鐘,重跑數字相同,seed 20261019);REPORT.md sha256前16碼 e0732749015fb3a1）
+
+## J-0444 [experiment] RESEARCH-R2 離線研究軌二期：趨勢／橫截面動量／資金費率傾斜／15m 可行性，35 格登記無一通過
+- 時間：2026-10-19 10:41 UTC
+- 問題：4h/日線趨勢突破、20幣橫截面動量反轉、資金費率橫截面傾斜、現貨-永續資金費率上限、BTC 15m 快進快出，在3年公開資料、含吃單7bp/邊與資金費率後，是否有事前登記且過Bonferroni門檻的正期望候選？
+- 資料：data.binance.vision USD-M 1d klines 20幣(機械選出,2026-10-19成交額前20,onboard<2023-09)各1114根無缺口+資金費率3344筆/幣+BTCUSDT 15m 36768根(2025-10至2026-10);4幣1h重樣本4h;1830 zip全過sha256;評估起點2024-01-15,訓練至2025-04-10,驗證至2026-08-12(489天),近期68天已看過
+- 結果：事前登記35格,Bonferroni z=3.19。H1趨勢12格驗證NW t -0.35至0.45,淨-3.4至+4.3bp/日,日勝率47.6-53.0%,賠率0.90-1.07;H2橫截面動量/反轉10格,最高動量L7R7 +16.4bp/日(年化60%,Sharpe2.11)t=1.94未過,ZEC貢獻58%且近期-40.7,反轉為鏡像且L1R1 t=-3.91;H3資金費率傾斜8格最高t=0.97,資金費率收入僅1.3-1.9bp/日;H4現貨-永續資金費率BTC全期7.4%/驗證3.7%年化,扣38bp後90天淨約5.4-6.1%占名目,慢且需現貨帳戶(描述);H5 BTC 15m 4格驗證毛優勢-0.4至+0.4bp/筆vs成本14bp(約1.08倍平均單根|報酬12.9bp),淨-14至-15bp。0通過0弱線索。存活偏誤(今日名單,ZEC)已聲明。
+- 判定：證據不足：35格無一通過Bonferroni(0通過/0弱線索),檢定力低(驗證約16個月需Sharpe約2.8),不證明無優勢;快進快出15m在吃單成本下結構不可行;G3-c所需正期望證據策略仍無
+- 下一步：沒有東西在跑;未開紙盤、未實盤、未花錢;最接近的H2動量L7R7依賴ZEC且近期轉負,不送紙盤
+- 關聯：lab/research/offline-r2/REPORT.md,lab/research/offline-r2/PREREG.md,lab/research/offline-r2/results/summary.json,lab/research/offline-r2/SHA256SUMS.txt,lab/research/offline-r1/REPORT.md,C-0724,C-0169
+- 腳本：lab/research/offline-r2/run_h23.py（sha256 前 12 碼 54d15bc79f2c，可重現：cd lab/research/offline-r2 && python3 download2.py && python3 verify_r2.py && python3 run_h1.py && python3 run_h23.py && python3 run_h45.py && python3 summarize.py (stdlib,無隨機,重跑results sha256相同;REPORT.md sha256前16碼 6d5d246a99c0e31b);其他腳本r2lib.py,run_h1.py,run_h45.py,summarize.py,verify_r2.py,download2.py）
