@@ -219,6 +219,14 @@
     "lab/research/offline-r2/run_h45.py": "00e1368092a1d2cbaf1efb9a052c7e29e898e03f2638862eae9e1bc384631859",
     "lab/research/offline-r2/summarize.py": "0732a82e7749f6b97cf8122d340977d533ea5bee71891630175938ada74a53dc",
     "lab/research/offline-r2/verify_r2.py": "ed6b1f716b595645a735bc3f2af78af69b3441e2172d3db89659318f41b57881",
+    "lab/research/offline-r3/PREREG.md": "8b61504f7925282a50f353ebfbf5d426fcdcee39f78879a2f54601b86b1e1f8a",
+    "lab/research/offline-r3/a_universe.py": "f6473f821a68ff427ef9246fd75de0ed6d9a12d6569296be9353c2d5ad290d9c",
+    "lab/research/offline-r3/download3.py": "f88b03cfd56b9615c79e2415d0b263f86d4b4f95a6bbd7b3b1b664cbd3a447c7",
+    "lab/research/offline-r3/explore_b.py": "9e1a60f206ea3196a419697122b1d0515beb3af13e0393899a053b5eb902f4fb",
+    "lab/research/offline-r3/r3b.py": "bf10e132e2b48f5a6a8f9682c6764603d5d2710c7587b98212365975a066070d",
+    "lab/research/offline-r3/r3lib.py": "f106941754e098d43baa9e75ea5cee3144f7f9778fdb6f19f93b04aa2edad9d3",
+    "lab/research/offline-r3/run_b.py": "c44e1b8858b11f3bbd6b3ed3e2c673edb1623d8c21e47558b1bd0d0375becb64",
+    "lab/research/offline-r3/verify_r3.py": "dac8734cefaa25cc76d6ac87391297a24bea4ce119110db707398601ec23af89",
     "lab/research_dashboard.py": "2d7c690a071216b7d3d7042d0be365fb3ca537d1622d173fc172a128d6edc952",
     "lab/research_dashboard_config.example.json": "9f6ab572b274c240f42a98a8beb723e75e296a4478f66252a7d7f4a063c015f4",
     "lab/runtime_equity_history.py": "995df91c06656234de011ca50c1bc1ea60c2e3e19886bde3005edf4287f30768",
@@ -354,7 +362,7 @@
     "scripts/paper_startup_supervisor.py": "f0c66dad1e02f74e9b7be8f90cdc0e9b46511b97a3b6acfc09929a906b246f7d",
     "scripts/public_source_timing_probe.py": "245f30998ffe3474e1ad60292d4c73d3bba83b3bc193afb5ee2ae927a1f717f5"
   },
-  "fingerprint": "2b61597269807395c1f5ae4a6b3e7011bd6caaf20559d09126dcfbb677f038dc",
+  "fingerprint": "bc2a64f66cbc83bb11d4406153eaed7502a4031b8bb5e4f2db915ca6991d8456",
   "purpose": "read-only review snapshot; not a deployment or test acceptance",
   "schema_version": 1
 }
