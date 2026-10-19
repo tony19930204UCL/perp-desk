@@ -114,12 +114,22 @@ class _TransientGitTreeChange(RuntimeError):
     """A Git-generated path disappeared while the private tree was being inspected."""
 
 
+def _git_entry_detail(info, relative):
+    kind='directory' if stat.S_ISDIR(info.st_mode) else 'file' if stat.S_ISREG(info.st_mode) else 'other'
+    return kind+' '+relative+' mode '+format(stat.S_IMODE(info.st_mode),'04o')
+
+
 def _check_private_tree_once(path):
+    return _check_private_tree_pass(path,Path(path))
+
+
+def _check_private_tree_pass(path, _root):
     """Require one complete permission/type pass over a stable directory snapshot."""
     with directory(path) as fd:
         before=os.fstat(fd)
+        relative=Path(path).relative_to(_root).as_posix()
         if before.st_uid!=os.getuid() or before.st_mode&0o022:
-            raise Blocked('unsafe Git directory ownership/permissions')
+            raise Blocked('unsafe Git directory ownership/permissions: '+_git_entry_detail(before,relative))
         names=os.listdir(fd)
         for name in names:
             try:
@@ -127,9 +137,9 @@ def _check_private_tree_once(path):
             except FileNotFoundError as error:
                 raise _TransientGitTreeChange(name) from error
             if entry.st_uid!=os.getuid() or entry.st_mode&0o022:
-                raise Blocked('unsafe Git entry permissions')
+                raise Blocked('unsafe Git entry permissions: '+_git_entry_detail(entry,(Path(path).relative_to(_root)/name).as_posix()))
             if stat.S_ISDIR(entry.st_mode):
-                try:_check_private_tree_once(Path(path)/name)
+                try:_check_private_tree_pass(Path(path)/name,_root)
                 except FileNotFoundError as error:raise _TransientGitTreeChange(name) from error
             elif not stat.S_ISREG(entry.st_mode) or entry.st_nlink!=1:
                 raise Blocked('unsafe Git entry')
@@ -152,6 +162,50 @@ def check_private_tree(path):
         except _TransientGitTreeChange:
             if attempt==2:
                 raise Blocked('Git directory changed during inspection') from None
+
+
+def tighten_private_git_tree(repository, *, owner_uid=None, output=print):
+    """Manual-only, preflighted permission narrowing for the configured mirror."""
+    repository=Path(os.path.abspath(repository))
+    root=repository/'.git'
+    uid=os.getuid() if owner_uid is None else owner_uid
+    planned=[]
+    def visit(path, relative):
+        with directory(path) as fd:
+            info=os.fstat(fd)
+            if info.st_uid!=uid or not stat.S_ISDIR(info.st_mode):
+                raise Blocked('unsafe Git repair directory: '+relative)
+            planned.append((path,relative,info.st_dev,info.st_ino,info.st_mode))
+            for name in os.listdir(fd):
+                child=path/name
+                item=os.stat(name,dir_fd=fd,follow_symlinks=False)
+                rel=(Path(relative)/name).as_posix()
+                if item.st_uid!=uid or (stat.S_ISREG(item.st_mode) and item.st_nlink!=1) or not (stat.S_ISREG(item.st_mode) or stat.S_ISDIR(item.st_mode)):
+                    raise Blocked('unsafe Git repair entry: '+rel)
+                if stat.S_ISDIR(item.st_mode):visit(child,rel)
+                else:planned.append((child,rel,item.st_dev,item.st_ino,item.st_mode))
+    with directory(repository):
+        visit(root,'.')
+        # Revalidate the entire plan before any modification.
+        for path,rel,dev,ino,mode in planned:
+            with directory(path.parent) as parent:
+                info=os.stat(path.name,dir_fd=parent,follow_symlinks=False)
+                if (info.st_dev,info.st_ino,info.st_mode)!=(dev,ino,mode) or info.st_uid!=uid or (stat.S_ISREG(info.st_mode) and info.st_nlink!=1):
+                    raise Blocked('Git repair tree changed: '+rel)
+        for path,rel,dev,ino,mode in planned:
+            narrowed=stat.S_IMODE(mode)&~0o077
+            if narrowed==stat.S_IMODE(mode):continue
+            with directory(path.parent) as parent:
+                flags=os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK
+                if stat.S_ISDIR(mode):flags|=os.O_DIRECTORY
+                fd=os.open(path.name,flags,dir_fd=parent)
+                try:
+                    info=os.fstat(fd)
+                    if (info.st_dev,info.st_ino,info.st_mode)!=(dev,ino,mode) or info.st_uid!=uid or (stat.S_ISREG(info.st_mode) and info.st_nlink!=1):
+                        raise Blocked('Git repair entry changed: '+rel)
+                    os.fchmod(fd,narrowed)
+                finally:os.close(fd)
+            output(rel+' '+format(stat.S_IMODE(mode),'04o')+' -> '+format(narrowed,'04o'))
 
 
 def git(repository,*args,check=True):
@@ -442,7 +496,14 @@ def main(argv=None):
     parser.add_argument('--gh',default=str(Path.home()/'.local/bin/gh'))
     parser.add_argument('--gitleaks',default=str(Path.home()/'.local/bin/gitleaks'))
     parser.add_argument('--force',action='store_true')
+    parser.add_argument('--tighten-private-git-permissions',action='store_true',help='Manual-only: narrow permissions and exit')
     args=parser.parse_args(argv)
+    if args.tighten_private_git_permissions:
+        try:tighten_private_git_tree(args.repository)
+        except (Blocked,OSError) as error:
+            print('BLOCKED: '+str(error))
+            return 1
+        return 0
     def lookup(name):
         return json.loads(run([args.gh,'api','repos/'+name]).stdout)
     def scan(repository):

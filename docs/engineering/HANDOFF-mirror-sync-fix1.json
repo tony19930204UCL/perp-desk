@@ -1,0 +1,39 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 72,
+  "branch": "fix/mirror-sync-perm-20261018",
+  "task_id": "MIRROR-SYNC-FIX1",
+  "instruction_id": "MIRROR-SYNC-FIX2",
+  "status": "WAITING_CI",
+  "source_head_sha": "ccfe918f45215c1cf93437f8a24412982faabc22",
+  "summary": "Minimal regression repair: preserve one-argument _check_private_tree_once patch seam by delegating recursion to _check_private_tree_pass; explicitly chmod diagnostic fixture Git directory to 0700.",
+  "changed_files": [
+    "automation/review_sync.py",
+    "automation/tests/test_review_sync.py",
+    "docs/engineering/HANDOFF-mirror-sync-fix1.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s automation/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "Not executed in this session; user reported prior-head CI 60 tests with one failure and independent proposed-fix testing."
+    },
+    {
+      "command": "umask 0002; python3 -m unittest discover -s automation/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "Not executed in this session; independent user evidence only."
+    }
+  ],
+  "remaining_work": [
+    "Main CIO verify new exact-head push and pull_request CI (60 or more tests)",
+    "Confirm no other new test fixture is affected by umask variations"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Verify both exact-head CI runs, test names and scope; confirm existing assertions untouched.",
+    "if_pass": "Accept branch for local application without deployment.",
+    "if_fail": "Return exact CI failures for bounded correction.",
+    "blockers": []
+  }
+}

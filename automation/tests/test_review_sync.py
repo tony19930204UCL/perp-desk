@@ -792,4 +792,78 @@ class ReviewSyncTests(unittest.TestCase):
             self.assertEqual(set(files),{'lab/a.py','lab/tests/test_a.py','lab/paper_config_v2.json','lab/paper_config_v3.json','context/AGENTS.md','lab/staging/x/a.py'})
             self.assertEqual(files['lab/a.py'],b'print(1)\n')
 
+    def test_permission_detail_is_relative(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'mirror';gitdir=root/'.git';gitdir.mkdir(parents=True);gitdir.chmod(0o700)
+            index=gitdir/'index';index.write_bytes(b'index');index.chmod(0o664)
+            with self.assertRaisesRegex(m.Blocked,r'file index mode 0664') as caught:
+                m.check_private_tree(gitdir)
+            self.assertNotIn(str(root),str(caught.exception))
+            self.assertNotIn(str(__import__('os').getuid()),str(caught.exception))
+
+    def test_manual_narrow_index(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);gitdir=root/'.git';gitdir.mkdir()
+            index=gitdir/'index';index.write_bytes(b'index');index.chmod(0o664)
+            m.tighten_private_git_tree(root,output=lambda line:None)
+            self.assertEqual(index.stat().st_mode&0o777,0o600)
+            m.check_private_tree(gitdir)
+
+    def test_manual_rejects_symlink_without_changes(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);gitdir=root/'.git';gitdir.mkdir()
+            index=gitdir/'index';index.write_bytes(b'x');index.chmod(0o664)
+            (gitdir/'link').symlink_to(index)
+            with self.assertRaises(m.Blocked):m.tighten_private_git_tree(root)
+            self.assertEqual(index.stat().st_mode&0o777,0o664)
+
+    def test_manual_rejects_hardlink_without_changes(self):
+        import review_sync as m
+        import os
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);gitdir=root/'.git';gitdir.mkdir()
+            index=gitdir/'index';index.write_bytes(b'x');index.chmod(0o664)
+            os.link(index,gitdir/'second')
+            with self.assertRaises(m.Blocked):m.tighten_private_git_tree(root)
+            self.assertEqual(index.stat().st_mode&0o777,0o664)
+
+    def test_manual_rejects_other_owner_seam(self):
+        import review_sync as m
+        import os
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);gitdir=root/'.git';gitdir.mkdir()
+            index=gitdir/'index';index.write_bytes(b'x');index.chmod(0o664)
+            with self.assertRaises(m.Blocked):
+                m.tighten_private_git_tree(root,owner_uid=os.getuid()+1)
+            self.assertEqual(index.stat().st_mode&0o777,0o664)
+
+    def test_manual_rejects_non_git_target(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);root.joinpath('index').write_bytes(b'x')
+            with self.assertRaises((m.Blocked,OSError,FileNotFoundError)):
+                m.tighten_private_git_tree(root)
+
+    def test_manual_never_adds_permissions(self):
+        import review_sync as m
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);gitdir=root/'.git';gitdir.mkdir()
+            index=gitdir/'index';index.write_bytes(b'x');index.chmod(0o400)
+            m.tighten_private_git_tree(root,output=lambda line:None)
+            self.assertEqual(index.stat().st_mode&0o777,0o400)
+
+    def test_normal_check_never_repairs(self):
+        import review_sync as m
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);gitdir=root/'.git';gitdir.mkdir()
+            index=gitdir/'index';index.write_bytes(b'x');index.chmod(0o664)
+            with patch.object(m,'tighten_private_git_tree',side_effect=AssertionError('repair invoked')):
+                with self.assertRaisesRegex(m.Blocked,'permissions'):
+                    m.check_private_tree(gitdir)
+            self.assertEqual(index.stat().st_mode&0o777,0o664)
+
 if __name__=='__main__':unittest.main()
