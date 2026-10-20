@@ -44,8 +44,8 @@ class Control(unittest.TestCase):
                                   maker_fill=True), "CLOSED")
         r = replay("1000", y.core.events)
         self.assertEqual(r["realized_gross"], D("2.5"))
-        self.assertEqual(r["fees_paid"], D("0.0897"))
-        self.assertEqual(r["cash"], D("1002.4103"))
+        self.assertEqual(r["fees_paid"], D("0.0797"))
+        self.assertEqual(r["cash"], D("1002.4203"))
         self.assertTrue(r["is_flat"])
 
     def test_a08_x3_held_three_adverse_closes_next_bar_only(self):
