@@ -111,6 +111,29 @@ class Control(unittest.TestCase):
         with self.assertRaises(X2Error):
             vwap60([bar(j) for j in range(59)])
 
+    def test_a06_x1_missing_vwap_target_blocks_before_any_entry(self):
+        # A missing target is not unknown future funding: constructor must
+        # never create an entry object capable of recording paid fills.
+        with patch.object(ShortEntry, "__init__", autospec=True) as init:
+            with self.assertRaisesRegex(X2Error, "signal_vwap target is required"):
+                ShortEntry.for_x1("missing-vwap", 0, "100", "100", "1",
+                                  ".25", 2, "2", signal_vwap=None)
+            init.assert_not_called()
+        # The rejected public invocation emits no ledger event and creates
+        # no fee/position: the only valid ledger is the untouched empty one.
+        ledger = replay("1000", [])
+        self.assertEqual(ledger["event_count"], 0)
+        self.assertEqual(ledger["fees_paid"], D("0"))
+        self.assertEqual(ledger["remaining_qty"], D("0"))
+        self.assertEqual(ledger["cash"], D("1000"))
+        # Missing VWAP must not be confused with unknown funding=None.
+        accepted = ShortEntry.for_x1("known-vwap", 0, "100", "100", "1",
+                                     ".25", 2, "2", signal_vwap="99",
+                                     known_funding_cost=None)
+        self.assertEqual(accepted.status, "PENDING")
+        self.assertTrue(accepted.unknown_future_funding)
+        self.assertEqual(accepted.events, [])
+
     def test_a06_x1_preentry_rejection_no_paid_fee_or_position(self):
         for target, funding in (("101", None), ("100.24", None),
                                 ("99", "5")):
