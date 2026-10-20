@@ -180,10 +180,16 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                              if e["type"]=="fill" and e["side"]=="sell"
                              and e["id"].startswith(episode["id"]+":")),
                             D(0))
-        related = [ev for ev in account.events
-                   if ev["id"].startswith(episode["id"]+":")
-                   or (ev["type"]=="liquidation" and
-                       ev["ts"]>=original.get("arrival_ts",0))]
+        reserves = [i for i, ev in enumerate(account.events)
+                    if ev["type"]=="reserve" and
+                    ev.get("episode")==episode["id"]]
+        if len(reserves)!=1:
+            raise X2Error("episode reserve identity missing")
+        offset=reserves[0]+1
+        boundary=next((j for j in range(offset,len(account.events))
+                       if account.events[j]["type"]=="reserve"),
+                      len(account.events))
+        related=account.events[offset:boundary]
         liquidated = any(ev["type"]=="liquidation" for ev in related)
         buys = [ev for ev in related if ev["type"]=="fill"
                 and ev.get("side")=="buy"]
