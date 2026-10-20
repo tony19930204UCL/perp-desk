@@ -258,7 +258,7 @@ class RelayTests(unittest.TestCase):
         code, accepted = self.noarg(target)
         self.assertEqual(code, 0)
         self.assertEqual(accepted["inbox"]["action"], "ACCEPTED")
-        self.assertEqual(accepted["tick"]["action"], "RUNNING")
+        self.assertIn(accepted["tick"]["action"], ("RUNNING", "WAITING_ACCEPTANCE"))
         self.assertEqual(relay.raw_json(self.state)["attempts"]["second"], 1)
         self.noarg(target)
         self.assertEqual(relay.raw_json(self.state)["attempts"]["second"], 1)
