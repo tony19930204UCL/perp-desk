@@ -4,12 +4,21 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-GH-SIGNALS-r11",
-  "status": "READY_FOR_REVIEW",
-  "source_head_sha": "4b8e8ce9565a95be3864b7966394057eafc1aef9",
-  "summary": "Bounded tests-only correction to r10 sampler acceptance: added discoverable unmocked sample_completed 1m and 15m exact-input-tail cases. Each uses fully completed fictional 1m bars, evaluation_end strictly greater than last decision, sample count equal to entire 3-decision eligible interval, and independently asserts READY, eligible/requested 3, exact selected list and last input close identity. 1m decisions 300,301,302 minutes; 15m decisions at periods 292,293,294. All earlier matched controls/mutations and frozen production remain unmodified. README records entrypoints and limitations. r11 NOT_RUN; independently passed r10 82 discovery, 7 signal, 7 matched and 3 named mutations rc1 remain r10-only evidence. Partial A15 sampler, not matched account replay.",
+  "instruction_id": "MAKER-V3-GH-BACKTEST-r12",
+  "status": "BLOCKED",
+  "source_head_sha": "00eb390cc333bb520ce1befbb103311546ae6eff",
+  "summary": "Committed ten new pure-stdlib files: executable offline historical CLI, original Binance kline/funding JSON/JSONL/JSON.GZ and cache CSV adapter, full existing single-account strategy and matched placebo event replay, separate ETH/BTC 24-grid (48 symbol-cell) baseline with independently recorded delay2 sensitivity, descriptive/account metrics, 7-day calendar bootstrap, BH24 by symbol/BH48 sensitivity, raw account episodes/events and daily observed equity, source/input/config/report hash manifests with --verify, and fictional positive and negative integration test entrypoints. Did not modify any accepted r11 module. Every added Python file is under 350 lines. r12 Python/CI/historical execution NOT_RUN. NOT FULL r12: full-account fee+SL slip 1.5x sensitivity cannot be produced faithfully without approved optional scenario-rate injection in protected engines/account ledger, and samebar favorable execution-order upper bound remains NOT_COMPUTED. Thus this handback is BLOCKED, not full A01-A16 or product/strategy acceptance.",
   "changed_files": [
-    "engineering/maker_x2/tests/test_matched_signals.py",
+    "engineering/maker_x2/backtest_entry.py",
+    "engineering/maker_x2/data_adapter.py",
+    "engineering/maker_x2/grid_runner.py",
+    "engineering/maker_x2/market_replay.py",
+    "engineering/maker_x2/matched_replay.py",
+    "engineering/maker_x2/backtest_stats.py",
+    "engineering/maker_x2/backtest_reports.py",
+    "engineering/maker_x2/backtest_controls.py",
+    "engineering/maker_x2/tests/test_backtest.py",
+    "engineering/maker_x2/tests/test_backtest_mutations.py",
     "engineering/maker_x2/README.md",
     ".relay/mailbox/maker-v3-x2.json"
   ],
@@ -17,45 +26,121 @@
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector cannot run Python. r11 new positive controls have not been independently executed. r10 independently passed discovery 82/82, matched 7/7, signal 7/7; these historical results are not r11 PASS."
+      "evidence": "This session used authorized GitHub source operations only; Python was not executed. Historical r11 84 controls and mutations/CI success do not establish any r12 result."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py control",
+      "command": "cd engineering/maker_x2 && python3 backtest_entry.py --self-test",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector cannot run Python. r11 new positive controls have not been independently executed. r10 independently passed discovery 82/82, matched 7/7, signal 7/7; these historical results are not r11 PASS."
+      "evidence": "This session used authorized GitHub source operations only; Python was not executed. Historical r11 84 controls and mutations/CI success do not establish any r12 result."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_backtest.py -v",
+      "result": "NOT_RUN",
+      "evidence": "This session used authorized GitHub source operations only; Python was not executed. Historical r11 84 controls and mutations/CI success do not establish any r12 result."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py control",
+      "result": "NOT_RUN",
+      "evidence": "This session used authorized GitHub source operations only; Python was not executed. Historical r11 84 controls and mutations/CI success do not establish any r12 result."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py control",
+      "result": "NOT_RUN",
+      "evidence": "This session used authorized GitHub source operations only; Python was not executed. Historical r11 84 controls and mutations/CI success do not establish any r12 result."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py control",
+      "result": "NOT_RUN",
+      "evidence": "This session used authorized GitHub source operations only; Python was not executed. Historical r11 84 controls and mutations/CI success do not establish any r12 result."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py control",
+      "result": "NOT_RUN",
+      "evidence": "This session used authorized GitHub source operations only; Python was not executed. Historical r11 84 controls and mutations/CI success do not establish any r12 result."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py control",
+      "result": "NOT_RUN",
+      "evidence": "This session used authorized GitHub source operations only; Python was not executed. Historical r11 84 controls and mutations/CI success do not establish any r12 result."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_account_ledger.py",
+      "result": "NOT_RUN",
+      "evidence": "This session used authorized GitHub source operations only; Python was not executed. Historical r11 84 controls and mutations/CI success do not establish any r12 result."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_signal_features.py control",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector cannot run Python. r11 new positive controls have not been independently executed. r10 independently passed discovery 82/82, matched 7/7, signal 7/7; these historical results are not r11 PASS."
+      "evidence": "This session used authorized GitHub source operations only; Python was not executed. Historical r11 84 controls and mutations/CI success do not establish any r12 result."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_signal_features.py mut-lookahead",
+      "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py control",
       "result": "NOT_RUN",
-      "evidence": "Negative mutation preserved but NOT_RUN in r11; run only after all positive controls PASS, record real AssertionError, executed test ID and nonzero rc."
+      "evidence": "This session used authorized GitHub source operations only; Python was not executed. Historical r11 84 controls and mutations/CI success do not establish any r12 result."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py mut-replacement",
+      "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-fee",
       "result": "NOT_RUN",
-      "evidence": "Negative mutation preserved but NOT_RUN in r11; run only after all positive controls PASS, record real AssertionError, executed test ID and nonzero rc."
+      "evidence": "Runnable negative source exists but is unexecuted. Run in a fresh process only AFTER every positive CONTROL genuinely PASS; require a named actual AssertionError and nonzero rc, not a harness/import error."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py mut-resample",
+      "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-funding",
       "result": "NOT_RUN",
-      "evidence": "Negative mutation preserved but NOT_RUN in r11; run only after all positive controls PASS, record real AssertionError, executed test ID and nonzero rc."
+      "evidence": "Runnable negative source exists but is unexecuted. Run in a fresh process only AFTER every positive CONTROL genuinely PASS; require a named actual AssertionError and nonzero rc, not a harness/import error."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-fake-time",
+      "result": "NOT_RUN",
+      "evidence": "Runnable negative source exists but is unexecuted. Run in a fresh process only AFTER every positive CONTROL genuinely PASS; require a named actual AssertionError and nonzero rc, not a harness/import error."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-future",
+      "result": "NOT_RUN",
+      "evidence": "Runnable negative source exists but is unexecuted. Run in a fresh process only AFTER every positive CONTROL genuinely PASS; require a named actual AssertionError and nonzero rc, not a harness/import error."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-overfill",
+      "result": "NOT_RUN",
+      "evidence": "Runnable negative source exists but is unexecuted. Run in a fresh process only AFTER every positive CONTROL genuinely PASS; require a named actual AssertionError and nonzero rc, not a harness/import error."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-be",
+      "result": "NOT_RUN",
+      "evidence": "Runnable negative source exists but is unexecuted. Run in a fresh process only AFTER every positive CONTROL genuinely PASS; require a named actual AssertionError and nonzero rc, not a harness/import error."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-duplicate",
+      "result": "NOT_RUN",
+      "evidence": "Runnable negative source exists but is unexecuted. Run in a fresh process only AFTER every positive CONTROL genuinely PASS; require a named actual AssertionError and nonzero rc, not a harness/import error."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 backtest_entry.py --run --config config.json --input inputs.json --output new-results",
+      "result": "NOT_RUN",
+      "evidence": "Historical data unavailable to this connector and operator must not launch 48 grids before full engineering controls and separately authorized missing scenario-rate glue. The CLI implementation currently covers baseline 48 and delay2 48 only, not 1.5x fees/slippage."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 backtest_entry.py --verify --config config.json --input inputs.json --output new-results",
+      "result": "NOT_RUN",
+      "evidence": "No historical output directory was produced in this session. Verification code checks source/test/README, input files, config and output manifest hashes when actually run."
     }
   ],
   "remaining_work": [
-    "Main CIO independently run exact-head r11 discovery and both standalone controls from engineering/maker_x2 and check the two new discoverable exact-tail cases: 1m full selected minutes [300,301,302] and 15m [292,293,294].",
-    "Only after positive controls PASS, run lookahead/replacement/resample in separate subprocesses, capture actual named AssertionError and nonzero rc.",
-    "Verify signal_features.py, matched_signals.py, test_signal_features.py and every nonallowlisted file unchanged; check exact-head push and pull_request CI separately from nested tests.",
-    "The sampler is only a partial A15 signal test milestone; matched account replay, BH24/bootstrap, 24grid/runner and full A01-A16, product and paper/live NOT_ACCEPTED."
+    "Main CIO independently inspect and execute all discoverable r12 controls on exact source HEAD, including new 48-cell wiring, real full-X1 hand-derived money, CSV/Binance adapters, daily equity, delay2 and artifact tampering, plus every original unchanged accepted control.",
+    "Only after positive CONTROL PASS, independently execute integration and existing negative mutation modes; each must yield a loaded test ID, genuine AssertionError and nonzero return code.",
+    "MANDATORY SCOPE DECISION: faithful 1.5x scenario needs frozen-default-preserving optional scenario-rate injection into protected maker_exit_lab.py, entry_lifecycle.py, exit_lifecycle.py, account_lifecycle.py, account_ledger.py and liquidation.py, and differential regression tests. These files were NOT changed because outside the r12 allowlist. No report-only fee adjustment may substitute.",
+    "MANDATORY incomplete prereg metric: calculate and independently test favorable same-bar ordering upper bound. Baseline conservative LIQ>SL>Maker behavior is retained; upper bound is explicitly NOT_COMPUTED.",
+    "Independent full-history memory/performance, report integrity, original offline-r3 source coverage, fees/funding/liquidation and multi-episode reconciliation, BH24/BH48 and bootstrap require actual clean-source execution. No private data nor actual account configuration was accessed.",
+    "After the explicit scope decision and repaired verified source, operator may independently run CLI with pre-existing local cache/config; preserve exploration contamination and lack of holdout. No A15 full strategy/product/trading acceptance until independently established."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Read PR75 exact final HEAD and pre-mailbox source_head_sha; execute python3 -m unittest discover -s tests -v, python3 tests/test_matched_signals.py control, python3 tests/test_signal_features.py control as fresh processes. Check discoverable 1m/15m exact-input-tail selection and immutable protected blobs; after all PASS run mut-lookahead, mut-replacement, mut-resample separately with genuine AssertionError/test ID/rc and verify push+PR CI.",
-    "if_pass": "Accept only r11 exact-input-tail sampling test coverage in bounded A15 partial scope, not account replay or strategy/product acceptance.",
-    "if_fail": "Report precise failing test name, actual output and exit status for bounded same-PR repair; do not modify production sources or weaken frozen matching contract.",
-    "blockers": []
+    "verify_now": "Review exact PR75 HEAD and source_head_sha 00eb390cc333bb520ce1befbb103311546ae6eff, confirm only allowlisted files changed and all accepted r11 source/test blobs byte-identical. From engineering/maker_x2 run python3 -m unittest discover -s tests -v, python3 backtest_entry.py --self-test, both new standalone controls and listed frozen controls. Require real output/test IDs/exit codes. Only after all positive PASS, run negative mutations separately; do not launch historical runner yet while cost-scenario and favorable-order upper bound are incomplete.",
+    "if_pass": "Accept only source modules that independently pass their bounded controls. Decide narrowly whether to authorize minimal optional cost sensitivity hooks and favorable-order metric integration; then rerun exact-head tests/CI and execute local historical CLI. Do not claim full 48 baseline+sensitivities, BH/strategy/product PASS until all prereg outputs and controls exist.",
+    "if_fail": "Report concrete actual failing IDs, tracebacks, manifest hashes and execution boundaries for a same-PR bounded correction. Keep protected originals unchanged absent separately approved minimal interface glue.",
+    "blockers": [
+      "1.5x fee/slip complete account sensitivity NOT_IMPLEMENTED_NEEDS_AUTHORIZED_GLUE",
+      "samebar favorable order upper bound NOT_COMPUTED",
+      "r12 clean-head Python/CI/historical run NOT_RUN"
+    ]
   }
 }
