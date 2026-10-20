@@ -4,10 +4,10 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-X2-GH-STATE-r5",
+  "instruction_id": "MAKER-X2-GH-REVISE-r6",
   "status": "READY_FOR_REVIEW",
-  "source_head_sha": "90cfa1183dd5b49ec465401b5fe0a3293e3aaf86",
-  "summary": "Created 264-line dynamic short-only X2 exit state machine, 225-line synthetic unittest source with CONTROL and four standalone fee/funding/same-bar-BE/duplicate negative mutations, and documented commands. Preserved accounting.py and tests/test_accounting.py unchanged. Source contains fixed 0.006 stop (<0.0085), two Maker half targets, explicit partial fills, risk-before-maker conservative OHLC and adverse gap, next-bar economic BE, finalized funding and replay-ready ledger events. No execution or CI evidence for r5 was available.",
+  "source_head_sha": "4a714e81e77c028880ae582cf2d6c691d97d2543",
+  "summary": "Repaired four demonstrated r5 gaps without touching accounting.py or tests/test_accounting.py: high-precision independent Decimal50 BE expectation, clean-clone standalone import path, test_ discovery of duplicate/cancel race and stale SL orders, and exact-limit Maker fills with inclusive 2bp OHLC low penetration at both TPs (no favorable price improvement). Kept all strategy/funding/risk/fees unchanged. This is source delivery, NOT new execution acceptance.",
   "changed_files": [
     "engineering/maker_x2/maker_exit_lab.py",
     "engineering/maker_x2/tests/test_x2.py",
@@ -18,45 +18,45 @@
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub read/write connector has no Python execution; original 20 accounting tests must run together with X2 controls on exact HEAD. Historical r4 CI successes 39442056511 and 39442048533 do not prove r5."
+      "evidence": "r6 not executed: connector supports GitHub file writes, not Python process execution. Historical r5 discovery 31 unique: accounting20 PASS, X2 9 PASS 2 FAIL; standalone control ImportError."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_x2.py control",
       "result": "NOT_RUN",
-      "evidence": "Control entrypoint committed, result not executed."
+      "evidence": "r6 not executed: connector supports GitHub file writes, not Python process execution. Historical r5 discovery 31 unique: accounting20 PASS, X2 9 PASS 2 FAIL; standalone control ImportError."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-fee",
       "result": "NOT_RUN",
-      "evidence": "Negative mutation entrypoint committed. Must separately verify real AssertionError, test ID and nonzero return code after CONTROL PASS."
+      "evidence": "r6 negative mutation not executed; must verify genuine AssertionError with test ID and rc !=0 after both CONTROL entrypoints pass. Old r5 outcomes are not acceptance."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-funding",
       "result": "NOT_RUN",
-      "evidence": "Negative mutation entrypoint committed. Must separately verify real AssertionError, test ID and nonzero return code after CONTROL PASS."
+      "evidence": "r6 negative mutation not executed; must verify genuine AssertionError with test ID and rc !=0 after both CONTROL entrypoints pass. Old r5 outcomes are not acceptance."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-be",
       "result": "NOT_RUN",
-      "evidence": "Negative mutation entrypoint committed. Must separately verify real AssertionError, test ID and nonzero return code after CONTROL PASS."
+      "evidence": "r6 negative mutation not executed; must verify genuine AssertionError with test ID and rc !=0 after both CONTROL entrypoints pass. Old r5 outcomes are not acceptance."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-duplicate",
       "result": "NOT_RUN",
-      "evidence": "Negative mutation entrypoint committed. Must separately verify real AssertionError, test ID and nonzero return code after CONTROL PASS."
+      "evidence": "r6 negative mutation not executed; must verify genuine AssertionError with test ID and rc !=0 after both CONTROL entrypoints pass. Old r5 outcomes are not acceptance."
     }
   ],
   "remaining_work": [
-    "Main CIO independently execute CONTROL on exact final HEAD and verify both preexisting 20 tests and new X2 controls.",
-    "Run each mutation mode and retain actual command, exit code, assertion and test ID; repair any failures on the same branch without mutating frozen accounting files.",
-    "Only narrow X2 state checks are in scope; LIQ, full account/day-halt, X1/X3, 24-grid, remainder of A01-A16 remain unverified.",
-    "Current CI may not discover nested engineering/maker_x2 tests; no r5 push/PR CI status claimed."
+    "Independently run normal discovery and standalone CONTROL from exact r6 committed HEAD in a clean clone. Capture actual output, rc, unique test IDs and failures.",
+    "Only after both controls pass, run four mutations separately and confirm each nonzero return due to a named genuine AssertionError, not harness/import failure.",
+    "Verify accounting.py blob e6fb3454390c8780d21273022e4fff194cbf98c7 and tests/test_accounting.py blob 6ac71e89b8ba966e3638690a4eabd42fb09261e1 are identical to accepted parent.",
+    "Full A01-A16, LIQ, account/day-halt, X1/X3 and 24-grid remain outside this unit."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Fetch PR75 latest exact HEAD and files; verify accounting.py and tests/test_accounting.py unchanged vs accepted ea55518a96fdf5211b3c465c714ec300f62ea372. From engineering/maker_x2 execute python3 -m unittest discover -s tests -v first; then control and each mut-* command, capturing return codes and AssertionError IDs.",
-    "if_pass": "Accept only bounded X2 exit state source and mutation controls if exact-head CONTROL passes and all four mutations fail for intended assertions; no full A01-A16 or trading acceptance.",
-    "if_fail": "Publish exact test failures and a bounded revision request on existing PR75, without edits to frozen accounting files.",
+    "verify_now": "Check PR75 exact HEAD, unchanged frozen accounting blobs, run python3 -m unittest discover -s tests -v then python3 tests/test_x2.py control from engineering/maker_x2 in fresh subprocesses. After both PASS, run mut-fee, mut-funding, mut-be, mut-duplicate independently, record actual rc/test IDs/AssertionError, inspect fee/funding/BE/dedup behavior.",
+    "if_pass": "Accept bounded X2 r6 source only with actual exact-head control PASS and all four intended negative mutations caught; no whole-system PASS.",
+    "if_fail": "Report concrete remaining test/harness failures and require bounded repair on existing draft PR75 with frozen accounting files untouched.",
     "blockers": []
   }
 }
