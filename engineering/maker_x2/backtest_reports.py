@@ -29,14 +29,20 @@ def sha256_file(path):
 
 
 def source_manifest(directory):
-    names=("account_lifecycle.py","account_ledger.py","liquidation.py",
-           "entry_lifecycle.py","exit_lifecycle.py","maker_exit_lab.py",
-           "accounting.py","signal_features.py","matched_signals.py",
-           "data_adapter.py","market_replay.py","matched_replay.py",
-           "grid_runner.py","backtest_stats.py","backtest_reports.py",
-           "backtest_entry.py","backtest_controls.py")
+    """Hash actual production source, executable tests and public contract."""
     root=Path(directory)
-    return {name:sha256_file(root/name) for name in names}
+    required=("account_lifecycle.py","account_ledger.py","liquidation.py",
+              "entry_lifecycle.py","exit_lifecycle.py","maker_exit_lab.py",
+              "accounting.py","signal_features.py","matched_signals.py",
+              "data_adapter.py","market_replay.py","matched_replay.py",
+              "grid_runner.py","backtest_stats.py","backtest_reports.py",
+              "backtest_entry.py","backtest_controls.py","README.md")
+    paths=[root/name for name in required]
+    paths.extend(sorted((root/"tests").glob("test_*.py")))
+    if any(not path.is_file() for path in paths):
+        raise X2Error("source/test manifest missing a required file")
+    return {path.relative_to(root).as_posix():sha256_file(path)
+            for path in paths}
 
 
 def atomic_json(path, value):
