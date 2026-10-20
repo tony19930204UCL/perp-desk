@@ -2,7 +2,7 @@
 import os
 import sys
 import unittest
-from decimal import Decimal as D
+from decimal import Decimal as D, localcontext
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -102,7 +102,10 @@ class Control(unittest.TestCase):
         v = [bar(j, base="2", quote="210") for j in range(60)]
         self.assertEqual(vwap60(v), D("105"))
         v[-1]["quote_volume"] = "260"
-        self.assertEqual(vwap60(v), D("105.4166666666666666666666667"))
+        with localcontext() as ctx:
+            ctx.prec = 50
+            expected = D("12650") / D("120")
+        self.assertEqual(vwap60(v), expected)
 
     def test_entry_partial_then_funding_open_replay(self):
         x = entry(ttl=5)
