@@ -371,7 +371,7 @@ DOC_FILES={'README.md','AGENTS.md','.gitignore','.github/workflows/ci.yml',
            'docs/SOURCE_TIMING_EVIDENCE.md','docs/MULTI_LEDGER_DASHBOARD.md',
            'docs/OPERATOR_EVENT_GATE.md','docs/OWNER_RESUMPTION_HANDOFF.md','docs/ETH_DISCOVERY_LAB.md','docs/OBSERVER_CONSOLE.md','docs/ISSUE38_BOUNDED_UNKNOWN.md'}
 
-SKIP_DIRS={'.git','__pycache__','data','shared','evidence','probe-data','probe-shared','cache','logs','sessions','node_modules'}
+SKIP_DIRS={'.git','__pycache__','data','shared','evidence','probe-data','probe-shared','cache','logs','sessions','node_modules','.venv','venv','__pypackages__'}
 
 
 def collect(profile,*,visibility='private'):
