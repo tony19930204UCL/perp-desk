@@ -288,7 +288,8 @@ class OfflineAccount:
             if self.entry.status == "FILLED":
                 self.exit = ShortExit(self.entry, self.style,
                     vwap=self.entry.x1_vwap,
-                    known_funding_cost=self.entry.x1_known_funding_cost)
+                    known_funding_cost=self.entry.x1_known_funding_cost,
+                    rates=self.rates)
         state = self.ledger()
         if state["qty"] > Z and self.entry is not None:
             original = self.entry.qty_target
