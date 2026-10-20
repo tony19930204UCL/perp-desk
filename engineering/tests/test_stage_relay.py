@@ -35,8 +35,8 @@ class RelayTests(unittest.TestCase):
                            "reviewer": "test-fixture", "evidence_path": "upstream.json",
                            "evidence_sha256": relay.digest(prior.read_bytes())})
 
-    def setup_graph(self, stages):
-        graph = {"schema_version": 1, "kind": "synthetic_stage_relay",
+    def setup_graph(self, stages, *, kind="synthetic_stage_relay"):
+        graph = {"schema_version": 1, "kind": kind,
                  "evidence_root": str(self.evidence),
                  "bootstrap": {"acceptance_path": "upstream-acceptance.json",
                                "stage_id": "upstream", "source_head": self.head,
@@ -210,7 +210,8 @@ class RelayTests(unittest.TestCase):
                            "reviewer": "test-fixture", "evidence_path": "upstream.json",
                            "evidence_sha256": relay.digest(prior.read_bytes())})
         if configured:
-            self.setup_graph([self.stage("first"), self.stage("second")])
+            self.setup_graph([self.stage("first"), self.stage("second")],
+                             kind="stage_relay")
         return target
 
     def noarg(self, installed):
@@ -299,7 +300,7 @@ class RelayTests(unittest.TestCase):
         target = self.installed(configured=False)
         bad = self.stage("failed")
         bad["command"] = [sys.executable, "-c", "raise SystemExit(3)"]
-        self.setup_graph([bad, self.stage("next")])
+        self.setup_graph([bad, self.stage("next")], kind="stage_relay")
         self.noarg(target)
         self.await_completion()
         code, out = self.noarg(target)
