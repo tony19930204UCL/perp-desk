@@ -98,14 +98,17 @@ def calendar_bootstrap(episodes, start_day, end_day, iterations=9999,
         cursor += timedelta(days=1)
     pnl = defaultdict(lambda: D(0))
     entry_dates = set()
-    for ep in episodes:
-        if not ep.get("arrival_ts") or not ep.get("entry_notional"):
-            continue
+    qualified = [ep for ep in episodes
+                 if ep.get("arrival_ts") is not None and
+                    D(ep.get("entry_notional","0")) > 0]
+    for ep in qualified:
         from account_ledger import utc_day
         day = utc_day(ep["arrival_ts"])
         entry_dates.add(day)
-        pnl[day] += D(ep["net"])
-    if len(episodes) < 30 or len(entry_dates) < 30 or len(days) < 7:
+        # One flat-to-flat episode is ONE observation. Normalize its
+        # fee-adjusted net by initial entry notional, not by exit legs.
+        pnl[day] += D(ep["net"]) / D(ep["entry_notional"]) * D(10000)
+    if len(qualified) < 30 or len(entry_dates) < 30 or len(days) < 7:
         return {"status":"INSUFFICIENT", "p":1,
                 "p_is_placeholder":True,"ci95":None}
     values = [pnl[day] for day in days]
