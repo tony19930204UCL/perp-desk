@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from decimal import Decimal as D
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from market_replay import replay_cell
 from backtest_controls import self_test
 from backtest_reports import persist_run, verify_run
 from backtest_entry import main
+import grid_runner
 from account_lifecycle import OfflineAccount
 from account_ledger import replay_account
 from maker_exit_lab import X2Error
@@ -87,6 +89,47 @@ class Control(unittest.TestCase):
         self.assertEqual(a["ledger"]["qty"],"0")
         self.assertEqual(a["counts"].get("attempts"),1)
         self.assertEqual(len(a["events"]),2)
+        self.assertEqual(len(a["equity_path"]),1)
+        self.assertFalse(a["equity_path"][0]["stale"])
+
+    def test_delay2_moves_real_pending_arrival_not_feature_decision(self):
+        data=minutes()
+        selected=[290*60000]
+        ordinary=replay_cell("FICTION",data,[],1,".25",2,"X2",cfg(),
+                             290*60000,300*60000,
+                             signal_times=selected,delay_minutes=0)
+        delayed=replay_cell("FICTION",data,[],1,".25",2,"X2",cfg(),
+                            290*60000,300*60000,
+                            signal_times=selected,delay_minutes=2)
+        one=next(e for e in ordinary["events"] if e["type"]=="reserve")
+        two=next(e for e in delayed["events"] if e["type"]=="reserve")
+        self.assertEqual(two["ts"]-one["ts"],2*60000)
+        self.assertEqual(ordinary["signal_count"],1)
+        self.assertEqual(delayed["signal_count"],1)
+
+    def test_grid_has_48_isolated_cells_and_shared_sampler(self):
+        fake={"signal_count":0,"counts":{},
+              "ledger":{"cash":"1000","fees":"0","funding_cost":"0",
+                        "writeoff":"0"},"account":{"equity":"1000",
+                        "unrealized":"0"},"episodes":[]}
+        source={"ETHUSDT":{"bars":[],"funding":[]},
+                "BTCUSDT":{"bars":[],"funding":[]}}
+        cached={}
+        def eligible(_,tf):
+            return [{"framework_minutes":tf,"signal_time":j*tf*60000}
+                    for j in range(3)]
+        with patch.object(grid_runner,"eligible_decisions",eligible),patch.object(
+                grid_runner,"replay_cell",return_value=fake) as replay:
+            result=grid_runner.run_grid(source,cfg(),0,10**9,
+                                         sample_count=3,eligible_cache=cached)
+        self.assertEqual(result["cell_count"],48)
+        self.assertEqual(set(cached),{("ETHUSDT",1),("ETHUSDT",15),
+                                      ("BTCUSDT",1),("BTCUSDT",15)})
+        self.assertEqual(replay.call_count,96)
+        self.assertEqual(len(result["samplers"]),4)
+        self.assertTrue(all(s["status"]=="READY"
+                            for s in result["samplers"].values()))
+        self.assertEqual(len({c["cell_id"] for c in result["cells"]}),48)
 
     def test_handderived_full_x1_flat_episode_reconciles(self):
         account=OfflineAccount("1000","50","5","5",2,"24",".0145",".0005")
