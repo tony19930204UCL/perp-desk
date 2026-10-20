@@ -47,8 +47,7 @@ def discovery_gate():
     from pathlib import Path
     root=Path(__file__).resolve().parent
     suite=unittest.TestLoader().discover(
-        start_dir=str(root/"tests"),pattern="test_*.py",
-        top_level_dir=str(root))
+        start_dir=str(root/"tests"),pattern="test_*.py")
     outcome=unittest.TextTestRunner(verbosity=2).run(suite)
     if not outcome.wasSuccessful() or outcome.testsRun == 0:
         return False
