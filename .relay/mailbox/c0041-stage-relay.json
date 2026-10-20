@@ -4,10 +4,10 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "C0041-MAKER-INTEGRATION",
-  "instruction_id": "C0041-MAKER-INTEGRATION-r7",
+  "instruction_id": "C0041-MAKER-INTEGRATION-r8",
   "status": "WAITING_CI",
-  "source_head_sha": "03973201d846d4950c0d85522e7669941b4ff261",
-  "summary": "New bounded r7 correction of reproduced r6 failures. bridge verify_argv accepts only exact absolute Python child with optional literal -u and identical Maker entrypoint plus exact --run/--verify/config/input/output bindings; never starts historical run. Unittest stage_relay module registered under sys.modules to share true RelayError identity with bridge. Duplicate-cell mutation rehashes results inventory to exercise uniqueness rather than hash gate, with separate missing/raw-hash cases restored. ADOPT uses genuine live subprocess identity to test absent capacity and mismatched exact argv; nonexistent identity separately rejects. Producer docs/example updated to independent C-1062 successor. Original 23 methods retained, one -u test added (24 total). No deployment or market acceptance.",
+  "source_head_sha": "cc55f09e6f78effe98614d8b527152a066c2b796",
+  "summary": "One bounded actual-producer argv compatibility update. Bridge (<350 lines) resolves literal python3 -u backtest_entry.py relative child argv against explicit trusted absolute cwd and operator-configured existing absolute child_executable; compares actual resolved Python/script to exact absolute configured verify interpreter/script and preserves immutable config/input/output/source checks. Does NOT rewrite real adopted run argv or launch --run. Added two temporary installed-sibling actual subprocess/normalizer CLI and fail-closed wrong binding tests, original 24 methods retained (26 total). Documented captured executable/cwd contract and updated unconfigured example. stage_relay.py, workflow and PR75 source untouched; real C1069 producer PID not accessed. Market and reflection remain NOT_PROVEN.",
   "changed_files": [
     "engineering/maker_stage_bridge.py",
     "engineering/tests/test_stage_relay.py",
@@ -19,35 +19,35 @@
     {
       "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
       "result": "NOT_RUN",
-      "evidence": "r7 file-only GitHub connector writes, 24 test methods authored; user reports r6 exact HEAD suite 23 methods 21 PASS 2 ERROR and both r6 push 39514927154 / PR 39514931582 FAILED."
+      "evidence": "r8 source-only connector operations; 26 test methods authored. User/operator independently reports prior r7 24/24 PASS and exact prior push CI39516152207/pull_request CI39516154904 SUCCESS; these are not r8 results."
     },
     {
-      "command": "python3 engineering/stage_relay.py demo --dir /ABSOLUTE/ISOLATED/NEW_SYNTHETIC_DIR",
+      "command": "R8 installed temp profile real relative python3 -u child and maker_stage_bridge.py normalize CLI regression",
       "result": "NOT_RUN",
-      "evidence": "No r7 subprocess execution in this turn; past synthetic drill is not Maker data."
+      "evidence": "New synthetic-only subprocess and fail-closed cases are source-contained but not executed in this chat."
     },
     {
-      "command": "New exact-head push and pull_request GitHub CI",
+      "command": "r8 final exact-head push and pull_request CI",
       "result": "NOT_RUN",
-      "evidence": "Neither r7 final HEAD run independently observed or claimed; operator must execute suite and verify both CI conclusions."
+      "evidence": "Not checked or represented as green; independent operator must observe both new exact-head conclusions."
     }
   ],
   "remaining_work": [
-    "Independently execute all 24 tests and new exact-head push/pull_request CI, checking the hash/duplicate subcases and exact Python -u argv with actual subprocess and adopted PID.",
-    "Keep business source admission blocked pending separate independent C-1062 accepted capacity correction and immutable source/input/config reconciliation; no prior failed history reruns.",
-    "Verify complete 3x48 real Maker scenarios, 289 inventory with 288 raw account reports, shipped --verify and independent acceptance before next transition.",
-    "Operator retains control of active-profile install/cron after separate permission, no deployment or trading. Whole chain NOT_PROVEN."
+    "Operator independently run all 26 finite unittest methods and both new exact-head push/pull_request CI; review any runtime error before authorizing a new installed sibling copy.",
+    "Operator bind actual absolute Python executable, trusted cwd and verify argv to live captured producer child without altering original run_argv, owner PID/start/boot, cap or source/input/config identity.",
+    "Wait for trusted external C1069 completion and actual shipped Maker --verify results, three 48-cell scenario reports, 289 inventory hashes, independent result acceptance and operator model reflection. No fabricated market proof.",
+    "Only separately authorized operator may install updated sibling; no deploy/trading/real producer restart or cwd/private path access in this turn."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review PR76 exact source and mailbox heads; run 24 unittest cases including true rehashed duplicate-cell negative, actual -u argv, live owner ADOPT, fail/UNKNOWN/refusal, then verify both new exact-head push/PR CI. Confirm bridge below 350 lines and original 15 controls retained.",
-    "if_pass": "Accept bounded r7 source integration only after independently green exact-head checks; wait for C-1062 independent source capacity acceptance and real report/operator reflection proofs.",
-    "if_fail": "Return exact traceback and HEAD to parent; do not silently retry denied operations or restart history.",
+    "verify_now": "Review r8 branch final/head, confirm bridge remains <350 lines, stage_relay.py and workflow unchanged, run 26 tests including actual relative Python child with PID/start and installed normalize plus wrong executable/script/flag/cwd/output refusal, and verify both final-head GitHub CI.",
+    "if_pass": "Accept bounded source compatibility only; separately coordinate verified installed sibling update without disturbing actual running external producer, and wait for real market acceptance chain.",
+    "if_fail": "Return exact failing traceback/HEAD for parent authorization decision; do not re-run original historical source or bypass approval.",
     "blockers": [
-      "r7 tests/CI NOT_RUN in this chat",
-      "C-1062 capacity source acceptance pending; prior historical VWAP run failed",
-      "No accepted full 3x48 Maker result, separate independent result acceptance or operator reflection",
-      "No installation/deploy/trading"
+      "R8 tests and dual CI NOT_RUN by assistant",
+      "Live C1069 source still running; terminal/3x48/verify/independent acceptance not yet available",
+      "Whole Maker financial product chain NOT_PROVEN",
+      "No installed update, deployment, paper/live or trading performed"
     ]
   }
 }
