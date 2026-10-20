@@ -4,13 +4,11 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-GH-SIGNALS-r9",
+  "instruction_id": "MAKER-V3-GH-SIGNALS-r10",
   "status": "READY_FOR_REVIEW",
-  "source_head_sha": "876c1e5834f8dfb27bc1eb241a9db3df98972971",
-  "summary": "Committed callable pure-stdlib signal_features.py (S1 1m C1 and S2 15m C2, exact prior-only Decimal50 sigma288/std12, strict thresholds, 15m UTC complete aggregation, 1m ATR14/VWAP60, causal closed-time records) and matched_signals.py (framework-shared sorted unique eligible universe, SHA256 identity, 6000 no-replacement default, deterministic 20261020+framework seed, explicit insufficient). Added discoverable fictional unittest controls, standalone no-lookahead/replacement/resample mutation modes, README API/limits. No change to accepted original economics/account modules; no market runner/data, no Python tests executed this turn. A15 sampling partial, not account replay or full A01-A16.",
+  "source_head_sha": "f5b0a9ee4f860186ed6dcb6cc4712ea4d2ceea16",
+  "summary": "Bounded TEST_ACCEPTANCE_GAP repair on PR75. Production signal_features.py, matched_signals.py and every other existing source/test are unchanged. Extended discoverable synthetic Control coverage to invoke actual S1 1m and S2 15m API predicates, strict S1 equality using explicitly disclosed threshold-only injection, genuine S2 positive/close-equality/volatility rejection with independent Decimal50 prior-return reference, complete-minute sample_completed causal 1m/15m and all 12 variant sharing. Revised mut-lookahead to contaminate historical VWAP with future minute's quote/base values; mut-resample keeps advertised seed but alters actual selected timestamps across repeated calls; replacement still produces duplicate selection. README documents limitations. r10 tests NOT_RUN here; prior r9 78/78 and mutations rc1 are historical only. A15 sampler partial, not matched account replay.",
   "changed_files": [
-    "engineering/maker_x2/signal_features.py",
-    "engineering/maker_x2/matched_signals.py",
     "engineering/maker_x2/tests/test_signal_features.py",
     "engineering/maker_x2/tests/test_matched_signals.py",
     "engineering/maker_x2/README.md",
@@ -20,45 +18,45 @@
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub contents connector does not execute Python. r9 new controls pending independent exact-head execution; prior r8 controls passing cannot establish r9 results."
+      "evidence": "GitHub source read/write connector has no Python execution. This r10 test-acceptance repair requires exact-HEAD clean checkout and actual discovery plus both standalone controls. Historical r9 discovery78/78 signal5/5 matched5/5 and green CI are not r10 test evidence."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_signal_features.py control",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub contents connector does not execute Python. r9 new controls pending independent exact-head execution; prior r8 controls passing cannot establish r9 results."
+      "evidence": "GitHub source read/write connector has no Python execution. This r10 test-acceptance repair requires exact-HEAD clean checkout and actual discovery plus both standalone controls. Historical r9 discovery78/78 signal5/5 matched5/5 and green CI are not r10 test evidence."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py control",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub contents connector does not execute Python. r9 new controls pending independent exact-head execution; prior r8 controls passing cannot establish r9 results."
+      "evidence": "GitHub source read/write connector has no Python execution. This r10 test-acceptance repair requires exact-HEAD clean checkout and actual discovery plus both standalone controls. Historical r9 discovery78/78 signal5/5 matched5/5 and green CI are not r10 test evidence."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_signal_features.py mut-lookahead",
       "result": "NOT_RUN",
-      "evidence": "r9 mutation mode written but NOT_RUN; only execute after all positive controls PASS and require genuine named AssertionError and nonzero rc, never import/harness errors."
+      "evidence": "Negative behavior mutation NOT_RUN in this turn. Only after all r10 positive controls PASS independently, require actual named AssertionError, loaded test ID and nonzero rc in fresh subprocess."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py mut-replacement",
       "result": "NOT_RUN",
-      "evidence": "r9 mutation mode written but NOT_RUN; only execute after all positive controls PASS and require genuine named AssertionError and nonzero rc, never import/harness errors."
+      "evidence": "Negative behavior mutation NOT_RUN in this turn. Only after all r10 positive controls PASS independently, require actual named AssertionError, loaded test ID and nonzero rc in fresh subprocess."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py mut-resample",
       "result": "NOT_RUN",
-      "evidence": "r9 mutation mode written but NOT_RUN; only execute after all positive controls PASS and require genuine named AssertionError and nonzero rc, never import/harness errors."
+      "evidence": "Negative behavior mutation NOT_RUN in this turn. Only after all r10 positive controls PASS independently, require actual named AssertionError, loaded test ID and nonzero rc in fresh subprocess."
     }
   ],
   "remaining_work": [
-    "Main CIO fetch exact final PR75 HEAD and run full discovery and two r9 standalone positive controls on immutable clean source, verify formulas, 15m complete windows, no lookahead, 6000 unique shared timestamps and deterministic identity.",
-    "Only after all r9 controls PASS, execute mut-lookahead, mut-replacement, mut-resample independently and record actual AssertionError, executed ID and process rc.",
-    "Verify every previously accepted module/test byte-identical, since r9 touched only six allowlisted artifacts.",
-    "A15 signal sampler is partial; matched account replay, BH24/bootstrap, 24-grid runner, product A01-A16, paper/live or strategy acceptance remain NOT_ACCEPTED."
+    "Main CIO run actual r10 exact-head discovery and standalone positives. Independently review controlled S1 equality injection versus unmocked 1m API boundary, real S2 positive/equality/volatility synthetic fixtures and Decimal50 reference, causal sample_completed 1m/15m, tail/prefix invariance, 6000 unique deterministic framework sample.",
+    "Only after positives PASS, execute real future-read, duplicate replacement and resample-selected-timestamp mutations as separate subprocesses; record expected AssertionError/test ID/nonzero rc rather than metadata-only failures.",
+    "Verify immutable production signal_features.py blob 721cf9d906688e637836dec8284c55995cfcb36b, matched_signals.py blob 8b62f2a75bdf94dd2f544b9a6820acc7de087c9d and all 68 prior controls/source unchanged; broad CI workflows do not by themselves discover nested tests.",
+    "A15 matched signal sampling remains partial; matched account replay, BH24/bootstrap, operational runner, full A01-A16 and paper/live/product remain NOT_ACCEPTED."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Verify exact branch HEAD, source_head_sha, frozen protected hashes and synthetic source. From engineering/maker_x2 run python3 -m unittest discover -s tests -v; python3 tests/test_signal_features.py control; python3 tests/test_matched_signals.py control. After all truly PASS, run mut-lookahead, mut-replacement, mut-resample as independent subprocesses and inspect named AssertionError/test ID/return code.",
-    "if_pass": "Accept bounded offline r9 causal signal features and shared matched sampling only; A15 account replay and full strategy remain unverified.",
-    "if_fail": "Report exact failing test IDs and trace, request bounded same-PR r9 revision without weakening frozen signal or sampling constants.",
+    "verify_now": "Fetch PR75 final HEAD and source_head_sha. From engineering/maker_x2 execute python3 -m unittest discover -s tests -v, python3 tests/test_signal_features.py control, python3 tests/test_matched_signals.py control in clean fresh subprocesses; confirm actual S1/S2 boundary controls and sample_completed integration. If all PASS, separately execute mut-lookahead, mut-replacement, mut-resample; retain genuine AssertionError and ID/rc records.",
+    "if_pass": "Accept only scoped r10 signal test-acceptance closure and partial A15 sampler after independent execution; no market/strategy/product approval.",
+    "if_fail": "Return precise failure ID/trace and request bounded same-PR correction without changes to frozen formulas/source or weakening assertions.",
     "blockers": []
   }
 }
