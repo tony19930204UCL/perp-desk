@@ -48,7 +48,9 @@ class MakerX2:
     reads an exchange or makes a predictive fill from an unconfirmed order.
     """
 
-    def __init__(self, initial_cash="1000", sl_pct="0.006"):
+    def __init__(self, initial_cash="1000", sl_pct="0.006", rates=None):
+        from scenario_rates import resolve_rates
+        self.rates = resolve_rates(rates)
         self.initial_cash = number(initial_cash, "initial_cash")
         if self.initial_cash < ZERO:
             raise X2Error("negative initial cash")
@@ -92,7 +94,7 @@ class MakerX2:
         self.events.append(event)
 
     def _fee(self, qty, price, liquidity):
-        return qty * price * (MAKER_FEE if liquidity == "maker" else TAKER_FEE)
+        return qty * price * (self.rates.maker_fee if liquidity == "maker" else self.rates.taker_fee)
 
     def entry_fill(self, event_id, ts, bar_index, qty, price):
         if self.phase != "ENTRY":
@@ -178,7 +180,7 @@ class MakerX2:
             ctx.prec = 50
             R = self.realized_gross - self.fees_paid - self.funding_cost
             reference = (R + self.qty * self.E) / (
-                self.qty * (1 + SLIP) * (1 + TAKER_FEE))
+                self.qty * (1 + self.rates.slip) * (1 + self.rates.taker_fee))
         if reference <= ZERO:
             self.audit.append(("be_unavailable", bar_index, str(reference)))
             return
@@ -221,7 +223,7 @@ class MakerX2:
             self._settle(settlement)
         if risk_hit:
             # Stops are modelled at this bar's end, without claiming tick time.
-            px = max(op, self.stop) * (1 + SLIP)
+            px = max(op, self.stop) * (1 + self.rates.slip)
             self._exit("risk-{}".format(bar_index), ts, self.qty, px,
                        "taker", "SL_GAP" if op >= self.stop else "SL")
             return "SL_GAP" if op >= self.stop else "SL"
