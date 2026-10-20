@@ -31,11 +31,14 @@ class ShortExit:
         self.core.entry_qty = replay(entry.cash_start, entry.events)["remaining_qty"]
         self.core.qty = self.core.entry_qty
         self.core.entry_basis = replay(entry.cash_start, entry.events)["entry_basis"]
-        self.core.fees_paid = sum(
-            (number(ev["qty"],"qty",True)*number(ev["price"],"price",True)*
-             (self.rates.maker_fee if ev["liquidity"]=="maker"
-              else self.rates.taker_fee)
-             for ev in entry.events if ev["type"]=="fill"), ZERO)
+        with localcontext() as ctx:
+            ctx.prec = 50
+            self.core.fees_paid = sum(
+                (number(ev["qty"],"qty",True)*
+                 number(ev["price"],"price",True)*
+                 (self.rates.maker_fee if ev["liquidity"]=="maker"
+                  else self.rates.taker_fee)
+                 for ev in entry.events if ev["type"]=="fill"), ZERO)
         self.core.funding_cost = replay(entry.cash_start, entry.events)["funding_cost"]
         self.core.entry_bar = -1
         self.core.arm()
