@@ -368,7 +368,9 @@ class RelayTests(unittest.TestCase):
         bridge = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(bridge)
         graph = {"maker_bridge": {"historical_stage": "historical",
-                                  "reflection_stage": "reflection"},
+                                  "reflection_stage": "reflection",
+                                  "producer": {"item": "C-1037", "job": "sa-0-cc6aa1f2",
+                                               "instruction": "MAKER-V3-GH-CAPACITY-r13"}},
                  "stages": [{"id": "historical", "mode": "adopt"},
                             {"id": "reflection", "mode": "adopt"}]}
         state = {"stage_index": 1, "completed": []}
@@ -381,6 +383,195 @@ class RelayTests(unittest.TestCase):
         self.assertEqual(ready["historical_output_count"], 144)
         self.assertNotIn("trading_conclusion", ready)
 
+
+
+    def maker_installed_fixture(self):
+        """Fully isolated synthetic r13-shaped evidence, never market results."""
+        import shutil
+        profile = self.root / ("maker-profile-" + str(time.monotonic_ns()))
+        scripts = profile / "scripts"
+        scripts.mkdir(parents=True)
+        installed = scripts / "stage_relay.py"
+        shutil.copyfile(MODULE, installed)
+        shutil.copyfile(MODULE.with_name("maker_stage_bridge.py"),
+                        scripts / "maker_stage_bridge.py")
+        base = profile / "stage-relay" / "C0041"
+        self.evidence = base / "evidence"
+        self.evidence.mkdir(parents=True)
+        self.config, self.state = base / "graph.json", base / "state.json"
+        upstream = self.evidence / "upstream.json"
+        relay.atomic_json(upstream, {"synthetic": True, "market_proof": False})
+        relay.atomic_json(self.evidence / "upstream-acceptance.json",
+                          {"stage_id": "upstream", "source_head": self.head,
+                           "input_sha256": self.inp, "decision": "ACCEPTED",
+                           "reviewer": "synthetic-fixture",
+                           "evidence_path": "upstream.json",
+                           "evidence_sha256": relay.digest(upstream.read_bytes())})
+        maker_dir = profile / "maker"
+        maker_dir.mkdir()
+        config = maker_dir / "account.json"
+        inp = maker_dir / "inputs.json"
+        relay.atomic_json(config, {"synthetic": True})
+        relay.atomic_json(inp, {"synthetic": True})
+        output = maker_dir / "output"
+        source_hashes = {"backtest_entry.py": "e" * 64}
+        symbol_hashes = {s: {"bars_sha256": "a" * 64,
+                             "funding_sha256": "b" * 64}
+                         for s in ("BTCUSDT", "ETHUSDT")}
+        runner = maker_dir / "backtest_entry.py"
+        runner.write_text(
+            "import json,sys,hashlib,pathlib\n"
+            "assert sys.argv[1]=='--verify', 'never run historical research in fixture'\n"
+            "args=sys.argv[2:]\n"
+            "assert args[0]=='--config' and args[2]=='--input' and args[4]=='--output'\n"
+            "root=pathlib.Path(args[5]); manifest=root/'manifest.json'\n"
+            "m=json.loads(manifest.read_text())\n"
+            "assert len(m['artifacts'])==289\n"
+            "print(json.dumps({'status':'CHECKSUMS_VERIFIED','artifact_count':289,"
+            "'manifest_sha256':hashlib.sha256(manifest.read_bytes()).hexdigest()}))\n")
+        historical = self.stage("historical", mode="adopt")
+        historical["reports"] = [
+            {"path": "reports/" + key + ".json", "rows": 48,
+             "symbol_cells": {"BTCUSDT": 24, "ETHUSDT": 24}}
+            for key in ("baseline", "delay2", "cost1_5x")]
+        reflection = self.stage("reflection", mode="adopt")
+        graph = {"schema_version": 1, "kind": "stage_relay",
+                 "evidence_root": str(self.evidence),
+                 "bootstrap": {"acceptance_path": "upstream-acceptance.json",
+                               "stage_id": "upstream", "source_head": self.head,
+                               "input_sha256": self.inp}, "stages": [historical, reflection]}
+        argv = [sys.executable, str(runner), "--run", "--config", str(config),
+                "--input", str(inp), "--output", str(output)]
+        graph["maker_bridge"] = {
+            "historical_stage": "historical", "reflection_stage": "reflection",
+            "producer": {"item": "C-1037", "job": "sa-0-cc6aa1f2",
+                         "instruction": "MAKER-V3-GH-CAPACITY-r13"},
+            "capacity_acceptance_path": "acceptance/capacity.json",
+            "source_sha256": source_hashes,
+            "input_manifest_sha256": relay.digest(inp.read_bytes()),
+            "config_sha256": relay.digest(config.read_bytes()),
+            "symbol_hashes": symbol_hashes, "config_path": str(config),
+            "input_path": str(inp), "output_dir": str(output), "cwd": str(maker_dir),
+            "run_argv": argv, "verify_argv": argv[:2] + ["--verify"] + argv[3:]}
+        relay.atomic_json(self.config, graph)
+        relay.init(self.config, self.state)
+        return installed, graph
+
+    def maker_capacity_accept(self, graph):
+        bridge = graph["maker_bridge"]
+        gh = relay.configuration(self.config)[1]
+        relay.atomic_json(self.evidence / "acceptance/capacity.json",
+                          {"decision": "ACCEPTED", "reviewer": "synthetic independent fixture",
+                           "stage": "historical", "source_head": self.head,
+                           "input_sha256": self.inp, "graph_sha256": gh,
+                           "input_manifest_sha256": bridge["input_manifest_sha256"],
+                           "config_sha256": bridge["config_sha256"],
+                           "source_sha256": bridge["source_sha256"],
+                           "symbol_hashes": bridge["symbol_hashes"]})
+
+    def maker_outputs(self, graph):
+        """Real BoundedReport inventory and compact-row shape, synthetic values."""
+        import itertools
+        out = Path(graph["maker_bridge"]["output_dir"])
+        out.mkdir()
+        inventory = {}
+        cells = []
+        for sym, frame, k, ttl, exit_name in itertools.product(
+                ("ETHUSDT", "BTCUSDT"), (1, 15), (".25", ".50"),
+                (2, 5), ("X1", "X2", "X3")):
+            cells.append(f"{sym}:{frame}m:{k}:{ttl}:{exit_name}")
+        for directory in ("cells", "delay2", "cost1_5x"):
+            for index, cell_id in enumerate(cells):
+                symbol, frame, k, ttl, exit_name = cell_id.split(":")
+                for side in ("strategy", "matched"):
+                    name = f"{directory}/{index:02d}_{side}.json"
+                    path = out / name
+                    relay.atomic_json(path, {"symbol": symbol, "framework": int(frame[:-1]),
+                                             "k": k, "ttl": int(ttl), "exit": exit_name,
+                                             "matched": side == "matched",
+                                             "synthetic_only": True, "events": []})
+                    inventory[name] = relay.digest(path.read_bytes())
+        compact = [{"cell_id": name, "metrics": {"synthetic_only": True},
+                    "matched_status": "READY"} for name in cells]
+        relay.atomic_json(out / "results.json",
+                          {"cell_count": 48, "cells": compact, "delay2_count": 48,
+                           "delay2_cells": compact, "cost1_5x_count": 48,
+                           "cost1_5x_cells": compact,
+                           "samplers": {k: {"synthetic_only": True} for k in
+                                        ("ETHUSDT:1", "ETHUSDT:15",
+                                         "BTCUSDT:1", "BTCUSDT:15")},
+                           "classification": "EXPLORATORY_NOT_ACCEPTED"})
+        inventory["results.json"] = relay.digest((out / "results.json").read_bytes())
+        relay.atomic_json(out / "manifest.json",
+                          {"research_status": "EXPLORATORY_UNACCEPTED",
+                           "input_manifest_sha256": graph["maker_bridge"]["input_manifest_sha256"],
+                           "config_sha256": graph["maker_bridge"]["config_sha256"],
+                           "source_sha256": graph["maker_bridge"]["source_sha256"],
+                           "input": {k: dict(v) for k, v in
+                                     graph["maker_bridge"]["symbol_hashes"].items()},
+                           "artifacts": inventory})
+        self.assertEqual(len(inventory), 289)
+        return out
+
+    def test_maker_installed_noarg_waits_for_real_source(self):
+        installed, graph = self.maker_installed_fixture()
+        for _ in range(2):
+            code, result = self.noarg(installed)
+            self.assertEqual(code, 0)
+            self.assertEqual(result["action"], "WAITING_CAPACITY_ACCEPTANCE")
+            self.assertEqual(result["capacity"]["producer"]["job"], "sa-0-cc6aa1f2")
+            self.assertIsNone(relay.raw_json(self.state)["owner"])
+        self.assertEqual(relay.raw_json(self.state)["attempts"], {})
+
+    def test_maker_verify_all_three_scenarios_and_guards(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "maker_stage_bridge", MODULE.with_name("maker_stage_bridge.py"))
+        bridge = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bridge)
+        _, graph = self.maker_installed_fixture()
+        maker = graph["maker_bridge"]
+        self.maker_outputs(graph)
+        rows, manifest, result = bridge.verified_rows(maker)
+        self.assertEqual([len(s) for s in rows], [48, 48, 48])
+        self.assertEqual(len({r["cell_id"] for r in rows[0]}), 48)
+        self.assertEqual(sum(r["symbol"] == "BTCUSDT" for r in rows[2]), 24)
+        self.assertEqual(len(manifest["artifacts"]), 289)
+        self.assertEqual(result["classification"], "EXPLORATORY_NOT_ACCEPTED")
+        output = Path(maker["output_dir"])
+        original = (output / "results.json").read_bytes()
+        for mutation in ("duplicate", "missing", "wrong_hash"):
+            report = json.loads(original)
+            if mutation == "duplicate":
+                report["delay2_cells"][1]["cell_id"] = report["delay2_cells"][0]["cell_id"]
+                relay.atomic_json(output / "results.json", report)
+            elif mutation == "missing":
+                (output / "delay2/00_matched.json").unlink()
+            else:
+                (output / "cost1_5x/00_strategy.json").write_text("{}")
+            with self.assertRaises(relay.RelayError):
+                bridge.verified_rows(maker)
+            if mutation == "duplicate":
+                (output / "results.json").write_bytes(original)
+            elif mutation == "missing":
+                self.maker_outputs_reset_single(graph, "delay2/00_matched.json")
+            else:
+                self.maker_outputs_reset_single(graph, "cost1_5x/00_strategy.json")
+        self.assertEqual([len(s) for s in bridge.verified_rows(maker)[0]], [48] * 3)
+
+    def maker_outputs_reset_single(self, graph, relative):
+        """Restore exactly one synthetic raw cell without changing manifest bytes."""
+        directory, filename = relative.split("/")
+        index = int(filename[:2])
+        result = relay.raw_json(Path(graph["maker_bridge"]["output_dir"]) / "results.json")
+        key = {"cells": "cells", "delay2": "delay2_cells",
+               "cost1_5x": "cost1_5x_cells"}[directory]
+        symbol, frame, k, ttl, exit_name = result[key][index]["cell_id"].split(":")
+        relay.atomic_json(Path(graph["maker_bridge"]["output_dir"]) / relative,
+                          {"symbol": symbol, "framework": int(frame[:-1]),
+                           "k": k, "ttl": int(ttl), "exit": exit_name,
+                           "matched": filename.endswith("_matched.json"),
+                           "synthetic_only": True, "events": []})
 
 
 if __name__ == "__main__":
