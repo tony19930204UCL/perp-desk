@@ -1,5 +1,6 @@
 """48 symbol-cell offline orchestration: same account logic for placebo."""
 from itertools import product
+import hashlib
 from matched_signals import select_matched
 from signal_features import eligible_decisions
 from market_replay import replay_cell
@@ -16,10 +17,12 @@ SYMBOLS=("ETHUSDT","BTCUSDT")
 
 
 def run_grid(dataset, account_config, start, end, sample_count=6000,
-             delay_minutes=0, eligible_cache=None, rates=None):
+             delay_minutes=0, eligible_cache=None, rates=None,
+             sample_cache=None):
     cells=[]
     sources={}
     cache={} if eligible_cache is None else eligible_cache
+    selected={} if sample_cache is None else sample_cache
     for symbol in SYMBOLS:
         if symbol not in dataset:
             raise X2Error("missing symbol dataset "+symbol)
@@ -30,9 +33,15 @@ def run_grid(dataset, account_config, start, end, sample_count=6000,
             if key not in cache:
                 cache[key]=eligible_decisions(bars,frame)
             eligible=cache[key]
-            selection=select_matched(eligible,frame,start,end,
-                                     count=sample_count)
-            sources[symbol+":"+str(frame)]=selection
+            if key not in selected:
+                selected[key]=select_matched(eligible,frame,start,end,
+                                             count=sample_count)
+            selection=selected[key]
+            tagged=dict(selection)
+            tagged["symbol_universe_sha256"]=hashlib.sha256(
+                (symbol+":"+selection["source_universe_sha256"])
+                .encode("ascii")).hexdigest()
+            sources[symbol+":"+str(frame)]=tagged
             for k,ttl,exit_style in product(KS,TTLS,EXITS):
                 cell_id=f"{symbol}:{frame}m:{k}:{ttl}:{exit_style}"
                 real=replay_cell(symbol,bars,funding,frame,k,ttl,exit_style,
