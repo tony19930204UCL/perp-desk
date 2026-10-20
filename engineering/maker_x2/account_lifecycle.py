@@ -160,8 +160,12 @@ class OfflineAccount:
             return
         if len(state["episodes"]) > self.counted_episodes:
             net = state["episodes"][-1]["net"]
-            self.day_realized += net
-            self.loss_streak = self.loss_streak + 1 if net < Z else 0
+            had_fill = any(e["type"] == "fill" and e["side"] == "sell"
+                           and e["id"].startswith(self.entry.signal_id + ":")
+                           for e in self.events)
+            if had_fill:
+                self.day_realized += net
+                self.loss_streak = self.loss_streak + 1 if net < Z else 0
             self.counted_episodes = len(state["episodes"])
         self.entry = None
         self.exit = None
