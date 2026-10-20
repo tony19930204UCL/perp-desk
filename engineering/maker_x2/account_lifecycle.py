@@ -297,8 +297,12 @@ class OfflineAccount:
                     qty=str(state["qty"]), margin_writeoff=str(liq["margin_writeoff"]),
                     fee=str(liq["fee"]), reason="LIQ_PROXY")
                 result = "LIQ_PROXY"
-        if self.ledger()["qty"] == Z or result in ("LIQ_PROXY", "CLOSED_SL", "CLOSED",
-                                         "POST_ONLY_REJECT", "EXPIRED"):
+        # A zero-qty pending order still owns its reserved slot until the
+        # expiry bar (or an explicit terminal cancellation/rejection).
+        if result in ("LIQ_PROXY", "CLOSED_SL", "CLOSED",
+                      "POST_ONLY_REJECT", "EXPIRED") or (
+                          self.ledger()["qty"] == Z
+                          and self.entry.status not in ("PENDING", "PARTIAL")):
             self._close_episode(ts)
         self._valuation(close, ts)
         return result
