@@ -242,10 +242,10 @@ class MakerX2:
             limit = self.targets[order]
             if amount > self.orders[order] or amount > self.qty:
                 raise X2Error("Maker overfill")
-            if price > limit or lo >= limit * (1 - MAKER_FEE):
+            if price > limit or lo >= limit:
                 raise X2Error("unavailable maker execution / touch only")
-            self._exit(candidate["id"], ts, amount, price, "maker", order)
             self.orders[order] -= amount
+            self._exit(candidate["id"], ts, amount, price, "maker", order)
             if order == "tp1" and self.first_tp_bar is None:
                 self.first_tp_bar = bar_index
         return self.phase
