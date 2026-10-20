@@ -24,13 +24,20 @@ Report JSON fields: stage, source_head, input_sha256, graph_sha256, rows array. 
 
 State records stage/source/input/config/report hashes, owner PID/boot/start/lease, exact argv, product launch timestamp, process log, exit, row count, accepted receipt, pending stage and events. accepted_to_process_seconds records actual accepted-completion-to-next-product-start latency; no zero-idle guarantee.
 
-## Supervisor pre-run adapter (operator-owned, not installed here)
+## R2: official Hermes cron JOB --script (NO operator source edits)
 
-Inside EXISTING official cron script under <profile>/scripts, before the model invocation, operator adds unconditional pre-run line:
+Install the **unchanged** engineering/stage_relay.py bytes as the executable source file at EXACTLY `<active-profile>/scripts/stage_relay.py`. This is a standard file copy/install performed by the authorized operator, **not** new code to write into an existing script. The module has a full **NO-ARG** entrypoint; it infers its profile exclusively from that script's physical parent; rejects symlink entrypoints, paths other than `scripts/stage_relay.py`, and never searches HOME or falls back to any default profile. Install the verified graph at `<active-profile>/stage-relay/C0041/graph.json`, the initialized state at `<active-profile>/stage-relay/C0041/state.json`, and all evidence under `<active-profile>/stage-relay/C0041/evidence/`. The graph evidence_root must equal the exact installed evidence directory. Installing only the module without a graph is permitted and emits `NOT_CONFIGURED` with a model/operator decision needed **every due run**. Do NOT automatically init an unreviewed graph or synthesize acceptance.
 
-    python3 /ABSOLUTE/ACTIVE_PROFILE/engineering/stage_relay.py tick --config /ABSOLUTE/ACTIVE_PROFILE/stage-relay/C0041/graph.json --state /ABSOLUTE/ACTIVE_PROFILE/stage-relay/C0041/state.json
+The fixed terminal inbox (populated by the independently trusted parent/operator, not by relay) is:
 
-Pass stdout plus exit status to the model EVERY DUE RUN, even unchanged READY_MISSING_OWNER / WAITING_ADOPTION / WAITING_RECEIPT / BLOCKED / FAILED / RUNNING. Do not filter unchanged output or use log-only changed-message suppression. Wire actual trusted parent completion receiver to complete with receipt+acceptance. Do not modify model selector, scheduler JSON or auto_accept. Operator uses official cron list, authorized edit and list/readback to verify exact script path and schedule. A cron schedule alone is not a continuation mechanism.
+- `<active-profile>/stage-relay/C0041/evidence/inbox/<stage-id>.receipt.json`
+- `<active-profile>/stage-relay/C0041/evidence/inbox/<stage-id>.acceptance.json`
+
+Each invocation validates receipt stage/source/input/config hashes, exact owner token/PID/start/boot, observed exit0 for managed process (trusted terminal exit0 for adopted r12), report file hashes, exact row counts, 24 BTC plus 24 ETH unique cells for historical, then **separately** checks explicit independent accepted decision/reviewer and receipt hash. Missing receipt/acceptance, hash mismatch, unexpected stage, failure, UNKNOWN, and REFUSED cannot advance. Fixed inbox names are per current stage; duplicate receipts remain in place and are consumed once by durable state. The complete function starts the next eligible configured executor under the same state lock; simultaneous cron/parent calls cannot start another. Stage source/identity/lease, process PID+start/argv, report count, blocker/reason and ready status are printed as JSON on *every* no-arg invocation, including unchanged responses. If a terminal inbox is invalid, the supervisor returns INBOX_BLOCKED and refuses dispatch.
+
+Authorized operator must use the official `hermes cron list` -> `hermes cron edit JOB --script stage_relay.py` -> `hermes cron list` and the official job readback mechanism to verify the target job's script is exactly `stage_relay.py`. Preserve existing prompt, cadence, model, skills, permissions and safety controls. Do not edit scheduler JSON. **The model receives each due run's full printed JSON**, not a changed-output-only watcher. Do not alter any separate job or install script here. The requested edit changes script routing only; operator must verify it does not accidentally replace required preexisting supervisor behavior. If that cannot be safely preserved, stop and report integration blocker rather than overwriting existing work. No guarantee of zero idle.
+
+Real Maker configuration may remain unconfigured pending independent acceptance of r12 source/input and executors. The module does not invent those commands or true market performance. Offline synthetic drill now invokes the actual copied installed `scripts/stage_relay.py` **without arguments** and drops synthetic accepted inbox pairs after each genuine subprocess, causing exactly-once dispatch through the no-arg consumer; it is never market/performance proof.
 
 ## Isolated synthetic real-subprocess drill
 
@@ -42,4 +49,4 @@ It creates synthetic source/input identifiers, bootstrap proof, four real launch
 
 Offline tests: python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v
 
-No shell/tests/cron/install execution performed by this source-only delivery; tests are NOT_RUN until verified independently.
+Operator reports r1 nine tests rc0 and four-stage synthetic CLI drill rc0 (not independently rerun in this r2 conversation). R2 additional tests and exact-head CI remain NOT_RUN here. No shell/cron/install execution performed by this source-only delivery.
