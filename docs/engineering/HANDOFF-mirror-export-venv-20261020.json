@@ -1,1 +1,39 @@
-{"placeholder":true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 74,
+  "branch": "fix/mirror-export-venv-20261020",
+  "task_id": "MIRROR-VENV-FIX",
+  "instruction_id": "MIRROR-VENV-FIX-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "799df38e32124770ee465d5f0b69e2b3f7e3781f",
+  "summary": "Added exact .venv, venv and __pypackages__ to existing lab inventory SKIP_DIRS before symlink checks, with real collect regression coverage for both visibility modes.",
+  "changed_files": [
+    "automation/review_sync.py",
+    "automation/tests/test_review_sync_dependency_exclusions.py",
+    "docs/engineering/HANDOFF-mirror-export-venv-20261020.json"
+  ],
+  "tests": [
+    {
+      "command": "umask 0022; python3 -m unittest discover -s automation/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "GitHub connector only; no test execution performed."
+    },
+    {
+      "command": "umask 0002; python3 -m unittest discover -s automation/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "GitHub connector only; no test execution performed."
+    }
+  ],
+  "remaining_work": [
+    "Run focused and existing automation tests under both requested umasks",
+    "Verify exact source SHA and CI results independently"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Verify branch source commit 799df38e32124770ee465d5f0b69e2b3f7e3781f, focused and full automation suite under umask 0022 and 0002, and exact-head CI.",
+    "if_pass": "Independently accept and install the actual deployed entrypoint under Main authority.",
+    "if_fail": "Return exact failing command and trace for bounded revision; do not deploy.",
+    "blockers": []
+  }
+}
