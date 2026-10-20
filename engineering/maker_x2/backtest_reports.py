@@ -117,7 +117,7 @@ def verify_run(directory):
         raise X2Error("missing results")
     with open(root/"results.json", encoding="utf-8") as handle:
         results = json.load(handle)
-    if "samplers" in results:
+    if manifest.get("research_status") == "EXPLORATORY_UNACCEPTED":
         if (results.get("cell_count") != 48 or
             results.get("delay2_count") != 48 or
             results.get("cost1_5x_count") != 48):
