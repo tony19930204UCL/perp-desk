@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
-from decimal import Decimal as D
+from decimal import Decimal as D, localcontext
 from pathlib import Path
 
 sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -196,6 +196,25 @@ class Control(unittest.TestCase):
         self.assertEqual(stress["fees"],D(".21169545"))
         self.assertEqual(stress["reserved"],D("0"))
         self.assertEqual(stress["qty"],D("0"))
+
+    def test_explicit_margin_leverage_sets_actual_candidate_notional(self):
+        history=minutes(300)
+        record={"framework_minutes":1,"signal_time":290*60000,
+                "triggered":True,"signal_high":D("100"),
+                "signal_close":D("100"),"atr14":D("1"),
+                "vwap60":D("99"),"signal_id":"sized",
+                "signal_type":"S1"}
+        out=replay_cell("FICTION",history,[],1,".25",2,"X2",
+                        cfg(),290*60000,294*60000,eligible=[record])
+        sells=[e for e in out["events"]
+               if e["type"]=="fill" and e["side"]=="sell"]
+        self.assertEqual(len(sells),1)
+        self.assertEqual(D(sells[0]["price"]),D("100.25"))
+        with localcontext() as ctx:
+            ctx.prec=50
+            expected=D("250")/D("100.25")
+        self.assertEqual(D(sells[0]["qty"]),expected)
+        self.assertEqual(D(out["ledger"]["fees"])>=D("0"),True)
 
     def test_samebar_counterfactual_does_not_overwrite_primary_liq(self):
         observed=minutes(300)
