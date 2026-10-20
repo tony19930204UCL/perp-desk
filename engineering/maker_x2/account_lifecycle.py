@@ -180,14 +180,36 @@ class OfflineAccount:
     def bar(self, bar, entry_qty=None, maker_fill=False, settlements=()):
         op, high, low, close = closed_bar(bar)
         ts = bar["ts"] + MINUTE
-        if (self.exit is not None and self.exit.last_bar >= 0 and
-                bar["ts"] != self.exit.last_bar + MINUTE):
+        gap = (
+            self.exit is not None and self.exit.last_bar >= 0 and
+            bar["ts"] != self.exit.last_bar + MINUTE
+        ) or (
+            self.exit is None and self.entry is not None and
+            bar["ts"] != self.entry.next_ts
+        )
+        if gap:
             self.stale = True
-            return "GAP"
-        if (self.exit is None and self.entry is not None and
-                bar["ts"] != self.entry.next_ts):
-            self.stale = True
-            self.entry.status = "GAP"
+            state = self.ledger()
+            if state["qty"] > Z:
+                entry_price = state["basis"] / state["qty"]
+                liq = liquidation_proxy(entry_price, high, state["qty"],
+                                        self.entry.qty_target, self.allocation,
+                                        self.liq_pct, self.liq_fee)
+                if liq is not None:
+                    self._emit("liquidation", "gap-liq-"+str(ts), ts,
+                               qty=str(state["qty"]),
+                               margin_writeoff=str(liq["margin_writeoff"]),
+                               fee=str(liq["fee"]), reason="LIQ_PROXY")
+                    self._close_episode(ts)
+                    return "LIQ_PROXY"
+                stop = entry_price * D("1.006")
+                if high >= stop:
+                    price = max(op, stop) * D("1.0002")
+                    self._emit("fill", "gap-risk-"+str(ts), ts,
+                               side="buy", qty=str(state["qty"]),
+                               price=str(price), liquidity="taker")
+                    self._close_episode(ts)
+                    return "CLOSED_SL"
             return "GAP"
         self._roll_day(ts)
         if self.entry is None and self.exit is None:
