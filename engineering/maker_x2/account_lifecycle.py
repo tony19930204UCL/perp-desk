@@ -41,6 +41,8 @@ class OfflineAccount:
         self.day_start = self.capital
         self.day_realized = Z
         self.counted_episodes = 0
+        self.day_halt_triggers = set()
+        self.streak_halt_latched = False
         self.last_equity = self.capital
         self.last_mark = None
         self.stale = False
@@ -58,14 +60,27 @@ class OfflineAccount:
         self.events.append(event)
 
     def _sync(self, source):
-        # Import only new executed events, never synthesize fills.
+        # Scope original source IDs by episode while retaining provenance.
+        prefix = self.entry.signal_id + ":" if self.entry else ""
         ids = {e["id"] for e in self.events}
-        for e in source:
-            if e["id"] in ids:
+        for event in source:
+            eid = prefix + event["id"]
+            if eid in ids:
                 continue
-            self._emit(e["type"], e["id"], e["ts"], **{
-                k: v for k, v in e.items() if k not in ("type", "id", "ts", "seq")})
-            ids.add(e["id"])
+            kind = event["type"]
+            old_qty = self.ledger()["qty"]
+            extra = {k: v for k, v in event.items()
+                     if k not in ("type", "id", "ts", "seq")}
+            self._emit(kind, eid, event["ts"], source_id=event["id"], **extra)
+            ids.add(eid)
+            if kind == "fill" and event["side"] == "buy" and old_qty > Z:
+                fraction = number(event["qty"], "buy_qty", True) / (
+                    self.entry.qty_target)
+                release = min(self.ledger()["reserved"],
+                              self.allocation * fraction)
+                if release > Z:
+                    self._emit("release", "margin:"+eid, event["ts"],
+                               amount=str(release))
 
     def _roll_day(self, ts):
         date = utc_day(ts)
@@ -79,13 +94,18 @@ class OfflineAccount:
             self.halt_until = ts + self.halt_ms
 
     def _risk_limits(self, ts):
-        state = self.ledger()
         pnl = self.last_equity - self.day_start
-        if (pnl <= -self.daily_limit
-                or self.day_realized <= -self.daily_limit
-                or self.loss_streak >= self.streak_limit):
-            if self.halt_until is None or ts >= self.halt_until:
+        if ((pnl <= -self.daily_limit or
+             self.day_realized <= -self.daily_limit)
+                and self.day not in self.day_halt_triggers):
+            self.day_halt_triggers.add(self.day)
+            self._halt(ts)
+        if self.loss_streak >= self.streak_limit:
+            if not self.streak_halt_latched:
                 self._halt(ts)
+                self.streak_halt_latched = True
+        else:
+            self.streak_halt_latched = False
 
     def _valuation(self, mark, ts):
         self._roll_day(ts)
@@ -176,6 +196,33 @@ class OfflineAccount:
                 self._emit("liquidation", "liq-"+str(ts), ts,
                            qty=str(qty), margin_writeoff=str(liq["margin_writeoff"]),
                            fee=str(liq["fee"]), reason="LIQ_PROXY")
+                self._close_episode(ts)
+                self._valuation(close, ts)
+                return "LIQ_PROXY"
+        # Same-entry-bar OHLC unknown ordering: LIQ outranks hard SL.
+        # Only admit an actual fictional Maker entry when delivery permits it
+        # and the 2bp penetration is observed, then write off the filled slice.
+        if (self.exit is None and self.entry is not None and entry_qty is not None
+                and self.entry.status in ("PENDING", "PARTIAL")):
+            ep = self.entry
+            amount = number(entry_qty, "entry_qty", True)
+            price = ep.limit
+            delivery_ok = not (bar["ts"] == ep.signal_time and op >= price)
+            threshold = price * (1 + self.liq_pct)
+            if (delivery_ok and amount <= ep.remaining
+                    and high >= price * D("1.0002") and high >= threshold):
+                if ep.x1_vwap is not None and ep._x1_net(ep.filled + amount) <= Z:
+                    raise X2Error("X1 entry economic gate")
+                self._emit("fill", ep.signal_id+":liq-entry:"+str(ts), ts,
+                           side="sell", qty=str(amount), price=str(price),
+                           liquidity="maker")
+                claim = liquidation_proxy(price, high, amount,
+                                           ep.qty_target, self.allocation,
+                                           self.liq_pct, self.liq_fee)
+                self._emit("liquidation", ep.signal_id+":liq:"+str(ts), ts,
+                           qty=str(amount),
+                           margin_writeoff=str(claim["margin_writeoff"]),
+                           fee=str(claim["fee"]), reason="LIQ_PROXY")
                 self._close_episode(ts)
                 self._valuation(close, ts)
                 return "LIQ_PROXY"
