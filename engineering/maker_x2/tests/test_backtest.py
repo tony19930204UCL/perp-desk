@@ -17,6 +17,7 @@ from backtest_controls import self_test
 from backtest_reports import persist_run, verify_run
 from backtest_entry import main
 import grid_runner
+from scenario_rates import BASE, SENSITIVITY
 from account_lifecycle import OfflineAccount
 from account_ledger import replay_account
 from maker_exit_lab import X2Error
@@ -151,6 +152,47 @@ class Control(unittest.TestCase):
         self.assertEqual(independent["episodes"][-1]["net"],D("2.4203"))
         self.assertFalse(account.snapshot()["slot"])
         self.assertEqual([e["type"] for e in account.events].count("fill"),2)
+
+    def test_baseline_differential_and_1_5x_real_account_cash(self):
+        def execute(rates=None):
+            a=OfflineAccount("1000","50","5","5",2,"24",".0145",".0005",
+                             rates=rates)
+            self.assertEqual(a.submit("FICTION","case",0,"100","100","1",
+                             ".25",2,"2","X1",signal_vwap="99"),"PENDING")
+            a.bar({"ts":0,"open":"100","high":"100.27005",
+                   "low":"99","close":"100","closed":True},entry_qty="2")
+            a.bar({"ts":60000,"open":"100","high":"100.1",
+                   "low":"98.9","close":"99","closed":True},
+                  maker_fill=True)
+            return a
+        default=execute()
+        explicit=execute(BASE)
+        stressed=execute(SENSITIVITY)
+        self.assertEqual(default.events,explicit.events)
+        self.assertEqual(default.ledger(),explicit.ledger())
+        self.assertEqual(default.ledger()["cash"],D("1002.4203"))
+        self.assertEqual(stressed.ledger()["gross"],D("2.5"))
+        self.assertEqual(stressed.ledger()["fees"],D(".11955"))
+        self.assertEqual(stressed.ledger()["cash"],D("1002.38045"))
+        self.assertEqual(stressed.ledger()["qty"],D("0"))
+
+    def test_real_48_grid_baseline_and_full_placebo(self):
+        # No patched signal, grid, sampler or account: 290 15m closed
+        # buckets provide one eligible 15m matched time per symbol.
+        data=minutes(15*290)
+        dataset={symbol:{"bars":data,"funding":[]}
+                 for symbol in ("ETHUSDT","BTCUSDT")}
+        report=grid_runner.run_grid(dataset,cfg(),289*15*60000,
+                  291*15*60000,sample_count=1)
+        self.assertEqual(report["cell_count"],48)
+        self.assertEqual(len(report["samplers"]),4)
+        self.assertTrue(all(source["status"]=="READY"
+                            for source in report["samplers"].values()))
+        self.assertTrue(all(cell["matched"] is not None
+                            for cell in report["cells"]))
+        self.assertTrue(all("ledger" in cell["strategy"] and
+                            "ledger" in cell["matched"]
+                            for cell in report["cells"]))
 
     def test_reports_verify_raw_artifact_tampering(self):
         with tempfile.TemporaryDirectory() as d:
