@@ -77,7 +77,9 @@ class ShortEntry:
 
     def __init__(self, signal_id, signal_time, high, close, atr, k,
                  ttl, qty, initial_cash="1000", x1_vwap=None,
-                 x1_known_funding_cost=None):
+                 x1_known_funding_cost=None, rates=None):
+        from scenario_rates import resolve_rates
+        self.rates = resolve_rates(rates)
         if not isinstance(signal_id, str) or not signal_id:
             raise X2Error("invalid signal id")
         if type(signal_time) is not int or signal_time < 0:
@@ -144,8 +146,8 @@ class ShortEntry:
             cost = (ZERO if self.x1_known_funding_cost is None
                     else self.x1_known_funding_cost)
             return ((self.limit - self.x1_vwap) * proposed_qty
-                    - self.limit * proposed_qty * MAKER_FEE
-                    - self.x1_vwap * proposed_qty * MAKER_FEE - cost)
+                    - self.limit * proposed_qty * self.rates.maker_fee
+                    - self.x1_vwap * proposed_qty * self.rates.maker_fee - cost)
 
     def submit_again(self, signal_id):
         if signal_id in self.seen_signals:
@@ -172,7 +174,7 @@ class ShortEntry:
             stop = self.basis / self.filled * (1 + SL_PCT)
             if hi < stop:
                 return False
-            price = max(op, stop) * (1 + SLIP)
+            price = max(op, stop) * (1 + self.rates.slip)
         self._event("entry-risk-" + str(ts), ts, "fill",
                     side="buy", qty=str(self.filled), price=str(price),
                     liquidity="taker")
