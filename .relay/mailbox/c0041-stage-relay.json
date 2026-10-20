@@ -4,45 +4,45 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "C0041-STAGE-RELAY",
-  "instruction_id": "C0041-STAGE-r3",
+  "instruction_id": "C0041-STAGE-r4",
   "status": "WAITING_CI",
-  "source_head_sha": "5c873b33960d25cde50e986b40293a4c4be0ebed",
-  "summary": "Bounded tests-only fixture correction. setup_graph now takes keyword-only kind default synthetic_stage_relay for all original direct CLI/unit tests. installed no-arg graph fixtures explicitly use stage_relay, including failure scenario; existing 15 tests preserved without skips or weaker safety assertions. Documentation clarifies isolated synthetic fixture versus real installed graph contract. Production module, graph example, CI and all other files unchanged.",
+  "source_head_sha": "4ea1e4acce0a796dd3612dc663f7cd219c02b00b",
+  "summary": "Final bounded tests-only fixture repair: installed() now accepts distinct profile_name, and UNKNOWN/REFUSED subtests each construct separate full temporary installed profiles (scripts, graph, state, evidence, logs, inbox) rather than deleting select files and reusing exclusive worker logs. Preserved all 15 test methods, genuine subprocesses, terminal receipt and BLOCKED/no-resend assertions, production stage_relay.py and all graph/CI/docs unchanged.",
   "changed_files": [
     "engineering/tests/test_stage_relay.py",
-    "engineering/STAGE_RELAY.md",
     ".relay/mailbox/c0041-stage-relay.json"
   ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
       "result": "NOT_RUN",
-      "evidence": "No shell or test execution in r3; user supplied R2 push 39509063416 and PR 39509070136 both failed 15 tests (2 FAIL/4 ERROR), due to fixture kind mismatch. All 15 test methods remain in source."
+      "evidence": "No shell or tests run in r4. User reports r3 local 15: 14 PASS, 1 ERROR (REFUSED subtest) and exact-head PR CI 39510140514 plus push CI 39510134866 both failed the same fixture collision. All 15 test method names remain."
     },
     {
       "command": "python3 engineering/stage_relay.py demo --dir /ABSOLUTE/ACTIVE_PROFILE/stage-relay/C0041/drill-UNIQUE",
       "result": "NOT_RUN",
-      "evidence": "No r3 execution; operator separately reports R2 installed noarg synthetic drill rc0 DONE four stages (1,2,48,1) with hash-mismatch guard."
+      "evidence": "No r4 demo run. Operator separately reported installed noarg four-subprocess synthetic drill rc0 with 1/2/48/1 and mismatch guard; this is not Maker evidence."
     },
     {
-      "command": "Exact-head PR76 push/pull_request CI after r3",
+      "command": "Both NEW exact-head push and pull_request CI on r4 HEAD",
       "result": "NOT_RUN",
-      "evidence": "No current r3 CI conclusion checked or claimed; wait for both exact-head checks."
+      "evidence": "No post-r4 CI conclusions observed or claimed; independent operator must wait for both."
     }
   ],
   "remaining_work": [
-    "Operator independently run all 15 r3 tests and installed noarg subprocess drill; retain output and verify all existing safety assertions.",
-    "Wait for both exact-head push and pull_request CI success, otherwise report precise failures without further unauthorized revisions.",
-    "No installation, active profile cron edits or actual Maker performance/real replay or product-chain acceptance; product NOT_ACCEPTED."
+    "Operator independently run 15 shipped tests and installed noarg synthetic demo, retain full logs and validate protected production/example/CI blobs byte-identical.",
+    "Wait for both new exact-head PR/push CI conclusions. This r4 is final; on any failure stop and route to Main CIO for decision, no automatic r5.",
+    "Only after independent source acceptance may operator authorize local installation and official cron script-only edit/readback; no installed workspace accessed.",
+    "No real Maker account/historical matched replay or product chain accepted."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run 15-test unittest command and installed noarg subprocess demo; check both r3 exact-head push and pull_request CI against mailbox head. Confirm production engineering/stage_relay.py and graph/CI blob SHAs unchanged.",
-    "if_pass": "Approve only scoped r3 test fixture correction, then independently authorize operator installation separately; do not infer Maker acceptance.",
-    "if_fail": "Return exact failing test names/logs and HEAD; stop at this single bounded r3 correction without silent replay.",
+    "verify_now": "Verify PR76 r4 pre-mailbox source HEAD and final mailbox HEAD, run 15 shipped tests and installed noarg four-stage demo, verify protected blobs and both new exact-head CI checks.",
+    "if_pass": "Accept only final fixture repair in PR76 after both exact-head CIs and safety tests pass; any installation requires separate authorized operator action.",
+    "if_fail": "STOP final r4 route; return exact error and evidence for new parent decision. Do not automatically request/perform r5.",
     "blockers": [
-      "R3 tests and exact-head CI NOT_RUN by assistant",
-      "No live installation or verified real executor/acceptance contracts",
+      "R4 tests and CI NOT_RUN by assistant",
+      "No authorized live installation/cron edit/readback",
       "Whole Maker product NOT_ACCEPTED"
     ]
   }
