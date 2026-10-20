@@ -127,28 +127,42 @@ def verify_argv(spec):
     run, verify = spec.get("run_argv"), spec.get("verify_argv")
     relay.validate_argv(run)
     relay.validate_argv(verify)
-    def python_child(argv, mode):
-        # An actual child may be unbuffered; never accept arbitrary flags,
-        # wrappers, shell commands, or an alternate business entrypoint.
-        prefix = 3 if len(argv) == 10 and argv[1] == "-u" else 2
-        demand(len(argv) == prefix + 7 and argv[prefix:] ==
-               [mode, "--config", spec.get("config_path"),
-                "--input", spec.get("input_path"), "--output", spec.get("output_dir")],
-               "Maker CLI has unsupported flag or incorrect mode/config/input/output")
-        interpreter, script = argv[0], argv[prefix - 1]
-        demand(Path(interpreter).is_absolute() and Path(script).is_absolute() and
-               Path(script).name == "backtest_entry.py",
-               "absolute Maker Python child and backtest_entry.py required")
-        return interpreter, script
-    demand(python_child(run, "--run") == python_child(verify, "--verify"),
-           "Maker run/verify interpreter or source entrypoint mismatch")
     for name in ("config_path", "input_path", "output_dir", "cwd"):
         demand(isinstance(spec.get(name), str) and Path(spec[name]).is_absolute(),
                "absolute local " + name + " required")
+    cwd = Path(spec["cwd"])
+    demand(cwd.is_dir() and not cwd.is_symlink(), "trusted absolute Maker cwd missing/symlink")
+    def python_child(argv, mode, is_run):
+        # Only Python's literal -u is permitted; no wrappers, -m, -c or shell.
+        prefix = 3 if len(argv) == 10 and argv[1] == "-u" else 2
+        demand(len(argv) == prefix + 7 and argv[prefix:] ==
+               [mode, "--config", spec["config_path"], "--input", spec["input_path"],
+                "--output", spec["output_dir"]],
+               "Maker CLI has unsupported flag or incorrect mode/config/input/output")
+        interpreter, script = argv[0], argv[prefix - 1]
+        if is_run and interpreter == "python3":
+            captured = spec.get("child_executable")
+            demand(isinstance(captured, str) and Path(captured).is_absolute() and
+                   Path(captured).is_file(),
+                   "relative python3 requires captured absolute child_executable")
+            interpreter = captured
+        demand(Path(interpreter).is_absolute() and Path(interpreter).is_file() and
+               Path(script).name == "backtest_entry.py",
+               "absolute/captured Maker Python child and backtest_entry.py required")
+        if not Path(script).is_absolute():
+            demand(is_run and script == "backtest_entry.py",
+                   "only exact relative backtest_entry.py from trusted cwd is permitted")
+            script = str(cwd / script)
+        return Path(interpreter).resolve(), Path(script).resolve()
+    child = python_child(run, "--run", True)
+    verifier = python_child(verify, "--verify", False)
+    demand(child == verifier, "Maker run/verify interpreter or source entrypoint mismatch")
+    demand(child[1].is_file(), "Maker source backtest_entry.py missing")
     demand(file_hash(spec["config_path"]) == spec["config_sha256"] and
            file_hash(spec["input_path"]) == spec["input_manifest_sha256"],
            "actual Maker CLI config/input checksum mismatch")
     return verify
+
 
 def all_cells():
     return {f"{symbol}:{frame}m:{k}:{ttl}:{exit_name}" for symbol, frame, k, ttl, exit_name in
