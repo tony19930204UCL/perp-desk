@@ -76,7 +76,8 @@ class ShortEntry:
     """
 
     def __init__(self, signal_id, signal_time, high, close, atr, k,
-                 ttl, qty, initial_cash="1000"):
+                 ttl, qty, initial_cash="1000", x1_vwap=None,
+                 x1_known_funding_cost=None):
         if not isinstance(signal_id, str) or not signal_id:
             raise X2Error("invalid signal id")
         if type(signal_time) is not int or signal_time < 0:
@@ -109,6 +110,40 @@ class ShortEntry:
         self.gap = False
         self.last_close = None
         self.audit = []
+        # X1-only pre-entry admission. Unspecified future funding is zero
+        # for this decision, but explicitly flagged as unknown.
+        if x1_vwap is None and x1_known_funding_cost is not None:
+            raise X2Error("X1 known funding requires frozen signal VWAP")
+        self.x1_vwap = (None if x1_vwap is None else
+                        number(x1_vwap, "signal_frozen_vwap", True))
+        self.x1_known_funding_cost = (
+            None if x1_known_funding_cost is None else
+            number(x1_known_funding_cost, "known_funding_cost"))
+        self.unknown_future_funding = (
+            self.x1_vwap is not None and x1_known_funding_cost is None)
+        self.x1_projected_net = None
+        if self.x1_vwap is not None:
+            self.x1_projected_net = self._x1_net(self.qty_target)
+            if self.x1_vwap >= self.limit or self.x1_projected_net <= ZERO:
+                self.status = "X1_ADMISSION_REJECTED"
+                self.remaining = ZERO
+                self.audit.append(("X1_REJECT", self.x1_projected_net))
+
+    @classmethod
+    def for_x1(cls, *args, signal_vwap, known_funding_cost=None, **kwargs):
+        """Freeze X1 target/funding and reject bad economics before fills."""
+        return cls(*args, x1_vwap=signal_vwap,
+                   x1_known_funding_cost=known_funding_cost, **kwargs)
+
+    def _x1_net(self, proposed_qty):
+        """Independent prospective two-Maker-leg X1 net, no future rates."""
+        with localcontext() as ctx:
+            ctx.prec = 50
+            cost = (ZERO if self.x1_known_funding_cost is None
+                    else self.x1_known_funding_cost)
+            return ((self.limit - self.x1_vwap) * proposed_qty
+                    - self.limit * proposed_qty * MAKER_FEE
+                    - self.x1_vwap * proposed_qty * MAKER_FEE - cost)
 
     def submit_again(self, signal_id):
         if signal_id in self.seen_signals:
@@ -190,6 +225,16 @@ class ShortEntry:
                 raise X2Error("entry overfill")
             if hi < self.limit * (1 + MAKER_FEE):
                 raise X2Error("insufficient 2bp entry penetration")
+            if self.x1_vwap is not None:
+                proposed = self._x1_net(self.filled + amount)
+                if proposed <= ZERO:
+                    if self.filled:
+                        raise X2Error("X1 additional fill would fail net gate")
+                    self.status = "X1_ADMISSION_REJECTED"
+                    self.remaining = ZERO
+                    self.audit.append(("X1_REJECT", proposed))
+                    return self.status
+                self.x1_projected_net = proposed
             self._event("entry-" + str(end), end, "fill", side="sell",
                         qty=str(amount), price=str(self.limit),
                         liquidity="maker")
@@ -217,4 +262,7 @@ class ShortEntry:
                 "pending_slot": self.status in ("PENDING", "PARTIAL")
                 or ledger["remaining_qty"] > ZERO,
                 "last_close": self.last_close, "gap": self.gap,
-                "events": list(self.events), "ledger": ledger}
+                "events": list(self.events), "ledger": ledger,
+                "x1_frozen_vwap": self.x1_vwap,
+                "x1_projected_net": self.x1_projected_net,
+                "unknown_future_funding": self.unknown_future_funding}
