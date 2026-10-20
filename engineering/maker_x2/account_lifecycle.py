@@ -1,5 +1,5 @@
 """Single offline account orchestration with explicit fictional configuration."""
-from datetime import datetime, timezone
+from copy import deepcopy
 from decimal import Decimal, localcontext
 from account_ledger import replay_account, utc_day
 from liquidation import liquidation_proxy
@@ -180,6 +180,15 @@ class OfflineAccount:
     def bar(self, bar, entry_qty=None, maker_fill=False, settlements=()):
         op, high, low, close = closed_bar(bar)
         ts = bar["ts"] + MINUTE
+        if (self.exit is not None and self.exit.last_bar >= 0 and
+                bar["ts"] != self.exit.last_bar + MINUTE):
+            self.stale = True
+            return "GAP"
+        if (self.exit is None and self.entry is not None and
+                bar["ts"] != self.entry.next_ts):
+            self.stale = True
+            self.entry.status = "GAP"
+            return "GAP"
         self._roll_day(ts)
         if self.entry is None and self.exit is None:
             self._valuation(close, ts)
@@ -254,6 +263,24 @@ class OfflineAccount:
             self._close_episode(ts)
         self._valuation(close, ts)
         return result
+
+    def tail(self, gap=False):
+        """Retain paid costs and open slot; no terminal synthetic trade."""
+        self.stale = self.stale or gap
+        return self.snapshot()
+
+    def checkpoint(self):
+        """Detached pure-Python state including identities and open lifecycle."""
+        return deepcopy(self)
+
+    @classmethod
+    def recover(cls, checkpoint):
+        """Recreate from a trusted in-memory checkpoint (no file IO)."""
+        if type(checkpoint) is not cls:
+            raise X2Error("trusted OfflineAccount checkpoint required")
+        restored = deepcopy(checkpoint)
+        restored.ledger()  # independently reject corrupt event history
+        return restored
 
     def snapshot(self):
         state = self.ledger()
