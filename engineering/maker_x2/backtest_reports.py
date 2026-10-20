@@ -115,6 +115,27 @@ def verify_run(directory):
             raise X2Error("output artifact checksum mismatch: "+name)
     if not (root/"results.json").exists():
         raise X2Error("missing results")
+    with open(root/"results.json", encoding="utf-8") as handle:
+        results = json.load(handle)
+    if "samplers" in results:
+        if (results.get("cell_count") != 48 or
+            results.get("delay2_count") != 48 or
+            results.get("cost1_5x_count") != 48):
+            raise X2Error("incomplete scenario cell counts")
+        for field in ("cells", "delay2_cells", "cost1_5x_cells"):
+            ids = [row["cell_id"] for row in results[field]]
+            if len(ids) != 48 or len(set(ids)) != 48:
+                raise X2Error("duplicate or missing cell identities")
+        scenarios = ("cells", "delay2", "cost1_5x")
+        for name in scenarios:
+            for index in range(48):
+                for side in ("strategy", "matched"):
+                    artifact = f"{name}/{index:02d}_{side}.json"
+                    if artifact not in manifest["artifacts"]:
+                        raise X2Error("missing raw account " + artifact)
+        if set(results["samplers"]) != {
+            "ETHUSDT:1", "ETHUSDT:15", "BTCUSDT:1", "BTCUSDT:15"}:
+            raise X2Error("missing framework sampler identity")
     return {"status":"CHECKSUMS_VERIFIED","artifact_count":
             len(manifest["artifacts"]),"manifest_sha256":
             sha256_file(root/"manifest.json")}
