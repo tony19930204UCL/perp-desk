@@ -103,12 +103,14 @@ are forbidden. Example with entirely fictional inputs:
 from entry_lifecycle import ShortEntry, atr14, vwap60
 from exit_lifecycle import ShortExit
 
-signal = ShortEntry("fictional-1", 0, "100", "100", "1",
-                    ".25", 2, "2")
+signal = ShortEntry.for_x1(
+    "fictional-1", 0, "100", "100", "1", ".25", 2, "2",
+    signal_vwap="99", known_funding_cost=None)
 first_minute = {"ts": 0, "open": "100", "high": "100.27005",
                 "low": "99", "close": "100", "closed": True}
 signal.process(first_minute, fill_qty="2")
-withdrawal = ShortExit(signal, "X1", vwap="99")
+withdrawal = ShortExit(signal, "X1", vwap=signal.x1_vwap,
+                       known_funding_cost=signal.x1_known_funding_cost)
 next_minute = {"ts": 60000, "open": "100", "high": "100.1",
                "low": "98.9", "close": "99", "closed": True}
 withdrawal.on_bar(next_minute, maker_fill=True)
@@ -239,3 +241,20 @@ The four mutation modes were NOT_RUN because positive controls failed.
 This correction has no Python execution evidence yet; use the existing
 r7 commands above in fresh processes and run mutations only after
 all positive controls pass.
+
+### r7 correction-2: missing X1 target is a hard pre-entry rejection
+
+`ShortEntry.for_x1(..., signal_vwap=None)` now raises `X2Error`
+**before** constructing an entry lifecycle: no pending order, event,
+fee, or position is created. The signal-time VWAP target is mandatory
+for X1, unlike `known_funding_cost=None`, which remains valid and
+sets the explicit unknown-future-funding flag with zero assumed future
+cost. X2/X3 may still use ordinary `ShortEntry` without an X1 target.
+Do not use the legacy pattern of filling a generic `ShortEntry`
+and only afterward passing it to `ShortExit(..., "X1", ...)`.
+The discoverable regression is
+`Control.test_a06_x1_missing_vwap_target_blocks_before_any_entry`.
+Independent correction-1 evidence (51 discovery PASS, 10 entry CONTROL
+PASS, 8 exit CONTROL PASS, four mutations caught with AssertionError
+rc1) is historical, not a correction-2 test result. The correction-2
+suite and mutations are NOT_RUN at source delivery.
