@@ -12,7 +12,9 @@ ZERO = D("0")
 
 
 def liquidation_proxy(entry_price, high, remaining_qty, original_qty,
-                      original_margin, liq_pct, liq_fee_pct):
+                      original_margin, liq_pct, liq_fee_pct, rates=None):
+    from scenario_rates import resolve_rates
+    rates = resolve_rates(rates)
     """Return independent LIQ liability only when closed-bar high crosses.
 
     A prior partial exit decreases the remaining margin allocation. No
@@ -36,7 +38,7 @@ def liquidation_proxy(entry_price, high, remaining_qty, original_qty,
             return None
         allocated = margin * qty / original
         notional = qty * e
-        fee = notional * fee_pct
+        fee = notional * rates.liq_fee
     return {"threshold": threshold, "qty": qty,
             "margin_writeoff": allocated, "notional": notional,
             "fee": fee, "reason": "LIQ_PROXY"}
