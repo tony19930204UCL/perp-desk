@@ -39,7 +39,10 @@ class Control(unittest.TestCase):
         a.bar(fictional_bar(0),entry_qty="2")
         a.tail()
         self.assertEqual(a.ledger()["qty"],D("2"))
-        self.assertFalse(any(e["id"].startswith("time-") for e in a.events))
+        self.assertEqual([e["type"] for e in a.events],["reserve","fill"])
+        self.assertEqual(a.ledger()["reserved"],D("50"))
+        self.assertFalse(any(e["type"]=="fill" and e["side"]=="buy"
+                             for e in a.events))
 
     def test_future_bar_must_not_change_predecision_features(self):
         from signal_features import eligible_decisions
@@ -83,7 +86,7 @@ class Mutation(unittest.TestCase):
         original=OfflineAccount.tail
         def wrong(self,*args,**kwargs):
             if self.events:
-                self.events.append({"id":"time-fake",
+                self.events.append({"id":"fake-tail-close",
                                     "type":"fill","seq":len(self.events),
                                     "ts":self.events[-1]["ts"],
                                     "side":"buy","qty":"2","price":"100",
