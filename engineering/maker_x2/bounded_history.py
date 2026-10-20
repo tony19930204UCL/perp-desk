@@ -7,7 +7,7 @@ import json
 import os
 import weakref
 import sqlite3
-from collections import deque
+from collections import Counter, deque
 from decimal import Decimal, localcontext
 from pathlib import Path
 
@@ -76,7 +76,19 @@ class PreparedDecisions:
     def __len__(self):
         return self.count
 
+    def exclusion_counts(self):
+        """Auditable count per skipped decision reason, from sealed disk state."""
+        _verify_seal(self)
+        db = sqlite3.connect("file:" + Path(self.path).resolve().as_posix() +
+                             "?mode=ro", uri=True)
+        try:
+            return dict(db.execute(
+                "SELECT reason,count FROM exclusions ORDER BY reason"))
+        finally:
+            db.close()
+
     def __iter__(self):
+        _verify_seal(self)
         db = sqlite3.connect("file:" + Path(self.path).resolve().as_posix() +
                              "?mode=ro", uri=True)
         try:
@@ -163,23 +175,37 @@ def _minute(row, idx):
             "closed": True, "minute_index": idx}
 
 
-def _eligible_window(frame, minutes, tf):
+def _eligible_window(frame, minutes, tf, exclusions=None):
     from signal_features import sample_std
     current = frame[-1]
-    with localcontext() as ctx:
-        ctx.prec = 50
-        returns = [frame[j]["close"]/frame[j-1]["close"] - 1
-                   for j in range(1, 289)]
-        sigma = sample_std(returns)
-        if sigma <= Z:
-            return None
-        std12 = sample_std(returns[-12:])
-        r6 = current["close"]/frame[-7]["close"] - 1
-        z = r6/(sigma*D(6).sqrt())
-        h12 = max(b["high"] for b in frame[-13:-1])
-        l12 = min(b["low"] for b in frame[-13:-1])
-        atr = atr14(minutes[-15:])
-        vwap = vwap60(minutes[-60:])
+    # Match the original signal_features.eligible_decisions feature-only
+    # (X2Error, ArithmeticError) exclusion contract. Data validation,
+    # missing fields and unrelated programming errors still propagate.
+    try:
+        with localcontext() as ctx:
+            ctx.prec = 50
+            returns = [frame[j]["close"]/frame[j-1]["close"] - 1
+                       for j in range(1, 289)]
+            sigma = sample_std(returns)
+            if sigma <= Z:
+                if exclusions is not None:
+                    exclusions["SIGMA_NONPOSITIVE"] += 1
+                return None
+            std12 = sample_std(returns[-12:])
+            r6 = current["close"]/frame[-7]["close"] - 1
+            z = r6/(sigma*D(6).sqrt())
+            h12 = max(b["high"] for b in frame[-13:-1])
+            l12 = min(b["low"] for b in frame[-13:-1])
+            atr = atr14(minutes[-15:])
+            vwap = vwap60(minutes[-60:])
+    except (X2Error, ArithmeticError) as exc:
+        if exclusions is not None:
+            reason = ("VWAP60_INVALID_VOLUMES"
+                      if isinstance(exc, X2Error) and
+                      str(exc) == "VWAP60 invalid volumes"
+                      else type(exc).__name__ + ": " + str(exc))
+            exclusions[reason] += 1
+        return None
     kind = "S1" if tf == 1 else "S2"
     fired = (z > D("2.5") if tf == 1 else
              std12 <= D(".5")*sigma and current["close"] < l12)
@@ -194,7 +220,7 @@ def _eligible_window(frame, minutes, tf):
             "previous_h12": h12, "previous_l12": l12, "triggered": fired}
 
 
-def iter_eligible(bars, tf):
+def iter_eligible(bars, tf, exclusions=None):
     """Constant-memory causal features from fully validated PreparedBars."""
     if not isinstance(bars, PreparedBars) or type(tf) is not int or tf not in (1, 15):
         raise X2Error("validated bars and framework 1/15 required")
@@ -240,17 +266,21 @@ def iter_eligible(bars, tf):
         frames.append(current)
         if frame_run < 290 or minute_run < 60:
             continue
-        record = _eligible_window(list(frames), list(minutes), tf)
+        record = _eligible_window(list(frames), list(minutes), tf,
+                                  exclusions=exclusions)
         if record is not None:
             yield record
 
 
 def prepare_decisions(bars, tf, destination):
     db = _database(destination, "payload TEXT NOT NULL")
+    db.execute("CREATE TABLE exclusions("
+               "reason TEXT PRIMARY KEY, count INTEGER NOT NULL)")
+    exclusions = Counter()
     count = 0
     try:
         batch = []
-        for record in iter_eligible(bars, tf):
+        for record in iter_eligible(bars, tf, exclusions=exclusions):
             encoded = json.dumps(
                 {k: str(v) if isinstance(v, D) else v
                  for k, v in record.items()}, sort_keys=True)
@@ -261,6 +291,8 @@ def prepare_decisions(bars, tf, destination):
                 batch.clear()
         if batch:
             db.executemany("INSERT INTO records VALUES (?,?)", batch)
+        db.executemany("INSERT INTO exclusions VALUES (?,?)",
+                       sorted(exclusions.items()))
         db.commit()
     finally:
         db.close()
