@@ -4,13 +4,16 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-GH-LIFECYCLE-r7-correction-2",
+  "instruction_id": "MAKER-V3-GH-ACCOUNT-r8",
   "status": "READY_FOR_REVIEW",
-  "source_head_sha": "966cab54f1ef0e59e486622bc9dbb38125ecd7ba",
-  "summary": "Bounded production fix: ShortEntry.for_x1 rejects missing signal_vwap=None via X2Error before creating a pending lifecycle, entry fill, paid fee, or position. A discoverable Control.test_a06_x1_missing_vwap_target_blocks_before_any_entry verifies constructor not called and empty ledger/zero fees/qty, while valid frozen VWAP with unknown future funding remains permitted. Canonical README X1 workflow now uses pre-entry for_x1, not paid generic ShortEntry followed by post-entry X1 check. All other lifecycle logic, accepted parameters, X2/X3 and protected files untouched.",
+  "source_head_sha": "2cbb4caffc77a9a38c23707527a028bf9f8495e1",
+  "summary": "Delivered callable offline single-account r8 modules: account_lifecycle.py, independent account_ledger.py, liquidation.py; deterministic fictional account controls and four isolated negative mutation entrypoints. Entry/X1/X2/X3 remain composed from accepted r7 sources. Explicit capital/margin/leverage/day-loss/streak/24h-halt and LIQ params; one slot; actual fee/cash versus margin reservation; partial proportional releases; frozen .0145 LIQ and .0005 fee charged only for remaining allocated margin/notional with dedicated liquidation event; LIQ>SL>Maker priority; UTC day MTM and loss-streak latch; settled funding/chronological replay; gap/tail preservation and trusted in-memory checkpoint. r8 Python tests NOT_RUN; source is pending independent acceptance, not full A01-A16 or trading proof.",
   "changed_files": [
-    "engineering/maker_x2/entry_lifecycle.py",
-    "engineering/maker_x2/tests/test_entry_lifecycle.py",
+    "engineering/maker_x2/liquidation.py",
+    "engineering/maker_x2/account_ledger.py",
+    "engineering/maker_x2/account_lifecycle.py",
+    "engineering/maker_x2/tests/test_account_lifecycle.py",
+    "engineering/maker_x2/tests/test_account_ledger.py",
     "engineering/maker_x2/README.md",
     ".relay/mailbox/maker-v3-x2.json"
   ],
@@ -18,50 +21,50 @@
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "No Python execution available through authorized GitHub connector in this turn. Historical correction-1 independent results: discovery 51 unique PASS, entry CONTROL 10 PASS, exit CONTROL 8 PASS; do not attribute to correction-2."
+      "evidence": "No Python process execution in this GitHub-only session. Committed r8 controls require independent exact-head clean-clone execution. Accepted r7 historical discovery52/52, entry11/11, exit8/8, and four mutations rc1 do not establish r8."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py control",
+      "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py control",
       "result": "NOT_RUN",
-      "evidence": "No Python execution available through authorized GitHub connector in this turn. Historical correction-1 independent results: discovery 51 unique PASS, entry CONTROL 10 PASS, exit CONTROL 8 PASS; do not attribute to correction-2."
+      "evidence": "No Python process execution in this GitHub-only session. Committed r8 controls require independent exact-head clean-clone execution. Accepted r7 historical discovery52/52, entry11/11, exit8/8, and four mutations rc1 do not establish r8."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py control",
+      "command": "cd engineering/maker_x2 && python3 tests/test_account_ledger.py",
       "result": "NOT_RUN",
-      "evidence": "No Python execution available through authorized GitHub connector in this turn. Historical correction-1 independent results: discovery 51 unique PASS, entry CONTROL 10 PASS, exit CONTROL 8 PASS; do not attribute to correction-2."
+      "evidence": "No Python process execution in this GitHub-only session. Committed r8 controls require independent exact-head clean-clone execution. Accepted r7 historical discovery52/52, entry11/11, exit8/8, and four mutations rc1 do not establish r8."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py mut-lookahead",
+      "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py mut-double-entry",
       "result": "NOT_RUN",
-      "evidence": "Negative mutation not executed in correction-2. Historical correction-1 four mutations caught genuine AssertionError rc1; require all correction-2 positive controls PASS before rerunning mutations."
+      "evidence": "Negative mutation entrypoint committed but not executed; must only run after ALL r8 positive controls PASS, require real AssertionError and named loaded test ID and nonzero rc, not harness/validation failure."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py mut-touch",
+      "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py mut-kill-bypass",
       "result": "NOT_RUN",
-      "evidence": "Negative mutation not executed in correction-2. Historical correction-1 four mutations caught genuine AssertionError rc1; require all correction-2 positive controls PASS before rerunning mutations."
+      "evidence": "Negative mutation entrypoint committed but not executed; must only run after ALL r8 positive controls PASS, require real AssertionError and named loaded test ID and nonzero rc, not harness/validation failure."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py mut-time",
+      "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py mut-partial-liq",
       "result": "NOT_RUN",
-      "evidence": "Negative mutation not executed in correction-2. Historical correction-1 four mutations caught genuine AssertionError rc1; require all correction-2 positive controls PASS before rerunning mutations."
+      "evidence": "Negative mutation entrypoint committed but not executed; must only run after ALL r8 positive controls PASS, require real AssertionError and named loaded test ID and nonzero rc, not harness/validation failure."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py mut-reverse",
+      "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py mut-open-mtm",
       "result": "NOT_RUN",
-      "evidence": "Negative mutation not executed in correction-2. Historical correction-1 four mutations caught genuine AssertionError rc1; require all correction-2 positive controls PASS before rerunning mutations."
+      "evidence": "Negative mutation entrypoint committed but not executed; must only run after ALL r8 positive controls PASS, require real AssertionError and named loaded test ID and nonzero rc, not harness/validation failure."
     }
   ],
   "remaining_work": [
-    "Main CIO independently run correction-2 exact-HEAD discovery, entry CONTROL and exit CONTROL in clean subprocesses, confirm new missing-VWAP test ID and actual results.",
-    "Only after all positives PASS, execute mut-lookahead, mut-touch, mut-time, mut-reverse separately and confirm AssertionError, named test ID and nonzero exit code.",
-    "Confirm frozen accounting.py, tests/test_accounting.py, maker_exit_lab.py, tests/test_x2.py and read-only exit_lifecycle.py / tests/test_exit_lifecycle.py unchanged.",
-    "The scoped lifecycle repair is not full A01-A16, LIQ, account/day-halt, market24grid, strategy/backtest or paper/live acceptance."
+    "Main CIO verify PR75 exact final HEAD and each committed source/test file. Execute python3 -m unittest discover -s tests -v plus both new standalone account controls in independent processes; review actual test assertions and record stdout/rc/test IDs.",
+    "Only if all positive controls PASS, execute mut-double-entry, mut-kill-bypass, mut-partial-liq, mut-open-mtm separately and verify each fails with a genuine AssertionError and named test ID, not an exception/import failure.",
+    "Verify accounting.py, tests/test_accounting.py, maker_exit_lab.py and tests/test_x2.py remain byte-identical to accepted parent. No public-interface glue edits to existing r7 modules were necessary.",
+    "Checkpoint/recover in this unit is detached trusted in-memory state, not disk-backed process-restart persistence; full LIQ/exchange margin, A15/A16, full A01-A16, market24grid and paper/live remain excluded."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Read latest exact PR75 HEAD and source_head_sha, verify only three substantive allowed files changed. From engineering/maker_x2 run python3 -m unittest discover -s tests -v; python3 tests/test_entry_lifecycle.py control; python3 tests/test_exit_lifecycle.py control as independent subprocesses. Check discoverable test_a06_x1_missing_vwap_target_blocks_before_any_entry rejects absent VWAP before constructor/fill and zero ledger; if all controls PASS then individually run four mutation commands and log genuine AssertionError/test ID/rc.",
-    "if_pass": "Accept only r7 correction-2 missing-target boundary after exact-source positive controls and caught mutations; no whole-product/trading PASS.",
-    "if_fail": "Return precise failing test, traceback and bounded same-PR correction request; preserve read-only/protected files.",
+    "verify_now": "Fetch PR75 exact final HEAD and full source. Check mandatory account config and frozen assumptions; from engineering/maker_x2 execute python3 -m unittest discover -s tests -v, python3 tests/test_account_lifecycle.py control, and python3 tests/test_account_ledger.py as fresh processes. Compare hand-derived Decimal event/episode numbers and LIQ ordering to independent replay. Only after all pass run each of four mutations and inspect genuine AssertionError/test ID/exit code; preserve failure history.",
+    "if_pass": "Accept only the bounded r8 offline single-account engineering unit after verified independent controls and real negative mutation evidence. No A15/fullA16, 24-grid, strategy or live/paper acceptance.",
+    "if_fail": "Report exact failing file/test ID/trace and request a bounded revision on existing PR75 without altering frozen economic defaults or protected files.",
     "blockers": []
   }
 }
