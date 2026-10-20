@@ -113,6 +113,32 @@ class Control(unittest.TestCase):
         self.assertEqual(a.ledger()["qty"], D("0"))
         self.assertEqual(a.ledger()["reserved"], D("0"))
 
+    def test_two_complete_losses_halt_exact_24h_and_no_extension(self):
+        a = account()
+        for i, sid in ((0, "loss-one"), (2, "loss-two")):
+            self.assertEqual(submit(a, sid, signal_time=i*T), "PENDING")
+            a.bar(bar(i), entry_qty="2")
+            self.assertEqual(a.bar(bar(i+1, "101", "101.2", "98", "100")),
+                             "CLOSED_SL")
+        self.assertEqual(a.loss_streak, 2)
+        expected = 4*T + 24*3600000
+        self.assertEqual(a.halt_until, expected)
+        a.bar(bar(4, "100", "100.1", "99", "100"))
+        self.assertEqual(a.halt_until, expected)
+        self.assertEqual(a.ledger()["reserved"], D("0"))
+        self.assertEqual(len(a.ledger()["episodes"]), 2)
+
+    def test_pending_expiry_releases_without_fake_fill(self):
+        a = account()
+        submit(a)
+        a.bar(bar(0, high="100.1"))
+        a.bar(bar(1, high="100.1"))
+        self.assertEqual(a.bar(bar(2, high="100.1")), "EXPIRED")
+        self.assertEqual(a.ledger()["reserved"], D("0"))
+        self.assertEqual(a.ledger()["qty"], D("0"))
+        self.assertEqual(a.ledger()["fees"], D("0"))
+        self.assertFalse(a.snapshot()["slot"])
+
     def test_tail_gap_preserves_original_account_events(self):
         a = account()
         submit(a)
@@ -139,13 +165,16 @@ class Mutation(unittest.TestCase):
             Control("test_daily_open_mtm_halt_does_not_block_risk").debug()
 
     def mut_partial_liq_doublecharge(self):
-        original = liquidation_proxy
-        def wrong(*args):
-            result = original(*args)
-            if result:
-                result["margin_writeoff"] = D("50")
+        original = OfflineAccount.submit
+
+        def double_allocated_margin(self, *args, **kwargs):
+            result = original(self, *args, **kwargs)
+            if result == "PENDING":
+                self.events[-1]["amount"] = "100"
+                self.allocation = D("100")
             return result
-        with patch("account_lifecycle.liquidation_proxy", wrong):
+
+        with patch.object(OfflineAccount, "submit", double_allocated_margin):
             Control("test_liq_does_not_double_charge_original_margin").debug()
 
     def mut_hidden_mtm(self):
