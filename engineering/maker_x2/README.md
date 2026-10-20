@@ -258,3 +258,110 @@ Independent correction-1 evidence (51 discovery PASS, 10 entry CONTROL
 PASS, 8 exit CONTROL PASS, four mutations caught with AssertionError
 rc1) is historical, not a correction-2 test result. The correction-2
 suite and mutations are NOT_RUN at source delivery.
+
+
+## r8 — single offline account (source delivered; acceptance NOT_RUN)
+
+New bounded modules (all standard-library Python and each under 350 lines):
+`account_lifecycle.py` orchestrates one active pending entry or short
+position, configured cash/margin/leverage, mark-to-market, UTC daily limits,
+loss-streak and fixed-duration entry halt. It composes the existing r7
+`ShortEntry`/`ShortExit` and does not replace original X2 economics.
+`liquidation.py` is a conservative high-crossing LIQ *research proxy*:
+frozen threshold E*(1+.0145), and terminal loss equals the **remaining
+allocated margin** plus remaining entry notional * .0005.
+It is NOT a maintenance-margin/exchange liquidation implementation.
+`account_ledger.py` independently replays cash, reservations, fills,
+funding and an explicit non-fill `liquidation` event, with closed episode
+net PnL. Original `accounting.replay` remains immutable and is compared
+on actual ordinary fills/funding (it cannot represent LIQ writeoff).
+`tests/test_account_lifecycle.py` and `tests/test_account_ledger.py`
+contain publicly invented Decimal fixtures; no optional fixture module
+or new dependency is used.
+
+All capital, margin, leverage, loss limit, streak threshold, halt duration,
+LIQ percentage and LIQ fee are mandatory explicit arguments — no real
+account configuration or amounts are bundled. Example (fictional only):
+
+```python
+from account_lifecycle import OfflineAccount
+
+account = OfflineAccount(
+    capital="1000", per_trade_margin="50", leverage="5",
+    daily_loss_limit="5", loss_streak_limit=2, halt_hours="24",
+    liq_pct=".0145", liq_fee_pct=".0005")
+account.submit(
+    symbol="FICTION", signal_id="example-one", signal_time=0,
+    high="100", close="100", atr="1", k=".25", ttl=2,
+    qty="2", style="X1", signal_vwap="99",
+    known_funding_cost=None)
+account.bar({"ts": 0, "open": "100", "high": "100.27005",
+             "low": "99", "close": "100", "closed": True},
+            entry_qty="2")
+result = account.snapshot()
+```
+
+An X1 target must pass `ShortEntry.for_x1` before any paid fill.
+One pending/open slot is shared across symbols. Reservations reduce
+*available* cash but are not cash costs; actual cash changes on gross
+realizations, maker/taker fees, settled funding and LIQ debits only.
+Partial exits release the proportional margin allocation. Event IDs
+are scoped by episode and retain the original `source_id`; seq and UTC
+timestamps are checked by independent account replay. The account
+checkpoint/recover interface deep-copies trusted in-memory state and
+revalidates events; it is NOT a durable filesystem persistence layer.
+Tail/gap preserves the last valuation, costs and occupied slot.
+
+UTC day-baseline equity uses the prior known valuation; no invented
+midnight mark. Daily realized net and current mark-to-market loss can
+block new entries. Loss-streak counts completed net episodes only.
+Halts last 24h from the trigger and are latched instead of extended
+every unchanged-loss bar. Existing risk exits continue while entry
+admission is halted. The account-level LIQ check precedes SL, SL_GAP
+and Maker wins (including a conservative observed entry-fillbar
+LIQ). Ordinary future execution, queue priority and funding are not
+invented. Open equity is cash plus unrealized signed-short PnL;
+estimated close fee is separate and not paid.
+
+### r8 independent controls and mutation commands
+
+Run from `engineering/maker_x2` in fresh subprocesses. **First** all
+positive controls, including the immutable parent regression suite:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 tests/test_account_lifecycle.py control
+python3 tests/test_account_ledger.py
+```
+
+Only if all controls genuinely PASS, execute each separate negative:
+
+```sh
+python3 tests/test_account_lifecycle.py mut-double-entry
+python3 tests/test_account_lifecycle.py mut-kill-bypass
+python3 tests/test_account_lifecycle.py mut-partial-liq
+python3 tests/test_account_lifecycle.py mut-open-mtm
+```
+
+Capture each real AssertionError with a named executed test ID and nonzero
+exit code. A harness/import/validation error is **not** a caught mutation.
+This connector-only source delivery executed no Python, so ALL r8 commands
+are `NOT_RUN`. Prior r7 correction-2 independently passed 52 discovery,
+11 entry, 8 exit controls, and four mutations; none count as r8 results.
+Existing broad CI status does not by itself prove nested r8 tests ran.
+
+| Contract focus | New discoverable control |
+|---|---|
+| One slot and margin admission | `test_slot_cash_margin_pending_cross_symbol_and_dedup` |
+| X1 missing target | `test_x1_missing_target_cannot_pay_or_reserve` |
+| MTM/estimated fee | `test_open_position_actual_fee_mtm_no_future_exit_fee` |
+| Remaining-qty LIQ | `test_liq_does_not_double_charge_original_margin` |
+| Daily MTM halt/risk survival | `test_daily_open_mtm_halt_does_not_block_risk` |
+| Two losses and fixed halt | `test_two_complete_losses_halt_exact_24h_and_no_extension` |
+| Expiry and open checkpoint | `test_pending_expiry_releases_without_fake_fill`, `test_checkpoint_restores_open_cost_ids_and_gap_tail` |
+| Independent reconciliation | `test_independent_real_fees_funding_and_episode_net`, `test_remaining_only_liq_writeoff_not_fake_fill` |
+
+This work is **not** A15/full A16, full A01–A16, production LIQ
+or exchange margin validation, full A12 day-kill statistics, whole
+A09 scale-out integration, market 24-grid, actual strategy evaluation,
+paper/live deployment or performance evidence.
