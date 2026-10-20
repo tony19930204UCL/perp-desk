@@ -643,6 +643,24 @@ def supervisor(entrypoint=None):
             eligible_stage = stage_of(graph, current)
             if eligible_stage and not SAFE_STAGE.fullmatch(eligible_stage["id"]):
                 raise RelayError("fixed inbox stage ID unsafe")
+        bridge_gate = None
+        if graph.get("maker_bridge"):
+            import importlib.util
+            bridge_path = Path(__file__).with_name("maker_stage_bridge.py")
+            if not bridge_path.is_file():
+                raise RelayError("maker_stage_bridge.py must be installed beside stage_relay.py")
+            module_spec = importlib.util.spec_from_file_location("maker_stage_bridge", bridge_path)
+            bridge = importlib.util.module_from_spec(module_spec)
+            module_spec.loader.exec_module(bridge)
+            bridge_gate = bridge.preflight(graph, gh, current)
+            if bridge_gate["action"] == "WAITING_CAPACITY_ACCEPTANCE":
+                owner = current.get("owner")
+                return dict(base, action="WAITING_CAPACITY_ACCEPTANCE",
+                            status=current["status"], stage=(eligible_stage or {}).get("id"),
+                            owner=owner, lease_remaining_seconds=(
+                                max(0.0, owner["lease_until"] - time.time()) if owner else None),
+                            needs_model_decision=True, capacity=bridge_gate,
+                            reason=bridge_gate["reason"])
         try:
             consumed = consume_inbox(cfg, state, paths["evidence"])
         except (RelayError, OSError, ValueError, KeyError, TypeError) as exc:
@@ -675,7 +693,13 @@ def supervisor(entrypoint=None):
             reason = "r12 external owner missing; operator must ADOPT exact live PID/start/lease, no duplicate dispatch"
         if current["status"] == "READY" and not reason:
             reason = "ready stage requires configured executor or authorized model decision"
-        return dict(base, action="SUPERVISOR_TICK", tick=action, inbox=consumed,
+        notice = bridge.reflection_notice(graph, current) if graph.get("maker_bridge") else None
+        if notice and notice["action"] == "READY_OPERATOR_REFLECTION":
+            decision = True
+            reason = notice["reason"]
+        return dict(base, action=("READY_OPERATOR_REFLECTION" if notice and
+                    notice["action"] == "READY_OPERATOR_REFLECTION" else "SUPERVISOR_TICK"),
+                    reflection=notice, capacity=bridge_gate, tick=action, inbox=consumed,
                     status=current["status"], stage=pending["id"] if pending else None,
                     stage_mode=stage_mode, source_head=source, input_sha256=inp, graph_sha256=gh,
                     owner=owner, lease_remaining_seconds=lease,
