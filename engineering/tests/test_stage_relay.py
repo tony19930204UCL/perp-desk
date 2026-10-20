@@ -188,5 +188,138 @@ class RelayTests(unittest.TestCase):
         self.assertIn("missing configured", response["reason"])
 
 
+    def installed(self, configured=True):
+        """Copy actual source into a temporary installed-profile scripts path."""
+        import shutil
+        profile = self.root / "my-active-profile"
+        scripts = profile / "scripts"
+        scripts.mkdir(parents=True, exist_ok=True)
+        target = scripts / "stage_relay.py"
+        shutil.copyfile(MODULE, target)
+        namespace = profile / "stage-relay" / "C0041"
+        namespace.mkdir(parents=True, exist_ok=True)
+        self.evidence = namespace / "evidence"
+        self.evidence.mkdir(exist_ok=True)
+        self.config = namespace / "graph.json"
+        self.state = namespace / "state.json"
+        prior = self.evidence / "upstream.json"
+        relay.atomic_json(prior, {"synthetic": True})
+        relay.atomic_json(self.evidence / "upstream-acceptance.json",
+                          {"stage_id": "upstream", "source_head": self.head,
+                           "input_sha256": self.inp, "decision": "ACCEPTED",
+                           "reviewer": "test-fixture", "evidence_path": "upstream.json",
+                           "evidence_sha256": relay.digest(prior.read_bytes())})
+        if configured:
+            self.setup_graph([self.stage("first"), self.stage("second")])
+        return target
+
+    def noarg(self, installed):
+        run = subprocess.run([sys.executable, str(installed)], capture_output=True,
+                             text=True, timeout=15)
+        return run.returncode, json.loads(run.stdout)
+
+    def inbox(self, state, outcome="SUCCEEDED"):
+        stage = relay.raw_json(self.config)["stages"][state["stage_index"]]
+        report_file = self.evidence / stage["reports"][0]["path"]
+        owner = state["owner"]
+        gh = relay.configuration(self.config)[1]
+        receipt = {"stage": stage["id"], "source_head": self.head,
+                   "input_sha256": self.inp, "graph_sha256": gh,
+                   "owner": {key: owner[key] for key in ("pid", "start_ticks", "boot_id", "token")},
+                   "exit_code": 0, "outcome": outcome, "reason": "synthetic-test",
+                   "output_count": stage["reports"][0]["rows"],
+                   "reports": [{"path": stage["reports"][0]["path"],
+                                "rows": stage["reports"][0]["rows"],
+                                "sha256": relay.digest(report_file.read_bytes())}]}
+        path = self.evidence / "inbox" / (stage["id"] + ".receipt.json")
+        relay.atomic_json(path, receipt)
+        relay.atomic_json(self.evidence / "inbox" / (stage["id"] + ".acceptance.json"),
+                          {"stage": stage["id"], "source_head": self.head,
+                           "input_sha256": self.inp, "graph_sha256": gh,
+                           "receipt_sha256": relay.digest(path.read_bytes()),
+                           "reviewer": "test-fixture", "decision": "ACCEPTED"})
+        return path
+
+    def test_installed_noarg_missing_config_repeat_wake(self):
+        target = self.installed(configured=False)
+        for _ in range(2):
+            code, out = self.noarg(target)
+            self.assertEqual(code, 2)
+            self.assertEqual(out["action"], "NOT_CONFIGURED")
+            self.assertTrue(out["needs_model_decision"])
+
+    def test_installed_noarg_acceptance_spawns_next_once(self):
+        target = self.installed()
+        code, first = self.noarg(target)
+        self.assertEqual(code, 0)
+        self.assertEqual(first["tick"]["action"], "WORKER_STARTED")
+        state = self.await_completion()
+        self.inbox(state)
+        code, accepted = self.noarg(target)
+        self.assertEqual(code, 0)
+        self.assertEqual(accepted["inbox"]["action"], "ACCEPTED")
+        self.assertEqual(accepted["tick"]["action"], "RUNNING")
+        self.assertEqual(relay.raw_json(self.state)["attempts"]["second"], 1)
+        self.noarg(target)
+        self.assertEqual(relay.raw_json(self.state)["attempts"]["second"], 1)
+        self.await_completion()
+
+    def test_installed_noarg_missing_report_and_bad_identity_no_advance(self):
+        target = self.installed()
+        self.noarg(target)
+        state = self.await_completion()
+        path = self.inbox(state)
+        (self.evidence / "first.json").unlink()
+        code, out = self.noarg(target)
+        self.assertEqual(code, 2)
+        self.assertEqual(out["inbox"]["action"], "INBOX_BLOCKED")
+        self.assertEqual(relay.raw_json(self.state)["stage_index"], 0)
+        self.assertNotIn("second", relay.raw_json(self.state)["attempts"])
+        self.assertTrue(path.is_file())
+
+    def test_installed_noarg_unknown_refusal_are_terminal(self):
+        for outcome in ("UNKNOWN", "REFUSED"):
+            with self.subTest(outcome=outcome):
+                if self.state.exists():
+                    self.state.unlink()
+                    self.config.unlink()
+                    import shutil
+                    shutil.rmtree(self.evidence / "inbox")
+                target = self.installed()
+                self.noarg(target)
+                state = self.await_completion()
+                self.inbox(state, outcome=outcome)
+                code, out = self.noarg(target)
+                self.assertEqual(code, 2)
+                self.assertEqual(out["status"], "BLOCKED")
+                self.noarg(target)
+                self.assertNotIn("second", relay.raw_json(self.state)["attempts"])
+
+    def test_installed_noarg_failure_no_retry(self):
+        target = self.installed(configured=False)
+        bad = self.stage("failed")
+        bad["command"] = [sys.executable, "-c", "raise SystemExit(3)"]
+        self.setup_graph([bad, self.stage("next")])
+        self.noarg(target)
+        self.await_completion()
+        code, out = self.noarg(target)
+        self.assertEqual(code, 2)
+        self.assertEqual(out["status"], "FAILED")
+        self.assertNotIn("next", relay.raw_json(self.state)["attempts"])
+
+    def test_installed_noarg_concurrent_process_claim_restart(self):
+        target = self.installed()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+            res = list(pool.map(lambda _: self.noarg(target), range(3)))
+        self.assertEqual(sum(o["tick"]["action"] == "WORKER_STARTED" for _, o in res), 1)
+        self.assertEqual(relay.raw_json(self.state)["attempts"]["first"], 1)
+        self.await_completion()
+        code, out = self.noarg(target)
+        self.assertEqual(out["source_head"], self.head)
+        self.assertEqual(out["stage"], "first")
+        self.assertEqual(relay.raw_json(self.state)["attempts"]["first"], 1)
+
+
+
 if __name__ == "__main__":
     unittest.main()
