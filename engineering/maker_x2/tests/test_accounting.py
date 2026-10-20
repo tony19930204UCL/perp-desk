@@ -377,9 +377,9 @@ class AccountingReplayTests(unittest.TestCase):
         for event_id in ("", None, 1, True):
             with self.subTest(event_id=repr(event_id)):
                 with self.assertRaises(LedgerError):
-                    replay("1000", [
-                        fill(0, 10, "sell", "1", "100", event_id=event_id)
-                    ])
+                    event = fill(0, 10, "sell", "1", "100")
+                    event["id"] = event_id
+                    replay("1000", [event])
         for settlement_id in ("", None, 1, True):
             with self.subTest(settlement_id=repr(settlement_id)):
                 with self.assertRaises(LedgerError):
