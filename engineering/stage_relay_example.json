@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "kind": "stage_relay",
+  "evidence_root": "/ABSOLUTE/ACTIVE_PROFILE/stage-relay/C0041/evidence",
+  "bootstrap": {
+    "acceptance_path": "upstream/r11-acceptance.json",
+    "stage_id": "r11-signal-placebo-frame",
+    "source_head": "4c4120f28eaa42ff3228fd293f80a9d6308acdc4",
+    "input_sha256": "REPLACE_64_HEX"
+  },
+  "stages": [
+    {
+      "id": "r12-entrypoint",
+      "mode": "adopt",
+      "source_head": "REPLACE_VERIFIED_40_HEX",
+      "input_sha256": "REPLACE_64_HEX",
+      "reports": [
+        {
+          "path": "reports/r12.json",
+          "rows": 1
+        }
+      ]
+    },
+    {
+      "id": "matched-account-replay",
+      "mode": "exec",
+      "source_head": "REPLACE_VERIFIED_40_HEX",
+      "input_sha256": "REPLACE_64_HEX",
+      "lease_seconds": 900,
+      "command": [
+        "/ABSOLUTE/AUTHORIZED_PYTHON",
+        "/ABSOLUTE/CONFIGURED_MATCHED_ACCOUNT_REPLAY"
+      ],
+      "reports": [
+        {
+          "path": "reports/matched.json",
+          "rows": 1
+        }
+      ]
+    },
+    {
+      "id": "historical-48-cell",
+      "mode": "exec",
+      "source_head": "REPLACE_VERIFIED_40_HEX",
+      "input_sha256": "REPLACE_64_HEX",
+      "lease_seconds": 900,
+      "command": [
+        "/ABSOLUTE/AUTHORIZED_PYTHON",
+        "/ABSOLUTE/CONFIGURED_HISTORICAL_ENTRYPOINT"
+      ],
+      "reports": [
+        {
+          "path": "reports/history.json",
+          "rows": 48,
+          "symbol_cells": {
+            "BTCUSDT": 24,
+            "ETHUSDT": 24
+          }
+        }
+      ]
+    },
+    {
+      "id": "operator-reflection",
+      "mode": "exec",
+      "source_head": "REPLACE_VERIFIED_40_HEX",
+      "input_sha256": "REPLACE_64_HEX",
+      "lease_seconds": 900,
+      "command": [
+        "/ABSOLUTE/AUTHORIZED_PYTHON",
+        "/ABSOLUTE/CONFIGURED_OPERATOR_REFLECTION",
+        "--history",
+        "/ABSOLUTE/ACTIVE_PROFILE/stage-relay/C0041/evidence/reports/history.json"
+      ],
+      "reports": [
+        {
+          "path": "reports/reflection.json",
+          "rows": 1
+        }
+      ]
+    }
+  ]
+}
