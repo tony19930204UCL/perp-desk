@@ -36,7 +36,7 @@ def source_manifest(directory):
               "accounting.py","signal_features.py","matched_signals.py",
               "data_adapter.py","market_replay.py","matched_replay.py",
               "grid_runner.py","backtest_stats.py","backtest_reports.py",
-              "backtest_entry.py","backtest_controls.py","README.md")
+              "backtest_entry.py","backtest_controls.py","scenario_rates.py","README.md")
     paths=[root/name for name in required]
     paths.extend(sorted((root/"tests").glob("test_*.py")))
     if any(not path.is_file() for path in paths):
@@ -77,6 +77,12 @@ def persist_run(out, manifest, result):
                           ("matched",cell["matched"])):
             relative=f"delay2/{label}_{name}.json"
             inventory[relative]=atomic_json(root/relative,data)
+    stressed=result.get("fee_slip_1_5x_cells",[])
+    for index,cell in enumerate(stressed):
+        for name,data in (("strategy",cell["strategy"]),
+                          ("matched",cell["matched"])):
+            relative=f"cost1_5x/{index:02d}_{name}.json"
+            inventory[relative]=atomic_json(root/relative,data)
     inventory["results.json"]=atomic_json(
         root/"results.json",
         {"cell_count":result["cell_count"],
@@ -84,6 +90,9 @@ def persist_run(out, manifest, result):
                    "matched_status":c["matched_status"]}
                   for c in cells],
          "delay2_count":len(delayed),
+         "cost1_5x_count":len(stressed),
+         "cost1_5x_cells":[{"cell_id":v["cell_id"],"metrics":v["metrics"]}
+                             for v in stressed],
          "delay2_cells":[{"cell_id":c["cell_id"],"metrics":c["metrics"]}
                          for c in delayed],
          "fee_slip_1_5x_status":result.get(
