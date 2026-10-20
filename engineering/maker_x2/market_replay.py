@@ -82,6 +82,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
     previous_open = None
     episode_starts = {}
     equity_path = []
+    last_daily_point = None
     for bar in bars:
         start = bar["ts"]
         end = start + MINUTE
@@ -160,14 +161,22 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                                "signal_id": r["signal_id"],
                                "reason": str(exc)})
         snap = account.snapshot()
-        equity_path.append({"ts": end, "cash": str(snap["ledger"]["cash"]),
-                            "equity": str(snap["equity"]),
-                            "qty": str(snap["ledger"]["qty"]),
-                            "unrealized": (None if snap["unrealized"] is None
-                                           else str(snap["unrealized"])),
-                            "utc_day": snap["day"]})
+        point={"ts": end, "cash": str(snap["ledger"]["cash"]),
+               "equity": str(snap["equity"]),
+               "qty": str(snap["ledger"]["qty"]),
+               "unrealized": (None if snap["unrealized"] is None
+                              else str(snap["unrealized"])),
+               "utc_day": snap["day"], "stale": bool(snap["stale"])}
+        # Keep the last observed close valuation per UTC day; no invented
+        # midnight price, and zero-trade calendar days remain visible.
+        if last_daily_point is not None and (
+                last_daily_point["utc_day"] != point["utc_day"]):
+            equity_path.append(last_daily_point)
+        last_daily_point=point
         prev_close = bar["close"]
         previous_open = start
+    if last_daily_point is not None:
+        equity_path.append(last_daily_point)
     account.tail()
     snap = account.snapshot()
     ledger = replay_account(account.capital, account.events)
