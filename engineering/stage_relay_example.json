@@ -97,8 +97,9 @@
     "input_path": "/ABSOLUTE/VERIFIED_OFFLINE_INPUT_MANIFEST.json",
     "output_dir": "/ABSOLUTE/VERIFIED_NEW_OR_EXISTING_OUTPUT_DIRECTORY",
     "run_argv": [
-      "/ABSOLUTE/PYTHON",
-      "/ABSOLUTE/backtest_entry.py",
+      "python3",
+      "-u",
+      "backtest_entry.py",
       "--run",
       "--config",
       "/ABSOLUTE/VERIFIED_OFFLINE_ACCOUNT_CONFIG.json",
@@ -108,8 +109,8 @@
       "/ABSOLUTE/VERIFIED_NEW_OR_EXISTING_OUTPUT_DIRECTORY"
     ],
     "verify_argv": [
-      "/ABSOLUTE/PYTHON",
-      "/ABSOLUTE/backtest_entry.py",
+      "/ABSOLUTE/CAPTURED/PYTHON_CHILD_EXECUTABLE",
+      "/ABSOLUTE/VERIFIED_OFFLINE_MAKER_DIRECTORY/backtest_entry.py",
       "--verify",
       "--config",
       "/ABSOLUTE/VERIFIED_OFFLINE_ACCOUNT_CONFIG.json",
@@ -117,6 +118,7 @@
       "/ABSOLUTE/VERIFIED_OFFLINE_INPUT_MANIFEST.json",
       "--output",
       "/ABSOLUTE/VERIFIED_NEW_OR_EXISTING_OUTPUT_DIRECTORY"
-    ]
+    ],
+    "child_executable": "/ABSOLUTE/CAPTURED/PYTHON_CHILD_EXECUTABLE"
   }
 }
