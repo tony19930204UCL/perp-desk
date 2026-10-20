@@ -4,12 +4,11 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "C0041-STAGE-RELAY",
-  "instruction_id": "C0041-STAGE-r2",
+  "instruction_id": "C0041-STAGE-r3",
   "status": "WAITING_CI",
-  "source_head_sha": "2e055253cbe013339a3bad17569402045ac9d17b",
-  "summary": "R2 shipped installed no-argument fixed-profile supervisor, stage inbox accepted completion consumer, source-bound report/owner checks, exactly-once next executor and full every-run JSON status. Existing explicit CLI preserved; synthetic subprocess demo now uses copied installed-profile no-arg script. Added six integration test methods (15 total) and official Hermes cron edit/readback docs. No install, real Maker evidence or product acceptance.",
+  "source_head_sha": "5c873b33960d25cde50e986b40293a4c4be0ebed",
+  "summary": "Bounded tests-only fixture correction. setup_graph now takes keyword-only kind default synthetic_stage_relay for all original direct CLI/unit tests. installed no-arg graph fixtures explicitly use stage_relay, including failure scenario; existing 15 tests preserved without skips or weaker safety assertions. Documentation clarifies isolated synthetic fixture versus real installed graph contract. Production module, graph example, CI and all other files unchanged.",
   "changed_files": [
-    "engineering/stage_relay.py",
     "engineering/tests/test_stage_relay.py",
     "engineering/STAGE_RELAY.md",
     ".relay/mailbox/c0041-stage-relay.json"
@@ -18,34 +17,32 @@
     {
       "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
       "result": "NOT_RUN",
-      "evidence": "15 authored, no shell invoked in r2. Operator reported earlier 9 r1 tests rc0."
+      "evidence": "No shell or test execution in r3; user supplied R2 push 39509063416 and PR 39509070136 both failed 15 tests (2 FAIL/4 ERROR), due to fixture kind mismatch. All 15 test methods remain in source."
     },
     {
       "command": "python3 engineering/stage_relay.py demo --dir /ABSOLUTE/ACTIVE_PROFILE/stage-relay/C0041/drill-UNIQUE",
       "result": "NOT_RUN",
-      "evidence": "R2 installed-layout noarg inbox drill authored, not executed here; operator earlier reported r1 drill rc0."
+      "evidence": "No r3 execution; operator separately reports R2 installed noarg synthetic drill rc0 DONE four stages (1,2,48,1) with hash-mismatch guard."
     },
     {
-      "command": "PR76 exact-head CI",
+      "command": "Exact-head PR76 push/pull_request CI after r3",
       "result": "NOT_RUN",
-      "evidence": "No final CI outcome verified in this turn; prior CI in-progress per user."
+      "evidence": "No current r3 CI conclusion checked or claimed; wait for both exact-head checks."
     }
   ],
   "remaining_work": [
-    "Run r2 15 tests, standalone demo and exact-head CI; fix any failure before source acceptance.",
-    "Operator must verify real r12 source, input, identity, acceptance producer and explicit account/historical/reflection commands, then install only into authorized active profile.",
-    "Use official hermes cron list/edit JOB --script stage_relay.py/list-readback while preserving prompt, cadence, models, skills and safety; none executed.",
-    "No actual Maker account replay, 48-cell economics, or trading-reflection acceptance. Whole product NOT_ACCEPTED."
+    "Operator independently run all 15 r3 tests and installed noarg subprocess drill; retain output and verify all existing safety assertions.",
+    "Wait for both exact-head push and pull_request CI success, otherwise report precise failures without further unauthorized revisions.",
+    "No installation, active profile cron edits or actual Maker performance/real replay or product-chain acceptance; product NOT_ACCEPTED."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review r2 exact-head CI and run 15 tests plus installed-layout subprocess demo, including refusal, missing report, duplicate/restart and concurrent no-arg invocations.",
-    "if_pass": "Approve bounded stage-relay source only and separately authorize operator file installation and official Hermes cron edit/readback; retain independent product-stage acceptance.",
-    "if_fail": "Return precise test failure and HEAD for branch-only allowed-file revision; no install/merge/trading.",
+    "verify_now": "Run 15-test unittest command and installed noarg subprocess demo; check both r3 exact-head push and pull_request CI against mailbox head. Confirm production engineering/stage_relay.py and graph/CI blob SHAs unchanged.",
+    "if_pass": "Approve only scoped r3 test fixture correction, then independently authorize operator installation separately; do not infer Maker acceptance.",
+    "if_fail": "Return exact failing test names/logs and HEAD; stop at this single bounded r3 correction without silent replay.",
     "blockers": [
-      "R2 tests/CI NOT_RUN in conversation",
-      "Real Maker graph/executors and independent acceptance not configured",
-      "Official active-profile cron integration not installed",
+      "R3 tests and exact-head CI NOT_RUN by assistant",
+      "No live installation or verified real executor/acceptance contracts",
       "Whole Maker product NOT_ACCEPTED"
     ]
   }
