@@ -116,3 +116,55 @@ def run_grid(dataset, account_config, start, end, sample_count=6000,
     return {"cells":cells,"samplers":sources,"cell_count":len(cells),
             "sensitivity_delay_minutes":delay_minutes,
             "classification":"EXPLORATORY_NOT_ACCEPTED"}
+
+def bounded_symbol(symbol, bars, funding, prepared, config, start, end,
+                   record_cell, count=6000):
+    """Run one validated disk-backed symbol and emit every completed cell.
+
+    Records three distinct economic paths and two independent accounts
+    per cell; only lightweight metrics are retained across cells.
+    """
+    from scenario_rates import SENSITIVITY
+    if symbol not in SYMBOLS:
+        raise X2Error("invalid research symbol")
+    samples = {}
+    lightweight = []
+    for frame in FRAMES:
+        eligible = prepared[frame]
+        selection = select_matched(eligible, frame, start, end, count=count)
+        tagged = dict(selection)
+        tagged["symbol_universe_sha256"] = hashlib.sha256(
+            (symbol+":"+selection["source_universe_sha256"])
+            .encode("ascii")).hexdigest()
+        samples[symbol+":"+str(frame)] = tagged
+        for k, ttl, exit_style in product(KS, TTLS, EXITS):
+            cell_id = f"{symbol}:{frame}m:{k}:{ttl}:{exit_style}"
+            baseline = None
+            for scenario, delay, rates in (
+                    ("baseline", 0, None), ("delay2", 2, None),
+                    ("cost1_5x", 0, SENSITIVITY)):
+                strategy = replay_cell(symbol, bars, funding, frame, k, ttl,
+                    exit_style, config, start, end, delay_minutes=delay,
+                    eligible=eligible, rates=rates)
+                matched = None
+                if selection["status"] == "READY":
+                    matched = replay_cell(symbol, bars, funding, frame, k,
+                        ttl, exit_style, config, start, end,
+                        signal_times=selection["selected_timestamps"],
+                        delay_minutes=delay, eligible=eligible, rates=rates)
+                metrics = summarize(strategy, matched)
+                meta = {"cell_id": cell_id, "symbol": symbol,
+                        "framework": frame, "k": k, "ttl": ttl,
+                        "exit": exit_style, "metrics": metrics,
+                        "matched_status": selection["status"]}
+                if scenario == "baseline":
+                    baseline = dict(meta)
+                    baseline["strategy"] = {
+                        "episodes": strategy["episodes"],
+                        "ledger": strategy["ledger"],
+                        "counts": strategy["counts"]}
+                record_cell(scenario, meta, strategy, matched)
+            lightweight.append(baseline)
+    if len(lightweight) != 24:
+        raise X2Error("symbol 24-cell coverage incomplete")
+    return lightweight, samples
