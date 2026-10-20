@@ -323,6 +323,19 @@ def adopt(config_path, state_path, identity_path, lease):
         if stage is None or stage.get("mode") != "adopt" or s["status"] not in ("READY", "WAITING_ADOPTION"):
             raise RelayError("ADOPT requires a not-yet-owned adopt-mode stage")
         stage_inputs(stage)
+        if graph.get("maker_bridge") and stage["id"] == graph["maker_bridge"].get("historical_stage"):
+            import importlib.util
+            sibling = Path(__file__).with_name("maker_stage_bridge.py")
+            if not sibling.is_file():
+                raise RelayError("Maker bridge sibling missing; ADOPT denied")
+            module_spec = importlib.util.spec_from_file_location("maker_stage_bridge", sibling)
+            maker = importlib.util.module_from_spec(module_spec)
+            module_spec.loader.exec_module(maker)
+            gate = maker.source_gate(graph, gh)
+            if gate["action"] != "CAPACITY_SOURCE_ACCEPTED":
+                raise RelayError("WAITING_CAPACITY_ACCEPTANCE: " + gate.get("reason", "source not accepted"))
+            if provided.get("argv") != graph["maker_bridge"].get("run_argv"):
+                raise RelayError("historical adopted argv differs from configured exact Maker --run")
         if not provided.get("operator") or not isinstance(provided.get("argv"), list):
             raise RelayError("ADOPT needs operator and exact argv identity")
         validate_argv(provided["argv"])
@@ -653,7 +666,7 @@ def supervisor(entrypoint=None):
             bridge = importlib.util.module_from_spec(module_spec)
             module_spec.loader.exec_module(bridge)
             bridge_gate = bridge.preflight(graph, gh, current)
-            if bridge_gate["action"] == "WAITING_CAPACITY_ACCEPTANCE":
+            if bridge_gate["action"] == "WAITING_CAPACITY_ACCEPTANCE" and current["status"] not in ("FAILED", "BLOCKED", "DONE"):
                 owner = current.get("owner")
                 return dict(base, action="WAITING_CAPACITY_ACCEPTANCE",
                             status=current["status"], stage=(eligible_stage or {}).get("id"),
