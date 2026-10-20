@@ -104,11 +104,11 @@ class Control(unittest.TestCase):
                            ".0145", ".0005")
         submit(a)
         a.bar(bar(0), entry_qty="2")
-        a.bar(bar(1, "100.4", "100.5", "99", "100.4"))
+        a.bar(bar(1, "100.6", "100.7", "99", "100.6"))
         self.assertIsNotNone(a.halt_until)
         with self.assertRaises(X2Error):
             submit(a, "next", "BBB", signal_time=2*T)
-        self.assertEqual(a.bar(bar(2, "101", "102", "98", "100")),
+        self.assertEqual(a.bar(bar(2, "101", "101.2", "98", "100")),
                          "CLOSED_SL")
         self.assertEqual(a.ledger()["qty"], D("0"))
         self.assertEqual(a.ledger()["reserved"], D("0"))
@@ -127,12 +127,9 @@ class Control(unittest.TestCase):
 
 class Mutation(unittest.TestCase):
     def mut_double_entry(self):
-        def skip_guard(self, *args, **kw):
-            self.entry = None
-            self.exit = None
-            return original(self, *args, **kw)
-        original = OfflineAccount.submit
-        with patch.object(OfflineAccount, "submit", skip_guard):
+        # Removing admission/reservation must violate the positive ledger
+        # assertion, rather than escaping via an unrelated X2Error.
+        with patch.object(OfflineAccount, "submit", return_value="PENDING"):
             Control("test_slot_cash_margin_pending_cross_symbol_and_dedup").debug()
 
     def mut_kill_bypass(self):
