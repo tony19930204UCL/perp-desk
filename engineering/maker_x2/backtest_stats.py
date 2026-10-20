@@ -118,12 +118,18 @@ def calendar_bootstrap(episodes, start_day, end_day, iterations=9999,
     centered = [v-observed for v in values]
     rng = random.Random(seed)
     samples = []
+    n=len(days)
+    blocks=[sum(centered[i:i+7],D(0)) for i in range(n-6)]
     for _ in range(iterations):
-        drawn = []
-        while len(drawn)<len(days):
-            offset=rng.randrange(len(days)-6)
-            drawn.extend(centered[offset:offset+7])
-        samples.append(sum(drawn[:len(days)],D(0))/D(len(days)))
+        aggregate=D(0)
+        used=0
+        while used<n:
+            offset=rng.randrange(n-6)
+            take=min(7,n-used)
+            aggregate+=(blocks[offset] if take==7 else
+                        sum(centered[offset:offset+take],D(0)))
+            used+=take
+        samples.append(aggregate/D(n))
     samples.sort()
     above=sum(v>=observed for v in samples)
     lo=samples[int(iterations*.025)]
