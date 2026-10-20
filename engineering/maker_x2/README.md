@@ -379,3 +379,24 @@ exchange queue or liquidation ordering.
 r8 `checkpoint()`/`recover()` use trusted detached in-memory Python
 state, not a disk-backed or cross-process durable format; future
 persistence would require its own approved engineering unit.
+
+
+### r8 correction-1: signed funding and exact pending expiry
+
+Account replay stores the short's remaining `qty` as a **positive**
+magnitude, whereas immutable `accounting.replay` stores a negative
+signed position. Therefore positive finalized funding rate credits
+the short: `cash_delta = remaining_qty * mark * rate` and
+`funding_cost = -cash_delta`. The fictional two-unit fixture has
+gross `2`, fees `.0796`, funding cost `-2`, cash `1003.9204`
+and net episode `3.9204`. The positive test now crosschecks original
+`accounting.replay` independently.
+
+An entirely unfilled pending entry continues to reserve margin and occupy
+the single slot through both eligible TTL2 minutes j0 and j1. On the
+first expired bar opening j2, original `ShortEntry.process` returns
+`EXPIRED` and account-level cleanup releases its reservation. This
+does not shift TTL cutoff or create a synthetic fill. Previous independently
+observed r8 failures (discovery 68: 66 pass/2 fail, account standalone
+13: 12 pass/1 fail, ledger standalone 3: 2 pass/1 fail) remain
+historical evidence. Correction-1 execution is NOT_RUN at handback.
