@@ -157,6 +157,24 @@ for name,delay,rates in [('baseline',0,None),('delay2',2,None),
                  delay_minutes=delay,rates=rates,
                  eligible_cache=cache,sample_cache=samples)
     result[name]=run
+from market_replay import replay_cell
+from decimal import Decimal as D
+focused=[dict(bar) for bar in data["ETHUSDT"]["bars"]]
+focused[300].update(open="100",high="100.27005",low="99",close="100")
+focused[301].update(open="100",high="100.1",low="98.9",close="99")
+known={"framework_minutes":1,"signal_time":300*60000,
+       "triggered":True,"signal_high":D("100"),"signal_close":D("100"),
+       "atr14":D("1"),"vwap60":D("99"),"signal_id":"focused",
+       "signal_type":"S1"}
+fund=[{"ts":301*60000,"rate":".01","mark":"100",
+       "settlement_id":"focused-settlement"}]
+result["focused"]={}
+for scenario,rates in (("baseline",None),("cost1_5x",SENSITIVITY)):
+    for exit_style in ("X1","X2","X3"):
+        key=scenario+":"+exit_style
+        result["focused"][key]=replay_cell(
+            "ETHUSDT",focused,fund,1,".25",2,exit_style,config,
+            300*60000,303*60000,eligible=[known],rates=rates)
 json.dump(canon(result),open(__import__('sys').argv[3],'w'),
           sort_keys=True,allow_nan=False)
 """
@@ -179,6 +197,29 @@ def differential(base_dir):
                          sample_count=1,frozen=False)
         verify_run(destination)
         old=json.loads(reference.read_text(encoding="utf-8"))
+        from market_replay import replay_cell
+        from scenario_rates import SENSITIVITY
+        focused=list(read_bars(sources["ETHUSDT"]["bars"])["bars"])
+        focused[300].update(open="100",high="100.27005",low="99",close="100")
+        focused[301].update(open="100",high="100.1",low="98.9",close="99")
+        known={"framework_minutes":1,"signal_time":300*60000,
+               "triggered":True,"signal_high":D("100"),
+               "signal_close":D("100"),"atr14":D("1"),"vwap60":D("99"),
+               "signal_id":"focused","signal_type":"S1"}
+        fund=[{"ts":301*60000,"rate":".01","mark":"100",
+               "settlement_id":"focused-settlement"}]
+        for scenario,rates in (("baseline",None),("cost1_5x",SENSITIVITY)):
+            for style in ("X1","X2","X3"):
+                key=scenario+":"+style
+                actual=replay_cell("ETHUSDT",focused,fund,1,".25",2,
+                    style,config,300*60000,303*60000,
+                    eligible=[known],rates=rates)
+                from backtest_reports import canon
+                assert canon(actual)==old["focused"][key],key
+                assert any(event["type"]=="fill" and event["side"]=="sell"
+                           for event in actual["events"]),key
+                assert any(event["type"]=="funding"
+                           for event in actual["events"]),key
         with (destination/"results.json").open(encoding="utf-8") as handle:
             new=json.load(handle)
         for scenario, prefix, summary in (
