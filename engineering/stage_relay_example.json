@@ -71,9 +71,9 @@
     "historical_stage": "historical-48-cell",
     "reflection_stage": "operator-reflection",
     "producer": {
-      "item": "C-1037",
-      "job": "sa-0-cc6aa1f2",
-      "instruction": "MAKER-V3-GH-CAPACITY-r13"
+      "item": "C-1062",
+      "job": "sa-0-b5902643",
+      "instruction": "MAKER-V3-GH-CAPACITY-r13-VWAP-CORRECTION"
     },
     "capacity_acceptance_path": "acceptance/capacity-source.json",
     "source_sha256": {
