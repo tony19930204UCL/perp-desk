@@ -1206,3 +1206,57 @@ pre-r13 module in a separate interpreter; merely comparing empty
 grid counts would not be enough. Streaming decision counts retain
 valid historical/tail signals even if delay2 delivery has no subsequent
 closed execution bar; such signals must never be fabricated into fills.
+
+
+## r13-correction-1 — final measured bounded correction
+
+Main's independent r13 immutable checkout executed 105/105 discoverable
+controls successfully and all ten positive entrypoints returned rc0;
+push CI 39511822228 and PR CI 39511826993 succeeded, but nested
+`--differential` failed *before* the new bounded implementation was
+compared. The failure was in an immutable pre-r13 historical
+`market_replay.replay_cell` focused 1.5x account, raising
+`X2Error("independent full account ledger divergence")`. This is
+not evidence of a new capacity discrepancy and must not be called PASS.
+
+The exact public source shows that the pre-r13 replay independently
+called `replay_account(capital, events)` at the final assertion
+while `OfflineAccount.ledger()` used its actual scenario rates.
+A nonempty 1.5x fill thus disagrees solely on reconstructing fees.
+This correction explicitly passes `rates=account.rates` to that
+**same** independent replay call in the current capacity
+`market_replay.py`; equality remains mandatory and no precision,
+rate, fill, funding or LIQ calculation is suppressed. The protected
+old checkout and financial core remain unchanged.
+
+In `tests/test_capacity.py`, the historical pre-r13 48×3
+account-replay reference remains exactly the actual untouched old
+`run_grid` for baseline/delay2/cost1.5x, including all 288 raw
+strategy/placebo account artifacts. The separate focused nonempty
+money reference now uses immutable pre-r13 `OfflineAccount`
+directly, rather than relying on its defective outer replay
+orchestrator. Both old and current versions drive the same explicit
+fictional entry, bar, finalized funding and X1/X2/X3 exit lifecycle
+at both baseline and 1.5x rates; comparisons require *exact*
+actual events, account ledger and open/tail snapshot equality.
+Real sell fills and finalized funding must be present. No tolerance
+or expected-value formula was weakened. The earlier old-source
+failure remains part of the historical acceptance record.
+
+From `engineering/maker_x2`, after full original positive controls,
+the unchanged entrypoint is:
+
+```sh
+python3 tests/test_capacity.py --differential --base-dir PRE_R13_MAKER_X2_DIR
+python3 tests/test_capacity.py --resource --minutes 30000
+```
+
+Run all twenty previously documented negative modes in fresh
+subprocesses **only after** positive/differential/resource controls
+pass, and require genuine test-ID AssertionErrors/rc1. Then check
+exact-head push/PR CI. Only after all gates pass may the operator
+execute the original complete two-symbol market history under the
+unchanged 5 GiB cap and use the shipped `--verify`.
+This correction's Python/CI/resource/market results remain
+**NOT_RUN** in the file-only GitHub session, and no third r13
+correction is authorized.
