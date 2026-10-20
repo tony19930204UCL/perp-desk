@@ -63,6 +63,8 @@ def main(argv=None):
         return 0
     if not (args.config and args.input and args.output):
         parser.error("--run requires --config --input --output")
+    if not discovery_gate():
+        raise X2Error("offline CONTROL failed: historical runner not admitted")
     config=load_config(args.config)
     with open(args.input,encoding="utf-8") as handle:
         sources=json.load(handle)
