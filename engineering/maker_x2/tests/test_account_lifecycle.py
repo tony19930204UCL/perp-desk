@@ -129,6 +129,19 @@ class Control(unittest.TestCase):
         self.assertEqual(a.ledger()["reserved"], D("0"))
         self.assertEqual(len(a.ledger()["episodes"]), 2)
 
+    def test_cancel_pending_partial_releases_unused_only(self):
+        a = account()
+        submit(a)
+        a.bar(bar(0), entry_qty="1")
+        self.assertEqual(a.ledger()["reserved"], D("50"))
+        self.assertEqual(a.cancel_entry(T), "PARTIAL_OPEN")
+        self.assertEqual(a.ledger()["reserved"], D("25"))
+        self.assertEqual(a.ledger()["qty"], D("1"))
+        self.assertTrue(a.snapshot()["slot"])
+        a.bar(bar(1, "101", "101.2", "98", "100"))
+        self.assertEqual(a.ledger()["reserved"], D("0"))
+        self.assertEqual(a.ledger()["qty"], D("0"))
+
     def test_checkpoint_restores_open_cost_ids_and_gap_tail(self):
         a = account()
         submit(a, "persist-one")
