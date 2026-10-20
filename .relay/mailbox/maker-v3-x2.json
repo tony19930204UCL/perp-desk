@@ -1,18 +1,40 @@
 {
   "schema_version": 2,
-  "status": "PENDING",
-  "placeholder": true,
   "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "PENDING-NOT-DISPATCHED",
-  "source_head_sha": "bd8e56c732e2be8a645f7b922b0aba6e1586001d",
-  "summary": "Operator template only, not external handback.",
+  "instruction_id": "MAKER-X2-GH-RECOVERY-r4",
+  "status": "READY_FOR_REVIEW",
+  "source_head_sha": "76d457b77c96f12949a431d737612bdd179a5d6f",
+  "summary": "Committed 20 deterministic unittest methods with independently hand-derived Decimal expectations for short entry, weighted partial exit, per-fill fees, signed funding, same-timestamp order, gap exit, flat/open accounting, and validation failures. Retained operator-provided accounting.py unchanged. README documents invocation and unverified execution; no deployment or main changes.",
+  "changed_files": [
+    "engineering/maker_x2/tests/test_accounting.py",
+    "engineering/maker_x2/README.md",
+    ".relay/mailbox/maker-v3-x2.json"
+  ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "No external tests delivered."
+      "evidence": "GitHub contents connector can read and commit files but does not execute Python. Source test suite committed; external exact-head execution is pending."
+    },
+    {
+      "command": "Existing repository CI coverage of engineering/maker_x2",
+      "result": "NOT_RUN",
+      "evidence": "No CI coverage demonstrated for nested Maker X2 namespace; other workflow results cannot establish acceptance."
     }
-  ]
+  ],
+  "remaining_work": [
+    "Main CIO independently retrieves committed accounting.py, tests/test_accounting.py and README.md at exact PR head, then executes unittest from engineering/maker_x2.",
+    "Review execution failures or accounting-spec discrepancies on the exact source; original CodeMirror provenance remains independently unverified.",
+    "Maker X2 full engine, A01-A16 and any trading or research acceptance remain out of scope."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Verify PR75 exact branch and HEAD, files and schema-v2 mailbox; from engineering/maker_x2 run python3 -m unittest discover -s tests -v, record real case count and failures; independently verify test arithmetic and CI namespace scope.",
+    "if_pass": "Accept only the scoped accounting tests after independent exact-head execution and review; do not infer full Maker V3 or trading acceptance.",
+    "if_fail": "Report actual failed assertions or contract discrepancies and request a bounded revision of this PR; preserve accounting source unless a concrete spec bug is proven.",
+    "blockers": []
+  }
 }
