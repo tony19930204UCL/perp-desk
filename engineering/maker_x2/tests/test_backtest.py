@@ -197,6 +197,24 @@ class Control(unittest.TestCase):
         self.assertEqual(stress["reserved"],D("0"))
         self.assertEqual(stress["qty"],D("0"))
 
+    def test_samebar_counterfactual_does_not_overwrite_primary_liq(self):
+        observed=minutes(300)
+        observed[290]={"ts":290*60000,"open":"100","high":"100.55",
+                       "low":"99.9","close":"100",
+                       "base_volume":"2","quote_volume":"200","closed":True}
+        observed[291]={"ts":291*60000,"open":"101","high":"102",
+                       "low":"98","close":"100",
+                       "base_volume":"2","quote_volume":"200","closed":True}
+        out=replay_cell("FICTION",observed,[],1,".25",2,"X1",
+                        cfg(),290*60000,295*60000,
+                        signal_times=[290*60000])
+        self.assertEqual(out["counts"].get("samebar_risk_profit_conflict"),1)
+        self.assertGreater(D(out["counts"]["favorable_order_upper_bound_usd"]),
+                           D("0"))
+        self.assertEqual(D(out["ledger"]["qty"]),D("0"))
+        self.assertGreater(D(out["ledger"]["writeoff"]),D("0"))
+        self.assertEqual(out["episodes"][0]["exit_type"],"LIQ")
+
     def test_real_48_grid_baseline_and_full_placebo(self):
         # No patched signal, grid, sampler or account: 290 15m closed
         # buckets provide one eligible 15m matched time per symbol.
