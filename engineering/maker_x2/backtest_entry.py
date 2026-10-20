@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from maker_exit_lab import X2Error
 from data_adapter import read_bars, read_funding, sha256_file
 from grid_runner import run_grid
+from scenario_rates import SENSITIVITY
 from backtest_reports import persist_run, verify_run, source_manifest
 from backtest_controls import discovery_gate
 
@@ -115,8 +116,12 @@ def main(argv=None):
     delayed=run_grid(data,config,manifest["evaluation_start"],
                      manifest["evaluation_end"],delay_minutes=2,
                      eligible_cache=universe_cache)
+    higher_cost=run_grid(data,config,manifest["evaluation_start"],
+                         manifest["evaluation_end"],rates=SENSITIVITY,
+                         eligible_cache=universe_cache)
     result["delay2_cells"]=delayed["cells"]
-    result["fee_slip_1_5x_status"]="NOT_IMPLEMENTED_NEEDS_AUTHORIZED_GLUE"
+    result["fee_slip_1_5x_cells"]=higher_cost["cells"]
+    result["fee_slip_1_5x_status"]="SOURCE_DELIVERED_NOT_VERIFIED"
     if source_manifest(root)!=source_before:
         raise X2Error("sources changed during run")
     written=persist_run(args.output,manifest,result)
