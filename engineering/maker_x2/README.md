@@ -745,3 +745,37 @@ exploration-contaminated with no holdout. ETH/BTC capital is never
 summed into a single portfolio. Full 1.5x rows and corresponding
 final preregistration acceptance remain **BLOCKED**, not silently
 fabricated.
+
+
+### r12 final source-scope notes
+
+`equity_path` stores the final **observed** close valuation per UTC
+calendar day (including zero-trade days), with `stale` flag and the
+original observed close timestamp. It never creates a midnight mark.
+All actual orders, funding, margin and liquidation account events are
+preserved individually, with the complete flat-to-flat episode stream.
+The new control `test_grid_has_48_isolated_cells_and_shared_sampler`
+checks 48 unique symbol-cells and 96 account-replay calls (48 strategy
+plus 48 matched) through a mocked orchestration fixture; it is **not**
+a replacement for an actual historical run. The separate tests
+`test_handderived_full_x1_flat_episode_reconciles` and
+`test_delay2_moves_real_pending_arrival_not_feature_decision`
+call the real frozen account modules with hand-derived fictional
+money and actual changed arrival time.
+
+Eligible decisions are computed once per symbol/framework and shared
+with all 12 real and matched variants and the delay2 scenario;
+production signal features and sampler constants remain unchanged.
+The CLI tests all existing/new discoverable controls before allowing
+`--run`, and only afterward checks full October-2023 input warmup and
+the exact frozen November-2023 to October-2026 window. It does not
+automatically run the negative mutations; the operator must execute
+those separately and record real failures before historical execution.
+
+r12 remains **BLOCKED for complete preregistration**, because an
+economically truthful fee/slippage1.5x account replay requires
+protected-module scenario injection, and the favorable same-bar
+upper bound is not yet computed. The baseline/delay2 executable
+paths are reviewable source but have NOT_RUN acceptance here.
+`OUTPUT_WRITTEN_NOT_ACCEPTED` and an exit code of zero must never be
+interpreted as an approved 48-grid research result.
