@@ -23,9 +23,19 @@ python3 tests/test_x2.py mut-be
 python3 tests/test_x2.py mut-duplicate
 ```
 
+Standalone commands run from this directory in a clean clone without external
+PYTHONPATH setup. The test script adds its package-local parent to sys.path.
+The normal discovery suite includes the positive duplicate/cancel/race baseline.
+Economic BE comparisons explicitly derive their independent expected result
+inside a Decimal 50-digit local context matching the production precision,
+without epsilon or float tolerance.
+
 Real acceptance requires recorded stdout, exit code and the failing assertion
-and test ID for each mutation; these commands have **NOT_RUN** status at
-GitHub-source delivery. Existing push/PR CI from r4 does not validate r5.
+and test ID for each mutation; these revised r6 commands have **NOT_RUN** status at
+GitHub-source delivery. The independent r5 clean-head discovery previously
+reported 31 unique tests (original20 PASS, X2 9 PASS/2 FAIL), and standalone
+control ImportError; these historical failures are retained as evidence,
+not relabeled successful. Existing push/PR CI from r4 does not validate r5.
 
 ## Frozen scope and conservative processing
 
@@ -37,8 +47,10 @@ are rejected. During a bar, existing stop is tested before any Maker
 profit. Adverse gap stop uses max(bar open, existing stop) * 1.0002,
 then 5 bp taker fee. For unknown intrabar ordering, SL/SL_GAP defeats
 Maker TP; this is an OHLC conservative proxy, not guaranteed execution.
-Only explicitly confirmed, below-limit passive exit fills count; mere
-touch does not create an execution. Exit fills on the entry-fill bar
+For OHLC-simulated Maker buybacks, a candidate must equal the posted limit
+exactly and bar low must be at or below limit*(1-0.0002), including equality.
+Fills are emitted at the exact posted limit, never a cheaper candidate price.
+Touch or insufficient penetration does not create an execution. Exit fills on the entry-fill bar
 are rejected. Limit quantities, cancellation and duplicate event identities
 are guarded. Closed SL positions cannot accept stale TP fills.
 
