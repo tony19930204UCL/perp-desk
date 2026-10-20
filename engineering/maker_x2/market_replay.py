@@ -3,7 +3,7 @@
 Both signal families call the same OfflineAccount: slot, frozen fees,
 funding, SL/LIQ, closed episodes and tail MTM are never bypassed.
 """
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from collections import Counter
 
 from account_lifecycle import OfflineAccount
@@ -168,13 +168,17 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                 counts["slot_or_gap_blocked"] += 1
                 continue
             try:
+                with localcontext() as ctx:
+                    ctx.prec=50
+                    posted=(D(r["signal_high"])+max(
+                        D(k)*D(r["atr14"]),
+                        D(r["signal_close"])*D(".0002")))
+                    quantity=(D(account_config["per_trade_margin"])*
+                              D(account_config["leverage"]))/posted
                 status = account.submit(
                     symbol, r["signal_id"], end, str(r["signal_high"]),
                     str(r["signal_close"]), str(r["atr14"]), k, ttl,
-                    str((D(account_config["per_trade_margin"]) *
-                         D(account_config["leverage"])) /
-                        (D(r["signal_high"]) + max(D(k)*D(r["atr14"]),
-                               D(r["signal_close"])*D(".0002")))), exit_style,
+                    str(quantity), exit_style,
                     signal_vwap=str(r["vwap60"]) if exit_style=="X1" else None)
                 counts["attempts"] += 1
                 counts[status] += 1
