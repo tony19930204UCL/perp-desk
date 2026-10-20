@@ -779,3 +779,156 @@ upper bound is not yet computed. The baseline/delay2 executable
 paths are reviewable source but have NOT_RUN acceptance here.
 `OUTPUT_WRITTEN_NOT_ACCEPTED` and an exit code of zero must never be
 interpreted as an approved 48-grid research result.
+
+
+## r12-correction-1 — bounded full-account scenario and positive-test repair
+
+**Status at source delivery: execution NOT_RUN.** Parent r12 was independently
+tested at its exact head: 96 unique, 92 PASS, 3 FAIL, 1 ERROR, rc1;
+negative mutations were NOT_RUN. Those failures remain recorded, not
+relabeled as passing. This revision fixes the observed fixture defects
+and adds executable acceptance controls, but requires the Main CIO's
+fresh exact-head Python execution before accepting any result.
+
+Measured repairs: finalized funding CSV may normalize `.01` to
+`0.01`; compare exact Decimal equality. A fictional high=close+1
+previously made posted entry infeasible under frozen >0.006 rejection;
+test minutes now have a feasible low-volatility high/low and retain
+real slot, TTL and no-chase. Delay2 checks actual new reserve event
+timestamps with the same immutable signal-time and a full two-minute
+arrival shift. Tail TIME control checks actual event type/side/qty and
+does not confuse a legitimate `time-open:` signal scope with a time
+exit. The deliberately introduced fake TIME *buy fill* is schema-valid
+and must be caught by an actual AssertionError.
+
+### Optional cost-scenario interface (BASE unchanged)
+
+`scenario_rates.py` is the only new module. `ScenarioRates()`
+has frozen baseline Maker fee=0.0002, Taker fee=0.0005,
+adverse SL slip=0.0002, LIQ fee=0.0005. The sole alternate
+`ScenarioRates("1.5")` multiplies those **economic** costs by 1.5.
+Neither scenario changes 2bp Maker queue penetration, original
+hard SL=.006, LIQ crossing=.0145, TP targets, UTC timing,
+signals, fill limits or position direction.
+
+Authorized minimal protected-file changes (all default arguments
+retain exact baseline behavior):
+- `maker_exit_lab.py`: optional `rates` in MakerX2, actual fill fees,
+  adverse SL price, and X2 next-bar economic BE denominator
+- `entry_lifecycle.py`: optional rates, X1 pre-entry paid-fee gate and
+  filled hard-SL slip; baseline 2bp penetration remains unchanged
+- `exit_lifecycle.py`: same rates through core/X1 projection/actual
+  risk exit and estimated future close fee; Decimal50 paid-entry-fee
+  reconstruction
+- `account_lifecycle.py`: propagate scenario to entry/exit/account
+  replay; actual fee-aware reservation, risk, LIQ, and separate
+  estimated unpaid close cost
+- `account_ledger.py`: scenario Maker/Taker actual per-fill fee
+  reconstruction while retaining funding and LIQ writeoff identity
+- `liquidation.py`: optional LIQ fee multiplier, not an alteration of
+  the frozen .0145 threshold or remaining-margin allocation
+
+`market_replay.py` computes candidate quantity in Decimal50:
+`qty=(per_trade_margin*leverage)/posted_entry_limit`, using the
+actual symbol/decision limit. Fixed `entry_qty` is no longer
+required by the CLI and is not used to size BTC or ETH. Real
+accepted X1/X2/X3 and matched placebo pass through the same scenario
+account, not a post-hoc fee subtraction. BTC/ETH are never pooled.
+
+`grid_runner.py` executes 48 baseline symbol-cells, 48 separate
+delay2 cells and 48 separate **1.5x economic-cost** cells, each with
+a real strategy account and a real matched-placebo account. One causal
+eligible universe and one matched sample per symbol/framework are
+reused across all variants and scenarios. Hashes include the symbol
+identity even if ETH/BTC have identical timestamps. Separate ETH/BTC
+BH24 and combined BH48 remain descriptive only. Open holdings, known
+funding, paid fees, LIQ margin writeoff, daily halts and kill gates
+all use the actual scenario account, not synthetic terminal returns.
+
+The account exhaustion flag is derived from actual insufficient-funds
+admissions and final available cash versus configured margin;
+nonexhaustion and no administrative tail-open are required for
+candidate eligibility. The 7-day null-centered calendar bootstrap
+retains zero-trade days, seed 20261020, 9999 samples, with
+return statistics expressed in **bp per initial entry notional**
+rather than mixing USD with bp confidence bounds. Each complete
+flat-to-flat episode is one observation. Insufficient observations
+still yield p=1 **placeholder**, CI unavailable. No optimization or
+post-hoc holdout claim is authorized.
+
+Observed same-bar risk/TP conflicts are separately counted. The
+favorable-order field is a non-executable upper-bound *research proxy*
+over frozen one-bar alternative stop and remaining-qty LIQ/TP
+allocations, never a change to primary conservative
+LIQ>SL/SL_GAP>Maker ordering or a claim about real ticks.
+
+### Corrected controls, differential checks and mutation execution
+
+From `engineering/maker_x2`, run positives **before any mutation or
+historical --run**:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 backtest_entry.py --self-test
+python3 tests/test_backtest.py -v
+python3 tests/test_backtest_mutations.py control
+python3 tests/test_x2.py control
+python3 tests/test_entry_lifecycle.py control
+python3 tests/test_exit_lifecycle.py control
+python3 tests/test_account_lifecycle.py control
+python3 tests/test_account_ledger.py
+python3 tests/test_signal_features.py control
+python3 tests/test_matched_signals.py control
+```
+
+The new standalone discoverable tests include
+`test_baseline_differential_and_1_5x_real_account_cash`
+(default BASE equals explicit BASE byte-identically, X1 fees 0.0797,
+1.5x fees 0.11955, net cash 1002.38045),
+`test_cost_sensitivity_changes_actual_sl_slippage_and_fees`
+(actual 1.5x short stop cash 998.22770455 vs BASE
+998.3184798),
+`test_explicit_margin_leverage_sets_actual_candidate_notional`,
+`test_samebar_counterfactual_does_not_overwrite_primary_liq`,
+and `test_real_48_grid_baseline_and_full_placebo` which calls
+unmocked 1m/15m signal and matched account playback with public
+fictional bars and a deliberately reduced sampler count.
+No real market prices/performance are asserted.
+
+Only after every positive passes, execute separate negative processes:
+
+```sh
+python3 tests/test_backtest_mutations.py mut-fee
+python3 tests/test_backtest_mutations.py mut-funding
+python3 tests/test_backtest_mutations.py mut-fake-time
+python3 tests/test_backtest_mutations.py mut-future
+python3 tests/test_backtest_mutations.py mut-overfill
+python3 tests/test_x2.py mut-be
+python3 tests/test_x2.py mut-duplicate
+python3 tests/test_signal_features.py mut-lookahead
+python3 tests/test_matched_signals.py mut-replacement
+python3 tests/test_matched_signals.py mut-resample
+```
+
+Negative success requires a genuine named AssertionError, executed
+test ID and nonzero rc, never an import error, unsupported operation
+or harness failure. Then check exact push and pull_request CI;
+CI by itself need not discover the nested maker_x2 tests.
+Only Main, after accepting the complete engineering gate, may run
+the operator's **existing local** history/config with:
+`python3 backtest_entry.py --run --config config.json --input inputs.json
+--output new-results`, followed by `--verify` with the same arguments.
+No historical CLI, market acquisition or CI was executed in this
+GitHub-only turn.
+
+Full 2023-10-01 warmup and
+[2023-11-01,2026-10-19) exploration coverage remains mandatory.
+The adapter never interpolates gaps, retimestamps bars or filters on
+future returns. Raw reports are tagged EXPLORATORY_NOT_ACCEPTED
+even if a CLI process exits zero. This is still not paper/live,
+strategy approval, a new holdout or whole A01–A16 acceptance.
+Performance on the actual multi-year local data is **not benchmarked**;
+daily observed equity replaces millions of per-cell minute snapshots,
+but reading original bars and repeated account updates may remain
+resource intensive. Main should record actual runtime and output
+integrity before admitting historical exploration.
