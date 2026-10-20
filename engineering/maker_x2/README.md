@@ -1,67 +1,79 @@
-# Maker X2: offline short-fill accounting checks
+# Maker X2 — offline short exit engineering unit
 
-This namespace contains an independent, standard-library-only Decimal ledger
-candidate (`accounting.py`) and deterministic unit tests
-(`tests/test_accounting.py`). It is engineering research, **not** a trading
-engine, deployment, approval, or live/paper execution.
+This research namespace retains the independently accepted r4 ledger
+`accounting.py` and its 20 unique accounting tests **byte-identical**.
+New in r5: `maker_exit_lab.py` (short-only state machine) and
+`tests/test_x2.py` (synthetic controls and mutation entrypoints).
+No real orders, private account data, market backtest, strategy or deployment.
 
-## Run
-
-From `engineering/maker_x2` at this branch's checked-out source:
+## Commands (cwd: engineering/maker_x2)
 
 ```sh
+# First CONTROL, including original 20 accounting regressions:
 python3 -m unittest discover -s tests -v
+
+# Standalone X2 controls (mutations excluded from discovery):
+python3 tests/test_x2.py control
+
+# Run individually AFTER CONTROL succeeds. Each deliberately broken test
+# must exit nonzero with a real AssertionError (not merely a mocked status):
+python3 tests/test_x2.py mut-fee
+python3 tests/test_x2.py mut-funding
+python3 tests/test_x2.py mut-be
+python3 tests/test_x2.py mut-duplicate
 ```
 
-The tests import `accounting.replay(initial_cash, events)` and
-`accounting.LedgerError` directly. They use public fictional prices, sizes,
-and timestamps, plus independently hand-derived literal Decimal expectations.
-No external packages, private configuration, real balances, network access, or
-exchange accounts are needed.
+Real acceptance requires recorded stdout, exit code and the failing assertion
+and test ID for each mutation; these commands have **NOT_RUN** status at
+GitHub-source delivery. Existing push/PR CI from r4 does not validate r5.
 
-## Input contract
+## Frozen scope and conservative processing
 
-Each event is a dictionary with unique nonempty string `id`, contiguous
-integer `seq` starting at zero, nondecreasing nonnegative integer UTC-ms
-`ts`, and `type`. Ordered events are **not sorted**.
+Maker entry fills are explicit confirmed partial sells (2 bp maker fee each);
+`arm()` fixes weighted entry E and two targets for half the original filled
+quantity each: TP1 E*(1-0.0045), TP2 E*(1-0.0090).
+Initial hard stop is E*(1+0.006). Other SL settings, including .0085,
+are rejected. During a bar, existing stop is tested before any Maker
+profit. Adverse gap stop uses max(bar open, existing stop) * 1.0002,
+then 5 bp taker fee. For unknown intrabar ordering, SL/SL_GAP defeats
+Maker TP; this is an OHLC conservative proxy, not guaranteed execution.
+Only explicitly confirmed, below-limit passive exit fills count; mere
+touch does not create an execution. Exit fills on the entry-fill bar
+are rejected. Limit quantities, cancellation and duplicate event identities
+are guarded. Closed SL positions cannot accept stale TP fills.
 
-* `fill`: `side` (`sell` or `buy`), positive `qty`, positive `price`,
-  `liquidity` (`maker` or `taker`).
-* `funding`: unique nonempty `settlement_id`, positive `mark`,
-  signed finite `rate`.
+Finalized settlement input uses unique event and settlement IDs,
+the actual supplied UTC-ms timestamp and mark, with no future-timestamp
+settlement accepted. Within an end-of-bar boundary, existing short quantity
+is funded **before** the same bar's confirmed Maker exit; funding events
+precede exits in the emitted ledger sequence. No future rate is read.
+The first TP1 fill never changes its own bar's stop. On the next bar
+the economic BE reference is
 
-Numeric inputs use decimal strings, integers, or finite Decimal values; binary
-floats, booleans, nonfinite values and malformed transitions are rejected.
-The module is short-only and rejects buying beyond an existing short.
+`(R + q*E) / (q*(1+0.0002)*(1+0.0005))`
 
-Maker fee is 0.0002 and taker fee is 0.0005 on **every actual fill**.
-Opening sale notional is not deposited to cash. Closing realized gross PnL is
-(entry basis average - actual fill price) times closed quantity.
-Funding cost equals remaining signed quantity times mark times rate; negative
-cost credits short cash for positive rates. At equal timestamps, the event
-with lower seq executes first, including settlement versus partial exit.
+where `R=realized_gross-fees_paid-funding_cost` and q is remaining positive
+short size. Updated stop is the minimum of the original stop, old stop
+and reference. Nonpositive BE reference is explicitly audited as unavailable.
+Existing risk is processed before newly supplied bar-end settlements or
+passive wins, and new funding is reflected in the next bar's BE assessment.
 
-Returned cash reconciles to initial cash + realized gross - fees - funding
-cost. A partially open short retains its signed quantity and remaining entry
-basis; no unrealized PnL, external mark, liquidation, synthetic close, or
-final equity is inferred.
+Every emitted fill/funding event matches immutable `accounting.replay`.
+`snapshot()` also retains open quantity, costs, stop, remaining pending
+orders and audit transitions. Test controls independently assert hand-derived
+Decimal values, then compare replay's cash, basis, fees and funding.
 
-## Coverage and limitations
+## Limits — not full A01–A16 acceptance
 
-Tests exercise two unequal-price short entries, weighted half close, maker
-and taker fees by leg, funding of both signs, funding after partial close,
-same-timestamp sequencing, actual gap exit price, full close and open-position
-semantics, reconciliation, and malformed IDs, settlement IDs, ordering,
-timestamps, types, quantities, prices, and numeric inputs.
+This is a deliberately narrow state machine without entry post-only
+transport, TTL 2/5 management, 4h timeouts, X1 or X3 logic,
+LIQ/full-account margin and liquidation calculation, day-halt or
+consecutive-loss controls, exchange tick/queue simulation, equity MTM,
+A14 complete account/episode coverage, CONTROL market placebo, 24-grid
+or 12-arm experiments. It does not establish full A01–A16 PASS,
+does not claim guaranteed break-even under a gap, future funding,
+model error or excess slippage, and does not justify paper/live use.
 
-This commit provides test **source**, not an independently executed pass.
-The GitHub contents connector does not run `python3 -m unittest`; that
-command must be executed on the exact committed source by Main CIO.
-Existing repository CI may not discover this nested namespace, so do not
-interpret unrelated green checks as Maker X2 acceptance.
-
-The operator-provided `accounting.py` was left byte-for-byte unchanged.
-Its provenance hash and readable nonce do not certify original CodeMirror
-fidelity or actual test behavior. The broader Maker V3/X2 engine and A01-A16
-are outside this deliverable and remain unverified. No 24-grid/12-arm research,
-paper or live activation, deployment, or change to main is authorized.
+The frozen accounting candidate is not changed. Work is restricted to
+source/tests/document/mailbox on existing draft PR75; no main merge,
+research-window activation, credentials, paid tools or account settings.
