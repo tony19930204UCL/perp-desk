@@ -6,6 +6,7 @@ from decimal import Decimal as D
 from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from account_lifecycle import OfflineAccount
+from accounting import replay as replay_fills
 from liquidation import liquidation_proxy
 from maker_exit_lab import X2Error
 
@@ -127,6 +128,43 @@ class Control(unittest.TestCase):
         self.assertEqual(a.halt_until, expected)
         self.assertEqual(a.ledger()["reserved"], D("0"))
         self.assertEqual(len(a.ledger()["episodes"]), 2)
+
+    def test_checkpoint_restores_open_cost_ids_and_gap_tail(self):
+        a = account()
+        submit(a, "persist-one")
+        a.bar(bar(0), entry_qty="2")
+        checkpoint = a.checkpoint()
+        copied = OfflineAccount.recover(checkpoint)
+        self.assertEqual(copied.ledger()["cash"], D("999.95990"))
+        self.assertEqual(copied.ledger()["reserved"], D("50"))
+        self.assertEqual(copied.ledger()["qty"], D("2"))
+        self.assertEqual(copied.events, a.events)
+        copied.tail(gap=True)
+        self.assertTrue(copied.snapshot()["stale"])
+        self.assertEqual(copied.ledger()["cash"], D("999.95990"))
+        self.assertEqual(copied.snapshot()["last_mark"], D("100"))
+        with self.assertRaises(X2Error):
+            submit(copied, "persist-one", "BBB", signal_time=T)
+        self.assertEqual(a.snapshot()["stale"], False)
+
+    def test_actual_account_events_crosscheck_unchanged_fill_replay(self):
+        a = account()
+        submit(a)
+        a.bar(bar(0), entry_qty="2")
+        a.bar(bar(1, "100", "100.1", "98", "99"), maker_fill=True)
+        account_state = a.ledger()
+        fills = [event for event in a.events
+                 if event["type"] in ("fill", "funding")]
+        normalized = [{k: v for k, v in event.items()
+                       if k not in ("source_id", "episode")}
+                      for event in fills]
+        for i, event in enumerate(normalized):
+            event["seq"] = i
+        old = replay_fills("1000", normalized)
+        self.assertEqual(old["cash"], account_state["cash"])
+        self.assertEqual(old["fees_paid"], account_state["fees"])
+        self.assertEqual(old["remaining_qty"], account_state["qty"])
+        self.assertEqual(old["realized_gross"], account_state["gross"])
 
     def test_pending_expiry_releases_without_fake_fill(self):
         a = account()
