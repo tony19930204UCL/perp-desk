@@ -218,13 +218,13 @@ class Control(unittest.TestCase):
             bar(y, 1, 20, "99.7", "100", "99", "99.8",
                 fills=[tp("tp1", "2", "99.55", "fill1")])
             with self.subTest(tp2_low=low), self.assertRaises(X2Error):
-                bar(y, 2, 30, "99", "99.2", str(low), "99",
+                bar(y, 2, 30, "99.2", "99.3", str(low), "99.2",
                     fills=[tp("tp2", "2", str(limit2), "no-fill2")])
         for low in (limit2 * D("0.9998"), D("98")):
             y = start()
             bar(y, 1, 20, "99.7", "100", "99", "99.8",
                 fills=[tp("tp1", "2", "99.55", "fill1")])
-            bar(y, 2, 30, "99", "99.2", str(low), "99",
+            bar(y, 2, 30, "99.2", "99.3", str(low), "99.2",
                 fills=[tp("tp2", "2", str(limit2), "fill2")])
             self.assertEqual(y.events[-1]["price"], str(limit2))
             self.assertEqual(y.phase, "CLOSED")
@@ -232,7 +232,7 @@ class Control(unittest.TestCase):
         bar(y, 1, 20, "99.7", "100", "99", "99.8",
             fills=[tp("tp1", "2", "99.55", "fill1")])
         with self.assertRaises(X2Error):
-            bar(y, 2, 30, "99", "99.2", "98", "99",
+            bar(y, 2, 30, "99.2", "99.3", "98", "99.2",
                 fills=[tp("tp2", "2", "98", "cheap2")])
 
 
