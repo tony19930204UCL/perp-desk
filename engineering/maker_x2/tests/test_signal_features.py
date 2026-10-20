@@ -44,7 +44,8 @@ class Control(unittest.TestCase):
     def test_prefix_future_invariance_and_tail_decision(self):
         original = bars(300, spike=True)
         first = sf.eligible_decisions(original, 1)
-        extended = sf.eligible_decisions(original + bars(2), 1)
+        suffix = [dict(item, ts=(300+j)*M) for j, item in enumerate(bars(2))]
+        extended = sf.eligible_decisions(original + suffix, 1)
         self.assertEqual(first, extended[:len(first)])
         self.assertEqual(first[-1]["signal_time"], 300*M)
         self.assertTrue(first[-1]["triggered"])
