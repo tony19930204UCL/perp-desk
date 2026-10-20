@@ -85,6 +85,7 @@ class Control(unittest.TestCase):
         self.assertEqual(r["cash"], D("1002.8802"))
         self.assertEqual(r["fees_paid"], D("0.1198"))
         self.assertEqual(x.snapshot()["cash"], D("1002.8802"))
+        self.assertEqual(x.funding_cost, D("-2"))
         self.assertEqual(x.qty, D("2"))
         self.assertEqual(x.stop, D("200.8802") / D("2.0014002"))
 
@@ -136,7 +137,7 @@ class Control(unittest.TestCase):
             bar(x, 0, 20, "99", "100", "98", "99",
                 fills=[tp("tp1", "2", "99.5", "t1")])
 
-    def test_duplicate_fill_and_cancel_races(self):
+    def mut_duplicate_fill_and_cancel_races(self):
         x = start()
         x.cancel("tp1", "cancel-1", 15)
         with self.assertRaises(X2Error):
@@ -186,26 +187,26 @@ class Control(unittest.TestCase):
 # Mutations deliberately patch only the TEST's view of the production method.
 # Each targeted CONTROL assertion must fail, yielding unittest failure exit 1.
 class Mutation(unittest.TestCase):
-    def test_fee_omission(self):
+    def mut_fee_omission(self):
         with patch.object(MakerX2, "_fee", return_value=D("0")):
             Control("test_weighted_partial_entry_and_tp1_economics").debug()
 
-    def test_funding_remaining_qty(self):
+    def mut_funding_remaining_qty(self):
         with patch.object(MakerX2, "_funding_qty", return_value=D("-4")):
             Control("test_finalized_funding_remaining_signed_qty_and_replay").debug()
 
-    def test_same_bar_be(self):
+    def mut_same_bar_be(self):
         with patch.object(MakerX2, "_be_eligible", return_value=True):
             Control("test_same_bar_first_tp_never_retroactive_stop").debug()
 
-    def test_duplicate_fill(self):
+    def mut_duplicate_fill(self):
         def allow_duplicate(self, event_id, ts):
             if event_id in self.seen:
                 self.seen.remove(event_id)
             original(self, event_id, ts)
         original = MakerX2._claim
         with patch.object(MakerX2, "_claim", allow_duplicate):
-            Control("test_duplicate_fill_and_cancel_races").debug()
+            Control("mut_duplicate_fill_and_cancel_races").debug()
 
 
 if __name__ == "__main__":
@@ -214,10 +215,10 @@ if __name__ == "__main__":
     tests = unittest.TestLoader().loadTestsFromTestCase(
         Mutation if mode.startswith("mut-") else Control)
     if mode.startswith("mut-"):
-        wanted = {"mut-fee": "test_fee_omission",
-                  "mut-funding": "test_funding_remaining_qty",
-                  "mut-be": "test_same_bar_be",
-                  "mut-duplicate": "test_duplicate_fill"}.get(mode)
+        wanted = {"mut-fee": "mut_fee_omission",
+                  "mut-funding": "mut_funding_remaining_qty",
+                  "mut-be": "mut_same_bar_be",
+                  "mut-duplicate": "mut_duplicate_fill"}.get(mode)
         if wanted is None:
             raise SystemExit("unknown mutation")
         tests = unittest.TestSuite([Mutation(wanted)])
