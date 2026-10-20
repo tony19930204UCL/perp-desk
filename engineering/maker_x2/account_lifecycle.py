@@ -170,12 +170,25 @@ class OfflineAccount:
         self._risk_limits(ts)
 
     def cancel_entry(self, ts):
-        if self.entry is None:
-            raise X2Error("no pending entry")
+        if self.entry is None or self.exit is not None:
+            raise X2Error("no cancellable pending entry")
         self._sync(self.entry.events)
+        remaining_qty = self.ledger()["qty"]
+        if remaining_qty > Z:
+            # Only release unfilled allocation. Existing filled risk remains.
+            unused = self.allocation * self.entry.remaining / self.entry.qty_target
+            if unused > Z:
+                self._emit("release", "cancel-"+str(ts), ts,
+                           amount=str(unused))
+            self.exit = ShortExit(self.entry, self.style,
+                                  vwap=self.entry.x1_vwap,
+                                  known_funding_cost=self.entry.x1_known_funding_cost)
+            return "PARTIAL_OPEN"
         self._emit("release", "cancel-"+str(ts), ts,
                    amount=str(self.ledger()["reserved"]))
         self.entry = None
+        self.style = None
+        return "CANCELLED"
 
     def bar(self, bar, entry_qty=None, maker_fill=False, settlements=()):
         op, high, low, close = closed_bar(bar)
