@@ -1260,3 +1260,78 @@ unchanged 5 GiB cap and use the shipped `--verify`.
 This correction's Python/CI/resource/market results remain
 **NOT_RUN** in the file-only GitHub session, and no third r13
 correction is authorized.
+
+
+## r13-correction-2 — zero-volume feature-window parity
+
+The second and **final** explicitly authorized r13 capacity correction
+addresses a distinct actual full-history error. The independent
+r13-correction-1 gates passed (105 original/expanded discoverable
+controls, 10 positive entrypoints, all 20 genuine AssertionError
+mutations, immutable differential rc0, representative 30,000
+minute/symbol resource 142.405568s, maxRSS 33,392 KiB under 5 GiB,
+289 verified artifacts; push CI 39513176130 and PR CI 39513182756
+both SUCCESS). Those are **historical pinned-head outcomes only**.
+
+The genuine full original data CLI subsequently exited rc1 after
+240.028s/maxRSS 53,048 KiB, before any completed market cell, at
+`bounded_history._eligible_window -> vwap60` with
+`X2Error("VWAP60 invalid volumes")`. This was not MemoryError,
+market PnL or a reason to raise the 5 GiB limit. The immutable
+`signal_features.eligible_decisions` already excluded this
+uncomputable feature window via the narrow
+`except (X2Error, ArithmeticError)` feature calculation scope.
+The bounded implementation previously propagated it and killed
+the run. Original `entry_lifecycle.vwap60` still requires
+base sum > 0 and quote sum >= 0; no fake VWAP0, ffill or alternative
+volume weighting was added.
+
+The bounded implementation now matches that precise feature-only
+exception boundary. It excludes the invalid *decision*, not its
+underlying minute bars, funded position, risk, order, account or
+subsequent valid decision. Unexpected KeyError and other programming
+errors remain errors. `prepare_decisions` writes explicit reason
+counts to a sealed SQLite `exclusions` table. The existing
+`PreparedDecisions.exclusion_counts()` API exposes these audit
+counts, including `VWAP60_INVALID_VOLUMES` and
+`SIGMA_NONPOSITIVE`, without modifying the original feature
+records, seeded sampler or research strategy.
+
+New normal-discovery module
+`tests/test_capacity_windows.py` constructs fictional closed
+minutes with valid varying OHLC, a complete 60-minute zero-base/
+zero-quote interval and subsequent normal-volume recovery. It calls
+the **actual unchanged** reference `eligible_decisions`,
+`vwap60` guard, disk-backed `iter_eligible` and
+`prepare_decisions` on identical inputs, checking exact whole
+records and triggered decisions, both 1m and UTC15m, eligible-time
+identity, same seeded matched sampler, auditable reason count and
+causal prefix stability. Prior `tests/test_capacity.py` and every
+original test remain byte-identical.
+
+From `engineering/maker_x2`, positive controls first:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 backtest_entry.py --self-test
+python3 -m unittest discover -s tests -p test_capacity_windows.py -v
+python3 tests/test_capacity.py
+python3 tests/test_capacity.py --differential --base-dir PRE_R13_MAKER_X2_DIR
+python3 tests/test_capacity.py --resource --minutes 30000
+```
+
+Also run all previously documented ten standalone positive entrypoints.
+Only after **all** positive, differential and resource results PASS,
+run the **original exact twenty** negative mutation subprocess
+commands documented above; each requires a named executed test,
+genuine AssertionError and rc1. Confirm new exact-head push and
+pull_request CI independently. Only after all finite gates PASS
+may the operator launch the unchanged full two-symbol historical
+market run under its original 5 GiB cap, then the shipped
+`--verify` on exit0. Do not reduce data, sample size, time range or
+raise process limits.
+
+r13-correction-2 tests, CI, mutations and full-market run remain
+**NOT_RUN** at GitHub source delivery. Previous real full-market
+failure and prior independent r13 success are preserved, not
+reclassified as new PASS. No third r13 correction is authorized.
