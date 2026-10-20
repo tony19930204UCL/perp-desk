@@ -131,7 +131,9 @@ class ShortEntry:
 
     @classmethod
     def for_x1(cls, *args, signal_vwap, known_funding_cost=None, **kwargs):
-        """Freeze X1 target/funding and reject bad economics before fills."""
+        """Require a frozen X1 target before creating an entry lifecycle."""
+        if signal_vwap is None:
+            raise X2Error("X1 signal_vwap target is required before entry")
         return cls(*args, x1_vwap=signal_vwap,
                    x1_known_funding_cost=known_funding_cost, **kwargs)
 
