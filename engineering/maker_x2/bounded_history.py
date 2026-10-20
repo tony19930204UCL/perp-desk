@@ -179,7 +179,7 @@ def _eligible_window(frame, minutes, tf):
 
 def iter_eligible(bars, tf):
     """Constant-memory causal features from fully validated PreparedBars."""
-    if not isinstance(bars, PreparedBars) or tf not in (1, 15):
+    if not isinstance(bars, PreparedBars) or type(tf) is not int or tf not in (1, 15):
         raise X2Error("validated bars and framework 1/15 required")
     minutes = deque(maxlen=60)
     frames = deque(maxlen=290)
