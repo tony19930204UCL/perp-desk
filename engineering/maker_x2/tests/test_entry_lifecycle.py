@@ -48,9 +48,19 @@ class Control(unittest.TestCase):
         self.assertEqual(x.events, [])
         y = entry()
         y.process(bar(0, "100", "100.1", "99", "100"))
-        self.assertEqual(y.process(bar(1, "101", "101.2", "99", "100"),
+        self.assertEqual(y.process(bar(1, "100.5", "100.6", "99", "100"),
                                    fill_qty="2"), "FILLED")
         self.assertEqual(y.events[0]["price"], "100.25")
+        self.assertEqual(y.snapshot()["ledger"]["remaining_qty"], D("2"))
+        z = entry()
+        z.process(bar(0, "100", "100.1", "99", "100"))
+        self.assertEqual(z.process(bar(1, "101", "101.2", "99", "100"),
+                                   fill_qty="2"), "CLOSED_SL")
+        result = replay("1000", z.events)
+        self.assertEqual([e["side"] for e in z.events], ["sell", "buy"])
+        self.assertEqual(result["fees_paid"], D("0.1411202"))
+        self.assertEqual(result["realized_gross"], D("-1.5404"))
+        self.assertEqual(result["cash"], D("998.3184798"))
 
     def test_a04_ttl2_5_last_and_expiry_without_suffix(self):
         for ttl in (2, 5):
@@ -89,12 +99,51 @@ class Control(unittest.TestCase):
         for atr in ("0", "NaN", "-1"):
             with self.subTest(atr=atr), self.assertRaises(X2Error):
                 entry(atr=atr)
+        impossible = entry(high="101", close="100", atr="1", k=".50")
+        self.assertEqual(impossible.status, "PLACEMENT_INFEASIBLE")
+        self.assertEqual(impossible.events, [])
+        self.assertEqual(impossible.snapshot()["ledger"]["fees_paid"], D("0"))
+        self.assertFalse(impossible.snapshot()["pending_slot"])
         with self.assertRaises(X2Error):
-            entry(high="101", close="100", atr="1", k=".50")
+            impossible.process(bar(0, "100", "102", "99", "100"), fill_qty="2")
         with self.assertRaises(X2Error):
             atr14([bar(j) for j in range(14)])
         with self.assertRaises(X2Error):
             vwap60([bar(j) for j in range(59)])
+
+    def test_a06_x1_preentry_rejection_no_paid_fee_or_position(self):
+        for target, funding in (("101", None), ("100.24", None),
+                                ("99", "5")):
+            with self.subTest(target=target, funding=funding):
+                x = ShortEntry.for_x1("pre", 0, "100", "100", "1",
+                                     ".25", 2, "2", signal_vwap=target,
+                                     known_funding_cost=funding)
+                self.assertEqual(x.status, "X1_ADMISSION_REJECTED")
+                self.assertEqual(x.events, [])
+                self.assertEqual(x.snapshot()["ledger"]["fees_paid"], D("0"))
+                self.assertEqual(x.snapshot()["ledger"]["remaining_qty"], D("0"))
+                self.assertFalse(x.snapshot()["pending_slot"])
+                with self.assertRaises(X2Error):
+                    x.process(bar(0, "100", "100.27005", "99", "100"),
+                              fill_qty="2")
+
+    def test_a06_x1_preentry_positive_freezes_and_partial_size_gate(self):
+        x = ShortEntry.for_x1("pre", 0, "100", "100", "1",
+                              ".25", 2, "2", signal_vwap="99")
+        self.assertEqual(x.status, "PENDING")
+        self.assertTrue(x.unknown_future_funding)
+        self.assertEqual(x.x1_projected_net, D("2.4203"))
+        self.assertEqual(x.process(bar(0, "100", "100.27005", "99", "100"),
+                                   fill_qty="1"), "PARTIAL")
+        self.assertEqual(x.snapshot()["ledger"]["fees_paid"], D(".02005"))
+        self.assertEqual(x.snapshot()["ledger"]["remaining_qty"], D("1"))
+        self.assertEqual(x.x1_projected_net, D("1.21015"))
+        self.assertEqual(x.x1_vwap, D("99"))
+        known = ShortEntry.for_x1("pre2", 0, "100", "100", "1",
+                                  ".25", 2, "2", signal_vwap="99",
+                                  known_funding_cost="1")
+        self.assertFalse(known.unknown_future_funding)
+        self.assertEqual(known.x1_projected_net, D("1.4203"))
 
     def test_known_atr14_true_range_and_quote_base_vwap60(self):
         series = [bar(j) for j in range(15)]
