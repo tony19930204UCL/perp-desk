@@ -45,7 +45,7 @@ def run_grid(dataset, account_config, start, end, sample_count=6000,
                         symbol,bars,funding,frame,k,ttl,exit_style,
                         account_config,start,end,
                         signal_times=selection["selected_timestamps"],
-                        delay_minutes=delay_minutes,eligible=eligible)
+                        delay_minutes=delay_minutes,eligible=eligible,rates=rates)
                 metrics=summarize(real,matched)
                 cells.append({"cell_id":cell_id,"symbol":symbol,
                               "framework":frame,"k":k,"ttl":ttl,
@@ -63,7 +63,18 @@ def run_grid(dataset, account_config, start, end, sample_count=6000,
         cell["metrics"]["bootstrap_p"]=test["p"]
         cell["metrics"]["bootstrap_ci95"]=test["ci95"]
         cell["metrics"]["p_is_placeholder"]=test["p_is_placeholder"]
-        cell["metrics"]["not_exhausted"]="NOT_VERIFIED"
+        final=cell["strategy"]["ledger"]
+        available=D(final["available"])
+        needed=D(account_config["per_trade_margin"])
+        insufficient=cell["strategy"]["counts"].get(
+            "INSUFFICIENT_CASH_OR_MARGIN",0)>0
+        not_exhausted=(not insufficient and available>=needed and
+                       D(final["cash"])>0)
+        cell["metrics"]["not_exhausted"]=not_exhausted
+        cell["metrics"]["exhausted"]=not not_exhausted
+        cell["metrics"]["admin_tail_open"]=bool(
+            cell["strategy"]["counts"].get("admin_4h_triggers",0)
+            and D(final["qty"])>0)
     for symbol in SYMBOLS:
         family=[c for c in cells if c["symbol"]==symbol]
         flags=bh_flags([c["statistics"]["p"] for c in family])
@@ -86,7 +97,8 @@ def run_grid(dataset, account_config, start, end, sample_count=6000,
                    alpha is not None and D(alpha)>5 and
                    pf is not None and D(pf)>D("1.30") and
                    neighborhood and
-                   cell["metrics"]["not_exhausted"] is True)
+                   cell["metrics"]["not_exhausted"] is True and
+                   not cell["metrics"]["admin_tail_open"])
         cell["metrics"]["neighbor_three_positive"]=neighborhood
         cell["metrics"]["candidate"]=bool(candidate)
         cell["metrics"]["classification"]=(
