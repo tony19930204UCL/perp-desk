@@ -932,3 +932,73 @@ daily observed equity replaces millions of per-cell minute snapshots,
 but reading original bars and repeated account updates may remain
 resource intensive. Main should record actual runtime and output
 integrity before admitting historical exploration.
+
+
+## r12-correction-2 — final authorized tests-only revision
+
+The prior independent immutable checkout of correction-1 ran
+`python3 backtest_entry.py --self-test`: **101 unique tests,
+100 PASS, 1 ERROR, rc1**. All original 84 controls and the real
+non-mocked 48-cell account test passed. The sole error,
+`Control.test_grid_has_48_isolated_cells_and_shared_sampler`, came
+from a deliberately mocked replay with an incomplete ledger missing
+`available`. That was a test fixture error, not evidence that
+production exhaustion semantics should be weakened. The prior exact
+push/PR CI runs 39507232863 and 39507238516 were successful but
+did not discover this nested suite. Mutations and historical market
+runs remained NOT_RUN.
+
+This revision changes only `tests/test_backtest.py`, this README,
+and the formal mailbox. The fictional flat mocked account now exposes
+the independent replay ledger contract: cash=1000, reserved=0,
+available=1000, qty=0, basis/gross/fees/funding/writeoff=0, no
+episodes or IDs, equity=1000, unrealized=0. The test separately
+asserts `available=cash-reserved`, `equity=cash+unrealized`,
+and the zero position/reservation, while retaining **all** original
+48-cell, four sampler universe, 96 strategy+matched replay, and unique
+cell-ID assertions. No production code or other test changed.
+There is no third bounded correction authorized.
+
+In the `engineering/maker_x2` directory, Main CIO runs positives
+before any negative mutation:
+
+```sh
+python3 backtest_entry.py --self-test
+python3 -m unittest discover -s tests -v
+python3 tests/test_backtest.py -v
+python3 tests/test_backtest_mutations.py control
+python3 tests/test_x2.py control
+python3 tests/test_entry_lifecycle.py control
+python3 tests/test_exit_lifecycle.py control
+python3 tests/test_account_lifecycle.py control
+python3 tests/test_account_ledger.py
+python3 tests/test_signal_features.py control
+python3 tests/test_matched_signals.py control
+```
+
+Only if **all** positives PASS, run each genuine mutation as an
+independent process and inspect an executed test ID, real
+`AssertionError` and nonzero rc (not import/harness failure):
+
+```sh
+python3 tests/test_backtest_mutations.py mut-fee
+python3 tests/test_backtest_mutations.py mut-funding
+python3 tests/test_backtest_mutations.py mut-fake-time
+python3 tests/test_backtest_mutations.py mut-future
+python3 tests/test_backtest_mutations.py mut-overfill
+python3 tests/test_x2.py mut-be
+python3 tests/test_x2.py mut-duplicate
+python3 tests/test_signal_features.py mut-lookahead
+python3 tests/test_matched_signals.py mut-replacement
+python3 tests/test_matched_signals.py mut-resample
+```
+
+All correction-2 execution/CI results are **NOT_RUN** in this
+GitHub-file-only delivery. Do not relabel the prior 101-test failure
+or successful broad CI as correction-2 acceptance. Only after
+independent exact-head engineering gates PASS may the operator use
+already-local full BTC/ETH historical inputs and explicit local
+config with the documented `--run` and `--verify` CLI. No data
+window, sample count, account economic threshold or other strategy
+parameter is changed by this fixture repair. Results remain
+exploratory, not A01-A16/product/trading approval.
