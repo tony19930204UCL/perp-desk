@@ -127,14 +127,21 @@ def verify_argv(spec):
     run, verify = spec.get("run_argv"), spec.get("verify_argv")
     relay.validate_argv(run)
     relay.validate_argv(verify)
-    demand(len(run) == len(verify) == 9 and run[:2] == verify[:2] and
-           run[2:] == ["--run", "--config", spec.get("config_path"),
-                       "--input", spec.get("input_path"), "--output", spec.get("output_dir")] and
-           verify[2:] == ["--verify", "--config", spec.get("config_path"),
-                          "--input", spec.get("input_path"), "--output", spec.get("output_dir")],
-           "Maker CLI bindings must differ only --run/--verify")
-    demand(Path(run[0]).is_absolute() and Path(run[1]).is_absolute() and
-           Path(run[1]).name == "backtest_entry.py", "absolute Maker CLI path required")
+    def python_child(argv, mode):
+        # An actual child may be unbuffered; never accept arbitrary flags,
+        # wrappers, shell commands, or an alternate business entrypoint.
+        prefix = 3 if len(argv) == 10 and argv[1] == "-u" else 2
+        demand(len(argv) == prefix + 7 and argv[prefix:] ==
+               [mode, "--config", spec.get("config_path"),
+                "--input", spec.get("input_path"), "--output", spec.get("output_dir")],
+               "Maker CLI has unsupported flag or incorrect mode/config/input/output")
+        interpreter, script = argv[0], argv[prefix - 1]
+        demand(Path(interpreter).is_absolute() and Path(script).is_absolute() and
+               Path(script).name == "backtest_entry.py",
+               "absolute Maker Python child and backtest_entry.py required")
+        return interpreter, script
+    demand(python_child(run, "--run") == python_child(verify, "--verify"),
+           "Maker run/verify interpreter or source entrypoint mismatch")
     for name in ("config_path", "input_path", "output_dir", "cwd"):
         demand(isinstance(spec.get(name), str) and Path(spec[name]).is_absolute(),
                "absolute local " + name + " required")
