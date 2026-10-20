@@ -103,6 +103,10 @@ def main(argv=None):
               "research_status":"EXPLORATORY_UNACCEPTED"}
     result=run_grid(data,config,manifest["evaluation_start"],
                     manifest["evaluation_end"])
+    delayed=run_grid(data,config,manifest["evaluation_start"],
+                     manifest["evaluation_end"],delay_minutes=2)
+    result["delay2_cells"]=delayed["cells"]
+    result["fee_slip_1_5x_status"]="NOT_IMPLEMENTED_NEEDS_AUTHORIZED_GLUE"
     if source_manifest(root)!=source_before:
         raise X2Error("sources changed during run")
     written=persist_run(args.output,manifest,result)
