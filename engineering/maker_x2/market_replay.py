@@ -179,9 +179,9 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                 if (evaluation_start <= r["signal_time"] < evaluation_end and
                     (r["triggered"] if desired is None else
                      r["signal_time"] in desired)):
+                    signal_count += 1
                     if r["signal_time"] + delay_minutes*MINUTE == end:
                         arrivals.append(r)
-                        signal_count += 1
             current_arrivals = arrivals
         else:
             current_arrivals = queue.get(end, ())
@@ -230,6 +230,16 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
         last_daily_point=point
         prev_close = bar["close"]
         previous_open = start
+    if streamed:
+        # All source decisions remain counted even at a truncated tail
+        # without any future eligible execution bar (also for delay2).
+        while pending_record is not None:
+            r = pending_record
+            pending_record = next(iterator, None)
+            if (evaluation_start <= r["signal_time"] < evaluation_end and
+                (r["triggered"] if desired is None else
+                 r["signal_time"] in desired)):
+                signal_count += 1
     if last_daily_point is not None:
         equity_path.append(last_daily_point)
     account.tail()
