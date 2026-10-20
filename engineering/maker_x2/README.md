@@ -1002,3 +1002,159 @@ config with the documented `--run` and `--verify` CLI. No data
 window, sample count, account economic threshold or other strategy
 parameter is changed by this fixture repair. Results remain
 exploratory, not A01-A16/product/trading approval.
+
+
+## r13 — 5 GiB memory-bounded offline capacity unit
+
+Measured baseline incident (not a market-result claim): both symbols have
+1,604,160 historical 1m bars and 7,451 funding rows. The prior whole-input
+adapter took 34.79s and maxRSS 3,786,432 KiB; the full CLI failed with
+MemoryError at 55.057s/maxRSS 5,182,416 KiB under 5 GiB RLIMIT_AS, before
+a cell completed. Historical PnL was not generated. No memory cap or
+research window was raised or reduced.
+
+The new `bounded_history.py` supports validated, sealed local SQLite
+minutes and causal feature records. `prepare_bars` fully checks the
+old CSV/Binance JSON/JSONL input contract and source checksum while
+writing batches to scratch, instead of making a giant Python list.
+`data_adapter._objects` decodes long JSON arrays incrementally, while
+preserving strict malformed/truncated array rejection. SQLite preparation
+constructors reject direct user-provided paths, and sealed readers
+reject replaced/modified scratch files. Scratch is ephemeral and
+single-run, not an importable unvalidated source or long-term cache.
+
+`iter_eligible` computes original S1/1m and S2/15m Decimal50
+sample-ddof1 features from rolling 290 framework/60 real 1m windows;
+no formation, gap filling, future data, precision reduction, funding
+lookahead or altered signal threshold. `prepare_decisions` writes
+complete feature records to read-only iterators, allowing
+`select_matched` to use the unchanged fixed 6000/seed sampling once
+per symbol/framework. The public in-memory APIs are unchanged;
+full-historical CLI alone uses validated bounded objects.
+`market_replay` consumes those decisions causally one at a time,
+avoiding the complete event-time signal queue. All frozen account and
+money source, old regressions, and existing test source remain untouched.
+
+`backtest_entry.execute_prepared` is the same actual pipeline called
+by `--run` and the synthetic resource probe. `--run` still executes
+the **entire normal unittest discovery gate first**, strictly checks
+the 2023-10-01 warmup and [2023-11-01, 2026-10-19) evaluation bounds,
+and accepts only complete operator-local BTC/ETH inputs and explicit
+account config. One symbol is prepared at a time in the fixed order
+ETHUSDT then BTCUSDT. Within each symbol, 1m/15m prepared features
+and each framework's matched sample are shared across all 12 frozen
+k/TTL/exit choices and three separate scenarios. The original
+conservative account replay and independent financial ledger remain
+unchanged.
+
+`BoundedReport` immediately writes **288 individual raw account
+artifacts** (48 cells × baseline/delay2/cost1.5x × strategy/matched)
+with SHA256 while only retaining the reduced episode/account summaries
+needed for the exact existing 9999-draw bootstrap, separate ETH/BTC
+BH24, combined BH48 and neighbor/candidate classification. Raw fills,
+fees, funding, LIQ, open position, full episodes, events and daily
+observed equity are not omitted. A complete, verified `manifest.json`
+and `results.json` are written only after all scenarios finish.
+Partial failure never receives a completed manifest; an existing
+result root is never overwritten. Console progress prints actual
+PREPARING/FEATURES/CELL identity without fake percent. No durable
+resume checkpoint is claimed.
+
+The existing `--verify --config ... --input ... --output ...`
+checks the original config, data and source/test SHA256 plus the
+complete artifact hashes and 48 unique cell IDs in **each** scenario,
+all four symbol/framework sampler identities and all expected raw
+account files. The old one-cell synthetic checksum test remains
+supported and does not masquerade as a complete research run.
+
+### r13 tests: run positive controls before mutations
+
+From `engineering/maker_x2`:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 backtest_entry.py --self-test
+python3 tests/test_capacity.py
+python3 tests/test_backtest.py -v
+python3 tests/test_backtest_mutations.py control
+python3 tests/test_x2.py control
+python3 tests/test_entry_lifecycle.py control
+python3 tests/test_exit_lifecycle.py control
+python3 tests/test_account_lifecycle.py control
+python3 tests/test_account_ledger.py
+python3 tests/test_signal_features.py control
+python3 tests/test_matched_signals.py control
+```
+
+The new discoverable capacity controls compare the public old
+`eligible_decisions` and unchanged sampler with sealed prepared
+1m/15m records including Decimal values, decision/signal timestamps,
+source index and tail. Invalid timestamps, a 15m gap, duplicate input,
+untrusted prepared handles and malformed JSON must fail without
+padding. These ordinary controls do **not** prove full-history capacity.
+
+For an independent immutable **pre-r13** checkout at HEAD
+`065a2dc784fdb00b3ba2da110396060bab979299`, use the original
+`engineering/maker_x2` directory as `--base-dir`. The command
+executes the real old source in a fresh interpreter, then the new
+bounded entry pipeline on identical fictional completed minutes and
+funding. It compares all 48 baseline/delay2/cost1.5x cell metrics and
+all 288 raw strategy/matched payloads (events, fees, funding,
+ledger, episodes, open MTM), along with sample universes, hashes and
+signal/feature records verified in the ordinary controls.
+
+```sh
+python3 tests/test_capacity.py --differential --base-dir PRE_R13_MAKER_X2_DIR
+```
+
+Run the actual disk parser/feature/288-account playback and report
+pipeline on a representative long synthetic dataset under a **5 GiB
+RLIMIT_AS**. The default fixture is 30,000 complete 1m bars per
+symbol and the unmodified real financial engine. The resource probe
+prints exact elapsed seconds, actual peak maxRSS KiB, original cap and
+number of verified artifacts. A passing medium fixture is NOT a
+full 1,604,160-bar acceptance.
+
+```sh
+python3 tests/test_capacity.py --resource --minutes 30000
+```
+
+Only if all positives and the differential PASS, execute the original
+documented negative entrypoints in separate subprocesses, e.g.:
+
+```sh
+python3 tests/test_backtest_mutations.py mut-fee
+python3 tests/test_backtest_mutations.py mut-funding
+python3 tests/test_backtest_mutations.py mut-fake-time
+python3 tests/test_backtest_mutations.py mut-future
+python3 tests/test_backtest_mutations.py mut-overfill
+python3 tests/test_x2.py mut-be
+python3 tests/test_x2.py mut-duplicate
+python3 tests/test_signal_features.py mut-lookahead
+python3 tests/test_matched_signals.py mut-replacement
+python3 tests/test_matched_signals.py mut-resample
+```
+
+A mutation only counts with a genuine named AssertionError and
+nonzero rc, not an unrelated import/timeout/policy error. Main CIO
+must independently check all 20 previously shipped negative
+entrypoints and every positive entrypoint; the examples above are
+not a substitute for that full checklist.
+
+After immutable-source finite acceptance and exact-head push/PR CI
+verification, the operator may run **only the original full dataset**
+with the existing explicitly provided local config/manifest:
+
+```sh
+python3 backtest_entry.py --run --config config.json --input inputs.json --output NEW_RESULTS_DIR
+python3 backtest_entry.py --verify --config config.json --input inputs.json --output NEW_RESULTS_DIR
+```
+
+**Execution status at r13 source handback: all new Python/differential/
+resource/CI/full-market commands NOT_RUN.** The accepted r12-correction-2
+101 unique tests, 10 positive entrypoints, 20 negative mutations and
+CI 39508781797/39508764177 belong to the earlier source and
+cannot be reused as r13 PASS. No full-history runtime/memory evidence
+yet exists for the new implementation; the 5 GiB historical attempt
+must be measured afresh. This is infrastructure source, not
+strategy PnL, new holdout, A01-A16/product or deployment approval.
