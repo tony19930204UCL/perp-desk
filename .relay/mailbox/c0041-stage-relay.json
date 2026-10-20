@@ -4,13 +4,12 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "C0041-MAKER-INTEGRATION",
-  "instruction_id": "C0041-MAKER-INTEGRATION-r5",
+  "instruction_id": "C0041-MAKER-INTEGRATION-r7",
   "status": "WAITING_CI",
-  "source_head_sha": "8902384ae227eb73b99b5875d93f0c2d4c3db295",
-  "summary": "Source-only r5 Maker schema adapter: read-only PR75 r13 CLI/report contract inspected at exact specified candidate. Added engineering/maker_stage_bridge.py (<350 lines) for independent capacity source acceptance bound to frozen graph/input/config/source/bars/funding, actual Maker --verify-only check, 3x48 exact symbol-cells and 288 raw account artifact checksums, normalized reports and receipt (no independent acceptance). Minimal installed stage_relay noarg hook emits WAITING_CAPACITY_ACCEPTANCE with configured real producer C-1037/sa-0-cc6aa1f2/r13; after independent historical acceptance emits READY_OPERATOR_REFLECTION without trading conclusion. Kept original 15 methods and added 3 initial bridge control tests, docs and example. No source installation, no Maker run or economic acceptance.",
+  "source_head_sha": "03973201d846d4950c0d85522e7669941b4ff261",
+  "summary": "New bounded r7 correction of reproduced r6 failures. bridge verify_argv accepts only exact absolute Python child with optional literal -u and identical Maker entrypoint plus exact --run/--verify/config/input/output bindings; never starts historical run. Unittest stage_relay module registered under sys.modules to share true RelayError identity with bridge. Duplicate-cell mutation rehashes results inventory to exercise uniqueness rather than hash gate, with separate missing/raw-hash cases restored. ADOPT uses genuine live subprocess identity to test absent capacity and mismatched exact argv; nonexistent identity separately rejects. Producer docs/example updated to independent C-1062 successor. Original 23 methods retained, one -u test added (24 total). No deployment or market acceptance.",
   "changed_files": [
     "engineering/maker_stage_bridge.py",
-    "engineering/stage_relay.py",
     "engineering/tests/test_stage_relay.py",
     "engineering/STAGE_RELAY.md",
     "engineering/stage_relay_example.json",
@@ -20,41 +19,35 @@
     {
       "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
       "result": "NOT_RUN",
-      "evidence": "Only file API writes in r5; 18 authored test methods (original 15 retained); not executed in this chat. User reports r4 15 PASS and both prior exact-head CI success, not r5 evidence."
+      "evidence": "r7 file-only GitHub connector writes, 24 test methods authored; user reports r6 exact HEAD suite 23 methods 21 PASS 2 ERROR and both r6 push 39514927154 / PR 39514931582 FAILED."
     },
     {
       "command": "python3 engineering/stage_relay.py demo --dir /ABSOLUTE/ISOLATED/NEW_SYNTHETIC_DIR",
       "result": "NOT_RUN",
-      "evidence": "Original operator synthetic 4-stage demo passed previously; r5 was not run. Synthetic observations are not Maker market results."
+      "evidence": "No r7 subprocess execution in this turn; past synthetic drill is not Maker data."
     },
     {
-      "command": "python3 /ACTIVE/PROFILE/scripts/maker_stage_bridge.py capacity --config /ACTIVE/PROFILE/stage-relay/C0041/graph.json",
+      "command": "New exact-head push and pull_request GitHub CI",
       "result": "NOT_RUN",
-      "evidence": "No local AGY/profile access or real source acceptance; actual r13 candidate DIFFERENTIAL_FAILED and NOT_ACCEPTED."
-    },
-    {
-      "command": "r5 exact-head GitHub push and pull_request CI plus finite installed-layout Maker fixture",
-      "result": "NOT_RUN",
-      "evidence": "No r5 CI run conclusion or installed test execution observed."
+      "evidence": "Neither r7 final HEAD run independently observed or claimed; operator must execute suite and verify both CI conclusions."
     }
   ],
   "remaining_work": [
-    "Independently run full 18-method test suite and both new exact-head push/PR CI, inspect failures before installation; source-only result not accepted automatically.",
-    "Test full installed-profile noarg capacity waiting and trusted external adopted owner / rc1 MemoryError stop, actual Maker --verify shape with 289 artifact manifest and 3x48 cells; new r5 tests are initial focused checks and not complete requested finite coverage.",
-    "External PR75 research owner must deliver independently accepted capacity-corrected source and full real history with exact frozen cap/window/sampling; r13 candidate differential failure is NOT ACCEPTED and failed 5GiB historical process must not restart.",
-    "Operator must locally bind real source hashes, paths, accepted proof and official scheduler routing while preserving existing state/graph checkpoint; never silently mutate live graph SHA. Actual reporter/reviewer trust outside local JSON.",
-    "No independently accepted 3x48 real Maker reports or external operator trading reflection; whole chain NOT_PROVEN."
+    "Independently execute all 24 tests and new exact-head push/pull_request CI, checking the hash/duplicate subcases and exact Python -u argv with actual subprocess and adopted PID.",
+    "Keep business source admission blocked pending separate independent C-1062 accepted capacity correction and immutable source/input/config reconciliation; no prior failed history reruns.",
+    "Verify complete 3x48 real Maker scenarios, 289 inventory with 288 raw account reports, shipped --verify and independent acceptance before next transition.",
+    "Operator retains control of active-profile install/cron after separate permission, no deployment or trading. Whole chain NOT_PROVEN."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Read exact r5 branch HEAD and mailbox; independently run existing 15 + three new bridge tests and synthetic demo, inspect bridge source for <350 line limit, verify-only code path and immutable graph; run finite installed-layout real-schema fixtures, verify both new push/pull_request CI after final mailbox.",
-    "if_pass": "Accept only bounded source adapter after coverage/CI pass; await C-1037 independent corrected source capacity acceptance and authorized local operator binding. Keep Maker product NOT_PROVEN until real result and operator reflection.",
-    "if_fail": "Return exact failed stage/test and logs for independent review; do not restart historical work, claim acceptance, deploy or alter PR75.",
+    "verify_now": "Review PR76 exact source and mailbox heads; run 24 unittest cases including true rehashed duplicate-cell negative, actual -u argv, live owner ADOPT, fail/UNKNOWN/refusal, then verify both new exact-head push/PR CI. Confirm bridge below 350 lines and original 15 controls retained.",
+    "if_pass": "Accept bounded r7 source integration only after independently green exact-head checks; wait for C-1062 independent source capacity acceptance and real report/operator reflection proofs.",
+    "if_fail": "Return exact traceback and HEAD to parent; do not silently retry denied operations or restart history.",
     "blockers": [
-      "r5 tests and CI NOT_RUN in this chat",
-      "r13 candidate DIFFERENTIAL_FAILED / no accepted capacity-corrected source",
-      "No terminal real history data, 289 verified artifacts, independent result acceptance or operator reflection",
-      "Additional finite integration coverage required before installation"
+      "r7 tests/CI NOT_RUN in this chat",
+      "C-1062 capacity source acceptance pending; prior historical VWAP run failed",
+      "No accepted full 3x48 Maker result, separate independent result acceptance or operator reflection",
+      "No installation/deploy/trading"
     ]
   }
 }
