@@ -179,6 +179,19 @@ class Control(unittest.TestCase):
         self.assertEqual(old["remaining_qty"], account_state["qty"])
         self.assertEqual(old["realized_gross"], account_state["gross"])
 
+    def test_unfilled_expiry_does_not_reset_completed_loss_streak(self):
+        a = account()
+        submit(a, "losing-first")
+        a.bar(bar(0), entry_qty="2")
+        a.bar(bar(1, "101", "101.2", "98", "100"))
+        self.assertEqual(a.loss_streak, 1)
+        self.assertEqual(submit(a, "unfilled", signal_time=2*T), "PENDING")
+        a.bar(bar(2, high="100.1"))
+        a.bar(bar(3, high="100.1"))
+        a.bar(bar(4, high="100.1"))
+        self.assertEqual(a.loss_streak, 1)
+        self.assertEqual(a.ledger()["reserved"], D("0"))
+
     def test_pending_expiry_releases_without_fake_fill(self):
         a = account()
         submit(a)
