@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-Hant-TW"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>PAPER 多臂觀察台 · 唯讀</title>
+<style>
+:root{font-family:system-ui,"Noto Sans TC",sans-serif;color:#e5ebf5;background:#0c1422}
+*{box-sizing:border-box}body{margin:0;min-width:0}main{max-width:1440px;margin:auto;padding:clamp(8px,2vw,22px)}
+header{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;align-items:center}
+h1{font-size:1.3rem;margin:5px 0}h2{font-size:1.05rem}p{margin:6px 0}
+.pill{display:inline-block;border-radius:4px;border:1px solid #64748b;padding:3px 7px;font-weight:700}
+.paper{background:#c9a12e;color:#111}.unknown,.stale{color:#f8c66d}.up{color:#2fd1a0}.down{color:#fc717f}
+#arms,#tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 0}
+button{font:inherit;color:#d7e7fa;background:#1b2b40;border:1px solid #354961;border-radius:6px;padding:9px 12px;cursor:pointer;white-space:nowrap}
+button[aria-pressed=true]{background:#305071;border-color:#79addb}button:focus-visible{outline:2px solid #a5bfff}
+section,.panel{background:#152234;border:1px solid #273c53;border-radius:8px;padding:12px;margin-top:10px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:8px}
+.metric{padding:10px;border:1px solid #304357;border-radius:5px;min-width:0}
+.metric span{display:block;color:#a1b1c6;font-size:.8rem}.metric strong{display:block;overflow-wrap:anywhere;font-size:1rem}
+#table-wrap{overflow-x:auto;max-width:100%}table{width:100%;border-collapse:collapse;font-size:13px;text-align:left}
+th,td{border-bottom:1px solid #304256;padding:8px 9px;max-width:300px;overflow-wrap:anywhere;vertical-align:top}
+th{color:#aebed2;white-space:nowrap}td{font-variant-numeric:tabular-nums}
+#reason{font-size:.85rem;color:#ebc27b}#meta{color:#9fb2c7;font-size:.85rem}
+footer{margin:16px 0;color:#95aac0;font-size:.8rem}
+@media(max-width:600px){main{padding:9px}th,td{padding:7px 6px;font-size:12px}.metric{padding:7px}}
+</style>
+<script defer src="dashboard_multiarm_ui.js"></script></head>
+<body><main>
+<header><div><h1>多臂交易觀察台</h1><span class="pill paper">PAPER</span> <span class="pill">READ-ONLY · 唯讀</span></div><button id="refresh" type="button">重新整理</button></header>
+<p id="meta">非即時交易來源 · 15 秒更新 · 未建模欄位不推算</p>
+<nav id="arms" aria-label="12 紙盤觀察臂"></nav>
+<section><h2 id="chosen">資料未載入</h2><p id="reason" role="status">未知</p><div class="metrics" id="account"></div></section>
+<section><nav id="tabs" aria-label="資料種類"></nav><div id="table-wrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div><p id="count">未知</p></section>
+<footer>不提供下單、平倉、撤銷或任何寫入功能。資料可能過期，僅作觀察。</footer>
+</main></body></html>

@@ -1,0 +1,62 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 58,
+  "branch": "feat/dashboard-serving-d2-20261012T152945Z",
+  "task_id": "dashboard-serving-d2-20261012T152945Z",
+  "instruction_id": "C0112-MULTIARM-FIX1",
+  "status": "WAITING_CI",
+  "source_head_sha": "9ca7d5b6396643ff94347cd523b63dca29dd5e5c",
+  "summary": "Three measured defects addressed without changing frozen D2 or paper sources. Model dec/exact reject values with absolute adjusted Decimal exponent above 40 including extreme zero, with regression checks. Reader no longer rejects large sqlite file by st_size; query_only mode=ro first selects payload typeof and BLOB byte length, rejects oversized payload before selecting text; added small-limit tests with extra large table, oversized JSON and byte/mtime/sidecar checks. Real browser harness fixed DOM IIFE invocation and stale-suffixed arm readiness, and added multiarm-specific CDP Fetch error injection without modifying frozen D2 CDP module. Focused browser tests added; none run locally. Real full-browser acceptance remains independent.",
+  "changed_files": [
+    "lab/dashboard_multiarm_model.py",
+    "lab/dashboard_multiarm_reader.py",
+    "lab/browser_dashboard_multiarm_acceptance.py",
+    "lab/tests/test_dashboard_multiarm_model.py",
+    "lab/tests/test_dashboard_multiarm_reader.py",
+    "lab/tests/test_dashboard_multiarm_browser_acceptance.py",
+    "docs/engineering/HANDOFF-dashboard-serving-d2-20261012T152945Z.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "NOT_RUN",
+      "evidence": "GitHub contents editing only; no repo checkout or test execution."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "Prior operator supplied 724 tests with one Decimal failure at admitted head, not this source HEAD."
+    },
+    {
+      "command": "cd lab && python3 -m unittest -v tests.test_dashboard_multiarm_model tests.test_dashboard_multiarm_reader tests.test_dashboard_multiarm_browser_acceptance tests.test_dashboard_multiarm_ui",
+      "result": "NOT_RUN",
+      "evidence": "Added regression methods for extreme values, payload bytes and browser harness; not executed."
+    },
+    {
+      "command": "python3 lab/browser_dashboard_multiarm_acceptance.py --expected-head \"$(git rev-parse HEAD)\" --browser /usr/bin/chromium --output artifacts/multiarm-browser",
+      "result": "NOT_RUN",
+      "evidence": "No Chromium launched; original measured browser failures were supplied by operator on previous head."
+    }
+  ],
+  "remaining_work": [
+    "Run exact-head push and pull_request CI and confirm all tests green without unrelated D2 regressions.",
+    "Real Chromium 153 run seven probes on exact checkout; inspect report, 1280 and 390 screenshots, stale fetch and network trace. A failure remains failure and requires source-bound repair.",
+    "Copy-only offline real broker snapshots for 12 arms to verify state, XRP qty 101, equity and cash-ledger reconciliation; do not touch running paper services.",
+    "Review model Decimal arithmetic exceptions and complex episode attribution under extra stress fixtures before accepting product semantics; no merge/deploy."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": [
+      "Confirm pre-mailbox source HEAD 9ca7d5b6396643ff94347cd523b63dca29dd5e5c and final mailbox HEAD and seven-path allowlist.",
+      "python3 -m unittest discover -s automation/tests",
+      "cd lab && python3 -m unittest discover -s tests -v",
+      "cd lab && python3 -m unittest -v tests.test_dashboard_multiarm_model tests.test_dashboard_multiarm_reader tests.test_dashboard_multiarm_browser_acceptance tests.test_dashboard_multiarm_ui",
+      "python3 lab/browser_dashboard_multiarm_acceptance.py --expected-head \"$(git rev-parse HEAD)\" --browser /usr/bin/chromium --output artifacts/multiarm-browser",
+      "Verify all seven MA-BROWSER probes, actual request audit, bytes/mtime/no sidecars, and copied real 12-arm data."
+    ],
+    "if_pass": "Independently accept only this three-defect repair after actual CI, Chromium and source-bound proof; no merge/deploy.",
+    "if_fail": "Report demonstrated defects with source-bound evidence, including exact failed test or probe; do not edit frozen production.",
+    "blockers": []
+  }
+}
