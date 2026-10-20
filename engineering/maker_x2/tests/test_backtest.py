@@ -176,6 +176,27 @@ class Control(unittest.TestCase):
         self.assertEqual(stressed.ledger()["cash"],D("1002.38045"))
         self.assertEqual(stressed.ledger()["qty"],D("0"))
 
+    def test_cost_sensitivity_changes_actual_sl_slippage_and_fees(self):
+        def run(rates=None):
+            a=OfflineAccount("1000","50","5","5",2,"24",
+                             ".0145",".0005",rates=rates)
+            a.submit("FICTION","risk",0,"100","100","1",
+                     ".25",2,"2","X2")
+            a.bar({"ts":0,"open":"100","high":"100.27005",
+                   "low":"99","close":"100","closed":True},entry_qty="2")
+            self.assertEqual(a.bar({"ts":60000,"open":"101","high":"101.2",
+                         "low":"98","close":"100","closed":True}),
+                             "CLOSED_SL")
+            return a.ledger()
+        base=run()
+        stress=run(SENSITIVITY)
+        self.assertEqual(base["cash"],D("998.3184798"))
+        self.assertEqual(stress["cash"],D("998.2277197"))
+        self.assertEqual(stress["gross"],D("-1.5606"))
+        self.assertEqual(stress["fees"],D(".2116803"))
+        self.assertEqual(stress["reserved"],D("0"))
+        self.assertEqual(stress["qty"],D("0"))
+
     def test_real_48_grid_baseline_and_full_placebo(self):
         # No patched signal, grid, sampler or account: 290 15m closed
         # buckets provide one eligible 15m matched time per symbol.
