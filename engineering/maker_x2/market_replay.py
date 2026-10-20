@@ -140,9 +140,16 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                        else min(core.qty,core.orders["tp1"]
                                 if core.orders["tp1"]>0 else
                                 core.orders["tp2"]))
-            counterfactual=max(D(0),maker_qty*(
+            stop_delta=maker_qty*(
                 risk_px-limit + risk_px*account.rates.taker_fee -
-                limit*account.rates.maker_fee))
+                limit*account.rates.maker_fee)
+            liq_delta=D(0)
+            if D(bar["high"])>=core.E*(1+D(".0145")):
+                released=account.allocation*maker_qty/account.entry.qty_target
+                liq_delta=(released+maker_qty*core.E*account.rates.liq_fee+
+                           (core.E-limit)*maker_qty-
+                           limit*maker_qty*account.rates.maker_fee)
+            counterfactual=max(D(0),stop_delta,liq_delta)
             counts["favorable_order_upper_bound_usd"] += counterfactual
         result = account.bar(bar, entry_qty=qty, maker_fill=maker,
                              settlements=finalized)
