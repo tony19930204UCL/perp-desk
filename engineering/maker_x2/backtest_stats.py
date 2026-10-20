@@ -77,7 +77,9 @@ def summarize(result, matched=None):
                     counts["filled_episodes"])),
             "actual_time_close_rate": "NOT_APPLICABLE",
             "samebar_conflicts":counts.get("samebar_risk_profit_conflict",0),
-            "samebar_favorable_upper_bound": "NOT_COMPUTED",
+            "samebar_favorable_upper_bound_usd": counts.get(
+                "favorable_order_upper_bound_usd","0"),
+            "samebar_favorable_status": "DESCRIPTIVE_COUNTERFACTUAL_NOT_EXECUTION",
             "utc_13_16":subgroup(us_hours),
             "utc_other":subgroup(other_hours),
             "net_positive_rate": (
