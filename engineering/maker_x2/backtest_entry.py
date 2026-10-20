@@ -108,10 +108,13 @@ def main(argv=None):
               "evaluation_start":int(config["evaluation_start"]),
               "evaluation_end":int(config["evaluation_end"]),
               "research_status":"EXPLORATORY_UNACCEPTED"}
+    universe_cache={}
     result=run_grid(data,config,manifest["evaluation_start"],
-                    manifest["evaluation_end"])
+                    manifest["evaluation_end"],
+                    eligible_cache=universe_cache)
     delayed=run_grid(data,config,manifest["evaluation_start"],
-                     manifest["evaluation_end"],delay_minutes=2)
+                     manifest["evaluation_end"],delay_minutes=2,
+                     eligible_cache=universe_cache)
     result["delay2_cells"]=delayed["cells"]
     result["fee_slip_1_5x_status"]="NOT_IMPLEMENTED_NEEDS_AUTHORIZED_GLUE"
     if source_manifest(root)!=source_before:
