@@ -574,5 +574,117 @@ class RelayTests(unittest.TestCase):
                            "synthetic_only": True, "events": []})
 
 
+
+    def maker_adopt_synthetic_process(self, graph, exit_code=0):
+        """Own a genuine local subprocess with the exact CLI-shaped argv."""
+        maker = graph["maker_bridge"]
+        runner = Path(maker["run_argv"][1])
+        script = runner.read_text()
+        runner.write_text(
+            "import json,sys,time\n"
+            "args=sys.argv[1:]\n"
+            "if args[0]=='--run':\n"
+            "    time.sleep(0.6)\n"
+            + ("    raise MemoryError('synthetic failure, no history')\n"
+               if exit_code else "    raise SystemExit(0)\n") +
+            "assert args[0]=='--verify'\n"
+            "import pathlib,hashlib\n"
+            "root=pathlib.Path(args[-1]); m=root/'manifest.json'\n"
+            "obj=json.loads(m.read_text())\n"
+            "print(json.dumps({'status':'CHECKSUMS_VERIFIED',"
+            "'artifact_count':len(obj['artifacts']),"
+            "'manifest_sha256':hashlib.sha256(m.read_bytes()).hexdigest()}))\n")
+        proc = subprocess.Popen(maker["run_argv"], stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL, cwd=maker["cwd"])
+        ident, condition = relay.process_identity(proc.pid)
+        self.assertEqual(condition, "LIVE")
+        identity_path = self.evidence / "external-owner.json"
+        relay.atomic_json(identity_path, dict(ident, argv=maker["run_argv"],
+                                               operator="synthetic fixture",
+                                               started_at=time.time()))
+        adopted = relay.adopt(self.config, self.state, identity_path, 60)
+        self.assertEqual(adopted["action"], "ADOPTED")
+        proc.wait(timeout=10)
+        return adopted["owner"], proc.returncode
+
+    def test_maker_installed_adopt_requires_capacity_and_exact_argv(self):
+        installed, graph = self.maker_installed_fixture()
+        self.assertEqual(self.noarg(installed)[1]["action"], "WAITING_CAPACITY_ACCEPTANCE")
+        with self.assertRaises(relay.RelayError):
+            relay.adopt(self.config, self.state, self.evidence / "nonexistent-owner.json", 60)
+        self.maker_capacity_accept(graph)
+        code, result = self.noarg(installed)
+        self.assertEqual(result["tick"]["action"], "READY_MISSING_OWNER")
+        self.assertEqual(relay.raw_json(self.state)["status"], "WAITING_ADOPTION")
+        self.assertEqual(relay.raw_json(self.state)["attempts"], {})
+
+    def test_maker_external_failure_memoryerror_does_not_retry(self):
+        installed, graph = self.maker_installed_fixture()
+        self.maker_capacity_accept(graph)
+        self.noarg(installed)
+        owner, rc = self.maker_adopt_synthetic_process(graph, exit_code=1)
+        self.assertNotEqual(rc, 0)
+        # Trusted parent supplies failure; dead PID alone never implies success.
+        gh = relay.configuration(self.config)[1]
+        stage = "historical"
+        receipt = {"stage": stage, "source_head": self.head,
+                   "input_sha256": self.inp, "graph_sha256": gh,
+                   "owner": {k: owner[k] for k in ("pid", "boot_id", "start_ticks", "token")},
+                   "outcome": "FAILED", "exit_code": rc,
+                   "reason": "synthetic MemoryError; product rc1"}
+        relay.atomic_json(self.evidence / "inbox/historical.receipt.json", receipt)
+        code, result = self.noarg(installed)
+        self.assertEqual(code, 2)
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["stage"], "historical")
+        self.assertEqual(relay.raw_json(self.state)["stage_index"], 0)
+        self.noarg(installed)
+        self.assertEqual(relay.raw_json(self.state)["attempts"]["historical"], 1)
+
+    def test_maker_installed_normalize_requires_independent_acceptance(self):
+        import importlib.util
+        bridge_spec = importlib.util.spec_from_file_location(
+            "maker_stage_bridge", MODULE.with_name("maker_stage_bridge.py"))
+        bridge = importlib.util.module_from_spec(bridge_spec)
+        bridge_spec.loader.exec_module(bridge)
+        installed, graph = self.maker_installed_fixture()
+        self.maker_capacity_accept(graph)
+        self.maker_outputs(graph)
+        self.noarg(installed)
+        owner, rc = self.maker_adopt_synthetic_process(graph)
+        self.assertEqual(rc, 0)
+        gh = relay.configuration(self.config)[1]
+        relay.atomic_json(self.evidence / "terminal/trusted.json",
+                          {"stage": "historical", "source_head": self.head,
+                           "input_sha256": self.inp, "graph_sha256": gh,
+                           "owner": {k: owner[k] for k in
+                                     ("pid", "boot_id", "start_ticks", "token")},
+                           "trusted_parent": True, "outcome": "SUCCEEDED", "exit_code": 0})
+        normalized = bridge.normalize(self.config, self.state, "terminal/trusted.json")
+        self.assertEqual(normalized["action"], "WAITING_INDEPENDENT_RESULT_ACCEPTANCE")
+        self.assertFalse((self.evidence / "inbox/historical.acceptance.json").exists())
+        self.assertEqual(len(normalized["reports"]), 3)
+        self.assertEqual([r["rows"] for r in normalized["reports"]], [48, 48, 48])
+        code, before = self.noarg(installed)
+        self.assertEqual(before["inbox"]["action"], "MISSING_INDEPENDENT_ACCEPTANCE")
+        self.assertEqual(relay.raw_json(self.state)["stage_index"], 0)
+        receipt = self.evidence / "inbox/historical.receipt.json"
+        relay.atomic_json(self.evidence / "inbox/historical.acceptance.json",
+                          {"stage": "historical", "source_head": self.head,
+                           "input_sha256": self.inp, "graph_sha256": gh,
+                           "receipt_sha256": relay.digest(receipt.read_bytes()),
+                           "decision": "ACCEPTED", "reviewer": "independent synthetic fixture"})
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            seen = list(pool.map(lambda _: self.noarg(installed), range(2)))
+        self.assertEqual(sum(v["inbox"].get("action") == "ACCEPTED" for _, v in seen), 1)
+        self.assertEqual(relay.raw_json(self.state)["stage_index"], 1)
+        self.assertEqual(len(relay.raw_json(self.state)["completed"]), 1)
+        self.assertTrue(any(v["action"] == "READY_OPERATOR_REFLECTION" for _, v in seen))
+        again = self.noarg(installed)[1]
+        self.assertEqual(again["action"], "READY_OPERATOR_REFLECTION")
+        self.assertEqual(again["reflection"]["historical_output_count"], 144)
+        self.assertNotIn("trading_conclusion", again["reflection"])
+
+
 if __name__ == "__main__":
     unittest.main()
