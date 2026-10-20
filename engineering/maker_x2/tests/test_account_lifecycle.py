@@ -195,8 +195,11 @@ class Control(unittest.TestCase):
     def test_pending_expiry_releases_without_fake_fill(self):
         a = account()
         submit(a)
-        a.bar(bar(0, high="100.1"))
-        a.bar(bar(1, high="100.1"))
+        self.assertEqual(a.bar(bar(0, high="100.1")), "PENDING")
+        self.assertEqual(a.ledger()["reserved"], D("50"))
+        self.assertEqual(a.bar(bar(1, high="100.1")), "PENDING")
+        self.assertEqual(a.ledger()["reserved"], D("50"))
+        # TTL2 is [j0,j0+2): the bar opening j2 has expired already.
         self.assertEqual(a.bar(bar(2, high="100.1")), "EXPIRED")
         self.assertEqual(a.ledger()["reserved"], D("0"))
         self.assertEqual(a.ledger()["qty"], D("0"))
