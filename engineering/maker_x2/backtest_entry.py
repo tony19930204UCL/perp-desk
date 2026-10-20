@@ -3,6 +3,7 @@ import argparse
 import json
 import hashlib
 from pathlib import Path
+from datetime import datetime, timezone
 
 from maker_exit_lab import X2Error
 from data_adapter import read_bars, read_funding, sha256_file
@@ -23,6 +24,11 @@ def load_config(path):
         raise X2Error("required account or time boundary not in config")
     if int(value["evaluation_end"])<=int(value["evaluation_start"]):
         raise X2Error("empty evaluation window")
+    frozen_start=int(datetime(2023,11,1,tzinfo=timezone.utc).timestamp()*1000)
+    frozen_end=int(datetime(2026,10,19,tzinfo=timezone.utc).timestamp()*1000)
+    if (int(value["evaluation_start"])!=frozen_start or
+            int(value["evaluation_end"])!=frozen_end):
+        raise X2Error("historical CLI requires exact frozen UTC exploration window")
     return value
 
 
@@ -81,8 +87,9 @@ def main(argv=None):
         # 15m signal warmup. Gaps remain inventoried; never backfill them.
         start=int(config["evaluation_start"])
         end=int(config["evaluation_end"])
-        warmup=290*15*60000
-        if (not bars["bars"] or bars["start_open_ms"] > start-warmup
+        warmup_start=int(datetime(2023,10,1,
+                                  tzinfo=timezone.utc).timestamp()*1000)
+        if (not bars["bars"] or bars["start_open_ms"] > warmup_start
                 or bars["end_open_ms"]+60000 < end):
             raise X2Error("insufficient historical warmup/evaluation coverage")
         data[symbol]={"bars":bars["bars"],"funding":funding["events"]}
