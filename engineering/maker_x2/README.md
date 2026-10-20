@@ -1195,3 +1195,14 @@ resource probe, report checksum, 20 caught mutations or broad CI.
 Full-length execution must independently complete under the original
 5 GiB RLIMIT_AS with validated raw artifacts and source/input/config
 identity.
+
+
+The explicit old/new differential also includes a separate **nonempty**
+short episode at a known fictional decision: real Maker entry,
+finalized signed funding, X1/X2 realized exits, X3 tail-open MTM,
+both baseline and 1.5x economic rates. It compares every emitted
+financial event and independent ledger against the unmodified
+pre-r13 module in a separate interpreter; merely comparing empty
+grid counts would not be enough. Streaming decision counts retain
+valid historical/tail signals even if delay2 delivery has no subsequent
+closed execution bar; such signals must never be fabricated into fills.
