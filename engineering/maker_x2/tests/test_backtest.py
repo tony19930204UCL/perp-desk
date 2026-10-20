@@ -109,10 +109,23 @@ class Control(unittest.TestCase):
         self.assertEqual(delayed["signal_count"],1)
 
     def test_grid_has_48_isolated_cells_and_shared_sampler(self):
+        # Fictional flat account: 1000 cash, zero encumbered margin,
+        # zero position/costs, and equity = cash + unrealized.
+        # A mocked replay must still satisfy the full ledger contract.
         fake={"signal_count":0,"counts":{},
-              "ledger":{"cash":"1000","fees":"0","funding_cost":"0",
-                        "writeoff":"0"},"account":{"equity":"1000",
-                        "unrealized":"0"},"episodes":[]}
+              "ledger":{"cash":"1000","reserved":"0","available":"1000",
+                        "qty":"0","basis":"0","gross":"0","fees":"0",
+                        "funding_cost":"0","writeoff":"0","episodes":[],
+                        "open_episode":None,"ids":set(),"settlements":set()},
+              "account":{"equity":"1000","unrealized":"0"},
+              "episodes":[]}
+        ledger=fake["ledger"]
+        self.assertEqual(D(ledger["available"]),
+                         D(ledger["cash"])-D(ledger["reserved"]))
+        self.assertEqual(D(fake["account"]["equity"]),
+                         D(ledger["cash"])+D(fake["account"]["unrealized"]))
+        self.assertEqual(D(ledger["qty"]),D("0"))
+        self.assertEqual(D(ledger["reserved"]),D("0"))
         source={"ETHUSDT":{"bars":[],"funding":[]},
                 "BTCUSDT":{"bars":[],"funding":[]}}
         cached={}
