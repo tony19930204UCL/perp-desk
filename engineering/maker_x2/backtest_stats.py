@@ -24,6 +24,24 @@ def summarize(result, matched=None):
     placebo_bp = (matched_net/matched_notional*10000
                   if matched_notional else None)
     counts = result["counts"]
+    exits = [ep.get("exit_type","UNKNOWN") for ep in episodes]
+    ex_types = ("TP","SL","SL_GAP","PASSIVE_X3","LIQ","NO_FILL")
+    exit_counts = {key:exits.count(key) for key in ex_types}
+    risk_denominator = (exit_counts["TP"]+exit_counts["SL"]+
+                        exit_counts["SL_GAP"])
+    completed_count=len(episodes)
+    def share(count):
+        return None if not completed_count else str(D(count)/completed_count)
+    from datetime import datetime, timezone
+    us_hours = [ep for ep in episodes if ep.get("arrival_ts") is not None
+                and datetime.fromtimestamp(ep["arrival_ts"]/1000,
+                    timezone.utc).hour in (13,14,15,16)]
+    other_hours=[ep for ep in episodes if ep not in us_hours]
+    def subgroup(subset):
+        quantity=sum((D(ep["entry_notional"]) for ep in subset),D(0))
+        profit=sum((D(ep["net"]) for ep in subset),D(0))
+        return {"count":len(subset), "net_bp":(
+            None if not quantity else str(profit/quantity*10000))}
     return {"signal_count": result["signal_count"],
             "attempts": counts.get("attempts", 0),
             "filled_episodes": counts.get("filled_episodes", 0),
@@ -42,13 +60,27 @@ def summarize(result, matched=None):
             "unrealized": result["account"]["unrealized"],
             "actual_fees": ledger["fees"], "funding_cost": ledger["funding_cost"],
             "liq_writeoff": ledger["writeoff"],
-            "exit_counts": {k:v for k,v in counts.items()
-                            if k in ("CLOSED", "CLOSED_SL", "LIQ_PROXY",
-                                     "SL_GAP", "DEADLINE_INTENT")},
-            "true_time_exit": 0, "admin_time_close": "NOT_APPLICABLE",
-            "tp_over_tp_plus_sl": None,
-            "tp_rate": None, "time_rate": 0,
-            "liq_rate": None, "net_positive_rate": (
+            "exit_counts": exit_counts,
+            "tp_sl_sl_gap_denominator":risk_denominator,
+            "tp_over_tp_plus_sl":(
+                None if not risk_denominator else
+                str(D(exit_counts["TP"])/risk_denominator)),
+            "tp_rate":share(exit_counts["TP"]),
+            "sl_rate":share(exit_counts["SL"]+exit_counts["SL_GAP"]),
+            "liq_rate":share(exit_counts["LIQ"]),
+            "time_rate": "0",
+            "true_time_exit": 0,
+            "admin_4h_trigger_count":counts.get("admin_4h_triggers",0),
+            "admin_4h_trigger_rate": (
+                None if not counts.get("filled_episodes") else
+                str(D(counts.get("admin_4h_triggers",0))/
+                    counts["filled_episodes"])),
+            "actual_time_close_rate": "NOT_APPLICABLE",
+            "samebar_conflicts":counts.get("samebar_risk_profit_conflict",0),
+            "samebar_favorable_upper_bound": "NOT_COMPUTED",
+            "utc_13_16":subgroup(us_hours),
+            "utc_other":subgroup(other_hours),
+            "net_positive_rate": (
                 None if not episodes else
                 str(D(sum(D(e["net"])>0 for e in episodes))/len(episodes))),
             "classification": "DESCRIPTIVE_UNVERIFIED"}
