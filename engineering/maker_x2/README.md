@@ -554,3 +554,50 @@ That r9 mutation history did not prove future-read/resampling behavior.
 A15 here remains only a partial signal sampler. Matched account replay,
 bootstrap/BH24, historical runner/24-grid, and full A01–A16/product or
 paper/live acceptance are **NOT_ACCEPTED**.
+
+
+### r11 exact input-tail sampler acceptance (tests-only)
+
+Added discoverable positive controls
+`Control.test_sample_completed_1m_exact_input_tail_included` and
+`Control.test_sample_completed_15m_exact_input_tail_included`.
+Both call the unmocked public `sample_completed` on fully closed,
+fictional 1m input bars, with the evaluation end **strictly after** the
+actual last input decision time and a fixture count equal to the
+**entire** eligible interval, so sampling cannot omit the tail by chance.
+
+The 1m fixture has 302 bars: final open=301*60000 ms; final
+decision=302*60000 ms; [start,end)=[300,303) minutes; selected decision
+minutes **exactly [300,301,302]**, including the input tail. The 15m
+fixture has 294 complete UTC-aligned buckets (4410 input minutes):
+final decision=294*15*60000 ms; [start,end)=[292,295) 15m periods;
+selected decisions **exactly [292,293,294]** framework boundaries.
+Each independently asserts READY, eligible=3, requested=3, unique
+complete selected set and tail identity. No execution bar, future fill,
+or PnL is required. Existing narrower fixed-window, RNG, duplicate,
+insufficient and 12-variant tests remain unchanged.
+
+From `engineering/maker_x2`, run positives in fresh subprocesses:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 tests/test_matched_signals.py control
+python3 tests/test_signal_features.py control
+```
+
+Only after every positive passes, run each genuine negative in a
+separate subprocess, requiring AssertionError/test ID/nonzero rc:
+
+```sh
+python3 tests/test_signal_features.py mut-lookahead
+python3 tests/test_matched_signals.py mut-replacement
+python3 tests/test_matched_signals.py mut-resample
+```
+
+r11 is **NOT_RUN** in the connector-only source handback; r10
+discovery82/82, signal7/7 and matched7/7 plus three named mutation
+AssertionError rc1 and successful push/PR CI are historical r10
+evidence only. CI does not itself discover the nested namespace.
+This closes just exact-input-tail test coverage of the partial A15
+sampler. Matched account replay, BH24/bootstrap, runner/24grid,
+whole A01–A16/product/strategy/paper/live remain **NOT_ACCEPTED**.
