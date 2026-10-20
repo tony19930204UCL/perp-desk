@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -431,6 +432,8 @@ def check_report(graph, gh, stage, spec, reported):
     if actual_sha != reported.get("sha256"):
         raise RelayError("report hash mismatch: " + expected_path)
     report = json.loads(data)
+    if graph["kind"] == "stage_relay" and report.get("synthetic") is True:
+        raise RelayError("synthetic report cannot satisfy real Maker stage")
     for key, expected in (("stage", stage["id"]), ("source_head", stage["source_head"]),
                           ("input_sha256", stage["input_sha256"]), ("graph_sha256", gh)):
         if report.get(key) != expected:
@@ -464,7 +467,6 @@ def complete(config_path, state_path, receipt_path, acceptance_path):
     receipt_bytes = receipt_file.read_bytes()
     receipt_sha = digest(receipt_bytes)
     receipt = json.loads(receipt_bytes)
-    acceptance = raw_json(acceptance_file)
     with state_lock(state_path):
         s = load_state(state_path, gh)
         if receipt_sha in s["processed_receipts"]:
@@ -507,6 +509,7 @@ def complete(config_path, state_path, receipt_path, acceptance_path):
             s["processed_receipts"].append(receipt_sha)
             save(state_path, s)
             return {"action": "FAILED", "reason": s["fail_reason"]}
+        acceptance = raw_json(acceptance_file)
         specs = stage.get("reports")
         reported = receipt.get("reports")
         if not isinstance(specs, list) or not specs or not isinstance(reported, list) or len(specs) != len(reported):
@@ -552,6 +555,154 @@ def status(config_path, state_path):
                 "history": s["history"]}
 
 
+# Fixed profile contract: profile/scripts/stage_relay.py, no arguments, no fallback.
+PROFILE_NAMESPACE = ("stage-relay", "C0041")
+SAFE_STAGE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$")
+
+
+def installed_paths(entrypoint=None):
+    """Resolve solely from this installed file, NEVER $HOME or a default profile."""
+    candidate = Path(entrypoint or __file__).absolute()
+    if candidate.is_symlink():
+        raise RelayError("installed entrypoint symlink refused")
+    path = candidate.resolve(strict=True)
+    if path.name != "stage_relay.py" or path.parent.name != "scripts":
+        raise RelayError("NO_ARG_REQUIRES_PROFILE_SCRIPTS_STAGE_RELAY_PY")
+    profile = path.parent.parent
+    ns = profile.joinpath(*PROFILE_NAMESPACE)
+    evidence = ns / "evidence"
+    for dest in (ns, evidence):
+        if dest.is_symlink() or profile not in dest.resolve().parents:
+            raise RelayError("profile namespace escapes installed profile")
+    return {"profile": profile, "namespace": ns, "config": ns / "graph.json",
+            "state": ns / "state.json", "evidence": evidence}
+
+
+def consume_inbox(config_path, state_path, evidence_root):
+    """Consume only the current stage's fixed inbox pair; no discovery/auto-approval."""
+    graph, gh = configuration(config_path)
+    with state_lock(state_path):
+        s = load_state(state_path, gh)
+        stage = stage_of(graph, s)
+        if not stage or s["status"] in ("BLOCKED", "FAILED", "DONE"):
+            return {"action": "NO_ELIGIBLE_TERMINAL", "status": s["status"]}
+        stage_id = stage["id"]
+        if not SAFE_STAGE.fullmatch(stage_id):
+            raise RelayError("unsafe stage ID for fixed inbox: " + stage_id)
+        receipt_rel = "inbox/%s.receipt.json" % stage_id
+        acceptance_rel = "inbox/%s.acceptance.json" % stage_id
+        receipt_path = confined(evidence_root, receipt_rel)
+        acceptance_path = confined(evidence_root, acceptance_rel)
+        if receipt_path.is_symlink() or acceptance_path.is_symlink():
+            raise RelayError("inbox symlinks refused")
+        if not receipt_path.is_file():
+            return {"action": "MISSING_TERMINAL_RECEIPT", "stage": stage_id,
+                    "expected": str(receipt_path), "reason": "parent has not submitted trusted terminal facts"}
+        receipt = raw_json(receipt_path)
+        if not isinstance(receipt, dict):
+            raise RelayError("terminal inbox receipt must be an object")
+        # Reject mismatched current-stage data rather than silently skipping.
+        for key, value in (("stage", stage_id), ("source_head", stage["source_head"]),
+                           ("input_sha256", stage["input_sha256"]), ("graph_sha256", gh)):
+            if receipt.get(key) != value:
+                raise RelayError("inbox terminal %s mismatch; operator decision required" % key)
+        if receipt.get("outcome") == "SUCCEEDED" and not acceptance_path.is_file():
+            return {"action": "MISSING_INDEPENDENT_ACCEPTANCE", "stage": stage_id,
+                    "expected": str(acceptance_path),
+                    "reason": "exit0 alone never authorizes advancement"}
+    # Release outer lock before calling complete (which owns the same lock).
+    return complete(config_path, state_path, receipt_rel, acceptance_rel)
+
+
+def supervisor(entrypoint=None):
+    """Official script no-arg pre-run: full, unfiltered result EVERY due run."""
+    paths = installed_paths(entrypoint)
+    cfg, state = paths["config"], paths["state"]
+    base = {"profile": str(paths["profile"]), "namespace": str(paths["namespace"]),
+            "config": str(cfg), "state_file": str(state),
+            "synthetic_acceptance_created": False}
+    if not cfg.is_file():
+        return dict(base, action="NOT_CONFIGURED", status="NOT_CONFIGURED",
+                    needs_model_decision=True, stage=None, owner=None, lease_remaining_seconds=None,
+                    reason="missing exact profile stage-relay/C0041/graph.json; operator must configure verified r12 source/input/executor")
+    if cfg.is_symlink() or state.is_symlink():
+        return dict(base, action="BLOCKED", status="BLOCKED",
+                    needs_model_decision=True, stage=None, owner=None, lease_remaining_seconds=None,
+                    reason="config/state symlink refused")
+    if not state.is_file():
+        return dict(base, action="NOT_INITIALIZED", status="NOT_INITIALIZED",
+                    needs_model_decision=True, stage=None, owner=None, lease_remaining_seconds=None,
+                    reason="missing state.json; operator must verify bootstrap and explicitly init")
+    try:
+        graph, gh = configuration(cfg)
+        if Path(graph["evidence_root"]).resolve() != paths["evidence"].resolve():
+            raise RelayError("graph evidence_root must match exact installed profile namespace")
+        # No synthetic graph / synthetic acceptance in real supervisor path.
+        if graph["kind"] != "stage_relay":
+            raise RelayError("installed no-arg supervisor requires real stage_relay graph, not synthetic")
+        with state_lock(state):
+            current = load_state(state, gh)
+            eligible_stage = stage_of(graph, current)
+            if eligible_stage and not SAFE_STAGE.fullmatch(eligible_stage["id"]):
+                raise RelayError("fixed inbox stage ID unsafe")
+        try:
+            consumed = consume_inbox(cfg, state, paths["evidence"])
+        except (RelayError, OSError, ValueError, KeyError, TypeError) as exc:
+            consumed = {"action": "INBOX_BLOCKED", "reason": str(exc)}
+        # An invalid or ambiguous receipt must NOT cause a launch.
+        if consumed["action"] == "INBOX_BLOCKED":
+            action = {"action": "INBOX_BLOCKED", "reason": consumed["reason"]}
+        else:
+            action = tick(cfg, state)
+        with state_lock(state):
+            current = load_state(state, gh)
+            pending = stage_of(graph, current)
+            owner = current.get("owner")
+            lease = (max(0.0, owner["lease_until"] - time.time())
+                     if owner and isinstance(owner.get("lease_until"), (int, float)) else None)
+            source = pending.get("source_head") if pending else None
+            inp = pending.get("input_sha256") if pending else None
+            stage_mode = pending.get("mode") if pending else None
+            completed = [{"stage": x["stage"], "source_head": x["source_head"],
+                          "report_hashes": x["report_hashes"], "output_count": x["output_count"]}
+                         for x in current["completed"]]
+        flags = ("NOT_CONFIGURED", "NOT_INITIALIZED", "INBOX_BLOCKED", "BLOCKED", "FAILED",
+                 "WAITING_RECEIPT", "WAITING_ACCEPTANCE", "WAITING_ADOPTION", "READY_MISSING_OWNER")
+        decision = (action["action"] in flags or consumed["action"] in
+                    ("MISSING_INDEPENDENT_ACCEPTANCE", "INBOX_BLOCKED"))
+        if current["status"] in ("BLOCKED", "FAILED", "WAITING_RECEIPT", "WAITING_ACCEPTANCE", "WAITING_ADOPTION"):
+            decision = True
+        reason = (action.get("reason") or consumed.get("reason") or current.get("fail_reason"))
+        if current["status"] == "WAITING_ADOPTION" and not reason:
+            reason = "r12 external owner missing; operator must ADOPT exact live PID/start/lease, no duplicate dispatch"
+        if current["status"] == "READY" and not reason:
+            reason = "ready stage requires configured executor or authorized model decision"
+        return dict(base, action="SUPERVISOR_TICK", tick=action, inbox=consumed,
+                    status=current["status"], stage=pending["id"] if pending else None,
+                    stage_mode=stage_mode, source_head=source, input_sha256=inp, graph_sha256=gh,
+                    owner=owner, lease_remaining_seconds=lease,
+                    completed=completed, needs_model_decision=decision, reason=reason)
+    except (RelayError, OSError, ValueError, KeyError, TypeError) as exc:
+        return dict(base, action="BLOCKED", status="BLOCKED", stage=None,
+                    needs_model_decision=True, owner=None, lease_remaining_seconds=None,
+                    reason="fixed installed profile validation: %s" % exc)
+
+
+def demo_installed_noarg(entrypoint):
+    completed = subprocess.run([sys.executable, str(entrypoint)], stdin=subprocess.DEVNULL,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=15)
+    if completed.returncode not in (0, 2):
+        raise RelayError("installed noarg subprocess failed: %s %s" %
+                         (completed.returncode, completed.stderr[:1000]))
+    try:
+        result = json.loads(completed.stdout.strip())
+    except json.JSONDecodeError as exc:
+        raise RelayError("installed noarg did not return JSON: %s" % exc)
+    if result.get("action") != "SUPERVISOR_TICK":
+        raise RelayError("demo noarg unexpected supervisor action: %s" % result)
+    return result
+
+
 def demo_task(args):
     graph, gh = configuration(args.config)
     stage = next(x for x in graph["stages"] if x["id"] == args.stage)
@@ -573,9 +724,15 @@ def demo_task(args):
 def demo(directory):
     root = Path(directory).resolve()
     root.mkdir(parents=True, exist_ok=True)
-    evidence = root / "evidence"
-    evidence.mkdir(exist_ok=True)
-    graph_path, state_path = root / "graph.json", root / "relay-state.json"
+    profile = root / "isolated-profile"
+    scripts = profile / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    installed = scripts / "stage_relay.py"
+    shutil.copyfile(Path(__file__).resolve(), installed)
+    namespace = profile / "stage-relay" / "C0041"
+    evidence = namespace / "evidence"
+    evidence.mkdir(parents=True, exist_ok=True)
+    graph_path, state_path = namespace / "graph.json", namespace / "state.json"
     if graph_path.exists() or state_path.exists():
         raise RelayError("demo refuses existing graph/state; use new isolated namespace")
     prior = confined(evidence, "bootstrap/r11-synthetic-evidence.json")
@@ -597,15 +754,15 @@ def demo(directory):
             spec["symbol_cells"] = {"BTCUSDT": 24, "ETHUSDT": 24}
         stages.append({"id": stage_id, "mode": "exec", "source_head": head, "input_sha256": inp,
                        "lease_seconds": 60, "reports": [spec],
-                       "command": [sys.executable, str(Path(__file__).resolve()), "_demo_task",
+                       "command": [sys.executable, str(installed), "_demo_task",
                                    "--config", str(graph_path), "--stage", stage_id, "--rows", str(count)]})
-    atomic_json(graph_path, {"schema_version": 1, "kind": "synthetic_stage_relay",
+    atomic_json(graph_path, {"schema_version": 1, "kind": "stage_relay",
                              "evidence_root": str(evidence), "bootstrap": {
                                  "acceptance_path": "bootstrap/r11-acceptance.json",
                                  "stage_id": "synthetic-r11", "source_head": head,
                                  "input_sha256": inp}, "stages": stages})
     init(str(graph_path), str(state_path))
-    actions = [tick(str(graph_path), str(state_path))]
+    actions = [demo_installed_noarg(installed)]
     guards = []
     for stage_id, count in ids:
         deadline = time.monotonic() + 15
@@ -647,19 +804,22 @@ def demo(directory):
                    "exit_code": 0, "outcome": "SUCCEEDED", "reason": "synthetic demo only",
                    "output_count": count,
                    "reports": [{"path": path, "sha256": digest(report.read_bytes()), "rows": count}]}
-        receipt_rel = "receipts/" + stage_id + ".json"
-        acceptance_rel = "receipts/" + stage_id + "-acceptance.json"
+        receipt_rel = "inbox/" + stage_id + ".receipt.json"
+        acceptance_rel = "inbox/" + stage_id + ".acceptance.json"
         receipt_file = confined(evidence, receipt_rel)
         atomic_json(receipt_file, receipt)
         atomic_json(confined(evidence, acceptance_rel),
                     {"stage": stage_id, "source_head": head, "input_sha256": inp,
                      "graph_sha256": state["graph_sha256"], "receipt_sha256": digest(receipt_file.read_bytes()),
                      "decision": "ACCEPTED", "reviewer": "synthetic-demo-only"})
-        actions.append(complete(str(graph_path), str(state_path), receipt_rel, acceptance_rel))
+        actions.append(demo_installed_noarg(installed))
+        if actions[-1]["inbox"].get("action") != "ACCEPTED":
+            raise RelayError("installed inbox did not consume accepted synthetic stage")
     final = raw_json(state_path)
     if final["status"] != "DONE" or len(final["completed"]) != 4:
         raise RelayError("synthetic demo did not finish four subprocess stages")
     return {"synthetic_only": True, "not_maker_product_evidence": True, "status": "DONE",
+            "installed_noarg_chain": True, "installed_entrypoint": str(installed),
             "state": str(state_path), "graph": str(graph_path),
             "guards": guards, "completed": [{"stage": x["stage"], "output_count": x["output_count"],
                                              "pid": x["owner"]["product"]["pid"],
@@ -669,6 +829,16 @@ def demo(directory):
 
 
 def main(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+    if not argv:
+        try:
+            answer = supervisor()
+        except (RelayError, OSError, ValueError) as exc:
+            answer = {"action": "BLOCKED", "status": "BLOCKED", "needs_model_decision": True,
+                      "reason": str(exc), "stage": None, "owner": None, "lease_remaining_seconds": None}
+        print(json.dumps(answer, sort_keys=True, ensure_ascii=False), flush=True)
+        return 2 if answer.get("action") in ("NOT_CONFIGURED", "NOT_INITIALIZED", "BLOCKED") or answer.get("status") in ("BLOCKED", "FAILED") or answer.get("inbox", {}).get("action") == "INBOX_BLOCKED" else 0
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
     for key in ("init", "tick", "adopt", "renew", "complete", "status", "_worker"):
