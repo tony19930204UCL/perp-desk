@@ -40,6 +40,7 @@ class OfflineAccount:
         self.day = None
         self.day_start = self.capital
         self.day_realized = Z
+        self.counted_episodes = 0
         self.last_equity = self.capital
         self.last_mark = None
         self.stale = False
@@ -137,9 +138,11 @@ class OfflineAccount:
         state = self.ledger()
         if not state["episodes"]:
             return
-        net = state["episodes"][-1]["net"]
-        self.day_realized += net
-        self.loss_streak = self.loss_streak + 1 if net < Z else 0
+        if len(state["episodes"]) > self.counted_episodes:
+            net = state["episodes"][-1]["net"]
+            self.day_realized += net
+            self.loss_streak = self.loss_streak + 1 if net < Z else 0
+            self.counted_episodes = len(state["episodes"])
         self.entry = None
         self.exit = None
         self.style = None
@@ -199,7 +202,7 @@ class OfflineAccount:
                     qty=str(state["qty"]), margin_writeoff=str(liq["margin_writeoff"]),
                     fee=str(liq["fee"]), reason="LIQ_PROXY")
                 result = "LIQ_PROXY"
-        if state["qty"] == Z or result in ("LIQ_PROXY", "CLOSED_SL", "CLOSED",
+        if self.ledger()["qty"] == Z or result in ("LIQ_PROXY", "CLOSED_SL", "CLOSED",
                                          "POST_ONLY_REJECT", "EXPIRED"):
             self._close_episode(ts)
         self._valuation(close, ts)
