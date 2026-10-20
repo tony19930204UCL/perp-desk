@@ -13,7 +13,9 @@ def utc_day(ts):
     return datetime.fromtimestamp(ts / 1000, timezone.utc).date().isoformat()
 
 
-def replay_account(initial_cash, events):
+def replay_account(initial_cash, events, rates=None):
+    from scenario_rates import resolve_rates
+    rates = resolve_rates(rates)
     """Reconstruct real fill/funding/LIQ cash and margin without summaries.
 
     Account records require contiguous seq and nondecreasing ts. reserve and
@@ -68,7 +70,7 @@ def replay_account(initial_cash, events):
                 if liquidity not in ("maker", "taker"):
                     raise X2Error("bad fill liquidity")
                 fee = amount * price * (
-                    D(".0002") if liquidity == "maker" else D(".0005"))
+                    rates.maker_fee if liquidity == "maker" else rates.taker_fee)
                 if event["side"] == "sell":
                     if reserved <= Z or episode is None:
                         raise X2Error("fill without reserved episode")
