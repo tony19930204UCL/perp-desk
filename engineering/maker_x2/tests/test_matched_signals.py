@@ -99,6 +99,51 @@ class Control(unittest.TestCase):
                         result, (k, ttl, exit_kind))
 
 
+    def test_sample_completed_1m_exact_input_tail_included(self):
+        # 302 fully closed minutes: the final input minute opens at j301,
+        # and its framework decision closes at j302. This is NOT an
+        # execution bar, nor an estimate derived from the sampler.
+        minute = 60000
+        data = synthetic_minutes(302, spike=False)
+        final_input_ts = 301 * minute
+        final_decision = 302 * minute
+        self.assertEqual(data[-1]["ts"], final_input_ts)
+        start, end = 300 * minute, 303 * minute
+        expected = [300 * minute, 301 * minute, final_decision]
+        self.assertGreater(end, final_decision)
+        actual = ms.sample_completed(data, 1, start, end, count=3)
+        self.assertEqual(actual["status"], "READY")
+        self.assertEqual(actual["requested_count"], 3)
+        self.assertEqual(actual["eligible_count"], 3)
+        self.assertEqual(actual["selected_timestamps"], expected)
+        self.assertEqual(set(actual["selected_timestamps"]), set(expected))
+        self.assertIn(final_decision, actual["selected_timestamps"])
+        self.assertEqual(actual["selected_timestamps"][-1],
+                         data[-1]["ts"] + minute)
+
+    def test_sample_completed_15m_exact_input_tail_included(self):
+        # 294 complete UTC 15m buckets, made from precisely 4410 closed
+        # minutes. Last input minute opens at 4409m and decides at 4410m.
+        minute = 60000
+        period = 15 * minute
+        data = synthetic_minutes(15 * 294)
+        final_input_ts = (15 * 294 - 1) * minute
+        final_decision = 294 * period
+        self.assertEqual(data[-1]["ts"], final_input_ts)
+        start, end = 292 * period, 295 * period
+        expected = [292 * period, 293 * period, final_decision]
+        self.assertGreater(end, final_decision)
+        actual = ms.sample_completed(data, 15, start, end, count=3)
+        self.assertEqual(actual["status"], "READY")
+        self.assertEqual(actual["requested_count"], 3)
+        self.assertEqual(actual["eligible_count"], 3)
+        self.assertEqual(actual["selected_timestamps"], expected)
+        self.assertEqual(set(actual["selected_timestamps"]), set(expected))
+        self.assertIn(final_decision, actual["selected_timestamps"])
+        self.assertEqual(actual["selected_timestamps"][-1],
+                         data[-1]["ts"] + minute)
+
+
 class Mutation(unittest.TestCase):
     def mut_replacement(self):
         original = ms.select_matched
