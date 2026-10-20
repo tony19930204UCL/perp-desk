@@ -8,7 +8,7 @@ from maker_exit_lab import X2Error
 from data_adapter import read_bars, read_funding, sha256_file
 from grid_runner import run_grid
 from backtest_reports import persist_run, verify_run, source_manifest
-from backtest_controls import self_test
+from backtest_controls import discovery_gate
 
 
 def load_config(path):
@@ -37,7 +37,7 @@ def main(argv=None):
     parser.add_argument("--output",help="new output directory or existing verify directory")
     args=parser.parse_args(argv)
     if args.self_test:
-        return 0 if self_test() else 1
+        return 0 if discovery_gate() else 1
     if args.verify:
         if not (args.output and args.input and args.config):
             parser.error("--verify requires --config --input --output")
@@ -75,6 +75,14 @@ def main(argv=None):
             raise X2Error("each symbol needs bars and funding filenames")
         bars=read_bars(paths["bars"])
         funding=read_funding(paths["funding"])
+        # Refuse silently shortened research windows, including incomplete
+        # 15m signal warmup. Gaps remain inventoried; never backfill them.
+        start=int(config["evaluation_start"])
+        end=int(config["evaluation_end"])
+        warmup=290*15*60000
+        if (not bars["bars"] or bars["start_open_ms"] > start-warmup
+                or bars["end_open_ms"]+60000 < end):
+            raise X2Error("insufficient historical warmup/evaluation coverage")
         data[symbol]={"bars":bars["bars"],"funding":funding["events"]}
         inputs[symbol]={"bars_sha256":bars["sha256"],
                         "funding_sha256":funding["sha256"],
