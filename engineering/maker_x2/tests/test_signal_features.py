@@ -44,7 +44,8 @@ class Control(unittest.TestCase):
     def test_prefix_future_invariance_and_tail_decision(self):
         original = bars(300, spike=True)
         first = sf.eligible_decisions(original, 1)
-        suffix = [dict(item, ts=(300+j)*M) for j, item in enumerate(bars(2))]
+        suffix = [dict(item, ts=(300+j)*M, quote_volume="5000",
+                       base_volume="1") for j, item in enumerate(bars(2))]
         extended = sf.eligible_decisions(original + suffix, 1)
         self.assertEqual(first, extended[:len(first)])
         self.assertEqual(first[-1]["signal_time"], 300*M)
@@ -89,15 +90,109 @@ class Control(unittest.TestCase):
         self.assertTrue(D("98.999") < D("99"))
 
 
+def independent_std(values):
+    """Test-only ddof1 reference without invoking production sample_std."""
+    with localcontext() as ctx:
+        ctx.prec = 50
+        mean = sum(values, D("0")) / D(len(values))
+        squared = sum(((x-mean)*(x-mean) for x in values), D("0"))
+        return (squared / D(len(values)-1)).sqrt()
+
+
+def framework_fixture(prices):
+    """Each 15m UTC bucket has 15 complete fictional identical-price minutes."""
+    out = []
+    for index, price in enumerate(prices):
+        for minute in range(15):
+            out.append({
+                "ts": (index*15+minute)*M, "open": str(price),
+                "high": str(price+D(".4")), "low": str(price-D(".4")),
+                "close": str(price), "base_volume": "2",
+                "quote_volume": str(price*2), "closed": True,
+            })
+    return out
+
+
+class StrategyApiControls(unittest.TestCase):
+    def test_s1_real_api_below_above_and_controlled_exact_equality(self):
+        low = sf.eligible_decisions(bars(300), 1)[-1]
+        high_bars = bars(300, spike=True)
+        high = sf.eligible_decisions(high_bars, 1)[-1]
+        self.assertLessEqual(low["z"], D("2.5"))
+        self.assertFalse(low["triggered"])
+        self.assertGreater(high["z"], D("2.5"))
+        self.assertTrue(high["triggered"])
+        self.assertEqual(sf.signal_records(high_bars, 1)[-1]["signal_id"],
+                         high["signal_id"])
+        # Unmocked 50-digit finite prices do not guarantee irrational
+        # sqrt(6) yields literal z==2.5. Inject ONLY the comparison
+        # threshold, keeping actual 1m bars, returns, r6, sigma, z,
+        # ATR/VWAP and the production > predicate executing normally.
+        factory = sf.D
+        def comparison_threshold(value):
+            return high["z"] if value == "2.5" else factory(value)
+        with patch.object(sf, "D", side_effect=comparison_threshold):
+            equality = sf.eligible_decisions(high_bars, 1)[-1]
+        self.assertEqual(equality["z"], high["z"])
+        self.assertFalse(equality["triggered"])
+        self.assertEqual(equality["signal_time"], 300*M)
+
+    def test_s2_real_api_positive_close_equality_and_volatility_gate(self):
+        previous = [D("100")+ (D(".05") if j%2 else D("-.05"))
+                    for j in range(277)] + [D("100")]*13
+        self.assertEqual(len(previous), 290)
+        positive = sf.eligible_decisions(
+            framework_fixture(previous+[D("98")]), 15)[-1]
+        self.assertEqual(positive["signal_type"], "S2")
+        self.assertTrue(positive["triggered"])
+        self.assertEqual(positive["std12"], D("0"))
+        self.assertLessEqual(positive["std12"],
+                             positive["sigma288"]*D(".5"))
+        self.assertEqual(positive["previous_l12"], D("99.6"))
+        self.assertEqual(positive["atr14"], D(".8"))
+        self.assertEqual(positive["vwap60"], D("99.5"))
+        self.assertEqual(positive["signal_time"], 291*15*M)
+        self.assertEqual(positive["final_minute_index"], 291*15-1)
+        self.assertEqual(
+            sf.signal_records(framework_fixture(previous+[D("98")]), 15)[-1]
+              ["signal_id"], positive["signal_id"])
+        reference_returns = [
+            previous[j]/previous[j-1]-1 for j in range(2, 290)]
+        self.assertEqual(len(reference_returns), 288)
+        self.assertEqual(positive["sigma288"],
+                         independent_std(reference_returns))
+        self.assertEqual(positive["std12"],
+                         independent_std(reference_returns[-12:]))
+        equality = sf.eligible_decisions(
+            framework_fixture(previous+[D("99.6")]), 15)[-1]
+        self.assertEqual(equality["signal_close"], equality["previous_l12"])
+        self.assertFalse(equality["triggered"])
+        volatile = previous[:277] + [
+            D("100") if i%2 else D("102") for i in range(13)]
+        blocked = sf.eligible_decisions(
+            framework_fixture(volatile+[D("98")]), 15)[-1]
+        self.assertLess(blocked["signal_close"], blocked["previous_l12"])
+        self.assertGreater(blocked["std12"],
+                           blocked["sigma288"]*D(".5"))
+        self.assertFalse(blocked["triggered"])
+
+
 class Mutation(unittest.TestCase):
     def mut_lookahead(self):
         original = sf.eligible_decisions
-        def altered(values, framework):
-            records = original(values, framework)
-            for rec in records:
-                rec["signal_time"] += M
-            return records
-        with patch.object(sf, "eligible_decisions", altered):
+        original_vwap = sf.vwap60
+
+        def leaked(values, framework):
+            # A deliberately invalid future read: latest input minute's
+            # quote/base ratio contaminates EACH historical VWAP feature.
+            last = values[-1]
+            future = D(last["quote_volume"]) / D(last["base_volume"])
+            def future_vwap(window):
+                return original_vwap(window) + future
+            with patch.object(sf, "vwap60", future_vwap):
+                return original(values, framework)
+
+        with patch.object(sf, "eligible_decisions", leaked):
             Control("test_prefix_future_invariance_and_tail_decision").debug()
 
 
