@@ -6,6 +6,7 @@ from decimal import Decimal as D
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from account_ledger import replay_account
 from maker_exit_lab import X2Error
+from accounting import replay as replay_original
 
 
 def e(kind, i, ts, **kwargs):
@@ -31,6 +32,23 @@ class Control(unittest.TestCase):
         self.assertEqual(s["reserved"], D("0"))
         self.assertEqual(s["qty"], D("0"))
         self.assertEqual(s["episodes"][0]["net"], D("3.9204"))
+        self.assertEqual(s["funding_cost"], D("-2"))
+        # Explicit canonical signed-short ledger: the same three actual
+        # financial events independently confirm positive funding credit.
+        ordinary = [
+            {"id": "original-sell", "seq": 0, "ts": 60000, "type": "fill",
+             "side": "sell", "qty": "2", "price": "100", "liquidity": "maker"},
+            {"id": "original-fund", "seq": 1, "ts": 120000, "type": "funding",
+             "settlement_id": "settle1", "mark": "100", "rate": ".01"},
+            {"id": "original-buy", "seq": 2, "ts": 180000, "type": "fill",
+             "side": "buy", "qty": "2", "price": "99", "liquidity": "maker"},
+        ]
+        independent = replay_original("1000", ordinary)
+        self.assertEqual(independent["realized_gross"], D("2"))
+        self.assertEqual(independent["fees_paid"], D(".0796"))
+        self.assertEqual(independent["funding_cost"], D("-2"))
+        self.assertEqual(independent["cash"], D("1003.9204"))
+        self.assertEqual(s["cash"], independent["cash"])
 
     def test_remaining_only_liq_writeoff_not_fake_fill(self):
         events = [
