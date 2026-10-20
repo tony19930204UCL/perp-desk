@@ -27,7 +27,7 @@ def minutes(count=300):
     for i in range(count):
         close=D("100")+D(i%7)/100
         bars.append({"ts":i*60000,"open":str(close),
-                     "high":str(close+D("1")),"low":str(close-D("1")),
+                     "high":str(close+D(".30")),"low":str(close-D(".30")),
                      "close":str(close),"base_volume":"2",
                      "quote_volume":"200","closed":True})
     return bars
@@ -71,7 +71,7 @@ class Control(unittest.TestCase):
                 writer.writerow({"funding_time_ms":60000,"rate":".01"})
             funding=read_funding(root/"f.csv")
             self.assertEqual(funding["events"][0]["mark"],None)
-            self.assertEqual(funding["events"][0]["rate"],".01")
+            self.assertEqual(D(funding["events"][0]["rate"]),D(".01"))
             with gzip.open(root/"f.json.gz","wt",encoding="utf-8") as f:
                 json.dump([{"fundingTime":60000,
                             "fundingRate":".01","markPrice":"100"}],f)
