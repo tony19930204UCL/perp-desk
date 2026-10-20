@@ -7,9 +7,11 @@ from datetime import datetime, timezone
 
 from maker_exit_lab import X2Error
 from data_adapter import read_bars, read_funding, sha256_file
-from grid_runner import run_grid
+from grid_runner import run_grid, bounded_symbol
 from scenario_rates import SENSITIVITY
-from backtest_reports import persist_run, verify_run, source_manifest
+from backtest_reports import persist_run, verify_run, source_manifest, BoundedReport
+from bounded_history import prepare_bars, prepare_decisions
+from tempfile import TemporaryDirectory
 from backtest_controls import discovery_gate
 
 
@@ -77,60 +79,53 @@ def main(argv=None):
         sources=json.load(handle)
     if set(sources)!={"ETHUSDT","BTCUSDT"}:
         raise X2Error("input manifest needs separate ETHUSDT and BTCUSDT")
-    data={}
-    inputs={}
-    for symbol,paths in sources.items():
-        if set(paths)!={"bars","funding"}:
-            raise X2Error("each symbol needs bars and funding filenames")
-        bars=read_bars(paths["bars"])
-        funding=read_funding(paths["funding"])
-        # Refuse silently shortened research windows, including incomplete
-        # 15m signal warmup. Gaps remain inventoried; never backfill them.
-        start=int(config["evaluation_start"])
-        end=int(config["evaluation_end"])
-        warmup_start=int(datetime(2023,10,1,
-                                  tzinfo=timezone.utc).timestamp()*1000)
-        if (not bars["bars"] or bars["start_open_ms"] > warmup_start
-                or bars["end_open_ms"]+60000 < end):
-            raise X2Error("insufficient historical warmup/evaluation coverage")
-        data[symbol]={"bars":bars["bars"],"funding":funding["events"]}
-        inputs[symbol]={"bars_sha256":bars["sha256"],
-                        "funding_sha256":funding["sha256"],
-                        "bar_count":bars["count"],
-                        "funding_count":funding["count"],
-                        "gaps":bars["gaps"],
-                        "start_open_ms":bars["start_open_ms"],
-                        "end_open_ms":bars["end_open_ms"]}
     root=Path(__file__).resolve().parent
     source_before=source_manifest(root)
+    inputs={}
+    start=int(config["evaluation_start"])
+    end=int(config["evaluation_end"])
+    warmup=int(datetime(2023,10,1,tzinfo=timezone.utc).timestamp()*1000)
     manifest={"input":inputs,"input_manifest_sha256":sha256_file(args.input),
               "config_sha256":sha256_file(args.config),
               "source_sha256":source_before,
-              "evaluation_start":int(config["evaluation_start"]),
-              "evaluation_end":int(config["evaluation_end"]),
+              "evaluation_start":start,"evaluation_end":end,
               "research_status":"EXPLORATORY_UNACCEPTED"}
-    universe_cache={}
-    matched_cache={}
-    result=run_grid(data,config,manifest["evaluation_start"],
-                    manifest["evaluation_end"],
-                    eligible_cache=universe_cache,
-                    sample_cache=matched_cache)
-    delayed=run_grid(data,config,manifest["evaluation_start"],
-                     manifest["evaluation_end"],delay_minutes=2,
-                     eligible_cache=universe_cache,
-                     sample_cache=matched_cache)
-    higher_cost=run_grid(data,config,manifest["evaluation_start"],
-                         manifest["evaluation_end"],rates=SENSITIVITY,
-                         eligible_cache=universe_cache,
-                         sample_cache=matched_cache)
-    result["delay2_cells"]=delayed["cells"]
-    result["fee_slip_1_5x_cells"]=higher_cost["cells"]
-    result["fee_slip_1_5x_status"]="SOURCE_DELIVERED_NOT_VERIFIED"
+    report=BoundedReport(args.output)
+    samplers={}
+    with TemporaryDirectory(prefix="maker-v3-bounded-") as scratch:
+        for symbol in ("ETHUSDT","BTCUSDT"):
+            paths=sources[symbol]
+            if set(paths)!={"bars","funding"}:
+                raise X2Error("each symbol needs bars and funding filenames")
+            print("PREPARING "+symbol,flush=True)
+            bars=prepare_bars(paths["bars"],Path(scratch)/(symbol+"-bars.db"))
+            funding=read_funding(paths["funding"])
+            if (not bars["count"] or bars["start_open_ms"]>warmup or
+                    bars["end_open_ms"]+60000<end):
+                raise X2Error("insufficient historical warmup/evaluation coverage")
+            inputs[symbol]={"bars_sha256":bars["sha256"],
+                            "funding_sha256":funding["sha256"],
+                            "bar_count":bars["count"],
+                            "funding_count":funding["count"],
+                            "gaps":bars["gaps"],
+                            "start_open_ms":bars["start_open_ms"],
+                            "end_open_ms":bars["end_open_ms"]}
+            prepared={}
+            for tf in (1,15):
+                print("FEATURES "+symbol+" "+str(tf)+"m",flush=True)
+                prepared[tf]=prepare_decisions(
+                    bars["bars"],tf,Path(scratch)/(symbol+"-"+str(tf)+".db"))
+            def write_cell(scenario,meta,strategy,matched):
+                report.record(scenario,meta,strategy,matched)
+                print("CELL "+symbol+" "+scenario+" "+meta["cell_id"],
+                      flush=True)
+            _, selections = bounded_symbol(symbol,bars["bars"],
+                funding["events"],prepared,config,start,end,write_cell)
+            samplers.update(selections)
+            del prepared, bars, funding
     if source_manifest(root)!=source_before:
-        raise X2Error("sources changed during run")
-    written=persist_run(args.output,manifest,result)
-    if verify_run(args.output)["manifest_sha256"]!=written["manifest_sha256"]:
-        raise X2Error("output verify mismatch")
+        raise X2Error("source/test changed during run")
+    written=report.finish(manifest,samplers,config,start,end)
     print(json.dumps({"status":"OUTPUT_WRITTEN_NOT_ACCEPTED",
                       "cell_count":result["cell_count"],**written},sort_keys=True))
     return 0
