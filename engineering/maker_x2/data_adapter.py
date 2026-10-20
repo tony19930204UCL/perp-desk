@@ -31,10 +31,58 @@ def _objects(path):
         if extension == ".csv":
             yield from csv.DictReader(handle)
         elif extension == ".json":
-            payload = json.load(handle)
-            if not isinstance(payload, list):
+            # Bounded-memory incremental JSON array decoding: do not
+            # json.load a multi-year Binance array into a giant list.
+            decoder = json.JSONDecoder()
+            buffer = ""
+            eof = False
+            def need():
+                nonlocal buffer, eof
+                chunk = handle.read(65536)
+                if not chunk:
+                    eof = True
+                buffer += chunk
+            need()
+            buffer = buffer.lstrip()
+            if not buffer.startswith("["):
                 raise X2Error("JSON input must be an array")
-            yield from payload
+            buffer = buffer[1:]
+            while True:
+                buffer = buffer.lstrip()
+                if not buffer and not eof:
+                    need()
+                    continue
+                if buffer.startswith("]"):
+                    buffer = buffer[1:]
+                    while not eof:
+                        need()
+                    if buffer.strip():
+                        raise X2Error("trailing data after JSON array")
+                    break
+                if eof and not buffer:
+                    raise X2Error("truncated JSON array")
+                try:
+                    value, offset = decoder.raw_decode(buffer)
+                except json.JSONDecodeError as exc:
+                    if eof:
+                        raise X2Error("invalid JSON array element") from exc
+                    need()
+                    continue
+                yield value
+                buffer = buffer[offset:]
+                while True:
+                    buffer = buffer.lstrip()
+                    if not buffer and not eof:
+                        need()
+                        continue
+                    if buffer.startswith(","):
+                        buffer = buffer[1:]
+                        break
+                    if buffer.startswith("]"):
+                        break
+                    if eof:
+                        raise X2Error("JSON array separator expected")
+                    need()
         elif extension in (".jsonl", ".ndjson"):
             for line in handle:
                 if line.strip():
