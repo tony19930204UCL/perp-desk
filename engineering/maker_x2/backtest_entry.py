@@ -110,12 +110,15 @@ def main(argv=None):
               "evaluation_end":int(config["evaluation_end"]),
               "research_status":"EXPLORATORY_UNACCEPTED"}
     universe_cache={}
+    matched_cache={}
     result=run_grid(data,config,manifest["evaluation_start"],
                     manifest["evaluation_end"],
-                    eligible_cache=universe_cache)
+                    eligible_cache=universe_cache,
+                    sample_cache=matched_cache)
     delayed=run_grid(data,config,manifest["evaluation_start"],
                      manifest["evaluation_end"],delay_minutes=2,
-                     eligible_cache=universe_cache)
+                     eligible_cache=universe_cache,
+                     sample_cache=matched_cache)
     higher_cost=run_grid(data,config,manifest["evaluation_start"],
                          manifest["evaluation_end"],rates=SENSITIVITY,
                          eligible_cache=universe_cache)
