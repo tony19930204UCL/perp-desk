@@ -1,0 +1,74 @@
+[
+  {
+    "source_name": "engineering_instruction_carrier.py",
+    "original_source_sha256": "c5c54f05572fcf2c3aef1bfc09fad2afc680e0ead1a4264ea5f0100892d24fac",
+    "public_reference_sha256": "c5c54f05572fcf2c3aef1bfc09fad2afc680e0ead1a4264ea5f0100892d24fac",
+    "redaction": "private root literals replaced by non-executable placeholders; no behavioral repair"
+  },
+  {
+    "source_name": "profile_runner.py",
+    "original_source_sha256": "c3994300840d354e4f6940b097951ddc57f206448951115043b1fa5392f0c41e",
+    "public_reference_sha256": "c3994300840d354e4f6940b097951ddc57f206448951115043b1fa5392f0c41e",
+    "redaction": "private root literals replaced by non-executable placeholders; no behavioral repair"
+  },
+  {
+    "source_name": "legacy_cdp_bridge.py",
+    "original_source_sha256": "86df6a07b64ff4bc3017bd916411d5f68c29dc021d102be07d325618e72feec9",
+    "public_reference_sha256": "86df6a07b64ff4bc3017bd916411d5f68c29dc021d102be07d325618e72feec9",
+    "redaction": "private root literals replaced by non-executable placeholders; no behavioral repair"
+  },
+  {
+    "source_name": "engineering_github_inbox.py",
+    "original_source_sha256": "a316a57126ee5cc0a61d956a48f0071ffc2f42a164fa74fac491a6547111c4f3",
+    "public_reference_sha256": "a316a57126ee5cc0a61d956a48f0071ffc2f42a164fa74fac491a6547111c4f3",
+    "redaction": "private root literals replaced by non-executable placeholders; no behavioral repair"
+  },
+  {
+    "source_name": "engineering_handback_contract.py",
+    "original_source_sha256": "4e6d25707ede0e558cbf38cc433db1e0663b7a1801b5ade53f13705b3839921f",
+    "public_reference_sha256": "4e6d25707ede0e558cbf38cc433db1e0663b7a1801b5ade53f13705b3839921f",
+    "redaction": "private root literals replaced by non-executable placeholders; no behavioral repair"
+  },
+  {
+    "source_name": "main_verdict.py",
+    "original_source_sha256": "cbc8e9993198361f01496367e2956d49e986599f9df013fd6decad8b7745eb03",
+    "public_reference_sha256": "cbc8e9993198361f01496367e2956d49e986599f9df013fd6decad8b7745eb03",
+    "redaction": "private root literals replaced by non-executable placeholders; no behavioral repair"
+  },
+  {
+    "source_name": "queue_runner.py",
+    "original_source_sha256": "8ee4c7a38a4874ef7754265d7e218e87e347d5dc0e04826a4c9fdfa61b9d2539",
+    "public_reference_sha256": "8ee4c7a38a4874ef7754265d7e218e87e347d5dc0e04826a4c9fdfa61b9d2539",
+    "redaction": "private root literals replaced by non-executable placeholders; no behavioral repair"
+  },
+  {
+    "source_name": "relay-allow-card.py",
+    "original_source_sha256": "148526e6721d88119df2e03dcab7c1807e53ce5075291219b2b9966e4a5d5896",
+    "public_reference_sha256": "148526e6721d88119df2e03dcab7c1807e53ce5075291219b2b9966e4a5d5896",
+    "redaction": "private root literals replaced by non-executable placeholders; no behavioral repair"
+  },
+  {
+    "source_name": "relay-allow-if-diff-clean.py",
+    "original_source_sha256": "43201f24ddf450aad036e0a558f57779bab6b4a8a3ad221ca9f5b00e94ea6d76",
+    "public_reference_sha256": "43201f24ddf450aad036e0a558f57779bab6b4a8a3ad221ca9f5b00e94ea6d76",
+    "redaction": "private root literals replaced by non-executable placeholders; no behavioral repair"
+  },
+  {
+    "source_name": "relay-poll.py",
+    "original_source_sha256": "aff8ad9b49c21f763beef584992331f87758a5f91ca04b100845e0df9ddbb205",
+    "public_reference_sha256": "aff8ad9b49c21f763beef584992331f87758a5f91ca04b100845e0df9ddbb205",
+    "redaction": "private root literals replaced by non-executable placeholders; no behavioral repair"
+  },
+  {
+    "source_name": "relay-drive.py",
+    "original_source_sha256": "79c9f5a41680c2004a6300c0efb5c4e58efefa5af19a112665d3afd52c2a78a2",
+    "public_reference_sha256": "1766a00aeb9a1524a69968d8d5a924cf64dc8543a5d1baa60b7fba91f1e64a42",
+    "redaction": "private root literals replaced by non-executable placeholders; no behavioral repair"
+  },
+  {
+    "source_name": "auto_allow.py",
+    "original_source_sha256": "7e0278e00810ead9532eb72f03dd23d0b3b3b5ddbf5c329ab81b5b38631105a9",
+    "public_reference_sha256": "7e0278e00810ead9532eb72f03dd23d0b3b3b5ddbf5c329ab81b5b38631105a9",
+    "redaction": "private root literals replaced by non-executable placeholders; no behavioral repair"
+  }
+]
