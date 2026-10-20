@@ -1158,3 +1158,40 @@ cannot be reused as r13 PASS. No full-history runtime/memory evidence
 yet exists for the new implementation; the 5 GiB historical attempt
 must be measured afresh. This is infrastructure source, not
 strategy PnL, new holdout, A01-A16/product or deployment approval.
+
+
+### Complete pre-existing 20-mutation invocation matrix
+
+The r13 gate requires the **whole** original 20, not merely the ten
+examples above. Run each in its **own** process, and record the real
+executed test ID, genuine AssertionError and rc1 only after every
+positive CONTROL succeeds:
+
+```sh
+python3 tests/test_x2.py mut-fee
+python3 tests/test_x2.py mut-funding
+python3 tests/test_x2.py mut-be
+python3 tests/test_x2.py mut-duplicate
+python3 tests/test_entry_lifecycle.py mut-lookahead
+python3 tests/test_entry_lifecycle.py mut-touch
+python3 tests/test_exit_lifecycle.py mut-time
+python3 tests/test_exit_lifecycle.py mut-reverse
+python3 tests/test_account_lifecycle.py mut-double-entry
+python3 tests/test_account_lifecycle.py mut-kill-bypass
+python3 tests/test_account_lifecycle.py mut-partial-liq
+python3 tests/test_account_lifecycle.py mut-open-mtm
+python3 tests/test_signal_features.py mut-lookahead
+python3 tests/test_matched_signals.py mut-replacement
+python3 tests/test_matched_signals.py mut-resample
+python3 tests/test_backtest_mutations.py mut-fee
+python3 tests/test_backtest_mutations.py mut-funding
+python3 tests/test_backtest_mutations.py mut-fake-time
+python3 tests/test_backtest_mutations.py mut-future
+python3 tests/test_backtest_mutations.py mut-overfill
+```
+
+Do not infer real full-market acceptance from a green synthetic
+resource probe, report checksum, 20 caught mutations or broad CI.
+Full-length execution must independently complete under the original
+5 GiB RLIMIT_AS with validated raw artifacts and source/input/config
+identity.
