@@ -188,10 +188,10 @@ class RelayTests(unittest.TestCase):
         self.assertIn("missing configured", response["reason"])
 
 
-    def installed(self, configured=True):
+    def installed(self, configured=True, profile_name="my-active-profile"):
         """Copy actual source into a temporary installed-profile scripts path."""
         import shutil
-        profile = self.root / "my-active-profile"
+        profile = self.root / profile_name
         scripts = profile / "scripts"
         scripts.mkdir(parents=True, exist_ok=True)
         target = scripts / "stage_relay.py"
@@ -281,12 +281,9 @@ class RelayTests(unittest.TestCase):
     def test_installed_noarg_unknown_refusal_are_terminal(self):
         for outcome in ("UNKNOWN", "REFUSED"):
             with self.subTest(outcome=outcome):
-                if self.state.exists():
-                    self.state.unlink()
-                    self.config.unlink()
-                    import shutil
-                    shutil.rmtree(self.evidence / "inbox")
-                target = self.installed()
+                # Each terminal outcome owns a complete independent profile,
+                # including script, graph, state, inbox, evidence and xb logs.
+                target = self.installed(profile_name="my-active-profile-" + outcome.lower())
                 self.noarg(target)
                 state = self.await_completion()
                 self.inbox(state, outcome=outcome)
