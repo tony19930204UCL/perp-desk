@@ -242,8 +242,11 @@ class MakerX2:
             limit = self.targets[order]
             if amount > self.orders[order] or amount > self.qty:
                 raise X2Error("Maker overfill")
-            if price > limit or lo >= limit:
-                raise X2Error("unavailable maker execution / touch only")
+            # Synthetic OHLC proxy: 2bp of downward penetration is required.
+            # Executions occur at the posted limit, never at an arbitrary
+            # favorable candidate price (even if the candle trades lower).
+            if price != limit or lo > limit * (1 - MAKER_FEE):
+                raise X2Error("Maker requires exact limit and 2bp penetration")
             self.orders[order] -= amount
             self._exit(candidate["id"], ts, amount, price, "maker", order)
             if order == "tp1" and self.first_tp_bar is None:
