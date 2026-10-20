@@ -158,6 +158,8 @@ for name,delay,rates in [('baseline',0,None),('delay2',2,None),
                  eligible_cache=cache,sample_cache=samples)
     result[name]=run
 from market_replay import replay_cell
+from account_lifecycle import OfflineAccount
+from backtest_reports import canon
 from decimal import Decimal as D
 focused=[dict(bar) for bar in data["ETHUSDT"]["bars"]]
 focused[300].update(open="100",high="100.27005",low="99",close="100")
@@ -172,9 +174,25 @@ result["focused"]={}
 for scenario,rates in (("baseline",None),("cost1_5x",SENSITIVITY)):
     for exit_style in ("X1","X2","X3"):
         key=scenario+":"+exit_style
-        result["focused"][key]=replay_cell(
-            "ETHUSDT",focused,fund,1,".25",2,exit_style,config,
-            300*60000,303*60000,eligible=[known],rates=rates)
+        account=OfflineAccount(
+            config["capital"],config["per_trade_margin"],
+            config["leverage"],config["daily_loss_limit"],
+            config["loss_streak_limit"],config["halt_hours"],
+            config["liq_pct"],config["liq_fee_pct"],rates=rates)
+        assert account.submit("ETHUSDT","focused",300*60000,
+            "100","100","1",".25",2,"2",exit_style,
+            signal_vwap="99" if exit_style=="X1" else None)=="PENDING"
+        account.bar({"ts":300*60000,"open":"100","high":"100.27005",
+                     "low":"99","close":"100","closed":True},entry_qty="2")
+        account.bar({"ts":301*60000,"open":"100","high":"100.1",
+                     "low":"98.9","close":"99","closed":True},
+                    settlements=[{"id":"focused-settlement",
+                                  "settlement_id":"focused-settlement",
+                                  "ts":301*60000,"mark":"100",
+                                  "rate":".01"}],maker_fill=True)
+        result["focused"][key]={
+            "events":canon(account.events),"ledger":canon(account.ledger()),
+            "snapshot":canon(account.snapshot())}
 json.dump(canon(result),open(__import__('sys').argv[3],'w'),
           sort_keys=True,allow_nan=False)
 """
@@ -211,15 +229,33 @@ def differential(base_dir):
         for scenario,rates in (("baseline",None),("cost1_5x",SENSITIVITY)):
             for style in ("X1","X2","X3"):
                 key=scenario+":"+style
-                actual=replay_cell("ETHUSDT",focused,fund,1,".25",2,
-                    style,config,300*60000,303*60000,
-                    eligible=[known],rates=rates)
+                from account_lifecycle import OfflineAccount
                 from backtest_reports import canon
-                assert canon(actual)==old["focused"][key],key
-                assert any(event["type"]=="fill" and event["side"]=="sell"
-                           for event in actual["events"]),key
-                assert any(event["type"]=="funding"
-                           for event in actual["events"]),key
+                account=OfflineAccount(
+                    config["capital"],config["per_trade_margin"],
+                    config["leverage"],config["daily_loss_limit"],
+                    config["loss_streak_limit"],config["halt_hours"],
+                    config["liq_pct"],config["liq_fee_pct"],rates=rates)
+                assert account.submit("ETHUSDT","focused",300*60000,
+                    "100","100","1",".25",2,"2",style,
+                    signal_vwap="99" if style=="X1" else None)=="PENDING"
+                account.bar({"ts":300*60000,"open":"100",
+                    "high":"100.27005","low":"99","close":"100",
+                    "closed":True},entry_qty="2")
+                account.bar({"ts":301*60000,"open":"100",
+                    "high":"100.1","low":"98.9","close":"99",
+                    "closed":True},maker_fill=True,
+                    settlements=[{"id":"focused-settlement",
+                        "settlement_id":"focused-settlement",
+                        "ts":301*60000,"mark":"100","rate":".01"}])
+                actual={"events":canon(account.events),
+                        "ledger":canon(account.ledger()),
+                        "snapshot":canon(account.snapshot())}
+                assert actual==old["focused"][key],key
+                assert any(e["type"]=="fill" and e["side"]=="sell"
+                           for e in account.events),key
+                assert any(e["type"]=="funding"
+                           for e in account.events),key
         with (destination/"results.json").open(encoding="utf-8") as handle:
             new=json.load(handle)
         for scenario, prefix, summary in (
