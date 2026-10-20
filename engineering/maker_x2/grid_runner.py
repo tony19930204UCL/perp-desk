@@ -16,7 +16,7 @@ SYMBOLS=("ETHUSDT","BTCUSDT")
 
 
 def run_grid(dataset, account_config, start, end, sample_count=6000,
-             delay_minutes=0, eligible_cache=None):
+             delay_minutes=0, eligible_cache=None, rates=None):
     cells=[]
     sources={}
     cache={} if eligible_cache is None else eligible_cache
@@ -38,7 +38,7 @@ def run_grid(dataset, account_config, start, end, sample_count=6000,
                 real=replay_cell(symbol,bars,funding,frame,k,ttl,exit_style,
                                  account_config,start,end,
                                  delay_minutes=delay_minutes,
-                                 eligible=eligible)
+                                 eligible=eligible,rates=rates)
                 matched=None
                 if selection["status"]=="READY":
                     matched=replay_cell(
