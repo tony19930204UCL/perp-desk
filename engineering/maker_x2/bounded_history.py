@@ -4,6 +4,8 @@ Internal capacity types can only be constructed by the validating preparers.
 SQLite is temporary local scratch, not a second unverified input format.
 """
 import json
+import os
+import weakref
 import sqlite3
 from collections import deque
 from decimal import Decimal, localcontext
@@ -14,7 +16,25 @@ from maker_exit_lab import X2Error, number
 
 D = Decimal
 Z = D("0")
-_TOKEN = object()
+_SEALED = weakref.WeakKeyDictionary()
+
+
+def _seal(cls, path, count):
+    obj = object.__new__(cls)
+    obj.path, obj.count = str(path), count
+    stat = os.stat(path)
+    _SEALED[obj] = (str(path), count, stat.st_ino, stat.st_size,
+                    stat.st_mtime_ns)
+    return obj
+
+
+def _verify_seal(obj):
+    stamp = _SEALED.get(obj)
+    if stamp is None or stamp[:2] != (obj.path, obj.count):
+        raise X2Error("unvalidated prepared object")
+    stat = os.stat(obj.path)
+    if (stat.st_ino, stat.st_size, stat.st_mtime_ns) != stamp[2:]:
+        raise X2Error("prepared scratch modified after validation")
 _DECIMALS = ("signal_high", "signal_close", "atr14", "vwap60",
              "sigma288", "std12", "r6", "z", "previous_h12", "previous_l12")
 
@@ -29,15 +49,14 @@ def _database(path, columns):
 
 
 class PreparedBars:
-    def __init__(self, path, count, token):
-        if token is not _TOKEN:
-            raise X2Error("unvalidated prepared bars")
-        self.path, self.count = str(path), count
+    def __init__(self, *args, **kwargs):
+        raise X2Error("prepare_bars is the only validated constructor")
 
     def __len__(self):
         return self.count
 
     def __iter__(self):
+        _verify_seal(self)
         db = sqlite3.connect("file:" + Path(self.path).resolve().as_posix() +
                              "?mode=ro", uri=True)
         try:
@@ -51,10 +70,8 @@ class PreparedBars:
 
 
 class PreparedDecisions:
-    def __init__(self, path, count, token):
-        if token is not _TOKEN:
-            raise X2Error("unvalidated prepared decisions")
-        self.path, self.count = str(path), count
+    def __init__(self, *args, **kwargs):
+        raise X2Error("prepare_decisions is the only validated constructor")
 
     def __len__(self):
         return self.count
@@ -133,7 +150,7 @@ def prepare_bars(path, destination):
         db.close()
     if sha256_file(path) != original_hash:
         raise X2Error("bar input mutated during preparation")
-    return {"bars": PreparedBars(destination, count, _TOKEN),
+    return {"bars": _seal(PreparedBars, destination, count),
             "sha256": original_hash, "count": count, "gaps": gaps,
             "start_open_ms": start, "end_open_ms": last}
 
@@ -247,4 +264,4 @@ def prepare_decisions(bars, tf, destination):
         db.commit()
     finally:
         db.close()
-    return PreparedDecisions(destination, count, _TOKEN)
+    return _seal(PreparedDecisions, destination, count)
