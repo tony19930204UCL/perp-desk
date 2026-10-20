@@ -244,7 +244,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
         equity_path.append(last_daily_point)
     account.tail()
     snap = account.snapshot()
-    ledger = replay_account(account.capital, account.events)
+    ledger = replay_account(account.capital, account.events, rates=account.rates)
     if ledger != account.ledger():
         raise X2Error("independent full account ledger divergence")
     completed = []
