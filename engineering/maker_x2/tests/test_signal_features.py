@@ -156,8 +156,10 @@ class StrategyApiControls(unittest.TestCase):
         self.assertEqual(
             sf.signal_records(framework_fixture(previous+[D("98")]), 15)[-1]
               ["signal_id"], positive["signal_id"])
-        reference_returns = [
-            previous[j]/previous[j-1]-1 for j in range(2, 290)]
+        with localcontext() as ctx:
+            ctx.prec = 50
+            reference_returns = [
+                previous[j]/previous[j-1]-1 for j in range(2, 290)]
         self.assertEqual(len(reference_returns), 288)
         self.assertEqual(positive["sigma288"],
                          independent_std(reference_returns))
@@ -198,7 +200,9 @@ class Mutation(unittest.TestCase):
 
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv)>1 else "control"
-    suite = (unittest.defaultTestLoader.loadTestsFromTestCase(Control)
+    suite = (unittest.TestSuite([
+                 unittest.defaultTestLoader.loadTestsFromTestCase(Control),
+                 unittest.defaultTestLoader.loadTestsFromTestCase(StrategyApiControls)])
              if mode == "control" else unittest.TestSuite([Mutation("mut_lookahead")]))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     sys.exit(0 if result.wasSuccessful() else 1)
