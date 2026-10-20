@@ -64,12 +64,24 @@ def persist_run(out, manifest, result):
                           ("matched",cell["matched"])):
             relative=f"cells/{label}_{name}.json"
             inventory[relative]=atomic_json(root/relative,data)
+    delayed=result.get("delay2_cells",[])
+    for index,cell in enumerate(delayed):
+        label=f"{index:02d}"
+        for name,data in (("strategy",cell["strategy"]),
+                          ("matched",cell["matched"])):
+            relative=f"delay2/{label}_{name}.json"
+            inventory[relative]=atomic_json(root/relative,data)
     inventory["results.json"]=atomic_json(
         root/"results.json",
         {"cell_count":result["cell_count"],
          "cells":[{"cell_id":c["cell_id"],"metrics":c["metrics"],
                    "matched_status":c["matched_status"]}
                   for c in cells],
+         "delay2_count":len(delayed),
+         "delay2_cells":[{"cell_id":c["cell_id"],"metrics":c["metrics"]}
+                         for c in delayed],
+         "fee_slip_1_5x_status":result.get(
+             "fee_slip_1_5x_status","NOT_IMPLEMENTED_NEEDS_AUTHORIZED_GLUE"),
          "samplers":result["samplers"],
          "classification":result["classification"]})
     manifest=dict(manifest)
