@@ -4,164 +4,145 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-GH-BACKTEST-r12-correction-1",
-  "status": "WAITING_CI",
-  "source_head_sha": "01a765088d008c3cfc80cac00190d95b07916a4b",
-  "summary": "Same-PR bounded r12 engineering repair. Corrected r12 measured four positive failures: funding rate numeric string normalization; feasible causal synthetic OHLC keeping frozen .006 placement; real baseline-vs-delay2 reservation timestamps; legitimate signal IDs no longer mistaken for synthetic TIME buy, with valid fake-TIME negative mutation. Added immutable-default optional ScenarioRates(BASE,1.5x) threading actual Maker/Taker fees and adverse SL slip through MakerX2 economic BE, X1 preadmission, entry and exit risk, complete single-account cash/reservation/MTM/halts, independent ledger and remaining-only LIQ fee. Frozen penetration, SL, LIQ trigger and TP unchanged. Replays 48 baseline, 48 actual delay2 and 48 actual full-account 1.5x cost cells, each with strategy and same account matched placebo, per-symbol/framework causal eligible/sample caches. Candidate sizing is explicit configured margin*leverage divided by posted limit in Decimal50, not fixed quantity. Added favorable samebar stop/LIQ counterfactual descriptive bound, actual exhaustion/tail flags, bp calendar bootstrap and faster 7d block sums, separate ETH/BTC symbol-universe identity. Added synthetic real 48-cell paired control, hand-derived BASE/1.5x fees/SL cash, limit sizing and samebar conflict; updated README. All Python files <350 lines. No Python, CI or historical runner executed in this connector-only turn. r12 pre-revision 96 tests: 92PASS/3FAIL/1ERROR remain historical, negatives NOT_RUN. Source is pending independent review, not product acceptance.",
+  "instruction_id": "MAKER-V3-GH-BACKTEST-r12-correction-2",
+  "status": "READY_FOR_REVIEW",
+  "source_head_sha": "9155c87ba21e073f06737e409a537e07bdf40880",
+  "summary": "Final authorized r12 tests-only correction: complete flat fictional replay ledger in test_grid_has_48_isolated_cells_and_shared_sampler with cash=1000,reserved=0,available=1000,qty=0,basis/gross/fees/funding/writeoff=0, no episodes/identifiers, equity=1000,unrealized=0. New independent fixture consistency assertions verify available=cash-reserved and equity=cash+unrealized, zero reservation and position; original 48 cells, 4 sampler universes, 96 replay calls and unique ID assertions retained. No production modules/other tests changed. Historical immutable correction-1 nested self-test 101 unique 100 PASS 1 ERROR rc1 from missing fake ledger.available; historical push CI 39507232863 and PR CI 39507238516 SUCCESS but lacked nested suite. Correction-2 Python, mutations, CI, historical-run NOT_RUN. No further correction authorized; source is awaiting Main CIO independent validation, not full engine/market/product acceptance.",
   "changed_files": [
-    "engineering/maker_x2/scenario_rates.py",
-    "engineering/maker_x2/maker_exit_lab.py",
-    "engineering/maker_x2/entry_lifecycle.py",
-    "engineering/maker_x2/exit_lifecycle.py",
-    "engineering/maker_x2/account_lifecycle.py",
-    "engineering/maker_x2/account_ledger.py",
-    "engineering/maker_x2/liquidation.py",
-    "engineering/maker_x2/market_replay.py",
-    "engineering/maker_x2/matched_replay.py",
-    "engineering/maker_x2/grid_runner.py",
-    "engineering/maker_x2/backtest_entry.py",
-    "engineering/maker_x2/backtest_stats.py",
-    "engineering/maker_x2/backtest_reports.py",
     "engineering/maker_x2/tests/test_backtest.py",
-    "engineering/maker_x2/tests/test_backtest_mutations.py",
     "engineering/maker_x2/README.md",
     ".relay/mailbox/maker-v3-x2.json"
   ],
   "tests": [
     {
-      "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
-      "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector has no Python execution; correction-1 new full-engine control result is unavailable. Do not inherit r11 accepted tests or r12 initial FAIL as current PASS."
-    },
-    {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --self-test",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector has no Python execution; correction-1 new full-engine control result is unavailable. Do not inherit r11 accepted tests or r12 initial FAIL as current PASS."
+      "evidence": "GitHub file-only operation cannot execute Python. Correction-1 101 unique 100PASS/1ERROR is historical, not correction-2 PASS."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "GitHub file-only operation cannot execute Python. Correction-1 101 unique 100PASS/1ERROR is historical, not correction-2 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_backtest.py -v",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector has no Python execution; correction-1 new full-engine control result is unavailable. Do not inherit r11 accepted tests or r12 initial FAIL as current PASS."
+      "evidence": "GitHub file-only operation cannot execute Python. Correction-1 101 unique 100PASS/1ERROR is historical, not correction-2 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py control",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector has no Python execution; correction-1 new full-engine control result is unavailable. Do not inherit r11 accepted tests or r12 initial FAIL as current PASS."
+      "evidence": "GitHub file-only operation cannot execute Python. Correction-1 101 unique 100PASS/1ERROR is historical, not correction-2 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_x2.py control",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector has no Python execution; correction-1 new full-engine control result is unavailable. Do not inherit r11 accepted tests or r12 initial FAIL as current PASS."
+      "evidence": "GitHub file-only operation cannot execute Python. Correction-1 101 unique 100PASS/1ERROR is historical, not correction-2 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py control",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector has no Python execution; correction-1 new full-engine control result is unavailable. Do not inherit r11 accepted tests or r12 initial FAIL as current PASS."
+      "evidence": "GitHub file-only operation cannot execute Python. Correction-1 101 unique 100PASS/1ERROR is historical, not correction-2 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py control",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector has no Python execution; correction-1 new full-engine control result is unavailable. Do not inherit r11 accepted tests or r12 initial FAIL as current PASS."
+      "evidence": "GitHub file-only operation cannot execute Python. Correction-1 101 unique 100PASS/1ERROR is historical, not correction-2 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py control",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector has no Python execution; correction-1 new full-engine control result is unavailable. Do not inherit r11 accepted tests or r12 initial FAIL as current PASS."
+      "evidence": "GitHub file-only operation cannot execute Python. Correction-1 101 unique 100PASS/1ERROR is historical, not correction-2 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_account_ledger.py",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector has no Python execution; correction-1 new full-engine control result is unavailable. Do not inherit r11 accepted tests or r12 initial FAIL as current PASS."
+      "evidence": "GitHub file-only operation cannot execute Python. Correction-1 101 unique 100PASS/1ERROR is historical, not correction-2 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_signal_features.py control",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector has no Python execution; correction-1 new full-engine control result is unavailable. Do not inherit r11 accepted tests or r12 initial FAIL as current PASS."
+      "evidence": "GitHub file-only operation cannot execute Python. Correction-1 101 unique 100PASS/1ERROR is historical, not correction-2 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py control",
       "result": "NOT_RUN",
-      "evidence": "Authorized GitHub file connector has no Python execution; correction-1 new full-engine control result is unavailable. Do not inherit r11 accepted tests or r12 initial FAIL as current PASS."
+      "evidence": "GitHub file-only operation cannot execute Python. Correction-1 101 unique 100PASS/1ERROR is historical, not correction-2 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-fee",
       "result": "NOT_RUN",
-      "evidence": "Only after ALL current positives PASS. Require a genuinely caught named AssertionError with executed test ID and nonzero exit code, not ImportError, harness or policy exception."
+      "evidence": "Run only after every current positive passes, separate process, named executed ID and genuine AssertionError/nonzero rc, not an import or harness error."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-funding",
       "result": "NOT_RUN",
-      "evidence": "Only after ALL current positives PASS. Require a genuinely caught named AssertionError with executed test ID and nonzero exit code, not ImportError, harness or policy exception."
+      "evidence": "Run only after every current positive passes, separate process, named executed ID and genuine AssertionError/nonzero rc, not an import or harness error."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-fake-time",
       "result": "NOT_RUN",
-      "evidence": "Only after ALL current positives PASS. Require a genuinely caught named AssertionError with executed test ID and nonzero exit code, not ImportError, harness or policy exception."
+      "evidence": "Run only after every current positive passes, separate process, named executed ID and genuine AssertionError/nonzero rc, not an import or harness error."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-future",
       "result": "NOT_RUN",
-      "evidence": "Only after ALL current positives PASS. Require a genuinely caught named AssertionError with executed test ID and nonzero exit code, not ImportError, harness or policy exception."
+      "evidence": "Run only after every current positive passes, separate process, named executed ID and genuine AssertionError/nonzero rc, not an import or harness error."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-overfill",
       "result": "NOT_RUN",
-      "evidence": "Only after ALL current positives PASS. Require a genuinely caught named AssertionError with executed test ID and nonzero exit code, not ImportError, harness or policy exception."
+      "evidence": "Run only after every current positive passes, separate process, named executed ID and genuine AssertionError/nonzero rc, not an import or harness error."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-be",
       "result": "NOT_RUN",
-      "evidence": "Only after ALL current positives PASS. Require a genuinely caught named AssertionError with executed test ID and nonzero exit code, not ImportError, harness or policy exception."
+      "evidence": "Run only after every current positive passes, separate process, named executed ID and genuine AssertionError/nonzero rc, not an import or harness error."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-duplicate",
       "result": "NOT_RUN",
-      "evidence": "Only after ALL current positives PASS. Require a genuinely caught named AssertionError with executed test ID and nonzero exit code, not ImportError, harness or policy exception."
+      "evidence": "Run only after every current positive passes, separate process, named executed ID and genuine AssertionError/nonzero rc, not an import or harness error."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_signal_features.py mut-lookahead",
       "result": "NOT_RUN",
-      "evidence": "Only after ALL current positives PASS. Require a genuinely caught named AssertionError with executed test ID and nonzero exit code, not ImportError, harness or policy exception."
+      "evidence": "Run only after every current positive passes, separate process, named executed ID and genuine AssertionError/nonzero rc, not an import or harness error."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py mut-replacement",
       "result": "NOT_RUN",
-      "evidence": "Only after ALL current positives PASS. Require a genuinely caught named AssertionError with executed test ID and nonzero exit code, not ImportError, harness or policy exception."
+      "evidence": "Run only after every current positive passes, separate process, named executed ID and genuine AssertionError/nonzero rc, not an import or harness error."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py mut-resample",
       "result": "NOT_RUN",
-      "evidence": "Only after ALL current positives PASS. Require a genuinely caught named AssertionError with executed test ID and nonzero exit code, not ImportError, harness or policy exception."
+      "evidence": "Run only after every current positive passes, separate process, named executed ID and genuine AssertionError/nonzero rc, not an import or harness error."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --run --config config.json --input inputs.json --output new-results",
       "result": "NOT_RUN",
-      "evidence": "No operator-local historical data or configuration accessed. Historical runner is not admitted until independently green positive controls, negative mutation evidence, and review of multi-year runtime/resource correctness."
+      "evidence": "No local account config/historical market inputs accessed. Operator alone launches after independent acceptance."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --verify --config config.json --input inputs.json --output new-results",
       "result": "NOT_RUN",
-      "evidence": "No historical artifacts exist in this turn. Verify same exact source/config/data/output SHA only after admitted historical run."
+      "evidence": "No market-run artifacts produced here."
     }
   ],
   "remaining_work": [
-    "Main CIO pin exact PR75 correction HEAD and independently execute full nested discovery and standalone controls on clean checkout. Confirm original r12 96-source failure history 92PASS/3FAIL/1ERROR is retained and four measured positive failures genuinely closed, including NOT_REACHED assertions.",
-    "Independently confirm baseline differential identity across all original 84 controls, X1/X2 BE, per-leg fees, SL/LIQ/funding and all real synthetic monetary literals (BASE versus 1.5x); check scenario does not alter 2bp OHLC penetration or signal/TP/risk thresholds.",
-    "After every control PASS, run each negative mutation as independent fresh subprocess with genuine named AssertionError/test ID/rc1; verify exact-head push and pull_request CI separately. Previously red r12 run must not be relabeled PASS.",
-    "Verify actual unmocked synthetic 48-cell paired account playback and shared per-symbol/frame universe and sample across 48 baseline/delay2/cost1.5x, independent account_ledger reconciliation, dynamic BTC/ETH entry notional, full raw episode/matched reports and SHA manifest.",
-    "Performance and memory for 2023-10-01 through 2026-10-19 local data are unmeasured; full runs still materialize all data and cell results before final persistence. Operator should evaluate bounded multi-year resource use and recovery requirements; no benchmark or per-cell streaming durability claim is made.",
-    "Samebar favorable-order output is a DESCRIPTIVE_COUNTERFACTUAL_NOT_EXECUTION alternative, not real tick path or exchange execution proof. Verify the modeled remaining-margin and fee assumptions before interpreting its upper bound.",
-    "Only after full engineering acceptance should the operator use already-local historical data; no new holdout, full A01–A16 strategy or paper/live success follows from test outcomes."
+    "Pin exact delivered PR75 HEAD and independently execute --self-test, normal discovery and targeted standalone positive controls in clean immutable checkout, verifying fake coherent ledger and all original 84 regressions.",
+    "Only after all positives PASS execute separately each shipped negative mutation with real named AssertionError and exit status; do not count unrelated exceptions.",
+    "Verify exact-head push and pull_request CI independently; broad CI success does not imply nested maker_x2 controls.",
+    "Check only three allowed files changed; all production, original accounting.py/tests, other tests, frozen rules and registry byte-identical.",
+    "If finite engineering gates accepted, operator may execute actual frozen BTC+ETH history with existing local explicit config: 48 baseline+matched, 48 delay2 and 48 cost1.5x; verify manifest/episodes/ledger and runtime evidence. Not performed in this turn.",
+    "This was the final authorized bounded correction; a failing gate is reported accurately rather than attempting unapproved third correction. No market/product/paper/live acceptance follows from test source delivery."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Fetch exact final PR75 HEAD and source_head_sha 01a765088d008c3cfc80cac00190d95b07916a4b. Inspect allowlist-only diff, protected accounting.py and tests/test_accounting.py blob identities. Run cd engineering/maker_x2 && python3 -m unittest discover -s tests -v; python3 backtest_entry.py --self-test; both new standalone modules plus immutable old positives. Assert new money/sizing/favorable-path/grid controls execute and pass, with IDs and return codes. If all pass execute every listed mutation in a fresh subprocess, capture named AssertionError and real exit code, then verify exact-head CI.",
-    "if_pass": "Accept only bounded corrected offline source/test scope; evaluate runtime/report integrity before starting operator-local full history. No whole-product/strategy/paper/live approval merely from engineering exit0.",
-    "if_fail": "Use concrete failure ID, traceback, exact HEAD and expected/actual Decimal evidence for bounded same-PR repair without changing frozen default formulas or protected accounting tests.",
-    "blockers": [
-      "Current correction-1 CONTROL/mutations/CI/historical-run all NOT_RUN",
-      "Full-history runtime and memory, raw artifact integrity and per-cell streaming durability unverified",
-      "No real tick-order, exchange liquidity/queue or true LIQ mark-price verification"
-    ]
+    "verify_now": "Fetch exact PR75 final HEAD and source_head_sha 9155c87ba21e073f06737e409a537e07bdf40880. Execute cd engineering/maker_x2 && python3 backtest_entry.py --self-test; python3 -m unittest discover -s tests -v; python3 tests/test_backtest.py -v and remaining documented standalone positives. Verify Control.test_grid_has_48_isolated_cells_and_shared_sampler uses full coherent fake ledger, yields 48 cells/4 samplers/96 replay calls, and no production or other-test blobs changed. If ALL pass, execute negative mutation modes independently with genuine AssertionError/named ID/rc, then review new exact-head push+PR CI.",
+    "if_pass": "Accept only the corrected offline full-engine test-acceptance scope after independent evidence; operator may then run already-local frozen historical research and verify all raw artifacts. No strategy, full A01-A16, product or live/paper PASS without separate evidence.",
+    "if_fail": "Record exact failing test ID, trace, expected/actual and head; do not authorize or attempt a third correction under this instruction.",
+    "blockers": []
   }
 }
