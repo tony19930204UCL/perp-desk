@@ -20,7 +20,7 @@ def load_config(path):
         raise X2Error("config must be a JSON object")
     required=("capital","per_trade_margin","leverage","daily_loss_limit",
               "loss_streak_limit","halt_hours","liq_pct","liq_fee_pct",
-              "entry_qty","evaluation_start","evaluation_end")
+              "evaluation_start","evaluation_end")
     if any(name not in value for name in required):
         raise X2Error("required account or time boundary not in config")
     if int(value["evaluation_end"])<=int(value["evaluation_start"]):
