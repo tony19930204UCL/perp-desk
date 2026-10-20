@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "status": "PENDING",
+  "placeholder": true,
+  "repository": "tony19930204UCL/perp-desk",
+  "branch": "research/maker-v3-x2-20261020",
+  "task_id": "MAKER-V3-X2",
+  "instruction_id": "PENDING-NOT-DISPATCHED",
+  "source_head_sha": "bd8e56c732e2be8a645f7b922b0aba6e1586001d",
+  "summary": "Operator template only, not external handback.",
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No external tests delivered."
+    }
+  ]
+}
