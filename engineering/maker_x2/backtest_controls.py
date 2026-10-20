@@ -40,3 +40,16 @@ def self_test():
     assert sample["selected_timestamps"]==[i*60000 for i in range(10)]
     assert sample["status"]=="READY"
     return True
+
+def discovery_gate():
+    """Actually run all discoverable existing/new controls for --self-test."""
+    import unittest
+    from pathlib import Path
+    root=Path(__file__).resolve().parent
+    suite=unittest.TestLoader().discover(
+        start_dir=str(root/"tests"),pattern="test_*.py",
+        top_level_dir=str(root))
+    outcome=unittest.TextTestRunner(verbosity=2).run(suite)
+    if not outcome.wasSuccessful() or outcome.testsRun == 0:
+        return False
+    return self_test()
