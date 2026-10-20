@@ -319,5 +319,69 @@ class RelayTests(unittest.TestCase):
 
 
 
+    def test_maker_source_waits_with_named_producer(self):
+        import importlib.util
+        bridge_path = MODULE.with_name("maker_stage_bridge.py")
+        spec = importlib.util.spec_from_file_location("maker_stage_bridge", bridge_path)
+        bridge = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bridge)
+        historical = self.stage("historical", mode="adopt", rows=48)
+        historical["reports"] = [
+            {"path": "reports/" + scenario + ".json", "rows": 48,
+             "symbol_cells": {"BTCUSDT": 24, "ETHUSDT": 24}}
+            for scenario in ("baseline", "delay2", "cost1_5x")]
+        graph = self.setup_graph([historical, self.stage("reflection", mode="adopt")])
+        graph["maker_bridge"] = {
+            "historical_stage": "historical", "reflection_stage": "reflection",
+            "producer": {"item": "C-1037", "job": "sa-0-cc6aa1f2",
+                         "instruction": "MAKER-V3-GH-CAPACITY-r13"},
+            "capacity_acceptance_path": "acceptance/source.json",
+            "input_manifest_sha256": "c" * 64, "config_sha256": "d" * 64,
+            "source_sha256": {"backtest_entry.py": "e" * 64},
+            "symbol_hashes": {s: {"bars_sha256": "f" * 64,
+                                  "funding_sha256": "1" * 64}
+                              for s in ("BTCUSDT", "ETHUSDT")}}
+        result = bridge.source_gate(graph, "2" * 64)
+        self.assertEqual(result["action"], "WAITING_CAPACITY_ACCEPTANCE")
+        self.assertEqual(result["producer"]["job"], "sa-0-cc6aa1f2")
+        self.assertEqual(result["producer"]["instruction"], "MAKER-V3-GH-CAPACITY-r13")
+        self.assertFalse((self.evidence / "acceptance/source.json").exists())
+        relay.atomic_json(self.evidence / "acceptance/source.json", {"decision": "ACCEPTED"})
+        self.assertEqual(bridge.source_gate(graph, "2" * 64)["action"],
+                         "WAITING_CAPACITY_ACCEPTANCE")
+
+    def test_maker_expected_cell_universe(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "maker_stage_bridge", MODULE.with_name("maker_stage_bridge.py"))
+        bridge = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bridge)
+        universe = bridge.all_cells()
+        self.assertEqual(len(universe), 48)
+        self.assertEqual(sum(v.startswith("BTCUSDT:") for v in universe), 24)
+        self.assertEqual(sum(v.startswith("ETHUSDT:") for v in universe), 24)
+
+    def test_maker_reflection_needs_actual_historical_acceptance(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "maker_stage_bridge", MODULE.with_name("maker_stage_bridge.py"))
+        bridge = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bridge)
+        graph = {"maker_bridge": {"historical_stage": "historical",
+                                  "reflection_stage": "reflection"},
+                 "stages": [{"id": "historical", "mode": "adopt"},
+                            {"id": "reflection", "mode": "adopt"}]}
+        state = {"stage_index": 1, "completed": []}
+        self.assertEqual(bridge.reflection_notice(graph, state)["action"], "BLOCKED")
+        state["completed"] = [{"stage": "historical", "source_head": self.head,
+                               "input_sha256": self.inp, "graph_sha256": "d" * 64,
+                               "report_hashes": ["a" * 64] * 3, "output_count": 144}]
+        ready = bridge.reflection_notice(graph, state)
+        self.assertEqual(ready["action"], "READY_OPERATOR_REFLECTION")
+        self.assertEqual(ready["historical_output_count"], 144)
+        self.assertNotIn("trading_conclusion", ready)
+
+
+
 if __name__ == "__main__":
     unittest.main()
