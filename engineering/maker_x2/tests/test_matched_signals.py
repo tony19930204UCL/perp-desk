@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import matched_signals as ms
+from test_signal_features import bars as synthetic_minutes
 from maker_exit_lab import X2Error
 
 
@@ -64,6 +65,40 @@ class Control(unittest.TestCase):
         self.assertEqual(a, b)
 
 
+    def test_sample_completed_real_1m_tail_trigger_independence(self):
+        data = synthetic_minutes(302, spike=False)
+        start, end = 290*60000, 301*60000
+        result = ms.sample_completed(data, 1, start, end, count=5)
+        self.assertEqual(result["status"], "READY")
+        self.assertEqual(result["eligible_count"], 11)
+        self.assertEqual(len(result["selected_timestamps"]), 5)
+        # A future suffix and a current signal trigger outside the fixed
+        # interval must not alter the eligible historical universe.
+        suffix = [dict(b, ts=(302+i)*60000, quote_volume="9999")
+                  for i,b in enumerate(synthetic_minutes(3))]
+        appended = ms.sample_completed(data+suffix, 1, start, end, count=5)
+        self.assertEqual(result, appended)
+        self.assertEqual(
+            ms.sample_completed(data, 1, 300*60000, 302*60000, count=2)
+              ["eligible_count"], 2)
+
+    def test_sample_completed_real_15m_and_shared_variants(self):
+        # Complete UTC buckets: non-triggered closed decisions remain in
+        # the matched universe; no future execution bars are required.
+        data = synthetic_minutes(15*294)
+        start, end = 290*15*60000, 294*15*60000
+        result = ms.sample_completed(data, 15, start, end, count=3)
+        self.assertEqual(result["status"], "READY")
+        self.assertEqual(result["eligible_count"], 4)
+        self.assertEqual(result["seed"], 20261035)
+        for k in (".25", ".50"):
+            for ttl in (2,5):
+                for exit_kind in ("X1","X2","X3"):
+                    self.assertEqual(
+                        ms.sample_completed(data, 15, start, end, count=3),
+                        result, (k, ttl, exit_kind))
+
+
 class Mutation(unittest.TestCase):
     def mut_replacement(self):
         original = ms.select_matched
@@ -78,10 +113,19 @@ class Mutation(unittest.TestCase):
 
     def mut_resample(self):
         original = ms.select_matched
+        invocations = [0]
         def broken(records, tf, start, end, count=ms.DEFAULT_COUNT):
             result = original(records, tf, start, end, count=count)
-            if result["status"] == "READY":
-                result["seed"] += 1
+            invocations[0] += 1
+            if result["status"] == "READY" and invocations[0] % 2 == 0:
+                # The returned seed stays truthful to the advertised
+                # contract, but one repeated invocation actually
+                # resamples its selected times from the same universe.
+                all_times = sorted(r["signal_time"] for r in records)
+                replacement = next(ts for ts in all_times
+                                   if ts not in result["selected_timestamps"])
+                result["selected_timestamps"][0] = replacement
+                result["selected_timestamps"].sort()
             return result
         with patch.object(ms, "select_matched", broken):
             Control("test_same_shared_sample_across_twelve_variants").debug()
