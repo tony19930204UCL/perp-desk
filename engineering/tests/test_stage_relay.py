@@ -735,5 +735,95 @@ class RelayTests(unittest.TestCase):
             bridge.verify_argv(maker)
 
 
+
+    def test_maker_relative_child_actual_subprocess_and_cli(self):
+        """SYNTHETIC ONLY. Adopt actual relative python3 -u child, never run history."""
+        import shutil
+        installed, graph = self.maker_installed_fixture()
+        maker = graph["maker_bridge"]
+        runner = Path(maker["cwd"]) / "backtest_entry.py"
+        runner.write_text(
+            "import sys,time,json,pathlib,hashlib\n"
+            "if sys.argv[1]=='--run':\n"
+            "    time.sleep(1)\n"
+            "    raise SystemExit(0)\n"
+            "assert sys.argv[1]=='--verify'\n"
+            "m=pathlib.Path(sys.argv[-1])/'manifest.json'\n"
+            "obj=json.loads(m.read_text())\n"
+            "print(json.dumps({'status':'CHECKSUMS_VERIFIED',"
+            "'artifact_count':len(obj['artifacts']),"
+            "'manifest_sha256':hashlib.sha256(m.read_bytes()).hexdigest()}))\n")
+        actual_exe = str(Path(shutil.which("python3")).resolve())
+        maker["child_executable"] = actual_exe
+        old_run = maker["run_argv"]
+        maker["run_argv"] = ["python3", "-u", "backtest_entry.py"] + old_run[2:]
+        maker["verify_argv"] = [actual_exe, str(runner), "--verify"] + old_run[3:]
+        relay.atomic_json(self.config, graph)
+        self.state.unlink()
+        relay.init(self.config, self.state)
+        self.maker_capacity_accept(graph)
+        self.maker_outputs(graph)
+        self.assertEqual(self.noarg(installed)[1]["tick"]["action"], "READY_MISSING_OWNER")
+        proc = subprocess.Popen(maker["run_argv"], cwd=maker["cwd"],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.addCleanup(lambda: (proc.poll() is None and proc.kill(), proc.wait()))
+        identity, status = relay.process_identity(proc.pid)
+        self.assertEqual(status, "LIVE")
+        self.assertEqual(Path("/proc/%d/exe" % proc.pid).resolve(), Path(actual_exe).resolve())
+        owner_path = self.evidence / "owner.json"
+        relay.atomic_json(owner_path, dict(identity, argv=maker["run_argv"], operator="SYNTHETIC_ONLY"))
+        owner = relay.adopt(self.config, self.state, owner_path, 60)["owner"]
+        self.assertEqual(owner["argv"], maker["run_argv"])
+        self.assertEqual(proc.wait(timeout=10), 0)
+        gh = relay.configuration(self.config)[1]
+        relay.atomic_json(self.evidence / "terminal/trusted.json",
+                          {"stage": "historical", "source_head": self.head,
+                           "input_sha256": self.inp, "graph_sha256": gh,
+                           "owner": {k: owner[k] for k in
+                                     ("pid", "start_ticks", "boot_id", "token")},
+                           "trusted_parent": True, "outcome": "SUCCEEDED", "exit_code": 0})
+        result = subprocess.run([sys.executable, str(installed.with_name("maker_stage_bridge.py")),
+                                 "normalize", "--config", str(self.config), "--state",
+                                 str(self.state), "--terminal", "terminal/trusted.json"],
+                                capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["action"], "WAITING_INDEPENDENT_RESULT_ACCEPTANCE")
+        self.assertFalse((self.evidence / "inbox/historical.acceptance.json").exists())
+        self.assertEqual(self.noarg(installed)[1]["inbox"]["action"], "MISSING_INDEPENDENT_ACCEPTANCE")
+        receipt = self.evidence / "inbox/historical.receipt.json"
+        relay.atomic_json(self.evidence / "inbox/historical.acceptance.json",
+                          {"stage": "historical", "source_head": self.head,
+                           "input_sha256": self.inp, "graph_sha256": gh,
+                           "receipt_sha256": relay.digest(receipt.read_bytes()),
+                           "decision": "ACCEPTED", "reviewer": "SYNTHETIC_ONLY"})
+        self.assertEqual(self.noarg(installed)[1]["action"], "READY_OPERATOR_REFLECTION")
+
+    def test_maker_relative_python_rejects_bad_bindings(self):
+        import importlib.util
+        loader = importlib.util.spec_from_file_location("maker_stage_bridge",
+                                                         MODULE.with_name("maker_stage_bridge.py"))
+        bridge = importlib.util.module_from_spec(loader)
+        loader.exec_module(bridge)
+        _, graph = self.maker_installed_fixture()
+        maker = graph["maker_bridge"]
+        original = list(maker["run_argv"])
+        maker["child_executable"] = str(Path(sys.executable).resolve())
+        maker["run_argv"] = ["python3", "-u", "backtest_entry.py"] + original[2:]
+        self.assertEqual(bridge.verify_argv(maker), maker["verify_argv"])
+        bad = ({"child_executable": "/nonexistent/python"},
+               {"cwd": "/nonexistent/source"},
+               {"run_argv": ["python3", "-X", "backtest_entry.py"] + original[2:]},
+               {"run_argv": ["python3", "-u", "../backtest_entry.py"] + original[2:]},
+               {"run_argv": ["python3", "-u", "other.py"] + original[2:]},
+               {"run_argv": ["python3", "-u", "backtest_entry.py", "--run", "--config",
+                             maker["config_path"], "--input", maker["input_path"],
+                             "--output", "/wrong/output"]},
+               {"verify_argv": [sys.executable, "/other/backtest_entry.py"] + maker["verify_argv"][2:]})
+        for change in bad:
+            with self.subTest(change=change):
+                with self.assertRaises(relay.RelayError):
+                    bridge.verify_argv(dict(maker, **change))
+
+
 if __name__ == "__main__":
     unittest.main()
