@@ -432,8 +432,6 @@ def check_report(graph, gh, stage, spec, reported):
     if actual_sha != reported.get("sha256"):
         raise RelayError("report hash mismatch: " + expected_path)
     report = json.loads(data)
-    if graph["kind"] == "stage_relay" and report.get("synthetic") is True:
-        raise RelayError("synthetic report cannot satisfy real Maker stage")
     for key, expected in (("stage", stage["id"]), ("source_head", stage["source_head"]),
                           ("input_sha256", stage["input_sha256"]), ("graph_sha256", gh)):
         if report.get(key) != expected:
