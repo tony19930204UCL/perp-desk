@@ -36,7 +36,8 @@ def source_manifest(directory):
               "accounting.py","signal_features.py","matched_signals.py",
               "data_adapter.py","market_replay.py","matched_replay.py",
               "grid_runner.py","backtest_stats.py","backtest_reports.py",
-              "backtest_entry.py","backtest_controls.py","scenario_rates.py","README.md")
+              "backtest_entry.py","backtest_controls.py","scenario_rates.py",
+              "bounded_history.py","README.md")
     paths=[root/name for name in required]
     paths.extend(sorted((root/"tests").glob("test_*.py")))
     if any(not path.is_file() for path in paths):
@@ -117,3 +118,56 @@ def verify_run(directory):
     return {"status":"CHECKSUMS_VERIFIED","artifact_count":
             len(manifest["artifacts"]),"manifest_sha256":
             sha256_file(root/"manifest.json")}
+
+
+class BoundedReport:
+    """Write each complete strategy/placebo cell before the next one begins."""
+    def __init__(self, out):
+        self.root = Path(out)
+        if self.root.exists():
+            raise X2Error("result root exists; never overwrite")
+        self.root.mkdir(parents=True)
+        self.inventory = {}
+        self.rows = {"baseline": [], "delay2": [], "cost1_5x": []}
+        self.scenarios = {"baseline": "cells", "delay2": "delay2",
+                          "cost1_5x": "cost1_5x"}
+
+    def record(self, scenario, meta, strategy, matched):
+        rows = self.rows[scenario]
+        index = len(rows)
+        if index >= 48:
+            raise X2Error("scenario has more than 48 cells")
+        for part, content in (("strategy", strategy), ("matched", matched)):
+            name = f"{self.scenarios[scenario]}/{index:02d}_{part}.json"
+            self.inventory[name] = atomic_json(self.root / name, content)
+        row = dict(meta)
+        row["strategy"] = {"episodes": strategy["episodes"],
+                           "ledger": strategy["ledger"],
+                           "counts": strategy["counts"]}
+        rows.append(row)
+
+    def finish(self, manifest, samplers, config, start, end):
+        from grid_runner import finalize_bounded
+        for scenario, cells in self.rows.items():
+            if len(cells) != 48:
+                raise X2Error("incomplete " + scenario + " 48-cell scenario")
+            finalize_bounded(cells, config, start, end)
+        compact = lambda cells: [
+            {"cell_id": c["cell_id"], "metrics": c["metrics"],
+             "matched_status": c["matched_status"]} for c in cells]
+        self.inventory["results.json"] = atomic_json(
+            self.root / "results.json",
+            {"cell_count": 48, "cells": compact(self.rows["baseline"]),
+             "delay2_count": 48, "delay2_cells": compact(self.rows["delay2"]),
+             "cost1_5x_count": 48,
+             "cost1_5x_cells": compact(self.rows["cost1_5x"]),
+             "fee_slip_1_5x_status": "SOURCE_DELIVERED_NOT_VERIFIED",
+             "samplers": samplers,
+             "classification": "EXPLORATORY_NOT_ACCEPTED"})
+        document = dict(manifest)
+        document["artifacts"] = self.inventory
+        digest = atomic_json(self.root / "manifest.json", document)
+        verify = verify_run(self.root)
+        if verify["manifest_sha256"] != digest:
+            raise X2Error("bounded output verification failed")
+        return {"manifest_sha256": digest, "artifacts": self.inventory}
