@@ -13,7 +13,9 @@ Z = D("0")
 
 class OfflineAccount:
     def __init__(self, capital, per_trade_margin, leverage, daily_loss_limit,
-                 loss_streak_limit, halt_hours, liq_pct, liq_fee_pct):
+                 loss_streak_limit, halt_hours, liq_pct, liq_fee_pct, rates=None):
+        from scenario_rates import resolve_rates
+        self.rates = resolve_rates(rates)
         self.capital = number(capital, "capital", True)
         self.margin = number(per_trade_margin, "margin", True)
         self.leverage = number(leverage, "leverage", True)
@@ -48,7 +50,7 @@ class OfflineAccount:
         self.stale = False
 
     def ledger(self):
-        return replay_account(self.capital, self.events)
+        return replay_account(self.capital, self.events, rates=self.rates)
 
     def _emit(self, kind, eid, ts, **fields):
         if eid in {e["id"] for e in self.events}:
@@ -128,14 +130,14 @@ class OfflineAccount:
             raise X2Error("invalid exit style")
         self._roll_day(signal_time)
         options = (signal_id, signal_time, high, close, atr, k, ttl, qty)
-        candidate = (ShortEntry.for_x1(*options, initial_cash=str(self.capital),
+        candidate = (ShortEntry.for_x1(*options, initial_cash=str(self.capital), rates=self.rates,
                      signal_vwap=signal_vwap, known_funding_cost=known_funding_cost)
                      if style == "X1" else
-                     ShortEntry(*options, initial_cash=str(self.capital)))
+                     ShortEntry(*options, initial_cash=str(self.capital), rates=self.rates))
         self.seen_signals.add(signal_id)
         if candidate.status != "PENDING":
             return candidate.status
-        cost = candidate.limit * candidate.qty_target * D(".0002")
+        cost = candidate.limit * candidate.qty_target * self.rates.maker_fee
         available = self.ledger()["available"]
         if (candidate.qty_target * candidate.limit > self.margin * self.leverage
                 or available < self.margin + cost):
@@ -186,7 +188,8 @@ class OfflineAccount:
                            amount=str(unused))
             self.exit = ShortExit(self.entry, self.style,
                                   vwap=self.entry.x1_vwap,
-                                  known_funding_cost=self.entry.x1_known_funding_cost)
+                                  known_funding_cost=self.entry.x1_known_funding_cost,
+                                  rates=self.rates)
             return "PARTIAL_OPEN"
         self._emit("release", "cancel-"+str(ts), ts,
                    amount=str(self.ledger()["reserved"]))
@@ -211,7 +214,7 @@ class OfflineAccount:
                 entry_price = state["basis"] / state["qty"]
                 liq = liquidation_proxy(entry_price, high, state["qty"],
                                         self.entry.qty_target, self.allocation,
-                                        self.liq_pct, self.liq_fee)
+                                        self.liq_pct, self.liq_fee, rates=self.rates)
                 if liq is not None:
                     self._emit("liquidation", "gap-liq-"+str(ts), ts,
                                qty=str(state["qty"]),
@@ -221,7 +224,7 @@ class OfflineAccount:
                     return "LIQ_PROXY"
                 stop = entry_price * D("1.006")
                 if high >= stop:
-                    price = max(op, stop) * D("1.0002")
+                    price = max(op, stop) * (1 + self.rates.slip)
                     self._emit("fill", "gap-risk-"+str(ts), ts,
                                side="buy", qty=str(state["qty"]),
                                price=str(price), liquidity="taker")
@@ -239,7 +242,7 @@ class OfflineAccount:
             original = self.entry.qty_target
             basis = state["basis"] / qty
             liq = liquidation_proxy(basis, high, qty, original,
-                                    self.allocation, self.liq_pct, self.liq_fee)
+                                    self.allocation, self.liq_pct, self.liq_fee, rates=self.rates)
             if liq:
                 self._emit("liquidation", "liq-"+str(ts), ts,
                            qty=str(qty), margin_writeoff=str(liq["margin_writeoff"]),
@@ -266,7 +269,7 @@ class OfflineAccount:
                            liquidity="maker")
                 claim = liquidation_proxy(price, high, amount,
                                            ep.qty_target, self.allocation,
-                                           self.liq_pct, self.liq_fee)
+                                           self.liq_pct, self.liq_fee, rates=self.rates)
                 self._emit("liquidation", ep.signal_id+":liq:"+str(ts), ts,
                            qty=str(amount),
                            margin_writeoff=str(claim["margin_writeoff"]),
@@ -291,7 +294,7 @@ class OfflineAccount:
             original = self.entry.qty_target
             liq = liquidation_proxy(state["basis"]/state["qty"], high,
                       state["qty"], original, self.allocation,
-                      self.liq_pct, self.liq_fee)
+                      self.liq_pct, self.liq_fee, rates=self.rates)
             if liq:
                 self._emit("liquidation", "liq-"+str(ts), ts,
                     qty=str(state["qty"]), margin_writeoff=str(liq["margin_writeoff"]),
@@ -338,4 +341,4 @@ class OfflineAccount:
                 "slot": self.entry is not None or self.exit is not None,
                 "stale": self.stale, "last_mark": mark,
                 "estimated_close_fee_not_paid": (
-                    None if mark is None else state["qty"]*mark*D(".0005"))}
+                    None if mark is None else state["qty"]*mark*self.rates.taker_fee)}
