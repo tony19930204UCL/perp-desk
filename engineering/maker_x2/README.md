@@ -400,3 +400,95 @@ does not shift TTL cutoff or create a synthetic fill. Previous independently
 observed r8 failures (discovery 68: 66 pass/2 fail, account standalone
 13: 12 pass/1 fail, ledger standalone 3: 2 pass/1 fail) remain
 historical evidence. Correction-1 execution is NOT_RUN at handback.
+
+
+## r9 — causal S1/S2 signals and shared matched placebo sampler
+
+New modules: `signal_features.py` (completed-minute feature and signal
+generation) and `matched_signals.py` (single framework-level matched
+decision-time sample). New synthetic test modules:
+`tests/test_signal_features.py` and `tests/test_matched_signals.py`.
+They use only standard-library Decimal50 and local `random.Random`,
+with no market source, CSV, runner, private configuration, paid tool or
+real fills/PnL.
+
+Public API from `engineering/maker_x2`:
+
+```python
+from signal_features import validate_minutes, framework_bars
+from signal_features import eligible_decisions, signal_records
+from matched_signals import select_matched, sample_completed
+
+# closed_minutes: fictional dicts with ts UTC 1m open-milliseconds,
+# open/high/low/close/base_volume/quote_volume and closed=True.
+eligible = eligible_decisions(closed_minutes, framework_minutes=1)
+s1 = signal_records(closed_minutes, framework_minutes=1)
+match = select_matched(eligible, framework_minutes=1,
+                       evaluation_start=0, evaluation_end=60000000000)
+```
+
+Framework is **only** 1m/S1/C1 or 15m/S2/C2. For 15m, every UTC-aligned
+15-minute bucket must contain 15 contiguous, complete 1m bars; no forming
+bucket, padded gap or interpolated close is allowed. Signal timestamp is
+the close of the last component minute, i.e. its open time + 60,000ms.
+Both frozen high and close are of the completed framework bar. The result
+retains the last underlying 1m timestamp and original input index,
+`atr14` and `vwap60` (always from complete **1m** bars up through the
+decision), immutable signal ID, type and precise feature values.
+
+Returns are `close[i]/close[i-1]-1`; prior-only sample
+`sigma288` has 288 complete returns with ddof=1. Prior-only
+`std12` has 12 returns with ddof=1. `H12/L12` exclude current bar.
+`r6=close[i]/close[i-6]-1`, and `z=r6/(sigma288*sqrt(6))`.
+S1 fires **strictly** at z > 2.5 (1m only).
+S2 fires at std12 <= 0.5*sigma288 **and** current close < prior L12
+(15m only). Zero sigma, invalid volumes, incomplete history or
+discontinuous windows exclude eligibility explicitly rather than
+synthesizing returns. No downstream fill or future settlement condition
+filters any record, including a valid signal at the data tail.
+
+The matched sampler consumes all feature-eligible closed decisions,
+**not** only signals. A caller-supplied [start,end) evaluation window is
+applied to decision timestamps. Canonical sorted unique times are
+hashed with framework/window information using SHA256 before sampling.
+The fixed research default is **6000 without replacement** per framework,
+with seed **20261020 + framework_minutes** (1m=20261021,
+15m=20261035). One identical set is shared by every .25/.50,
+TTL2/5, X1/X2/X3 combination within its framework. Smaller `count`
+is for clearly fictional unit fixtures only. Short universes return
+`INSUFFICIENT_UNIVERSE`, requested/eligible counts and an empty
+selection; duplicates reject instead of inflating size. This is a
+signal sampler, not matched account replay, and no zero placebo-gross
+assumption is imposed.
+
+### r9 exact controls and negative mutations
+
+From `engineering/maker_x2`, run positive controls **first** in
+fresh subprocesses:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 tests/test_signal_features.py control
+python3 tests/test_matched_signals.py control
+```
+
+Only after ALL positive controls pass, execute each negative process
+separately; each must fail with a named genuine AssertionError and
+nonzero rc, not merely ImportError or an unrelated harness exception:
+
+```sh
+python3 tests/test_signal_features.py mut-lookahead
+python3 tests/test_matched_signals.py mut-replacement
+python3 tests/test_matched_signals.py mut-resample
+```
+
+r9 source-delivery execution is **NOT_RUN** because the authorized
+GitHub file connector has no Python execution facility. Parent r8
+independent 68/68 discovery, account 13/13, ledger 3/3, entry11/11
+and exit8/8 successes and four caught r8 mutations are historical
+evidence only, not r9 acceptance.
+
+This is a **partial A15 signal sampler**. Matched account replay,
+bootstrap/BH24, market 24-grid runner/statistics, full A01–A16,
+strategy/product acceptance and paper/live deployment are
+**NOT_ACCEPTED** and have not been executed.
