@@ -4,37 +4,59 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-X2-GH-RECOVERY-r4",
+  "instruction_id": "MAKER-X2-GH-STATE-r5",
   "status": "READY_FOR_REVIEW",
-  "source_head_sha": "76d457b77c96f12949a431d737612bdd179a5d6f",
-  "summary": "Committed 20 deterministic unittest methods with independently hand-derived Decimal expectations for short entry, weighted partial exit, per-fill fees, signed funding, same-timestamp order, gap exit, flat/open accounting, and validation failures. Retained operator-provided accounting.py unchanged. README documents invocation and unverified execution; no deployment or main changes.",
+  "source_head_sha": "90cfa1183dd5b49ec465401b5fe0a3293e3aaf86",
+  "summary": "Created 264-line dynamic short-only X2 exit state machine, 225-line synthetic unittest source with CONTROL and four standalone fee/funding/same-bar-BE/duplicate negative mutations, and documented commands. Preserved accounting.py and tests/test_accounting.py unchanged. Source contains fixed 0.006 stop (<0.0085), two Maker half targets, explicit partial fills, risk-before-maker conservative OHLC and adverse gap, next-bar economic BE, finalized funding and replay-ready ledger events. No execution or CI evidence for r5 was available.",
   "changed_files": [
-    "engineering/maker_x2/tests/test_accounting.py",
+    "engineering/maker_x2/maker_exit_lab.py",
+    "engineering/maker_x2/tests/test_x2.py",
     "engineering/maker_x2/README.md",
     ".relay/mailbox/maker-v3-x2.json"
   ],
   "tests": [
     {
-      "command": "python3 -m unittest discover -s tests -v",
+      "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub contents connector can read and commit files but does not execute Python. Source test suite committed; external exact-head execution is pending."
+      "evidence": "GitHub read/write connector has no Python execution; original 20 accounting tests must run together with X2 controls on exact HEAD. Historical r4 CI successes 39442056511 and 39442048533 do not prove r5."
     },
     {
-      "command": "Existing repository CI coverage of engineering/maker_x2",
+      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py control",
       "result": "NOT_RUN",
-      "evidence": "No CI coverage demonstrated for nested Maker X2 namespace; other workflow results cannot establish acceptance."
+      "evidence": "Control entrypoint committed, result not executed."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-fee",
+      "result": "NOT_RUN",
+      "evidence": "Negative mutation entrypoint committed. Must separately verify real AssertionError, test ID and nonzero return code after CONTROL PASS."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-funding",
+      "result": "NOT_RUN",
+      "evidence": "Negative mutation entrypoint committed. Must separately verify real AssertionError, test ID and nonzero return code after CONTROL PASS."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-be",
+      "result": "NOT_RUN",
+      "evidence": "Negative mutation entrypoint committed. Must separately verify real AssertionError, test ID and nonzero return code after CONTROL PASS."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-duplicate",
+      "result": "NOT_RUN",
+      "evidence": "Negative mutation entrypoint committed. Must separately verify real AssertionError, test ID and nonzero return code after CONTROL PASS."
     }
   ],
   "remaining_work": [
-    "Main CIO independently retrieves committed accounting.py, tests/test_accounting.py and README.md at exact PR head, then executes unittest from engineering/maker_x2.",
-    "Review execution failures or accounting-spec discrepancies on the exact source; original CodeMirror provenance remains independently unverified.",
-    "Maker X2 full engine, A01-A16 and any trading or research acceptance remain out of scope."
+    "Main CIO independently execute CONTROL on exact final HEAD and verify both preexisting 20 tests and new X2 controls.",
+    "Run each mutation mode and retain actual command, exit code, assertion and test ID; repair any failures on the same branch without mutating frozen accounting files.",
+    "Only narrow X2 state checks are in scope; LIQ, full account/day-halt, X1/X3, 24-grid, remainder of A01-A16 remain unverified.",
+    "Current CI may not discover nested engineering/maker_x2 tests; no r5 push/PR CI status claimed."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Verify PR75 exact branch and HEAD, files and schema-v2 mailbox; from engineering/maker_x2 run python3 -m unittest discover -s tests -v, record real case count and failures; independently verify test arithmetic and CI namespace scope.",
-    "if_pass": "Accept only the scoped accounting tests after independent exact-head execution and review; do not infer full Maker V3 or trading acceptance.",
-    "if_fail": "Report actual failed assertions or contract discrepancies and request a bounded revision of this PR; preserve accounting source unless a concrete spec bug is proven.",
+    "verify_now": "Fetch PR75 latest exact HEAD and files; verify accounting.py and tests/test_accounting.py unchanged vs accepted ea55518a96fdf5211b3c465c714ec300f62ea372. From engineering/maker_x2 execute python3 -m unittest discover -s tests -v first; then control and each mut-* command, capturing return codes and AssertionError IDs.",
+    "if_pass": "Accept only bounded X2 exit state source and mutation controls if exact-head CONTROL passes and all four mutations fail for intended assertions; no full A01-A16 or trading acceptance.",
+    "if_fail": "Publish exact test failures and a bounded revision request on existing PR75, without edits to frozen accounting files.",
     "blockers": []
   }
 }
