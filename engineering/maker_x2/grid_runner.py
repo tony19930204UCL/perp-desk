@@ -1,6 +1,7 @@
 """48 symbol-cell offline orchestration: same account logic for placebo."""
 from itertools import product
-from matched_signals import sample_completed
+from matched_signals import select_matched
+from signal_features import eligible_decisions
 from market_replay import replay_cell
 from backtest_stats import summarize, calendar_bootstrap, bh_flags
 from account_ledger import utc_day
@@ -24,21 +25,23 @@ def run_grid(dataset, account_config, start, end, sample_count=6000,
         bars=dataset[symbol]["bars"]
         funding=dataset[symbol]["funding"]
         for frame in FRAMES:
-            selection=sample_completed(bars,frame,start,end,
-                                        count=sample_count)
+            eligible=eligible_decisions(bars,frame)
+            selection=select_matched(eligible,frame,start,end,
+                                     count=sample_count)
             sources[symbol+":"+str(frame)]=selection
             for k,ttl,exit_style in product(KS,TTLS,EXITS):
                 cell_id=f"{symbol}:{frame}m:{k}:{ttl}:{exit_style}"
                 real=replay_cell(symbol,bars,funding,frame,k,ttl,exit_style,
                                  account_config,start,end,
-                                 delay_minutes=delay_minutes)
+                                 delay_minutes=delay_minutes,
+                                 eligible=eligible)
                 matched=None
                 if selection["status"]=="READY":
                     matched=replay_cell(
                         symbol,bars,funding,frame,k,ttl,exit_style,
                         account_config,start,end,
                         signal_times=selection["selected_timestamps"],
-                        delay_minutes=delay_minutes)
+                        delay_minutes=delay_minutes,eligible=eligible)
                 metrics=summarize(real,matched)
                 cells.append({"cell_id":cell_id,"symbol":symbol,
                               "framework":frame,"k":k,"ttl":ttl,
