@@ -601,3 +601,147 @@ evidence only. CI does not itself discover the nested namespace.
 This closes just exact-input-tail test coverage of the partial A15
 sampler. Matched account replay, BH24/bootstrap, runner/24grid,
 whole A01–A16/product/strategy/paper/live remain **NOT_ACCEPTED**.
+
+
+## r12 — offline historical integration (source delivered, blocked acceptance)
+
+New source, all stdlib and each .py shorter than 350 lines:
+`data_adapter.py` reads raw Binance 12-field kline arrays or the
+cached `open_time,open,high,low,close,volume,quote_volume` CSV,
+plus JSON/JSONL/JSON.GZ and finalized
+`funding_time_ms,rate` CSV or funding dictionaries. It inventories
+gaps and hashes source bytes without retimestamping or padding.
+Missing funding mark uses a causally known completed close proxy.
+`market_replay.py` actually advances the existing immutable
+`OfflineAccount` one closed 1m bar at a time, with true slot, TTL,
+Maker penetration, LIQ/SL priority, funding, halts, tail, cash/equity,
+and raw episode/ledger events. Synthetic OHLC means full-fill-or-miss,
+not order-book partial-fill calibration.
+`matched_replay.py` routes placebo timestamps into the **same**
+account replay, rather than averaging signal-only outcomes.
+`grid_runner.py` loops ETHUSDT and BTCUSDT **separately**, each with
+two frameworks and twelve k/TTL/exit choices (48 symbol-cells),
+reusing each symbol/framework eligible universe and matched sample
+across all twelve variants, with no combined capital.
+`backtest_stats.py` provides descriptive cash/PF/bp rates, full
+episode entry-notional denominators, UTC13–16 strata, explicit
+TP/(TP+SL+SL_GAP) denominator, moving 7-calendar-day
+null-centered 9,999-block bootstrap and separate ETH BH24,
+BTC BH24 and combined BH48 sensitivity flags; zero days are retained.
+Insufficient episodes/entry dates return p=1 **placeholder**
+with unavailable CI. Statistical outcomes are exploratory only.
+`backtest_reports.py` persists raw strategy/placebo events, episodes,
+ledger/equity timelines and per-cell results, plus config/input,
+source/test and output SHA256; `--verify` checks those hashes.
+`backtest_entry.py` provides the CLI, and `backtest_controls.py`
+runs a synthetic money/position control plus actual test discovery.
+`tests/test_backtest.py` and `tests/test_backtest_mutations.py`
+contain synthetic adapter, closed X1 cash/fee, account/replay, checksum
+and negative controls. No historic data or market runner was executed
+during this GitHub-only source delivery.
+
+All account capital, reserved margin, leverage, daily-loss/streak/24h
+halt and entry_qty come from the operator's explicit local JSON config.
+That config is never committed and no private amount defaults exist.
+It must contain `capital,per_trade_margin,leverage,daily_loss_limit,
+loss_streak_limit,halt_hours,liq_pct,liq_fee_pct,entry_qty,
+evaluation_start,evaluation_end`. History bounds are fixed at
+2023-11-01 00:00 UTC (inclusive) to 2026-10-19 00:00 UTC
+(exclusive); 2023-10-01 warmup must be covered. No silent
+shortening is accepted. The local input manifest shape is:
+
+```json
+{
+  "ETHUSDT": {"bars": "eth-bars.csv", "funding": "eth-funding.csv"},
+  "BTCUSDT": {"bars": "btc-bars.json", "funding": "btc-funding.csv"}
+}
+```
+
+These are **placeholder filenames**, not attached or distributed market
+files. Raw Binance arrays and funding dictionaries are supported as
+specified above. When the operator's actual local paths are known,
+only the operator supplies them; no network fetching is performed.
+
+### Runnable CLI (cwd: engineering/maker_x2)
+
+```sh
+python3 backtest_entry.py --self-test
+python3 backtest_entry.py --run --config config.json --input inputs.json --output new-results
+python3 backtest_entry.py --verify --config config.json --input inputs.json --output new-results
+```
+
+The CLI's `--run` re-runs the discoverable positive test gate, rejects
+shortened historical coverage, computes 48 strategy/matched baseline
+account cells and a **separate** 48-cell actual-arrival delay2
+sensitivity, then writes immutable raw reports and manifests.
+Delay2 moves eligible order *delivery*, not the feature decision
+clock. `--verify` checks original data/config/source and output
+hashes; a zero exit status is necessary but is not acceptance.
+
+### CONTROL and mutation commands (fresh independent subprocesses)
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 tests/test_backtest.py -v
+python3 tests/test_backtest_mutations.py control
+python3 tests/test_x2.py control
+python3 tests/test_entry_lifecycle.py control
+python3 tests/test_exit_lifecycle.py control
+python3 tests/test_account_lifecycle.py control
+python3 tests/test_account_ledger.py
+python3 tests/test_signal_features.py control
+python3 tests/test_matched_signals.py control
+```
+
+Only after **every** positive control PASS, test actual failures:
+
+```sh
+python3 tests/test_backtest_mutations.py mut-fee
+python3 tests/test_backtest_mutations.py mut-funding
+python3 tests/test_backtest_mutations.py mut-fake-time
+python3 tests/test_backtest_mutations.py mut-future
+python3 tests/test_backtest_mutations.py mut-overfill
+python3 tests/test_x2.py mut-be
+python3 tests/test_x2.py mut-duplicate
+python3 tests/test_signal_features.py mut-lookahead
+python3 tests/test_matched_signals.py mut-replacement
+python3 tests/test_matched_signals.py mut-resample
+```
+
+Require named executed test IDs, actual AssertionError and nonzero
+process rc. An unrelated exception or failure to import is NOT
+a caught mutation. No r12 Python execution or CI run took place
+through this connector. The independently accepted r11 84 controls
+and earlier mutations/CI are *historical*, not evidence for these
+new modules.
+
+### Explicit r12 acceptance blockers — not a full engine PASS
+
+- `fee_slip_1_5x_status=NOT_IMPLEMENTED_NEEDS_AUTHORIZED_GLUE`.
+  Current frozen account/ledger and X1/X2/X3 modules embed fee and
+  slip constants in actual fills, fee booking, risk, LIQ and halt
+  decisions. A report-only cash adjustment would be false account
+  replay. Fully correct 1.5x sensitivity requires separately approved
+  optional injection of scenario cost rates (frozen defaults unchanged)
+  in the protected `maker_exit_lab.py`, `entry_lifecycle.py`,
+  `exit_lifecycle.py`, `account_lifecycle.py`,
+  `account_ledger.py` and `liquidation.py`, plus differential tests.
+  No such outside-allowlist edit was attempted.
+- Same-bar favorable tick-order *upper bound* is not calculated.
+  Conservative LIQ>SL>TP is the actual primary replay; conflicts are
+  counted and favorable bound explicitly `NOT_COMPUTED`.
+- Real depth, partial maker queue fills, actual exchange LIQ and
+  mark-price settlement are unverified. Synthetic tests cannot
+  establish historical fill realism; no private account data were used.
+- The new end-to-end code, run-time memory/performance,
+  statistics and report integration have **NOT_RUN** independent
+  acceptance. The code must not be used to assert research alpha,
+  strategy approval, full A01–A16 or deployment readiness.
+
+All 48 baseline and 48 delay2 rows are designed to be descriptive,
+with all neighbors retained; no results were selected, optimized or
+observed in this response. The original historical data are considered
+exploration-contaminated with no holdout. ETH/BTC capital is never
+summed into a single portfolio. Full 1.5x rows and corresponding
+final preregistration acceptance remain **BLOCKED**, not silently
+fabricated.
