@@ -4,17 +4,12 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-GH-CAPACITY-r13",
+  "instruction_id": "MAKER-V3-GH-CAPACITY-r13-correction-1",
   "status": "WAITING_CI",
-  "source_head_sha": "48702bafce4ed55a54309df9151d18de7f3503ba",
-  "summary": "Delivered NEW r13 bounded-memory engineering candidate on existing PR75, without changing accepted accounting/risk/strategy/default economics or original tests. Baseline genuine full-history measured per symbol 1,604,160 complete minutes/7451 finalized funding: adapter34.79s maxRSS3786432 KiB; previous --run failed MemoryError after55.057s maxRSS5182416 KiB under original5GiB RLIMIT_AS before completing any cell; no market PnL. New bounded_history.py validates and seals disk-backed chronological SQLite bars and Decimal50 1m/15m rolling feature records; data_adapter incrementally parses JSON arrays while preserving strict CSV/Binance/JSONL/JSON.GZ and checksum input validation; market_replay streams causal eligible decisions and preserves signal counts at truncation/gaps; grid_runner bounded_symbol processes independent ETH then BTC, each frame once, 48 baseline+48 delay2+48 cost1.5x each with independent strategy+matched single-account replay. Backtest CLI --run retains real complete discovery gate, frozen full original data bounds/config, source/input hash verification and per-cell stage progress. BoundedReport atomically writes all 288 raw strategy/matched artifacts before next cell; final 48x3 metrics/bootstrap/BH24/BH48/classifications and complete manifest appear only upon completion. --verify checks every raw checksum, exact 48 unique cell identities per scenario, original source/config/input and four sampler identities; old miniature report fixture still works. Added tests/test_capacity.py: exact old public vs new prepared Decimal feature/sampling 1m/15m gap/tail/invalid controls, explicit --differential --base-dir independent immutable pre-r13 reference checks actual 48x3 metrics and all 288 raw payloads plus nontrivial real fills/fees/funding/open-tail X1/X2/X3, and --resource real execute_prepared path on 30,000 fictional minutes per symbol under unchanged 5GiB RLIMIT_AS with observed elapsed/maxRSS. Each new Python file <350 lines. Everything r13 Python/differential/resource/CI/historical NOT_RUN in GitHub-file-only session. Prior accepted r12-correction-2 101 controls PASS, ten positive commands, 20 genuine negative mutations, push/PR CI39508781797/39508764177 success are historical ONLY, not r13 PASS or strategy/product acceptance.",
+  "source_head_sha": "09e33faa8931d2af2ed3e3c81ddde8f222f9ae36",
+  "summary": "Final authorized one-time r13 bounded correction. The independent pre-r13 outer market_replay.replay_cell() rejected a nonempty 1.5x focused case because its independent replay_account(capital,events) silently chose BASE fees while OfflineAccount.ledger() used explicit SENSITIVITY rates. This is a demonstrated fee-parameter orchestration mismatch, not grounds to relax equality or edit frozen accounting. Current market_replay now passes rates=account.rates to the independent replay; exact divergence assertion remains. tests/test_capacity.py keeps immutable pre-r13 run_grid and all 48x3 synthetic baseline/delay2/1.5x strategy/matched raw metrics+artifacts comparison; for separate focused nonempty X1/X2/X3 and BASE/1.5x monetary paths it instead invokes the original independent OfflineAccount directly in a separate interpreter and compares actual events, ledger, snapshot including fees/funding/MTM, without touching immutable old source. README documents measured source, minimal changes and same commands. All prior 105 tests and 20 original mutations files remain byte-identical. Historical r13 105/105 positive PASS, 10 entrypoint rc0 and CI39511822228/39511826993 SUCCESS are prior exact-head evidence, not correction acceptance. Differential previously FAIL rc1, mutation and market NOT_RUN; r13-correction-1 tools are GitHub file-only so all new execution NOT_RUN.",
   "changed_files": [
-    "engineering/maker_x2/bounded_history.py",
-    "engineering/maker_x2/data_adapter.py",
     "engineering/maker_x2/market_replay.py",
-    "engineering/maker_x2/grid_runner.py",
-    "engineering/maker_x2/backtest_entry.py",
-    "engineering/maker_x2/backtest_reports.py",
     "engineering/maker_x2/tests/test_capacity.py",
     "engineering/maker_x2/README.md",
     ".relay/mailbox/maker-v3-x2.json"
@@ -23,201 +18,156 @@
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "Current session is GitHub source-only; no r13 Python process launched. Accepted r12 101 unique controls and CI are previous exact source, not this head."
+      "evidence": "No Python executor invoked in this GitHub file-only correction. Previous 105/105 green on r13 and previous failed immutable differential are historical, not new evidence."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --self-test",
       "result": "NOT_RUN",
-      "evidence": "Current session is GitHub source-only; no r13 Python process launched. Accepted r12 101 unique controls and CI are previous exact source, not this head."
+      "evidence": "No Python executor invoked in this GitHub file-only correction. Previous 105/105 green on r13 and previous failed immutable differential are historical, not new evidence."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_capacity.py",
       "result": "NOT_RUN",
-      "evidence": "Current session is GitHub source-only; no r13 Python process launched. Accepted r12 101 unique controls and CI are previous exact source, not this head."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_backtest.py -v",
-      "result": "NOT_RUN",
-      "evidence": "Current session is GitHub source-only; no r13 Python process launched. Accepted r12 101 unique controls and CI are previous exact source, not this head."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py control",
-      "result": "NOT_RUN",
-      "evidence": "Current session is GitHub source-only; no r13 Python process launched. Accepted r12 101 unique controls and CI are previous exact source, not this head."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py control",
-      "result": "NOT_RUN",
-      "evidence": "Current session is GitHub source-only; no r13 Python process launched. Accepted r12 101 unique controls and CI are previous exact source, not this head."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py control",
-      "result": "NOT_RUN",
-      "evidence": "Current session is GitHub source-only; no r13 Python process launched. Accepted r12 101 unique controls and CI are previous exact source, not this head."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py control",
-      "result": "NOT_RUN",
-      "evidence": "Current session is GitHub source-only; no r13 Python process launched. Accepted r12 101 unique controls and CI are previous exact source, not this head."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py control",
-      "result": "NOT_RUN",
-      "evidence": "Current session is GitHub source-only; no r13 Python process launched. Accepted r12 101 unique controls and CI are previous exact source, not this head."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_account_ledger.py",
-      "result": "NOT_RUN",
-      "evidence": "Current session is GitHub source-only; no r13 Python process launched. Accepted r12 101 unique controls and CI are previous exact source, not this head."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_signal_features.py control",
-      "result": "NOT_RUN",
-      "evidence": "Current session is GitHub source-only; no r13 Python process launched. Accepted r12 101 unique controls and CI are previous exact source, not this head."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py control",
-      "result": "NOT_RUN",
-      "evidence": "Current session is GitHub source-only; no r13 Python process launched. Accepted r12 101 unique controls and CI are previous exact source, not this head."
+      "evidence": "No Python executor invoked in this GitHub file-only correction. Previous 105/105 green on r13 and previous failed immutable differential are historical, not new evidence."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_capacity.py --differential --base-dir PRE_R13_MAKER_X2_DIR",
       "result": "NOT_RUN",
-      "evidence": "Requires independent immutable pre-r13 source checkout at HEAD065a2dc784fdb00b3ba2da110396060bab979299. Real external subprocess baseline vs new features, signals, samples, 48x3 stats and 288 raw account artifacts plus nonempty X1/X2/X3 signed funding/fees/MTM."
+      "evidence": "No Python executor invoked in this GitHub file-only correction. Previous 105/105 green on r13 and previous failed immutable differential are historical, not new evidence."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_capacity.py --resource --minutes 30000",
       "result": "NOT_RUN",
-      "evidence": "Actual synthetic 2-symbol disk prepare/feature/48x3 account replay and --verify under original 5GiB RLIMIT_AS; requires observed maxRSS/elapsed/289 artifacts. Representative synthetic pass is not full-history evidence."
+      "evidence": "No Python executor invoked in this GitHub file-only correction. Previous 105/105 green on r13 and previous failed immutable differential are historical, not new evidence."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-fee",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-funding",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-be",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-duplicate",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py mut-lookahead",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py mut-touch",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py mut-time",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py mut-reverse",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py mut-double-entry",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py mut-kill-bypass",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py mut-partial-liq",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py mut-open-mtm",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_signal_features.py mut-lookahead",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py mut-replacement",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py mut-resample",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-fee",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-funding",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-fake-time",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-future",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-overfill",
       "result": "NOT_RUN",
-      "evidence": "Execute only after ALL current controls and differential genuinely PASS; a caught mutation requires executed test ID, genuine AssertionError and nonzero rc1 rather than import/harness failure."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --run --config config.json --input inputs.json --output NEW_RESULTS_DIR",
       "result": "NOT_RUN",
-      "evidence": "Only operator may run original untouched full local historical BTC/ETH sources after exact-head controls/differential/resource and two CI success. Do not reduce 5GiB cap, sample 6000, or dates."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --verify --config config.json --input inputs.json --output NEW_RESULTS_DIR",
       "result": "NOT_RUN",
-      "evidence": "No r13 full-market artifacts produced. Must check complete 288 raw file hashes, all scenario counts, source/input/config identities and manifest before any research interpretation."
+      "evidence": "Unexecuted under r13 correction-1. Mutation only counts after all positives pass and actual named AssertionError rc1; genuine full history only after accepted finite gates."
     }
   ],
   "remaining_work": [
-    "Main CIO pin exact r13 HEAD and compare to accepted base 065a2dc784fdb00b3ba2da110396060bab979299; confirm only allowlisted paths changed, financial core and original 101 regression test sources byte-identical. Independently run full unittest discovery and all documented standalone positive controls.",
-    "Execute mandatory independent --differential --base-dir at immutable pre-r13 source, compare feature Decimal records, ids/tail/gap, matched source hash/times, nonempty fills/fees/funding/LIQ, ledger/episodes/MTM, and exact metrics/raw files across baseline/delay2/cost1.5x.",
-    "Execute real --resource at 5GiB RLIMIT_AS on representative 30000-bar-per-symbol synthetic input, record actual elapsed/maxRSS/289 verifiable artifacts, then every one of the original 20 negative modes with named genuine AssertionError/rc1. Neither synthetic gate nor CI means full-history PASS.",
-    "Verify exact-head push and pull_request CI independently, separately from nested full suite.",
-    "Only after finite engineering acceptance operator may execute unchanged 1,604,160-minute per symbol original full local dataset at same 5GiB cap and exact 6000-sample/shared universe, then run shipped --verify and inspect all raw reports and source/config/input manifests. An accepted medium synthetic run is not an accepted historical run.",
-    "Performance/disk use, source-differential equivalence and full 5GiB real-data completion remain unmeasured. No automatic durable resume after partial run; partial outputs are not complete. Historical PnL/strategy/product acceptance does not exist."
+    "Pin full current source SHA and check only three source/doc paths plus mailbox changed; preserve protected all-101 tests, accounting/strategy/risk source and frozen research.",
+    "Independently rerun existing 105 discovery tests, all ten positive entrypoints, original immutable old/new differential, and representative real resource probe under unchanged 5GiB cap; collect actual IDs/RC/elapsed/maxRSS and check all 288 raw artifacts.",
+    "If the unchanged historical outer pre-r13 run_grid also fails because an actual 1.5x filled strategy cell reaches its defective replay assertion, report the exact failing cell/trace rather than editing the immutable reference or lowering requirements. Only focused reference was switched to original OfflineAccount.",
+    "Only after all controls pass execute 20 shipped separate negative mutations with genuine named AssertionError rc1; then exact-head both CI triggers.",
+    "Only after finite gates pass operator runs full BTC+ETH 1,604,160-bar original inputs at 5GiB with shared 6000 sampler, 48 cells x three scenarios and shipped --verify; no historical PnL/product inference before validated artifacts.",
+    "No further bounded r13 correction authorized. If still failing record failure and stop."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Read PR75 final full HEAD, source_head_sha 48702bafce4ed55a54309df9151d18de7f3503ba and byte-identical protected files. In immutable checkout run cd engineering/maker_x2 && python3 -m unittest discover -s tests -v; python3 backtest_entry.py --self-test; other standalone positives; python3 tests/test_capacity.py --differential --base-dir PRE_R13_MAKER_X2_DIR; python3 tests/test_capacity.py --resource --minutes 30000 at original 5GiB cap. Record executed IDs, equality evidence, actual elapsed and maxRSS. Only after positive/differential/resource PASS run all 20 documented historical mutation modes and verify real named AssertionError/rc1, then both exact-head CI triggers.",
-    "if_pass": "Accept only bounded r13 capacity source after independent gates. Operator then executes the ORIGINAL complete local BTC/ETH history unchanged at 5GiB via shipped --run and --verify. Synthetic proof and CI do not establish market/strategy/product approval.",
-    "if_fail": "Record exact failure, source/output SHA, actual elapsed and peak RSS and request at most ONE measured bounded r13 correction. No blind memory-cap increase, partial-window reduction, PR76 edits, protected core changes or unsupported approval workaround.",
+    "verify_now": "Confirm PR75 current full source_head_sha 09e33faa8931d2af2ed3e3c81ddde8f222f9ae36 and immutability outside the four allowed paths. Run python3 -m unittest discover -s tests -v; all documented original positive controls; python3 tests/test_capacity.py --differential --base-dir PRE_R13_MAKER_X2_DIR; python3 tests/test_capacity.py --resource --minutes 30000 under 5GiB. Examine actual new/old financial event, raw-cell and feature differences with exact equality. No r13-correction-1 PASS has been claimed.",
+    "if_pass": "Run every original 20 negative mutation fresh, capture named genuine AssertionError/rc1, check exact-head push and PR CI, then operator may execute unchanged whole-market two-symbol CLI under 5GiB with --verify. Do not call any financial/strategy product PASS from synthetic success.",
+    "if_fail": "Preserve exact failing ID/trace, full SHA and evidence. No third r13 correction authorized and no source or thresholds modified outside this explicit scope.",
     "blockers": [
-      "r13 Python controls, independent old/new differential, 5GiB resource probe and actual full historical execution NOT_RUN",
-      "No real full-history memory/elapsed/artifact evidence yet; preserve observed previous 5GiB MemoryError",
-      "No durable checkpoint/resume for partial output; only verified complete manifest counts as finished"
+      "r13-correction-1 Python/differential/resource/mutation/CI NOT_RUN",
+      "Original immutable 1.5x outer replay fee mismatch is documented; 48x3 immutable grid reference may encounter it on genuine filled cells",
+      "Full original historical 5GiB execution and --verify NOT_RUN"
     ]
   }
 }
