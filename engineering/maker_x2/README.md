@@ -189,3 +189,53 @@ OHLC/funding inputs. This small module does **not** implement full
 A09 LIQ/margin, A12 account/day-kill, whole A01-A16, real exchange
 queue/fill models, market 24-grid, X1/X3 strategy generation,
 paper/live activation or account statistics. No market experiment was run.
+
+
+### r7 correction-1: X1 must be admitted BEFORE a fill
+
+For X1, use `ShortEntry.for_x1(..., signal_vwap=...,
+known_funding_cost=...)` instead of creating an unqualified
+`ShortEntry` and discovering rejected economics only when constructing
+`ShortExit`. The frozen signal VWAP and already-known funding cost are
+evaluated against the candidate entry limit and quantity before a fill
+can be admitted. Both Maker legs pay 0.0002; future unknown funding
+uses zero for the projection and sets `unknown_future_funding=True`,
+never reads or predicts later settlements. When profit side is invalid or
+projected net is nonpositive, status is `X1_ADMISSION_REJECTED`;
+`events=[]`, open quantity and paid fees are zero, and `process()`
+does not accept a fill. Subsequent partial fills are checked against
+the same frozen target and known-cost projection. Existing post-entry
+X1 checks remain defensive, not the primary admission gate.
+
+```python
+from entry_lifecycle import ShortEntry
+from exit_lifecycle import ShortExit
+
+candidate = ShortEntry.for_x1(
+    "fictional-x1", 0, "100", "100", "1", ".25", 2, "2",
+    signal_vwap="99", known_funding_cost=None)
+assert candidate.status == "PENDING"
+candidate.process({"ts": 0, "open": "100", "high": "100.27005",
+                   "low": "99", "close": "100", "closed": True},
+                  fill_qty="2")
+if candidate.snapshot()["open_qty"] > 0:
+    withdrawal = ShortExit(candidate, "X1", vwap=candidate.x1_vwap,
+                           known_funding_cost=candidate.x1_known_funding_cost)
+```
+
+A03 resting-gap fixture uses an open below E*1.006 when expecting
+an open short, and a separate crossing-stop fixture asserts
+`CLOSED_SL`, real gap execution fees and independent cash. A pending
+order whose frozen offset exceeds .006 produces explicit
+`PLACEMENT_INFEASIBLE`, not an exception or a chased order.
+Positive controls include discoverable
+`test_a06_x1_preentry_rejection_no_paid_fee_or_position` and
+`test_a06_x1_preentry_positive_freezes_and_partial_size_gate`.
+
+Prior independent r7 (before this correction) results remain:
+49 unique discovery / 47 PASS / 2 FAIL; entry standalone
+8 unique / 6 PASS / 2 FAIL; exit standalone 8/8 PASS.
+The four mutation modes were NOT_RUN because positive controls failed.
+This correction has no Python execution evidence yet; use the existing
+r7 commands above in fresh processes and run mutations only after
+all positive controls pass.
