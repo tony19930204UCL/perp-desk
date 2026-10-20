@@ -47,12 +47,15 @@ def _objects(path):
             if not buffer.startswith("["):
                 raise X2Error("JSON input must be an array")
             buffer = buffer[1:]
+            after_comma = False
             while True:
                 buffer = buffer.lstrip()
                 if not buffer and not eof:
                     need()
                     continue
                 if buffer.startswith("]"):
+                    if after_comma:
+                        raise X2Error("trailing JSON array comma")
                     buffer = buffer[1:]
                     while not eof:
                         need()
@@ -69,6 +72,7 @@ def _objects(path):
                     need()
                     continue
                 yield value
+                after_comma = False
                 buffer = buffer[offset:]
                 while True:
                     buffer = buffer.lstrip()
@@ -76,6 +80,7 @@ def _objects(path):
                         need()
                         continue
                     if buffer.startswith(","):
+                        after_comma = True
                         buffer = buffer[1:]
                         break
                     if buffer.startswith("]"):
