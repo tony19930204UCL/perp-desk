@@ -492,3 +492,65 @@ This is a **partial A15 signal sampler**. Matched account replay,
 bootstrap/BH24, market 24-grid runner/statistics, full A01–A16,
 strategy/product acceptance and paper/live deployment are
 **NOT_ACCEPTED** and have not been executed.
+
+
+### r10 test-acceptance correction (synthetic only; NOT_RUN)
+
+No production formula, sampler, entry, exit, ledger or account module was
+modified. This correction strengthens **discoverable** tests rather than
+claiming an established production defect.
+
+`StrategyApiControls.test_s1_real_api_below_above_and_controlled_exact_equality`
+evaluates actual 1m `eligible_decisions` and `signal_records` for
+below/above threshold. Exact `z==2.5` is tested using a **controlled
+threshold-only Decimal constructor injection**, because finite fictional
+Decimal OHLC data does not guarantee literal equality after sqrt(6).
+The production feature calculation, API, and strict comparison still run;
+that exact equality case is NOT an unmocked OHLC equality proof.
+`test_s2_real_api_positive_close_equality_and_volatility_gate`
+evaluates complete 15m UTC bars for a real positive S2, close==prior L12
+strict rejection, and a high-std12 rejection; its sample standard deviations
+are derived by a separate test reference with Decimal50.
+
+Additional `sample_completed` controls use complete synthetic 1m and
+15m bars, a [start,end) causal decision window, tail/suffix stability,
+non-triggered eligible decisions, and identical framework-level samples
+for all 12 k/TTL/exit combinations. Existing default 6000 unique samples,
+seed metadata, global RNG preservation, insufficient and duplicate controls
+remain in normal discovery.
+
+Mutation `mut-lookahead` now actually reads the last input minute's
+quote/base volume and injects it into historical feature VWAP; prefix
+invariance must fail. `mut-resample` keeps reported seed constant but
+changes the actual selected timestamps on alternate identical invocations;
+the framework-sharing control must fail. `mut-replacement` still injects
+duplicate selected times. These are explicitly fault-injected synthetic
+tests, not production edits.
+
+From `engineering/maker_x2`, positives first:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 tests/test_signal_features.py control
+python3 tests/test_matched_signals.py control
+```
+
+Only if all controls PASS, separate processes:
+
+```sh
+python3 tests/test_signal_features.py mut-lookahead
+python3 tests/test_matched_signals.py mut-replacement
+python3 tests/test_matched_signals.py mut-resample
+```
+
+Each negative requires a genuine AssertionError, loaded executed test ID
+and nonzero exit code, not a harness/import error. In this GitHub-only
+delivery these r10 commands are **NOT_RUN**. Independently accepted r9
+history remains: discovery 78/78; standalone signal5/5, matched5/5,
+original three mutations with named AssertionError rc1, exact-head CI
+39460187430/39460195244 success (CI did not itself discover nested tests).
+That r9 mutation history did not prove future-read/resampling behavior.
+
+A15 here remains only a partial signal sampler. Matched account replay,
+bootstrap/BH24, historical runner/24-grid, and full A01–A16/product or
+paper/live acceptance are **NOT_ACCEPTED**.
