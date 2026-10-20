@@ -35,6 +35,61 @@ def load_config(path):
     return value
 
 
+def execute_prepared(sources, config, input_path, config_path, output,
+                     sample_count=6000, frozen=True):
+    """Identical real entry pipeline; fixture-only calls may shorten windows."""
+    root=Path(__file__).resolve().parent
+    source_before=source_manifest(root)
+    inputs={}
+    start=int(config["evaluation_start"])
+    end=int(config["evaluation_end"])
+    warmup=(int(datetime(2023,10,1,tzinfo=timezone.utc).timestamp()*1000)
+            if frozen else None)
+    manifest={"input":inputs,"input_manifest_sha256":sha256_file(input_path),
+              "config_sha256":sha256_file(config_path),
+              "source_sha256":source_before,
+              "evaluation_start":start,"evaluation_end":end,
+              "research_status":"EXPLORATORY_UNACCEPTED"}
+    report=BoundedReport(output)
+    samplers={}
+    with TemporaryDirectory(prefix="maker-v3-bounded-") as scratch:
+        for symbol in ("ETHUSDT","BTCUSDT"):
+            paths=sources[symbol]
+            if set(paths)!={"bars","funding"}:
+                raise X2Error("each symbol needs bars and funding filenames")
+            print("PREPARING "+symbol,flush=True)
+            bars=prepare_bars(paths["bars"],Path(scratch)/(symbol+"-bars.db"))
+            funding=read_funding(paths["funding"])
+            if (not bars["count"] or (frozen and
+                    bars["start_open_ms"]>warmup) or
+                    bars["end_open_ms"]+60000<end):
+                raise X2Error("insufficient historical warmup/evaluation coverage")
+            inputs[symbol]={"bars_sha256":bars["sha256"],
+                            "funding_sha256":funding["sha256"],
+                            "bar_count":bars["count"],
+                            "funding_count":funding["count"],
+                            "gaps":bars["gaps"],
+                            "start_open_ms":bars["start_open_ms"],
+                            "end_open_ms":bars["end_open_ms"]}
+            prepared={}
+            for tf in (1,15):
+                print("FEATURES "+symbol+" "+str(tf)+"m",flush=True)
+                prepared[tf]=prepare_decisions(
+                    bars["bars"],tf,Path(scratch)/(symbol+"-"+str(tf)+".db"))
+            def write_cell(scenario,meta,strategy,matched):
+                report.record(scenario,meta,strategy,matched)
+                print("CELL "+symbol+" "+scenario+" "+meta["cell_id"],
+                      flush=True)
+            _, selections = bounded_symbol(symbol,bars["bars"],
+                funding["events"],prepared,config,start,end,write_cell,count=sample_count)
+            samplers.update(selections)
+            del prepared, bars, funding
+    if source_manifest(root)!=source_before:
+        raise X2Error("source/test changed during run")
+    written=report.finish(manifest,samplers,config,start,end)
+    return written
+
+
 def main(argv=None):
     parser=argparse.ArgumentParser(description="Offline Maker V3 backtest")
     mode=parser.add_mutually_exclusive_group(required=True)
@@ -79,53 +134,8 @@ def main(argv=None):
         sources=json.load(handle)
     if set(sources)!={"ETHUSDT","BTCUSDT"}:
         raise X2Error("input manifest needs separate ETHUSDT and BTCUSDT")
-    root=Path(__file__).resolve().parent
-    source_before=source_manifest(root)
-    inputs={}
-    start=int(config["evaluation_start"])
-    end=int(config["evaluation_end"])
-    warmup=int(datetime(2023,10,1,tzinfo=timezone.utc).timestamp()*1000)
-    manifest={"input":inputs,"input_manifest_sha256":sha256_file(args.input),
-              "config_sha256":sha256_file(args.config),
-              "source_sha256":source_before,
-              "evaluation_start":start,"evaluation_end":end,
-              "research_status":"EXPLORATORY_UNACCEPTED"}
-    report=BoundedReport(args.output)
-    samplers={}
-    with TemporaryDirectory(prefix="maker-v3-bounded-") as scratch:
-        for symbol in ("ETHUSDT","BTCUSDT"):
-            paths=sources[symbol]
-            if set(paths)!={"bars","funding"}:
-                raise X2Error("each symbol needs bars and funding filenames")
-            print("PREPARING "+symbol,flush=True)
-            bars=prepare_bars(paths["bars"],Path(scratch)/(symbol+"-bars.db"))
-            funding=read_funding(paths["funding"])
-            if (not bars["count"] or bars["start_open_ms"]>warmup or
-                    bars["end_open_ms"]+60000<end):
-                raise X2Error("insufficient historical warmup/evaluation coverage")
-            inputs[symbol]={"bars_sha256":bars["sha256"],
-                            "funding_sha256":funding["sha256"],
-                            "bar_count":bars["count"],
-                            "funding_count":funding["count"],
-                            "gaps":bars["gaps"],
-                            "start_open_ms":bars["start_open_ms"],
-                            "end_open_ms":bars["end_open_ms"]}
-            prepared={}
-            for tf in (1,15):
-                print("FEATURES "+symbol+" "+str(tf)+"m",flush=True)
-                prepared[tf]=prepare_decisions(
-                    bars["bars"],tf,Path(scratch)/(symbol+"-"+str(tf)+".db"))
-            def write_cell(scenario,meta,strategy,matched):
-                report.record(scenario,meta,strategy,matched)
-                print("CELL "+symbol+" "+scenario+" "+meta["cell_id"],
-                      flush=True)
-            _, selections = bounded_symbol(symbol,bars["bars"],
-                funding["events"],prepared,config,start,end,write_cell)
-            samplers.update(selections)
-            del prepared, bars, funding
-    if source_manifest(root)!=source_before:
-        raise X2Error("source/test changed during run")
-    written=report.finish(manifest,samplers,config,start,end)
+    written=execute_prepared(sources,config,args.input,args.config,
+                             args.output)
     print(json.dumps({"status":"OUTPUT_WRITTEN_NOT_ACCEPTED",
                       "cell_count":48,**written},sort_keys=True))
     return 0
