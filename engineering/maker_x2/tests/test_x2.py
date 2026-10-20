@@ -47,20 +47,20 @@ class Control(unittest.TestCase):
         self.assertEqual(x.qty, D("2"))
         self.assertEqual(x.stop, D("105.630"))
         self.assertEqual(x.realized_gross, D("0.9450"))
-        self.assertEqual(x.fees_paid, D("0.127811"))
-        self.assertEqual(x.snapshot()["cash"], D("1000.817189"))
+        self.assertEqual(x.fees_paid, D("0.12581100"))
+        self.assertEqual(x.snapshot()["cash"], D("1000.819189"))
         independent = replay("1000", x.events)
-        self.assertEqual(independent["cash"], D("1000.817189"))
+        self.assertEqual(independent["cash"], D("1000.819189"))
         self.assertEqual(independent["entry_basis"], D("210"))
         self.assertEqual(independent["remaining_signed_qty"], D("-2"))
-        self.assertEqual(independent["realized_net"], D("0.817189"))
+        self.assertEqual(independent["realized_net"], D("0.819189"))
 
     def test_half_exit_next_bar_economic_be_not_entry_be(self):
         x = start()
         bar(x, 1, 20, "99.6", "100", "99", "99.2",
             fills=[tp("tp1", "2", "99.55", "take1")])
         self.assertEqual(x.stop, D("100.600"))
-        # gross 1; fees entry .08 + TP .0398 = .1198
+        # gross .9; fees entry .08 + TP .03982 = .11982
         self.assertEqual(x.snapshot()["cash"], D("1000.78018"))
         bar(x, 2, 30, "99.7", "99.9", "99.3", "99.6")
         with localcontext() as ctx:
