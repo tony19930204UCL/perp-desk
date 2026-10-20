@@ -106,6 +106,8 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                      D(bar["open"]) >= entry.limit)
                     and D(bar["high"]) >= entry.limit * D("1.0002")):
                 qty = str(entry.remaining)
+        active_before = account.exit
+        history_before = len(active_before.history) if active_before else 0
         if account.exit is not None:
             active = account.exit
             if active.withdraw:
@@ -118,8 +120,18 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                         limit = active.core.targets[name]
                         maker = D(bar["low"]) <= limit * D(".9998")
                         break
+        # Conservative existing risk wins if passive profit is also in
+        # the bar's range. Report the conflict instead of inventing ticks.
+        if active_before and maker and D(bar["high"]) >= active_before.core.stop:
+            counts["samebar_risk_profit_conflict"] += 1
         result = account.bar(bar, entry_qty=qty, maker_fill=maker,
                              settlements=finalized)
+        if active_before is not None:
+            additions = active_before.history[history_before:]
+            counts["admin_4h_triggers"] += sum(
+                one[0] == "DEADLINE_INTENT" for one in additions)
+            counts["post_only_rejects"] += sum(
+                one[0] == "POST_ONLY_REJECT" for one in additions)
         if result not in ("EMPTY", "OPEN", "PENDING", "PARTIAL"):
             counts[result] += 1
         # After the minute closes, accept only signals that are now known.
@@ -168,9 +180,25 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                              if e["type"]=="fill" and e["side"]=="sell"
                              and e["id"].startswith(episode["id"]+":")),
                             D(0))
+        related = [ev for ev in account.events
+                   if ev["id"].startswith(episode["id"]+":")
+                   or (ev["type"]=="liquidation" and
+                       ev["ts"]>=original.get("arrival_ts",0))]
+        liquidated = any(ev["type"]=="liquidation" for ev in related)
+        buys = [ev for ev in related if ev["type"]=="fill"
+                and ev.get("side")=="buy"]
+        terminal = buys[-1] if buys else {}
+        source = terminal.get("source_id", terminal.get("id",""))
+        exit_type = ("LIQ" if liquidated else
+                     "SL_GAP" if "gap-risk" in source else
+                     "SL" if ("risk-" in source) else
+                     "TP" if "profit-" in source else
+                     "PASSIVE_X3" if "withdraw-" in source else
+                     "NO_FILL")
         completed.append({**{key: str(val) if isinstance(val, D) else val
                               for key, val in episode.items()},
-                          "entry_notional": str(entry_notional), **original})
+                          "entry_notional": str(entry_notional),
+                          "exit_type": exit_type, **original})
     counts["complete_episodes"] = sum(
         1 for ep in completed if D(ep["entry_notional"]) > 0)
     counts["open"] = int(ledger["qty"] > 0)
