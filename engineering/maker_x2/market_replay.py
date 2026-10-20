@@ -76,6 +76,9 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
     events = []
     counts = Counter()
     funding_index = 0
+    while (funding_index < len(funding) and
+           funding[funding_index]["ts"] < evaluation_start):
+        funding_index += 1
     prev_close = None
     previous_open = None
     episode_starts = {}
@@ -124,6 +127,23 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
         # the bar's range. Report the conflict instead of inventing ticks.
         if active_before and maker and D(bar["high"]) >= active_before.core.stop:
             counts["samebar_risk_profit_conflict"] += 1
+            # Descriptive counterfactual: risk buyback vs posted Maker
+            # limit for THIS one bar, capped to actual remaining qty.
+            # It is not an executable second trade or a tick-order claim.
+            core=active_before.core
+            limit=(active_before.pending["limit"]
+                   if active_before.withdraw and active_before.pending
+                   else core.targets["tp1"] if core.orders["tp1"]>0
+                   else core.targets["tp2"])
+            risk_px=max(D(bar["open"]),core.stop)*(1+account.rates.slip)
+            maker_qty=(core.qty if active_before.withdraw
+                       else min(core.qty,core.orders["tp1"]
+                                if core.orders["tp1"]>0 else
+                                core.orders["tp2"]))
+            counterfactual=max(D(0),maker_qty*(
+                risk_px-limit + risk_px*account.rates.taker_fee -
+                limit*account.rates.maker_fee))
+            counts["favorable_order_upper_bound_usd"] += counterfactual
         result = account.bar(bar, entry_qty=qty, maker_fill=maker,
                              settlements=finalized)
         if active_before is not None:
@@ -216,6 +236,9 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                               for key, val in episode.items()},
                           "entry_notional": str(entry_notional),
                           "exit_type": exit_type, **original})
+    if "favorable_order_upper_bound_usd" in counts:
+        counts["favorable_order_upper_bound_usd"] = str(
+            counts["favorable_order_upper_bound_usd"])
     counts["complete_episodes"] = sum(
         1 for ep in completed if D(ep["entry_notional"]) > 0)
     counts["open"] = int(ledger["qty"] > 0)
