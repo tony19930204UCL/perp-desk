@@ -40,14 +40,9 @@
     },
     {
       "id": "historical-48-cell",
-      "mode": "exec",
+      "mode": "adopt",
       "source_head": "REPLACE_VERIFIED_40_HEX",
       "input_sha256": "REPLACE_64_HEX",
-      "lease_seconds": 900,
-      "command": [
-        "/ABSOLUTE/AUTHORIZED_PYTHON",
-        "/ABSOLUTE/CONFIGURED_HISTORICAL_ENTRYPOINT"
-      ],
       "reports": [
         {
           "path": "reports/history.json",
@@ -61,16 +56,9 @@
     },
     {
       "id": "operator-reflection",
-      "mode": "exec",
+      "mode": "adopt",
       "source_head": "REPLACE_VERIFIED_40_HEX",
       "input_sha256": "REPLACE_64_HEX",
-      "lease_seconds": 900,
-      "command": [
-        "/ABSOLUTE/AUTHORIZED_PYTHON",
-        "/ABSOLUTE/CONFIGURED_OPERATOR_REFLECTION",
-        "--history",
-        "/ABSOLUTE/ACTIVE_PROFILE/stage-relay/C0041/evidence/reports/history.json"
-      ],
       "reports": [
         {
           "path": "reports/reflection.json",
@@ -78,5 +66,57 @@
         }
       ]
     }
-  ]
+  ],
+  "maker_bridge": {
+    "historical_stage": "historical-48-cell",
+    "reflection_stage": "operator-reflection",
+    "producer": {
+      "item": "C-1037",
+      "job": "sa-0-cc6aa1f2",
+      "instruction": "MAKER-V3-GH-CAPACITY-r13"
+    },
+    "capacity_acceptance_path": "acceptance/capacity-source.json",
+    "source_sha256": {
+      "backtest_entry.py": "REPLACE_REAL_64_HEX_BUSINESS_SOURCE_SHA",
+      "backtest_reports.py": "REPLACE_REAL_64_HEX_BUSINESS_SOURCE_SHA"
+    },
+    "input_manifest_sha256": "REPLACE_REAL_64_HEX_INPUT_MANIFEST_SHA",
+    "config_sha256": "REPLACE_REAL_64_HEX_CONFIG_SHA",
+    "symbol_hashes": {
+      "BTCUSDT": {
+        "bars_sha256": "REPLACE_REAL_64_HEX",
+        "funding_sha256": "REPLACE_REAL_64_HEX"
+      },
+      "ETHUSDT": {
+        "bars_sha256": "REPLACE_REAL_64_HEX",
+        "funding_sha256": "REPLACE_REAL_64_HEX"
+      }
+    },
+    "cwd": "/ABSOLUTE/VERIFIED_OFFLINE_MAKER_DIRECTORY",
+    "config_path": "/ABSOLUTE/VERIFIED_OFFLINE_ACCOUNT_CONFIG.json",
+    "input_path": "/ABSOLUTE/VERIFIED_OFFLINE_INPUT_MANIFEST.json",
+    "output_dir": "/ABSOLUTE/VERIFIED_NEW_OR_EXISTING_OUTPUT_DIRECTORY",
+    "run_argv": [
+      "/ABSOLUTE/PYTHON",
+      "/ABSOLUTE/backtest_entry.py",
+      "--run",
+      "--config",
+      "/ABSOLUTE/VERIFIED_OFFLINE_ACCOUNT_CONFIG.json",
+      "--input",
+      "/ABSOLUTE/VERIFIED_OFFLINE_INPUT_MANIFEST.json",
+      "--output",
+      "/ABSOLUTE/VERIFIED_NEW_OR_EXISTING_OUTPUT_DIRECTORY"
+    ],
+    "verify_argv": [
+      "/ABSOLUTE/PYTHON",
+      "/ABSOLUTE/backtest_entry.py",
+      "--verify",
+      "--config",
+      "/ABSOLUTE/VERIFIED_OFFLINE_ACCOUNT_CONFIG.json",
+      "--input",
+      "/ABSOLUTE/VERIFIED_OFFLINE_INPUT_MANIFEST.json",
+      "--output",
+      "/ABSOLUTE/VERIFIED_NEW_OR_EXISTING_OUTPUT_DIRECTORY"
+    ]
+  }
 }
