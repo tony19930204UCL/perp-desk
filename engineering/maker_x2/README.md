@@ -365,3 +365,17 @@ This work is **not** A15/full A16, full A01–A16, production LIQ
 or exchange margin validation, full A12 day-kill statistics, whole
 A09 scale-out integration, market 24-grid, actual strategy evaluation,
 paper/live deployment or performance evidence.
+
+
+r8 partial pending cancellation returns `PARTIAL_OPEN` when actual entry
+quantity exists: only unused order margin is released and a composed
+`ShortExit` retains the filled short, hard risk, fees, funding and occupied
+slot. With no fill, cancellation releases the full reservation. The
+discoverable `test_cancel_pending_partial_releases_unused_only`
+checks this handoff. Account-level observed LIQ precedence on entry
+fill bars, and gap risk on already open positions, do not imply actual
+exchange queue or liquidation ordering.
+
+r8 `checkpoint()`/`recover()` use trusted detached in-memory Python
+state, not a disk-backed or cross-process durable format; future
+persistence would require its own approved engineering unit.
