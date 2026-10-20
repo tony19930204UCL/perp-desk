@@ -50,3 +50,7 @@ It creates synthetic source/input identifiers, bootstrap proof, four real launch
 Offline tests: python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v
 
 Operator reports r1 nine tests rc0 and four-stage synthetic CLI drill rc0 (not independently rerun in this r2 conversation). R2 additional tests and exact-head CI remain NOT_RUN here. No shell/cron/install execution performed by this source-only delivery.
+
+## R3 test-fixture distinction (no production change)
+
+The direct CLI/unit fixture intentionally defaults to `kind=synthetic_stage_relay`. Only the temporary installed-profile no-argument integration fixture explicitly uses `kind=stage_relay`, matching the existing production supervisor contract. Its reports, identities, and independent acceptance files remain synthetic test-only data and are not Maker product evidence. Production continues to reject `synthetic_stage_relay` at the installed no-argument entrypoint. R3 preserves all original 9 plus 6 no-argument tests; the changed R3 suite and both exact-head CI runs require independent execution before any installation. Operator-reported previous no-arg drill rc0 is not a substitute for the failed R2 CI.
