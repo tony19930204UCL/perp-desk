@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 76,
+  "branch": "fix/c0041-stage-relay-20261020",
+  "task_id": "C0041-STAGE-RELAY",
+  "instruction_id": "C0041-STAGE-r1",
+  "status": "WAITING_CI",
+  "source_head_sha": "1bfbbd4e1a947bb098729bdfdd59e1dac47a4214",
+  "summary": "Shipped durable fail-closed Linux stdlib stage relay CLI, exact source/input/config/reports/acceptance contract, nonduplicating r12 ADOPT, lock+atomic state, process PID/start/lease, restart+receipt dedup, immediate next configured subprocess and isolated synthetic multi-stage CLI drill. Added nine offline unittest cases and one additive CI step, docs and explicit unconfigured graph sample. Source only; not installed or accepted for product usage.",
+  "changed_files": [
+    "engineering/stage_relay.py",
+    "engineering/tests/test_stage_relay.py",
+    "engineering/STAGE_RELAY.md",
+    "engineering/stage_relay_example.json",
+    ".github/workflows/ci.yml",
+    ".relay/mailbox/c0041-stage-relay.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
+      "result": "NOT_RUN",
+      "evidence": "No shell/test execution authorized; CI step added but outcome not verified."
+    },
+    {
+      "command": "python3 engineering/stage_relay.py demo --dir /ABSOLUTE/ACTIVE_PROFILE/stage-relay/C0041/drill-UNIQUE",
+      "result": "NOT_RUN",
+      "evidence": "Source demo implemented, no installation, local profile access or subprocess performed."
+    },
+    {
+      "command": "Existing complete CI workflow on exact mailbox HEAD",
+      "result": "NOT_RUN",
+      "evidence": "Post-edit GitHub Actions run/conclusion not yet verified."
+    }
+  ],
+  "remaining_work": [
+    "Review and independently run all nine test cases and exact-head CI; repair any failure on PR76 branch.",
+    "Operator verify all explicit product entrypoint commands, provenance hashes, trusted completion and real acceptance; unconfigured example intentionally blocks.",
+    "Operator install into authorized isolated active-profile namespace, wire official cron pre-run stdout and trusted parent completion, verify official cron list/edit/readback; none performed.",
+    "Validate r12 external owner identity/lease, actual matched account replay, 48-cell historical output and reflection semantic linkage; no product acceptance assumed.",
+    "Known boundary: local acceptance-file content checks are not authentic reviewer identity proofs; operator must authenticate producer and reviewer independently."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Review PR76 exact HEAD, run python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v and whole CI, inspect synthetic demo and hash/count/refusal guards; independently validate installed wiring/security before activation.",
+    "if_pass": "Mark source READY_FOR_REVIEW only on independently green exact-head CI and acceptance of bounded scope; authorize separate operator installation/checkpoint, not product acceptance.",
+    "if_fail": "Return precise failure/test line and exact HEAD for bounded allowed-file repair, do not deploy or dispatch product graph.",
+    "blockers": [
+      "Tests and exact-head CI NOT_RUN in this chat",
+      "No configured real product entrypoint or external reviewer acceptance supplied",
+      "Active-profile operator installation and cron wiring not performed",
+      "No real Maker replay/48-cell/performance evidence"
+    ]
+  }
+}
