@@ -14,13 +14,15 @@ ZERO = D("0")
 
 
 class ShortExit:
-    def __init__(self, entry, style, vwap=None, known_funding_cost=None):
+    def __init__(self, entry, style, vwap=None, known_funding_cost=None, rates=None):
+        from scenario_rates import resolve_rates
+        self.rates = resolve_rates(rates if rates is not None else entry.rates)
         if style not in ("X1", "X2", "X3"):
             raise X2Error("unknown frozen exit style")
         if not entry.events or replay(entry.cash_start, entry.events)["remaining_qty"] <= ZERO:
             raise X2Error("actual open short required")
         self.style = style
-        self.core = MakerX2(str(entry.cash_start))
+        self.core = MakerX2(str(entry.cash_start), rates=self.rates)
         self.core.events = [dict(e) for e in entry.events]
         self.core.seen = {e["id"] for e in entry.events}
         self.core.settled = {e["settlement_id"] for e in entry.events
@@ -56,8 +58,8 @@ class ShortExit:
             assumed = (ZERO if known_funding_cost is None
                        else number(known_funding_cost, "known_funding_cost"))
             projected = ((self.core.E - self.target) * self.core.qty
-                         - self.core.entry_basis * MAKER_FEE
-                         - self.core.qty * self.target * MAKER_FEE - assumed)
+                         - self.core.entry_basis * self.rates.maker_fee
+                         - self.core.qty * self.target * self.rates.maker_fee - assumed)
             if projected <= ZERO:
                 raise X2Error("X1 projected net nonpositive")
             self.core.targets["tp1"] = self.target
@@ -105,7 +107,7 @@ class ShortExit:
         if risk:
             with localcontext() as ctx:
                 ctx.prec = 50
-                price = max(op, self.core.stop) * (1 + SLIP)
+                price = max(op, self.core.stop) * (1 + self.rates.slip)
             self.core._exit("risk-" + str(end), end, self.core.qty, price,
                             "taker", "SL_GAP" if op >= self.core.stop else "SL")
             self.status = "CLOSED_SL"
@@ -170,7 +172,7 @@ class ShortExit:
         unrealized = (self.core.qty * (self.core.E - self.last_mark)
                       if self.last_mark is not None else None)
         estimate = (self.core.qty * max(self.last_mark, self.core.stop)
-                    * (1 + SLIP) * TAKER_FEE
+                    * (1 + self.rates.slip) * self.rates.taker_fee
                     if self.last_mark is not None else None)
         return {"status": self.status, "style": self.style,
                 "events": list(self.core.events), "ledger": ledger,
