@@ -4,10 +4,10 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-GH-LIFECYCLE-r7-correction-1",
+  "instruction_id": "MAKER-V3-GH-LIFECYCLE-r7-correction-2",
   "status": "READY_FOR_REVIEW",
-  "source_head_sha": "2295a3b0c19fc9bb519f6e4347ae8f05ead59e58",
-  "summary": "Bounded r7 repair: fix A03 resting-gap fixture below existing SL and retain separate real adverse gap CLOSED_SL accounting check; assert A04 over-offset placement yields PLACEMENT_INFEASIBLE with empty ledger; add callable ShortEntry.for_x1 pre-entry admission on frozen signal VWAP/known funding and actual candidate limit/qty so nonpositive/profit-wrong X1 never incurs fill, fees or position. Add discoverable positive/negative admission controls and README workflow. All frozen parent four files and old fees/risk/strategy untouched. No Python executed this turn.",
+  "source_head_sha": "966cab54f1ef0e59e486622bc9dbb38125ecd7ba",
+  "summary": "Bounded production fix: ShortEntry.for_x1 rejects missing signal_vwap=None via X2Error before creating a pending lifecycle, entry fill, paid fee, or position. A discoverable Control.test_a06_x1_missing_vwap_target_blocks_before_any_entry verifies constructor not called and empty ledger/zero fees/qty, while valid frozen VWAP with unknown future funding remains permitted. Canonical README X1 workflow now uses pre-entry for_x1, not paid generic ShortEntry followed by post-entry X1 check. All other lifecycle logic, accepted parameters, X2/X3 and protected files untouched.",
   "changed_files": [
     "engineering/maker_x2/entry_lifecycle.py",
     "engineering/maker_x2/tests/test_entry_lifecycle.py",
@@ -18,50 +18,50 @@
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "This GitHub connector turn did not execute Python. Prior independent r7: discovery 49 unique 47 PASS 2 FAIL; entry standalone 8 unique 6 PASS 2 FAIL; exit standalone 8 PASS. These are historical failures, not new acceptance."
+      "evidence": "No Python execution available through authorized GitHub connector in this turn. Historical correction-1 independent results: discovery 51 unique PASS, entry CONTROL 10 PASS, exit CONTROL 8 PASS; do not attribute to correction-2."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py control",
       "result": "NOT_RUN",
-      "evidence": "This GitHub connector turn did not execute Python. Prior independent r7: discovery 49 unique 47 PASS 2 FAIL; entry standalone 8 unique 6 PASS 2 FAIL; exit standalone 8 PASS. These are historical failures, not new acceptance."
+      "evidence": "No Python execution available through authorized GitHub connector in this turn. Historical correction-1 independent results: discovery 51 unique PASS, entry CONTROL 10 PASS, exit CONTROL 8 PASS; do not attribute to correction-2."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py control",
       "result": "NOT_RUN",
-      "evidence": "This GitHub connector turn did not execute Python. Prior independent r7: discovery 49 unique 47 PASS 2 FAIL; entry standalone 8 unique 6 PASS 2 FAIL; exit standalone 8 PASS. These are historical failures, not new acceptance."
+      "evidence": "No Python execution available through authorized GitHub connector in this turn. Historical correction-1 independent results: discovery 51 unique PASS, entry CONTROL 10 PASS, exit CONTROL 8 PASS; do not attribute to correction-2."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py mut-lookahead",
       "result": "NOT_RUN",
-      "evidence": "Mutation NOT_RUN because correction positive controls not yet independently executed; require real AssertionError/test ID/nonzero rc after all controls pass."
+      "evidence": "Negative mutation not executed in correction-2. Historical correction-1 four mutations caught genuine AssertionError rc1; require all correction-2 positive controls PASS before rerunning mutations."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py mut-touch",
       "result": "NOT_RUN",
-      "evidence": "Mutation NOT_RUN because correction positive controls not yet independently executed; require real AssertionError/test ID/nonzero rc after all controls pass."
+      "evidence": "Negative mutation not executed in correction-2. Historical correction-1 four mutations caught genuine AssertionError rc1; require all correction-2 positive controls PASS before rerunning mutations."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py mut-time",
       "result": "NOT_RUN",
-      "evidence": "Mutation NOT_RUN because correction positive controls not yet independently executed; require real AssertionError/test ID/nonzero rc after all controls pass."
+      "evidence": "Negative mutation not executed in correction-2. Historical correction-1 four mutations caught genuine AssertionError rc1; require all correction-2 positive controls PASS before rerunning mutations."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py mut-reverse",
       "result": "NOT_RUN",
-      "evidence": "Mutation NOT_RUN because correction positive controls not yet independently executed; require real AssertionError/test ID/nonzero rc after all controls pass."
+      "evidence": "Negative mutation not executed in correction-2. Historical correction-1 four mutations caught genuine AssertionError rc1; require all correction-2 positive controls PASS before rerunning mutations."
     }
   ],
   "remaining_work": [
-    "Run corrected exact-head discovery and both standalone controls in fresh subprocesses, recording true return codes, executed test IDs and output.",
-    "Only after positive controls all PASS, separately run four mutation modes; require genuine named AssertionError and nonzero rc rather than import/harness errors.",
-    "Verify accounting.py, tests/test_accounting.py, maker_exit_lab.py, tests/test_x2.py byte-identical to parent; r7 extra lifecycle code remains independently unaccepted until verified.",
-    "No full A01-A16, LIQ, account/day-halt, 24-grid, X1/X3 strategy, queue/backtest or trading acceptance."
+    "Main CIO independently run correction-2 exact-HEAD discovery, entry CONTROL and exit CONTROL in clean subprocesses, confirm new missing-VWAP test ID and actual results.",
+    "Only after all positives PASS, execute mut-lookahead, mut-touch, mut-time, mut-reverse separately and confirm AssertionError, named test ID and nonzero exit code.",
+    "Confirm frozen accounting.py, tests/test_accounting.py, maker_exit_lab.py, tests/test_x2.py and read-only exit_lifecycle.py / tests/test_exit_lifecycle.py unchanged.",
+    "The scoped lifecycle repair is not full A01-A16, LIQ, account/day-halt, market24grid, strategy/backtest or paper/live acceptance."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Read PR75 latest exact HEAD; confirm r7-correction-1 source_head_sha and byte-identical parent four files. From engineering/maker_x2 run python3 -m unittest discover -s tests -v then python3 tests/test_entry_lifecycle.py control and python3 tests/test_exit_lifecycle.py control as fresh processes. If all pass, run mut-lookahead, mut-touch, mut-time, mut-reverse individually; report actual AssertionError/test ID/exit code.",
-    "if_pass": "Accept only bounded r7 lifecycle and pre-fill X1 admission after clean independent positive controls and expected negative mutations; do not infer A01-A16/market/trading acceptance.",
-    "if_fail": "Report exact failing input/test ID and trace for bounded same-PR correction without changes to frozen parent economics.",
+    "verify_now": "Read latest exact PR75 HEAD and source_head_sha, verify only three substantive allowed files changed. From engineering/maker_x2 run python3 -m unittest discover -s tests -v; python3 tests/test_entry_lifecycle.py control; python3 tests/test_exit_lifecycle.py control as independent subprocesses. Check discoverable test_a06_x1_missing_vwap_target_blocks_before_any_entry rejects absent VWAP before constructor/fill and zero ledger; if all controls PASS then individually run four mutation commands and log genuine AssertionError/test ID/rc.",
+    "if_pass": "Accept only r7 correction-2 missing-target boundary after exact-source positive controls and caught mutations; no whole-product/trading PASS.",
+    "if_fail": "Return precise failing test, traceback and bounded same-PR correction request; preserve read-only/protected files.",
     "blockers": []
   }
 }
