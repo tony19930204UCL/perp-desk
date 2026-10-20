@@ -4,56 +4,66 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-X2-GH-REVISE-r6-correction-1",
+  "instruction_id": "MAKER-V3-GH-LIFECYCLE-r7",
   "status": "READY_FOR_REVIEW",
-  "source_head_sha": "d7131142ce7f1340d14d88233bb9ccae5e14e9a0",
-  "summary": "Minimal r6 correction to test_weighted_partial_entry_and_tp1_economics: exact Maker entry fees .0840 plus exit fee .04181100 = .12581100; realized gross .9450, realized net .819189 and cash 1000.819189. Corrected four independent expected Decimal literals and one stale comment in BE test (.9 gross, .11982 fees). Did not modify exit engine, README, accounting.py, original accounting tests or strategy/risk/quantity/fee parameters.",
+  "source_head_sha": "c6c770f5b930275f38a652c0968e41e69e8cf26d",
+  "summary": "Created pure-stdlib callable causal minute entry_lifecycle.py and exit_lifecycle.py composing frozen MakerX2 and independent accounting.replay; added handwritten entry/exit positive controls and four negative mutation modes, documented APIs, run commands, A02/A03/A04/A06/A08/A10/A11 matrix. Entry handles ATR14/VWAP60, offsets, TTL, cross, resting gap, partial fill and risk. Exit handles frozen X1, X2, X3 adverse close/TTL and 4h passive withdrawal, open/tail and funding ledger. No r7 Python tests or CI executed, no full A01-A16 acceptance.",
   "changed_files": [
-    "engineering/maker_x2/tests/test_x2.py",
+    "engineering/maker_x2/entry_lifecycle.py",
+    "engineering/maker_x2/exit_lifecycle.py",
+    "engineering/maker_x2/tests/test_entry_lifecycle.py",
+    "engineering/maker_x2/tests/test_exit_lifecycle.py",
+    "engineering/maker_x2/README.md",
     ".relay/mailbox/maker-v3-x2.json"
   ],
   "tests": [
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "No Python execution in this GitHub connector turn. Prior independent r6 clean-clone discovery: 33 unique, 32 PASS, 1 FAIL in test_weighted_partial_entry_and_tp1_economics; original 20 accounting tests PASS. This prior failure is not a new run."
+      "evidence": "GitHub contents-only authorized writes; no Python process execution in this turn. Parent r6 accepted separately but not evidence for r7."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py control",
+      "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py control",
       "result": "NOT_RUN",
-      "evidence": "No Python execution. Prior independent r6 standalone CONTROL: 13 unique, 12 PASS, 1 FAIL in the same test; repeat against corrected SHA."
+      "evidence": "GitHub contents-only authorized writes; no Python process execution in this turn. Parent r6 accepted separately but not evidence for r7."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-fee",
+      "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py control",
       "result": "NOT_RUN",
-      "evidence": "Not run in this correction; operator must first obtain both CONTROL PASS, then verify genuine AssertionError, test ID and nonzero rc in a fresh subprocess."
+      "evidence": "GitHub contents-only authorized writes; no Python process execution in this turn. Parent r6 accepted separately but not evidence for r7."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-funding",
+      "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py mut-lookahead",
       "result": "NOT_RUN",
-      "evidence": "Not run in this correction; operator must first obtain both CONTROL PASS, then verify genuine AssertionError, test ID and nonzero rc in a fresh subprocess."
+      "evidence": "Negative mode committed but NOT_RUN: require both positive controls PASS then real AssertionError with executed test ID and nonzero rc in fresh process."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-be",
+      "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py mut-touch",
       "result": "NOT_RUN",
-      "evidence": "Not run in this correction; operator must first obtain both CONTROL PASS, then verify genuine AssertionError, test ID and nonzero rc in a fresh subprocess."
+      "evidence": "Negative mode committed but NOT_RUN: require both positive controls PASS then real AssertionError with executed test ID and nonzero rc in fresh process."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-duplicate",
+      "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py mut-time",
       "result": "NOT_RUN",
-      "evidence": "Not run in this correction; operator must first obtain both CONTROL PASS, then verify genuine AssertionError, test ID and nonzero rc in a fresh subprocess."
+      "evidence": "Negative mode committed but NOT_RUN: require both positive controls PASS then real AssertionError with executed test ID and nonzero rc in fresh process."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py mut-reverse",
+      "result": "NOT_RUN",
+      "evidence": "Negative mode committed but NOT_RUN: require both positive controls PASS then real AssertionError with executed test ID and nonzero rc in fresh process."
     }
   ],
   "remaining_work": [
-    "Main CIO reruns both CONTROL entrypoints on exact corrected GitHub HEAD, recording actual unique tests, return codes and failure output.",
-    "Only if both PASS, run four mutation modes in fresh subprocesses; require genuine AssertionError, named test ID and nonzero return code.",
-    "Only X2 component is under review; A01-A16 full acceptance, 24-grid, LIQ, full-account/day-halt and X1/X3 remain excluded."
+    "Run exact-source discovery and both standalone entry/exit controls, record actual exit code and unique IDs; review any failures and correct only on PR75.",
+    "Only after all CONTROL PASS, execute four distinct negative mutation commands and require genuine assertion failures with test IDs and rc1; import/harness errors are not mutation success.",
+    "Verify immutable accounting.py, tests/test_accounting.py, maker_exit_lab.py and tests/test_x2.py blob hashes remain unchanged.",
+    "This does not establish LIQ/full A09, account/day-kill A12, full A01-A16, X1/X3 strategy PASS, market 24-grid, real fill queues or paper/live readiness."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Fetch exact PR75 HEAD, confirm the four corrected literals and unchanged frozen accounting files, execute python3 -m unittest discover -s tests -v and python3 tests/test_x2.py control from engineering/maker_x2 in clean subprocesses; only when both pass, run mut-fee, mut-funding, mut-be and mut-duplicate individually with actual AssertionError/test ID/rc evidence.",
-    "if_pass": "Accept bounded corrected X2 unit only after genuine CONTROL passes and all four expected-failure mutations are caught; do not claim full A01-A16 or deployment readiness.",
-    "if_fail": "Provide exact failing test ID and traceback for a bounded same-PR correction; do not change frozen accounting or engine parameters.",
+    "verify_now": "Fetch exact final branch source, verify four accepted parent files byte-identical. cd engineering/maker_x2 and run python3 -m unittest discover -s tests -v; python3 tests/test_entry_lifecycle.py control; python3 tests/test_exit_lifecycle.py control, each fresh process, recording stdout, rc and test IDs. Only if controls truly pass, run mut-lookahead, mut-touch, mut-time, mut-reverse independently and inspect genuine AssertionError/rc.",
+    "if_pass": "Accept only bounded r7 entry/exit lifecycle unit after independent tests and mutation controls; no full strategy, LIQ, account or market evaluation PASS.",
+    "if_fail": "Report precise failing inputs/assertions with executable evidence and request bounded same-PR correction; do not rewrite accepted parent economics.",
     "blockers": []
   }
 }
