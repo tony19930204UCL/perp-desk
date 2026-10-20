@@ -6,8 +6,8 @@
   "task_id": "MAKER-V3-X2",
   "instruction_id": "MAKER-X2-GH-REVISE-r6",
   "status": "READY_FOR_REVIEW",
-  "source_head_sha": "4a714e81e77c028880ae582cf2d6c691d97d2543",
-  "summary": "Repaired four demonstrated r5 gaps without touching accounting.py or tests/test_accounting.py: high-precision independent Decimal50 BE expectation, clean-clone standalone import path, test_ discovery of duplicate/cancel race and stale SL orders, and exact-limit Maker fills with inclusive 2bp OHLC low penetration at both TPs (no favorable price improvement). Kept all strategy/funding/risk/fees unchanged. This is source delivery, NOT new execution acceptance.",
+  "source_head_sha": "ab3052129bdf0e7de423e54bd95731a834b1407e",
+  "summary": "Repaired four demonstrated r5 gaps without touching accounting.py or tests/test_accounting.py: high-precision independent Decimal50 BE expectation, clean-clone standalone import path, test_ discovery of duplicate/cancel race and stale SL orders, and exact-limit Maker fills with inclusive 2bp OHLC low penetration at both TPs (no favorable price improvement). Kept all strategy/funding/risk/fees unchanged. This is source delivery, NOT new execution acceptance. Follow-up corrections on the same permitted files: correct TP2 boundary synthetic OHLC geometry and avoid reducing Maker order quantity before duplicate fill ID validation. All r6 tests remain NOT_RUN.",
   "changed_files": [
     "engineering/maker_x2/maker_exit_lab.py",
     "engineering/maker_x2/tests/test_x2.py",
