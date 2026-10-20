@@ -39,8 +39,26 @@ def main(argv=None):
     if args.self_test:
         return 0 if self_test() else 1
     if args.verify:
-        if not args.output:
-            parser.error("--verify requires --output")
+        if not (args.output and args.input and args.config):
+            parser.error("--verify requires --config --input --output")
+        with open(Path(args.output)/"manifest.json",
+                  encoding="utf-8") as handle:
+            manifest=json.load(handle)
+        if sha256_file(args.input)!=manifest["input_manifest_sha256"]:
+            raise X2Error("input manifest hash changed since run")
+        if sha256_file(args.config)!=manifest["config_sha256"]:
+            raise X2Error("config hash changed since run")
+        if source_manifest(Path(__file__).resolve().parent)!=manifest["source_sha256"]:
+            raise X2Error("source files changed since run")
+        with open(args.input,encoding="utf-8") as handle:
+            paths=json.load(handle)
+        for symbol,files in paths.items():
+            if symbol not in manifest["input"]:
+                raise X2Error("unknown verify symbol")
+            for kind in ("bars","funding"):
+                if sha256_file(files[kind])!=manifest["input"][symbol][
+                      kind+"_sha256"]:
+                    raise X2Error("historical "+kind+" input changed")
         print(json.dumps(verify_run(args.output),sort_keys=True))
         return 0
     if not (args.config and args.input and args.output):
