@@ -15,12 +15,12 @@ from signal_features import eligible_decisions
 D = Decimal
 
 
-def _account(config):
+def _account(config, rates=None):
     required = ("capital", "per_trade_margin", "leverage", "daily_loss_limit",
                 "loss_streak_limit", "halt_hours", "liq_pct", "liq_fee_pct")
     if any(key not in config for key in required):
         raise X2Error("explicit offline account config missing required values")
-    return OfflineAccount(**{key: config[key] for key in required})
+    return OfflineAccount(**{key: config[key] for key in required}, rates=rates)
 
 
 def _funding_for_bar(events, cursor, bar_end, prev_close, close):
@@ -43,7 +43,7 @@ def _funding_for_bar(events, cursor, bar_end, prev_close, close):
 
 def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                 account_config, evaluation_start, evaluation_end,
-                signal_times=None, delay_minutes=0, eligible=None):
+                signal_times=None, delay_minutes=0, eligible=None, rates=None):
     """Return actual event stream and account results for one isolated cell.
 
     signal_times=None means S1/S2; supplied times mean matched placebo.
@@ -55,8 +55,6 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
         raise X2Error("invalid frozen grid cell")
     if ttl not in (2, 5) or delay_minutes not in (0, 2):
         raise X2Error("invalid frozen TTL/delay")
-    if "entry_qty" not in account_config:
-        raise X2Error("entry_qty must be explicitly configured")
     if eligible is None:
         eligible = eligible_decisions(bars, framework)
     desired = None if signal_times is None else set(signal_times)
@@ -74,7 +72,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                    if evaluation_start <= r["signal_time"] < evaluation_end}
         if desired - present:
             raise X2Error("matched timestamp not in causal eligible universe")
-    account = _account(account_config)
+    account = _account(account_config, rates=rates)
     events = []
     counts = Counter()
     funding_index = 0
@@ -146,7 +144,10 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                 status = account.submit(
                     symbol, r["signal_id"], end, str(r["signal_high"]),
                     str(r["signal_close"]), str(r["atr14"]), k, ttl,
-                    str(account_config["entry_qty"]), exit_style,
+                    str((D(account_config["per_trade_margin"]) *
+                         D(account_config["leverage"])) /
+                        (D(r["signal_high"]) + max(D(k)*D(r["atr14"]),
+                               D(r["signal_close"])*D(".0002")))), exit_style,
                     signal_vwap=str(r["vwap60"]) if exit_style=="X1" else None)
                 counts["attempts"] += 1
                 counts[status] += 1
