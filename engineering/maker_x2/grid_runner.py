@@ -16,16 +16,20 @@ SYMBOLS=("ETHUSDT","BTCUSDT")
 
 
 def run_grid(dataset, account_config, start, end, sample_count=6000,
-             delay_minutes=0):
+             delay_minutes=0, eligible_cache=None):
     cells=[]
     sources={}
+    cache={} if eligible_cache is None else eligible_cache
     for symbol in SYMBOLS:
         if symbol not in dataset:
             raise X2Error("missing symbol dataset "+symbol)
         bars=dataset[symbol]["bars"]
         funding=dataset[symbol]["funding"]
         for frame in FRAMES:
-            eligible=eligible_decisions(bars,frame)
+            key=(symbol,frame)
+            if key not in cache:
+                cache[key]=eligible_decisions(bars,frame)
+            eligible=cache[key]
             selection=select_matched(eligible,frame,start,end,
                                      count=sample_count)
             sources[symbol+":"+str(frame)]=selection
