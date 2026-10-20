@@ -39,8 +39,9 @@ def cfg():
 
 class Control(unittest.TestCase):
     def test_self_test_real_account_cash_and_mtm(self):
+        # Do not recursively invoke CLI --self-test from inside its own
+        # full discovery gate; CLI independently wraps this suite.
         self.assertTrue(self_test())
-        self.assertEqual(main(["--self-test"]),0)
 
     def test_binance_csv_and_funding_mark_proxy_input(self):
         with tempfile.TemporaryDirectory() as d:
