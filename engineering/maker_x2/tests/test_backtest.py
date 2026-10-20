@@ -15,6 +15,8 @@ from market_replay import replay_cell
 from backtest_controls import self_test
 from backtest_reports import persist_run, verify_run
 from backtest_entry import main
+from account_lifecycle import OfflineAccount
+from account_ledger import replay_account
 from maker_exit_lab import X2Error
 
 
@@ -84,6 +86,27 @@ class Control(unittest.TestCase):
         self.assertEqual(a["ledger"]["qty"],"0")
         self.assertEqual(a["counts"].get("attempts"),1)
         self.assertEqual(len(a["events"]),2)
+
+    def test_handderived_full_x1_flat_episode_reconciles(self):
+        account=OfflineAccount("1000","50","5","5",2,"24",".0145",".0005")
+        self.assertEqual(account.submit("FICTION","one",0,"100","100",
+                          "1",".25",2,"2","X1",signal_vwap="99"),
+                         "PENDING")
+        first={"ts":0,"open":"100","high":"100.27005",
+               "low":"99","close":"100","closed":True}
+        second={"ts":60000,"open":"100","high":"100.1",
+                "low":"98.9","close":"99","closed":True}
+        account.bar(first,entry_qty="2")
+        self.assertEqual(account.bar(second,maker_fill=True),"CLOSED")
+        independent=replay_account("1000",account.events)
+        self.assertEqual(independent["gross"],D("2.5"))
+        self.assertEqual(independent["fees"],D(".0797"))
+        self.assertEqual(independent["cash"],D("1002.4203"))
+        self.assertEqual(independent["reserved"],D("0"))
+        self.assertEqual(independent["qty"],D("0"))
+        self.assertEqual(independent["episodes"][-1]["net"],D("2.4203"))
+        self.assertFalse(account.snapshot()["slot"])
+        self.assertEqual([e["type"] for e in account.events].count("fill"),2)
 
     def test_reports_verify_raw_artifact_tampering(self):
         with tempfile.TemporaryDirectory() as d:
