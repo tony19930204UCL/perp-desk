@@ -43,7 +43,7 @@ def _funding_for_bar(events, cursor, bar_end, prev_close, close):
 
 def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                 account_config, evaluation_start, evaluation_end,
-                signal_times=None, delay_minutes=0):
+                signal_times=None, delay_minutes=0, eligible=None):
     """Return actual event stream and account results for one isolated cell.
 
     signal_times=None means S1/S2; supplied times mean matched placebo.
@@ -57,7 +57,8 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
         raise X2Error("invalid frozen TTL/delay")
     if "entry_qty" not in account_config:
         raise X2Error("entry_qty must be explicitly configured")
-    eligible = eligible_decisions(bars, framework)
+    if eligible is None:
+        eligible = eligible_decisions(bars, framework)
     desired = None if signal_times is None else set(signal_times)
     queue = {}
     signals = []
