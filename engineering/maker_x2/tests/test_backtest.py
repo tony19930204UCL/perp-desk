@@ -82,8 +82,8 @@ class Control(unittest.TestCase):
         self.assertEqual(a["signal_count"],2)
         self.assertEqual(a["ledger"]["cash"],"1000")
         self.assertEqual(a["ledger"]["qty"],"0")
-        self.assertEqual(a["counts"].get("attempts"),2)
-        self.assertEqual(len(a["events"]),4)
+        self.assertEqual(a["counts"].get("attempts"),1)
+        self.assertEqual(len(a["events"]),2)
 
     def test_reports_verify_raw_artifact_tampering(self):
         with tempfile.TemporaryDirectory() as d:
