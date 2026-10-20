@@ -58,20 +58,28 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
     if eligible is None:
         eligible = eligible_decisions(bars, framework)
     desired = None if signal_times is None else set(signal_times)
-    queue = {}
-    signals = []
-    for r in eligible:
-        ts = r["signal_time"]
-        if ts < evaluation_start or ts >= evaluation_end:
-            continue
-        if (r["triggered"] if desired is None else ts in desired):
-            queue.setdefault(ts + delay_minutes * MINUTE, []).append(r)
-            signals.append(r)
-    if desired is not None:
-        present = {r["signal_time"] for r in eligible
-                   if evaluation_start <= r["signal_time"] < evaluation_end}
-        if desired - present:
-            raise X2Error("matched timestamp not in causal eligible universe")
+    # Stream prepared decisions without materializing years of signal objects.
+    from bounded_history import PreparedDecisions
+    streamed = isinstance(eligible, PreparedDecisions)
+    if streamed:
+        iterator = iter(eligible)
+        pending_record = next(iterator, None)
+        signal_count = 0
+    else:
+        queue = {}
+        signals = []
+        for r in eligible:
+            ts = r["signal_time"]
+            if ts < evaluation_start or ts >= evaluation_end:
+                continue
+            if (r["triggered"] if desired is None else ts in desired):
+                queue.setdefault(ts + delay_minutes * MINUTE, []).append(r)
+                signals.append(r)
+        if desired is not None:
+            present = {r["signal_time"] for r in eligible
+                       if evaluation_start <= r["signal_time"] < evaluation_end}
+            if desired - present:
+                raise X2Error("matched timestamp not in causal eligible universe")
     account = _account(account_config, rates=rates)
     events = []
     counts = Counter()
@@ -162,7 +170,22 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
         if result not in ("EMPTY", "OPEN", "PENDING", "PARTIAL"):
             counts[result] += 1
         # After the minute closes, accept only signals that are now known.
-        for r in queue.get(end, ()):
+        if streamed:
+            arrivals = []
+            while (pending_record is not None and
+                   pending_record["signal_time"] + delay_minutes*MINUTE <= end):
+                r = pending_record
+                pending_record = next(iterator, None)
+                if (evaluation_start <= r["signal_time"] < evaluation_end and
+                    (r["triggered"] if desired is None else
+                     r["signal_time"] in desired)):
+                    if r["signal_time"] + delay_minutes*MINUTE == end:
+                        arrivals.append(r)
+                        signal_count += 1
+            current_arrivals = arrivals
+        else:
+            current_arrivals = queue.get(end, ())
+        for r in current_arrivals:
             counts["signals"] += 1
             if account.snapshot()["slot"] or account.stale:
                 counts["slot_or_gap_blocked"] += 1
@@ -259,7 +282,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
     return {"symbol": symbol, "framework": framework, "k": k, "ttl": ttl,
             "exit": exit_style, "delay_minutes": delay_minutes,
             "matched": signal_times is not None,
-            "signal_count": len(signals), "counts": dict(counts),
+            "signal_count": signal_count if streamed else len(signals), "counts": dict(counts),
             "account": {key: str(v) if isinstance(v, D) else v
                         for key,v in snap.items() if key != "ledger"},
             "ledger": _json_value(ledger), "episodes": completed,
