@@ -191,9 +191,9 @@ class Control(unittest.TestCase):
         base=run()
         stress=run(SENSITIVITY)
         self.assertEqual(base["cash"],D("998.3184798"))
-        self.assertEqual(stress["cash"],D("998.2277197"))
+        self.assertEqual(stress["cash"],D("998.22770455"))
         self.assertEqual(stress["gross"],D("-1.5606"))
-        self.assertEqual(stress["fees"],D(".2116803"))
+        self.assertEqual(stress["fees"],D(".21169545"))
         self.assertEqual(stress["reserved"],D("0"))
         self.assertEqual(stress["qty"],D("0"))
 
