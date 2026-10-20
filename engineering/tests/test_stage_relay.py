@@ -13,6 +13,7 @@ import unittest
 MODULE = Path(__file__).resolve().parents[1] / "stage_relay.py"
 spec = importlib.util.spec_from_file_location("stage_relay", MODULE)
 relay = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = relay
 spec.loader.exec_module(relay)
 
 
@@ -540,19 +541,30 @@ class RelayTests(unittest.TestCase):
         self.assertEqual(result["classification"], "EXPLORATORY_NOT_ACCEPTED")
         output = Path(maker["output_dir"])
         original = (output / "results.json").read_bytes()
+        manifest_path = output / "manifest.json"
+        original_manifest = manifest_path.read_bytes()
         for mutation in ("duplicate", "missing", "wrong_hash"):
             report = json.loads(original)
             if mutation == "duplicate":
                 report["delay2_cells"][1]["cell_id"] = report["delay2_cells"][0]["cell_id"]
                 relay.atomic_json(output / "results.json", report)
+                updated_manifest = relay.raw_json(manifest_path)
+                updated_manifest["artifacts"]["results.json"] = relay.digest((output / "results.json").read_bytes())
+                relay.atomic_json(manifest_path, updated_manifest)
             elif mutation == "missing":
                 (output / "delay2/00_matched.json").unlink()
             else:
                 (output / "cost1_5x/00_strategy.json").write_text("{}")
-            with self.assertRaises(relay.RelayError):
-                bridge.verified_rows(maker)
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(relay.RelayError) as caught:
+                    bridge.verified_rows(maker)
+                if mutation == "duplicate":
+                    self.assertIn("duplicate/missing/wrong scenario cell", str(caught.exception))
+                else:
+                    self.assertIn("artifact mismatch", str(caught.exception))
             if mutation == "duplicate":
                 (output / "results.json").write_bytes(original)
+                manifest_path.write_bytes(original_manifest)
             elif mutation == "missing":
                 self.maker_outputs_reset_single(graph, "delay2/00_matched.json")
             else:
@@ -610,9 +622,24 @@ class RelayTests(unittest.TestCase):
     def test_maker_installed_adopt_requires_capacity_and_exact_argv(self):
         installed, graph = self.maker_installed_fixture()
         self.assertEqual(self.noarg(installed)[1]["action"], "WAITING_CAPACITY_ACCEPTANCE")
-        with self.assertRaises(relay.RelayError):
+        with self.assertRaises(FileNotFoundError):
             relay.adopt(self.config, self.state, self.evidence / "nonexistent-owner.json", 60)
+        import subprocess
+        running = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(8)"])
+        self.addCleanup(lambda: (running.poll() is None and running.kill(), running.wait()))
+        ident, condition = relay.process_identity(running.pid)
+        self.assertEqual(condition, "LIVE")
+        identity_path = self.evidence / "adoption-candidate.json"
+        relay.atomic_json(identity_path, dict(ident, argv=graph["maker_bridge"]["run_argv"], operator="synthetic fixture"))
+        with self.assertRaisesRegex(relay.RelayError, "WAITING_CAPACITY_ACCEPTANCE"):
+            relay.adopt(self.config, self.state, identity_path, 60)
         self.maker_capacity_accept(graph)
+        bad = relay.raw_json(identity_path)
+        bad["argv"] = [sys.executable, "-c", "pass"]
+        relay.atomic_json(identity_path, bad)
+        with self.assertRaisesRegex(relay.RelayError, "adopted argv differs"):
+            relay.adopt(self.config, self.state, identity_path, 60)
+        self.assertIsNone(relay.raw_json(self.state)["owner"])
         code, result = self.noarg(installed)
         self.assertEqual(result["tick"]["action"], "READY_MISSING_OWNER")
         self.assertEqual(relay.raw_json(self.state)["status"], "WAITING_ADOPTION")
@@ -684,6 +711,28 @@ class RelayTests(unittest.TestCase):
         self.assertEqual(again["action"], "READY_OPERATOR_REFLECTION")
         self.assertEqual(again["reflection"]["historical_output_count"], 144)
         self.assertNotIn("trading_conclusion", again["reflection"])
+
+
+    def test_maker_python_unbuffered_exact_argv(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("maker_stage_bridge", MODULE.with_name("maker_stage_bridge.py"))
+        bridge = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bridge)
+        _, graph = self.maker_installed_fixture()
+        maker = graph["maker_bridge"]
+        run = maker["run_argv"]
+        maker["run_argv"] = [run[0], "-u"] + run[1:]
+        maker["verify_argv"] = [run[0], run[1], "--verify"] + run[3:]
+        self.assertEqual(bridge.verify_argv(maker), maker["verify_argv"])
+        maker["verify_argv"] = [run[0], "-u", run[1], "--verify"] + run[3:]
+        self.assertEqual(bridge.verify_argv(maker), maker["verify_argv"])
+        maker["run_argv"][1] = "-X"
+        with self.assertRaisesRegex(relay.RelayError, "unsupported flag"):
+            bridge.verify_argv(maker)
+        maker["run_argv"] = [run[0], "-u"] + run[1:]
+        maker["verify_argv"] = [run[0], "-u", "/other/backtest_entry.py", "--verify"] + run[3:]
+        with self.assertRaisesRegex(relay.RelayError, "interpreter or source entrypoint mismatch"):
+            bridge.verify_argv(maker)
 
 
 if __name__ == "__main__":
