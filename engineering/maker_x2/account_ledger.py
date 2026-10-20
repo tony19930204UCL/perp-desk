@@ -95,7 +95,9 @@ def replay_account(initial_cash, events):
                 if not isinstance(sid, str) or not sid or sid in settlements:
                     raise X2Error("duplicate settlement")
                 settlements.add(sid)
-                amount = -qty * number(event["mark"], "mark", True) * (
+                # Account qty is POSITIVE for a short; canonical replay
+                # uses negative signed_qty. Positive rates credit shorts.
+                amount = qty * number(event["mark"], "mark", True) * (
                     number(event["rate"], "rate"))
                 cash += amount
                 funding -= amount
