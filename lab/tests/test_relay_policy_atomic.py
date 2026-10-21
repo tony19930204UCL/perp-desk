@@ -185,8 +185,8 @@ class AtomicDispatchTests(unittest.TestCase):
                 dispatch_job=self.job, dispatch_dir=self.first, instruction_id="one",
                 event_fn=lambda *a,**kw: None)
         self.assertEqual(effects, [])
-        self.assertEqual(len(dispatch.inspect(dict(self.job, write_allowlist=["changed.py"]),
-                                          self.first, "one")["cards"]), 1)
+        self.assertEqual(dispatch.inspect(dict(self.job, write_allowlist=["changed.py"]),
+                                          self.first, "one")["phase"], "SENT_CONFIRMED")
 
     def test_no_source_click(self):
         carrier = self._carrier()
