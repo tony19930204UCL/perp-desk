@@ -364,6 +364,8 @@ def permission(
                      chat=dispatch_job.get("dispatch_chat_url"))
     event_fn('APPROVAL_INTENT', operation=op['path'].rsplit('/', 1)[-1], file=op['args'].get('path'), content_hash=hashlib.sha256(op['args'].get('content', '').encode()).hexdigest())
     cdp_fn('(()=>{const b=[...document.querySelectorAll("button")].find(e=>e.innerText==="關閉對話框");if(b)b.click();return true})()')
+    pd.approve_check(dispatch_job, dispatch_dir, instruction_id, fingerprint,
+                     chat=dispatch_job.get("dispatch_chat_url"))
     cdp_fn('(()=>{const b=[...document.querySelectorAll("button")].filter(e=>e.innerText.startsWith("允許一次"));if(b.length!==1)throw Error("Ambiguous approval");b[0].click();return true})()')
     after = snapshot_fn()
     event_fn('APPROVAL_READBACK', prompt_gone='要允許 ChatGPT 使用 GitHub 嗎？' not in after.get('text', ''))
