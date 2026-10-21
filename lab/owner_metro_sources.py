@@ -4,7 +4,7 @@ import os
 import re
 import stat
 import time
-from owner_activity import _read_bytes
+from owner_activity import _read_bytes, _source_meta, _stamp
 
 _NAMES = ("directive", "stage", "heartbeat", "launch", "adoption", "results", "liquidations")
 _PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$")
@@ -43,12 +43,26 @@ def load(root, now_ms, limit=1048576):
             health[key] = {"state": "unbound"}
             continue
         try:
-            raw, _ = _read_bytes(root, paths[key], min(limit, 1048576))
-            obj = json.loads(raw, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
-            if not isinstance(obj, dict):
-                raise ValueError("non-object")
+            signature = _source_meta(root, paths[key])
+            if signature[2] > min(limit, 1048576):
+                raise ValueError("over limit")
+            cached = _CACHE.get((root, key))
+            if cached is not None and cached[0] == signature:
+                obj = cached[1]
+            else:
+                raw, _ = _read_bytes(root, paths[key], min(limit, 1048576))
+                obj = json.loads(raw, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+                if not isinstance(obj, dict):
+                    raise ValueError("non-object")
+                _CACHE[(root, key)] = (signature, obj)
+                if len(_CACHE) > 48:
+                    _CACHE.pop(next(iter(_CACHE)))
             document[key] = obj
-            health[key] = {"state": "available"}
+            at = _stamp(obj.get("updated_at") or obj.get("at"))
+            age = None if at is None else max(0, now_ms - at)
+            health[key] = {"state": "stale" if age is not None and age > 300000 else
+                           "available" if age is not None else "unverifiable",
+                           "age_ms": age}
         except FileNotFoundError:
             health[key] = {"state": "missing"}
         except (OSError, ValueError, TypeError, UnicodeDecodeError):
@@ -76,6 +90,8 @@ def processes(launch, adoption, now_ms, proc_root="/proc"):
                 or (pid, ticks) in seen):
             continue
         seen.add((pid, ticks))
+        if item.get('wrapper') is True:
+            continue
         state = "unknown"
         elapsed = rss = None
         try:
@@ -117,6 +133,8 @@ def processes(launch, adoption, now_ms, proc_root="/proc"):
             state = "gone"
         out.append({"id": name, "kind": item.get("kind") if item.get("kind") in
                     ("compute", "collector", "lease", "observer", "coordination") else "unknown",
+                    "product": item.get("product") if item.get("product") in
+                    ("maker", "collectors", "relay") else None,
                     "state": state, "pid": pid if state == "verified" else None,
                     "elapsed_s": elapsed, "rss_bytes": rss})
     return out
