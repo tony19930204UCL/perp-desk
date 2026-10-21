@@ -368,7 +368,11 @@ def permission(
                      chat=dispatch_job.get("dispatch_chat_url"))
     cdp_fn('(()=>{const b=[...document.querySelectorAll("button")].filter(e=>e.innerText.startsWith("允許一次"));if(b.length!==1)throw Error("Ambiguous approval");b[0].click();return true})()')
     after = snapshot_fn()
-    event_fn('APPROVAL_READBACK', prompt_gone='要允許 ChatGPT 使用 GitHub 嗎？' not in after.get('text', ''))
+    gone = '要允許 ChatGPT 使用 GitHub 嗎？' not in after.get('text', '')
+    if gone:
+        pd.reconcile(dispatch_job, dispatch_dir, instruction_id, receipt='APPROVED',
+                     chat=dispatch_job.get('dispatch_chat_url'))
+    event_fn('APPROVAL_READBACK', prompt_gone=gone)
     return True
 
 class InstructionCarrier:
