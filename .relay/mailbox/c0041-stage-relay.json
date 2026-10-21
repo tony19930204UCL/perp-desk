@@ -4,48 +4,101 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "RELAY-POLICY-ATOMIC",
-  "instruction_id": "RELAY-POLICY-ATOMIC-r4-wire",
+  "instruction_id": "RELAY-POLICY-ATOMIC-u2-initial",
   "status": "WAITING_CI",
-  "source_head_sha": "957dfb7314eec38496e1f1a539f79af9a4e09fe0",
-  "summary": "Fixture-only wire contract correction on PR76: changed four positive serialized permission-card operations from invalid synthetic MCP name to sanitized slash-qualified /connector_sanitized/link_sanitized/update_file, preserving identical repo/branch/path/content args and all original 15 test method IDs/assertions. Added test_wire_gate (<=25 chars); _carrier verifies actual public approve_operation admits sanitized slash wire and rejects original mcp__GitHub__update_file with identical args before lifecycle tests. No production, secret, host policy or permission code changed. Prior r3 exact-head 15 tests 9PASS/5ERROR/1FAIL and push39597078702/PR39597085787 FAILED; not overwritten or claimed fixed by execution.",
+  "source_head_sha": "9e0a5d88778220847b49bac9d9d6dc02322f8bb7",
+  "summary": "Original predefined Unit2 initial source implementation: authoritative approval_transaction.changed_policy enforces exact scope, syntax-aware Python identifier and diagnostic-constant positions (no ordinary string/comment exemption), genuine secret/PAT/private key/.env precedence, narrow structured schema-v2 mailbox provenance, HARD600 create full lines and update added+deleted. strict_policy/diff_policy share this source guard, max_lines default 600 and explicit >600 rejected; public carrier approve_operation uses same guard for slash-qualified paths; live strict and diff helpers invoke it. profile_runner and relay_dispatch_worker consume actual instruction-template.txt with <=180 suggested diff, <=25 new names and scoped hard 600. Added six scoped finite test methods to existing file (22 total), preserving original16 and Unit1 status. No shell, live approval, deployment or market source touched. Exact-head independent validation required before Unit2 acceptance.",
   "changed_files": [
+    "engineering/relay/approval_transaction.py",
+    "engineering/relay/engineering_instruction_carrier.py",
+    "engineering/relay/relay-allow-card.py",
+    "engineering/relay/relay-allow-if-diff-clean.py",
+    "engineering/relay/profile_runner.py",
+    "engineering/relay/relay_dispatch_worker.py",
     "lab/tests/test_relay_policy_atomic.py",
     ".relay/mailbox/c0041-stage-relay.json"
   ],
   "tests": [
     {
-      "command": "python3 -m py_compile lab/tests/test_relay_policy_atomic.py",
+      "command": "python3 -m py_compile engineering/relay/approval_transaction.py engineering/relay/engineering_instruction_carrier.py engineering/relay/relay-allow-card.py engineering/relay/relay-allow-if-diff-clean.py engineering/relay/profile_runner.py engineering/relay/relay_dispatch_worker.py lab/tests/test_relay_policy_atomic.py",
       "result": "NOT_RUN",
-      "evidence": "No shell execution; test file changed only via GitHub update_file."
+      "evidence": "File-only GitHub update_file operations; includes hyphenated installed helpers, all changed source compilation must be performed independently."
     },
     {
       "command": "python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v",
       "result": "NOT_RUN",
-      "evidence": "16 test methods authored: all original 15 plus test_wire_gate; new gate checks public approve_operation positive sanitized slash and negative malformed MCP, and is invoked before lifecycle checks. No execution or downstream lifecycle result observed."
+      "evidence": "22 authored test methods: all original16 retained, new create/update boundary, public boundary, parsed identifier, genuine sensitive content and template tests. No local execution or CI evidence from this turn."
     },
     {
-      "command": "Both new exact-head push and pull_request CI",
+      "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
       "result": "NOT_RUN",
-      "evidence": "No post-r4 CI conclusion available. Prior exact-head r3 runs 39597078702 and 39597085787 FAILED, retained as historical evidence."
+      "evidence": "Existing 26 stage tests untouched, not re-executed; previously independently green before U2."
+    },
+    {
+      "command": "U2 final exact-head push and pull_request CI",
+      "result": "NOT_RUN",
+      "evidence": "Neither post-mailbox U2 CI conclusion inspected; prior accepted Unit1 runs39601322945 /39601331990 succeeded but do not establish U2 result."
+    }
+  ],
+  "coverage": [
+    {
+      "live_entrypoint": "approval_transaction.strict_policy/diff_policy/approve",
+      "candidate": "approval_transaction.changed_policy",
+      "mapping": "Same module; strict/diff default 600, explicit max_lines bounded, create/update included"
+    },
+    {
+      "live_entrypoint": "relay-allow-card.py",
+      "candidate": "approval_transaction.changed_policy",
+      "mapping": "Skill strict installed helper imports sibling approval_transaction; no independent token/line bypass"
+    },
+    {
+      "live_entrypoint": "relay-allow-if-diff-clean.py",
+      "candidate": "approval_transaction.changed_policy",
+      "mapping": "Skill fallback helper imports sibling policy, caller max 600; not a second permissive rule"
+    },
+    {
+      "live_entrypoint": "engineering_instruction_carrier.permission and approve_operation",
+      "candidate": "approval_transaction.changed_policy",
+      "mapping": "Public slash-qualified card admission imports sibling transaction and requires scoped policy"
+    },
+    {
+      "live_entrypoint": "profile_runner.Relay.dispatch",
+      "candidate": "instruction-template.txt",
+      "mapping": "Reads sibling template; renders real job fields before carrier send"
+    },
+    {
+      "live_entrypoint": "relay_dispatch_worker.main",
+      "candidate": "instruction-template.txt",
+      "mapping": "Reads sibling template; writes bounded prompt under job directory before page IO send"
+    },
+    {
+      "live_entrypoint": "relay-poll.py and auto_allow.py",
+      "candidate": "relay-allow-if-diff-clean.py",
+      "mapping": "Previously accepted explicit numeric 600 propagated; now helper enforces same shared policy"
+    },
+    {
+      "live_entrypoint": "relay-drive.py approval",
+      "candidate": "engineering_instruction_carrier.permission",
+      "mapping": "Uses public carrier permission checker with centralized policy"
     }
   ],
   "remaining_work": [
-    "Main independently compile delivered tests; run 16 finite tests and report which lifecycle assertions were reached, especially six formerly PERMISSION_SCOPE_BLOCKED cases; preserve exact failures if any new failure is exposed.",
-    "Main verify all production tree blobs unchanged relative to base 2f2240a4551185d3ea3f5c3f9257b63b66bec2cd, and both new exact-head push/PR CI successful before Unit1 acceptance.",
-    "Unit2 INITIAL remains: hard600 changed-line create/update/default/caller propagation, syntax-aware identifier exceptions with comment/literal negatives and true secret/PAT/private-key/.env priority, 180/200/238/600/601 boundaries and instruction template use.",
-    "Unit3 INITIAL remains: actual two sender subprocess effect race, owner expiry/restart/UNKNOWN, independent product parallelism, isolated installed stdlib CDP/Chromium acceptance and all ten live entrypoint installation mappings.",
-    "No installation, deployment, PR75 mutation, market execution or reflection evidence. Entire product still NOT_PROVEN."
+    "Main verify every changed actual Python file compiles, including hyphenated helpers; execute 22 focused tests with complete 180/200/238/600/601 create/update and public checker matrices. Fix any real failures only after parent decision; do not claim PASS without execution.",
+    "Main examine AST/token and secret precedence negatives plus actual source/line limitations, current receipt/expiry/scope and Unit1 dedup invariants, then independently verify both exact-head push and pull_request CI.",
+    "U3 INITIAL not done: two true effectful subprocess senders in different jobdirs same product, distinct-product concurrency, UNKNOWN/death/lease/restart/duplicate completion/scope-mutation, installed stdlib Chromium/CDP with executable override and full ten-entrypoint+sibling install mapping.",
+    "Full-product acceptance requires original importer/noarg supervisor stage compatibility, independent CI, backups, exact-byte installed readback and real browser validation; no candidate deployment or approving itself.",
+    "No PR75/market/live/paper changes; market and operator reflection remain NOT_PROVEN."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Compile tests and run python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v. Confirm positive sanitized slash admission, negative mcp__GitHub__update_file rejection, then reached original 15 assertion outcomes; compare protected production blobs to r3 base and verify both new exact-head CI conclusions.",
-    "if_pass": "Accept only fixture-only Unit1 wire correction after all finite checks and dual CI, then proceed to separately predefined Unit2/Unit3 initial work, without deployment.",
-    "if_fail": "Preserve exact new reached traceback/current HEAD; stop and return parent decision, no production change or automatic fifth correction.",
+    "verify_now": "Inspect U2 exact HEAD and source/coverage matrix, compile changed Python entrypoints, run python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v (22 cases) and dual new exact-head push/PR CI. Check create/update 180/200/238/600/601, explicit 601 limit denied, syntax-position positives vs literal/comment/invalid negatives, true PAT/sk/private key/.env priority, Unit1 original 16 preserved and instruction template read by normal send paths.",
+    "if_pass": "Accept scoped Unit2 source only after independent compile/finite tests/exact dual CI; proceed to predefined Unit3 initial multi-process/browser/install mapping, no deployment yet.",
+    "if_fail": "Return precise traceback and exact HEAD to parent for evidence-based review; no automatic Unit2 correction or operation retry.",
     "blockers": [
-      "R4 tests and dual exact-head CI NOT_RUN in assistant turn",
-      "Production behavior not independently accepted from these fixtures",
-      "Unit2/Unit3 original integration and browser acceptance pending",
-      "Full unattended Maker market/reflection remains NOT_PROVEN"
+      "Unit2 tests/compile/CI NOT_RUN by assistant",
+      "Unit3 real effectful multi-process/Chromium installed acceptance pending",
+      "No exact-byte deployment or whole-product verification",
+      "Maker history/reflection remains NOT_PROVEN"
     ]
   }
 }
