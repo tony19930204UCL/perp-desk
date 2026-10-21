@@ -4,53 +4,65 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-X2-OVERCLOSE-r14-forensics-1",
+  "instruction_id": "MAKER-V3-X2-ACCOUNTING-AUTH-1",
   "status": "WAITING_CI",
-  "source_head_sha": "e2c20c96bf4f3476c5e813528b9241515e8a9b78",
-  "summary": "Bounded test-only correction of independently observed r14 synthetic fixture Decimal28 expected funding mismatch, and opt-in source-bound original-market single-cell forensic in tests/test_overclose_regression.py. Expected funding/gross/fees/cash now computed using explicit Decimal50 without tolerance, rounding or production changes. Both earlier immutable base91ec6eb8 and r14 candidate6b646d7 ran 2 IDs, failed same earliest funding assertion and never reached over-close guard; they remain historical FAIL. Forensic accepts existing local --config/--input with optional exact source --base-dir, explicit symbol/framework/k/TTL/exit/scenario/matched and finite --max-bars/--max-events under 5GiB. It uses original loading, validated SQLite bar/features, causal account replay, and unchanged OfflineAccount/ShortEntry/ShortExit/account_ledger. On first genuine unchanged X2Error('over-close') in _sync it emits lossless exact original event/qty/fees/funding/reservation and cell, source and context provenance then re-raises; absent error returns INCOMPLETE rc3 rather than PASS. No actual raw history available in GitHub-only session. No original market root cause established, no financial/strategy/production changes, no source or tests outside allowlist edited.",
+  "source_head_sha": "bff810036ff7a682abbdbe4b0dc7ce513b7f4b5e",
+  "summary": "New explicitly authorized accounting producer repair after operator's FIRST_REAL_OVERCLOSE genuine immutable old market witness. ETHUSDT 1m k.25 TTL2 X1 baseline bar index145272 open_ts1704834720000; original sell qty 0.21922127435988758019877575879333720780837993677502, immediate same-bar hard-SL buy qty 0.2192212743598875801987757588; independent Decimal50 ledger detects true over-close. This proves original observed entry-risk producer precision truncation, NOT previous conjectured X2 TP as actual-market root cause. ShortEntry.process now preserves exact quantities in Decimal50. New producer-only reduce_execution admits requested vs available, records requested/executed/cancelled reason and cancels zero-open execution; ShortEntry hardSL and ShortExit X1/X2/X3 orders use this explicit audit, strict account_ledger.py/accounting.py never changed. Added synthetic real-account witnessed-quantity regression, true malformed external overbuy negative and reduce-only cancellation. Protected financial/risk/strategy defaults and all old tests remain unchanged. r14 old synthetic gross failure and all old market failures retained. GitHub file-only Python/CI/actual witness rerun NOT_RUN, no market acceptance claimed.",
   "changed_files": [
-    "engineering/maker_x2/tests/test_overclose_regression.py",
+    "engineering/maker_x2/entry_lifecycle.py",
+    "engineering/maker_x2/exit_lifecycle.py",
+    "engineering/maker_x2/tests/test_reduce_only.py",
     "engineering/maker_x2/README.md",
     ".relay/mailbox/maker-v3-x2.json"
   ],
   "tests": [
     {
+      "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_reduce_only.py -v",
+      "result": "NOT_RUN",
+      "evidence": "Source-only GitHub connector, not executed. Real first original-market witness supplied by operator is historical observation, not current candidate PASS."
+    },
+    {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_overclose_regression.py -v",
       "result": "NOT_RUN",
-      "evidence": "r14-forensics-1 corrected Python source was delivered via GitHub connector only; historical base and candidate each failed earliest funding literal prior to modification."
+      "evidence": "Source-only GitHub connector, not executed. Real first original-market witness supplied by operator is historical observation, not current candidate PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "No execution on this source head; original 107 control history not a new PASS."
+      "evidence": "Source-only GitHub connector, not executed. Real first original-market witness supplied by operator is historical observation, not current candidate PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --self-test",
       "result": "NOT_RUN",
-      "evidence": "No r14-forensics-1 execution."
+      "evidence": "Source-only GitHub connector, not executed. Real first original-market witness supplied by operator is historical observation, not current candidate PASS."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_overclose_regression.py --forensic --base-dir PRE_R14_MAKER_X2_DIR --config LOCAL_CONFIG.json --input LOCAL_INPUT_MANIFEST.json --expected-config-sha256 d0059f87572537078eb167871099061a5f5ce3a1dfad3b4b48942d89b300d794 --expected-input-sha256 a8801cfb32ee6fc31799b1d8d3f1627805b88904847ab5557b40f85395bf68b4 --symbol ETHUSDT --framework 1 --k .25 --ttl 2 --exit X1 --scenario baseline --max-bars 100000 --max-events 2000",
+      "command": "cd engineering/maker_x2 && python3 tests/test_capacity.py --differential --base-dir PRE_R13_MAKER_X2_DIR",
       "result": "NOT_RUN",
-      "evidence": "Operator-local original market data and private paths unavailable to this GitHub connector. A finite single cell may yield INCOMPLETE rc3, not market PASS; cell selection may need to follow forensic evidence."
+      "evidence": "Source-only GitHub connector, not executed. Real first original-market witness supplied by operator is historical observation, not current candidate PASS."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 tests/test_capacity.py --resource --minutes 30000",
+      "result": "NOT_RUN",
+      "evidence": "Source-only GitHub connector, not executed. Real first original-market witness supplied by operator is historical observation, not current candidate PASS."
     }
   ],
   "remaining_work": [
-    "Main CIO independently run corrected normal regression and examine whether it reaches genuine immutable-base over-close RED and candidate GREEN; if not, explicitly label synthetic fixture DOES_NOT_REPRODUCE.",
-    "Operator may run documented finite local single-cell --forensic against immutable original source and targeted cell, validating original config and input SHA; INCOMPLETE or any other exception is not an over-close reproduction.",
-    "Only the first genuine original over-close record with exact account/source events, before/after qty, fee/funding/reservation and context supports a causal production repair decision; no original root cause verified yet.",
-    "Preserve original market rc1 after2115.4119164943695s and original r14 both synthetic red at funding assertion; do not launch original whole 48x3 grid or claim PnL.",
-    "No production changes permitted in this continuation and no bypass of original accounting over-close guard. Independent push and PR CI status requires checking; no CI run claimed."
+    "Main CIO independently execute RED on immutable original witness and candidate GREEN using genuine financial source APIs, capture original signed quantity, after position, requested/executed/cancelled audit and exact Decimal50 fees/gross/funding/cash/margin.",
+    "Run all original 107+ discoverable controls, fix no source outside bounded allowlist; if synthetic earlier X2 gross assertion fails, preserve actual failure and use at most one evidence-based revision per authorization.",
+    "Execute old 20 negative mutations only AFTER every positive PASS, with executed test IDs, genuine AssertionError and rc1.",
+    "Independently rerun original financial differential and bounded representative resource probe, verify exact-head push and pull_request CI.",
+    "Only after finite positive/negative acceptance may operator run original full 48x3 historical BTC/ETH at unchanged 5GiB, 6000 samples, full dates and shipped --verify. No private input upload and no product/trading acceptance."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Pin exact source SHA and run the corrected 2-ID synthetic test plus full discovery. Confirm only tests/test_overclose_regression.py and README changed before mailbox, all production and old tests byte-identical. Run documented local one-cell forensic within strict 5GiB and bounded bars/events against immutable original source; preserve actual original event evidence. Treat INCOMPLETE as non-acceptance, not PASS.",
-    "if_pass": "Accept only a tested diagnostic capability. Establish genuine first historical over-close event before any separately authorized production correction or full market replay. Synthetic green alone is not an original market fix.",
-    "if_fail": "Report exact test/forensic trace, rc and identity; preserve original failures without guessing or relaxing over-close guard.",
+    "verify_now": "Pin full source_head_sha bff810036ff7a682abbdbe4b0dc7ce513b7f4b5e and compare allowlist diff only. Reexecute immutable original real-witness single-cell and new candidate single-cell, verify correct entry-risk producer proof. Run python3 -m unittest discover -s tests -v, new reduce-only tests, old 20 mutations, differential, and new source-bound CI. No success claim without actual output.",
+    "if_pass": "Admit only bounded engineering source fix, then operator executes authorized original full research under same resource/config/input constraints and verifies complete raw results; not strategy/PnL PASS.",
+    "if_fail": "Record exact failing ID/error/qty/fees and full source SHA; at most one evidence-based revision, otherwise architecture reassessment, no ledger guard weakening.",
     "blockers": [
-      "Corrected synthetic regression and actual-data forensic NOT_RUN on this source",
-      "Original first offending account event and root cause UNKNOWN",
-      "No accepted market result, no authorization to alter protected production"
+      "Current candidate Python and CI NOT_RUN",
+      "Original full historical run previously failed with entry-risk over-close and zero completed cells; new candidate not yet replayed",
+      "No verified historical PnL or deployment"
     ]
   }
 }
