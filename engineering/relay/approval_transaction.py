@@ -350,11 +350,11 @@ def strict_policy(op, job):
     return {"tool":tool, "path":a["path"], "changed_lines":None}
 
 
-def diff_policy(op, job, max_lines=4, fetch_base=None):
+def diff_policy(op, job, max_lines=600, fetch_base=None):
     tool, a, c = scoped(op, job)
     if tool != "update_file":
         raise PolicyRejected("DIFF_REQUIRES_UPDATE")
-    if not isinstance(max_lines, int) or not 0 < max_lines <= 200:
+    if not isinstance(max_lines, int) or not 0 < max_lines <= 600:
         raise PolicyRejected("DIFF_LIMIT_INVALID")
     if fetch_base is None:
         command = ["gh", "api", "-H", "Accept: application/vnd.github.raw",
@@ -428,7 +428,7 @@ def identity_key(chat, invocation):
             ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
 
 
-def approve(job_dir, mode="auto", max_lines=200, *, send=transport, fetch_base=None,
+def approve(job_dir, mode="auto", max_lines=600, *, send=transport, fetch_base=None,
             clock=utcnow, lock_timeout=8):
     """One serialized inspect -> expand -> details -> policy -> reread -> click -> readback.
 
