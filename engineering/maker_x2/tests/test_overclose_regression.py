@@ -88,14 +88,19 @@ class OvercloseControl(unittest.TestCase):
             second_fee=rest*tp2*D(".0002")
             fee=entry_fee+first_fee+second_fee
             funding_credit=qty*D("100")*D(".001")
+            # Materialize the signed expected value before leaving Decimal50.
+            expected_funding_cost=-funding_credit
+            self.assertEqual(expected_funding_cost,expected_funding)
             cash=D("1000")-entry_fee
             cash+=funding_credit
             cash+=first-first_fee
             cash+=second-second_fee
-        self.assertEqual(finished["gross"],gross)
-        self.assertEqual(finished["fees"],fee)
-        self.assertEqual(finished["funding_cost"],-funding_credit)
-        self.assertEqual(finished["cash"],cash)
+            # All independent arithmetic (including unary negation,
+            # quantity sums and sequential cash) stays inside Decimal50.
+            self.assertEqual(finished["gross"],gross)
+            self.assertEqual(finished["fees"],fee)
+            self.assertEqual(finished["funding_cost"],expected_funding_cost)
+            self.assertEqual(finished["cash"],cash)
         self.assertEqual(finished,replay_account("1000",a.events))
 
     def test_true_overclose_remains_rejected(self):
