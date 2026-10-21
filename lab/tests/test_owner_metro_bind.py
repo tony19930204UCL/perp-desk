@@ -4,7 +4,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from owner_metro_sources import load, processes_managed
+from owner_metro_sources import load, processes_managed, _source_stamp
 from owner_metro_model import read_metro
 
 
@@ -35,7 +35,8 @@ class MetroBind(unittest.TestCase):
             self.save(v)
             self.assertEqual(read_metro(str(self.root),now_ms=self.now)
                              ["kpis"]["liquidations"],2806)
-        for bad in (True,"1792625361639",float("nan"),1,4102444800000):
+        self.assertIsNone(_source_stamp({"ts_ms":float("nan")}))
+        for bad in (True,"1792625361639",1,4102444800000):
             v=dict(self.fixture)
             v.pop("ts_iso")
             v["ts_ms"]=bad
