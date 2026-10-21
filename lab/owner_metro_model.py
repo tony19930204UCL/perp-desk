@@ -26,8 +26,12 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576, proc_root=
     managed = processes_managed(paths.get("managed", []), docs, health,
                                 now_ms, proc_root=proc_root)
     verified = {p["pid"] for p in proc if p["state"] == "verified"}
-    proc += [p for p in managed if p["state"] != "verified" or p["pid"] not in verified
-             if p["state"] != "verified" or not verified.add(p["pid"])]
+    for candidate in managed:
+        if candidate["state"] == "verified":
+            if candidate["pid"] in verified:
+                continue
+            verified.add(candidate["pid"])
+        proc.append(candidate)
     directive, stage = docs.get("directive", {}), docs.get("stage", {})
     heartbeat, liq = docs.get("heartbeat", {}), docs.get("liquidations", {})
     outputs = docs.get("results", {})
