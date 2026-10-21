@@ -5,7 +5,7 @@ param(
     [int]$SavePng = 1,
     [switch]$DryRun,
     [switch]$DeadlineProbe,
-    [ValidateSet('connect','login','reload','output','cleanup','next')][string]$ProbeCase = 'connect',
+    [ValidateSet('connect','login','reload','output','hash','cleanup','next')][string]$ProbeCase = 'connect',
     [int]$ProbeMs = 150,
     [switch]$ComboWorker,
     [int]$ComboIndex = 0,
@@ -129,7 +129,7 @@ if (-not $ComboWorker -and -not $ProbeWorker -and -not $DryRun) {
         if (-not $w.timeout -and $w.rc -eq 0) {
             try { $v = $w.stdout.Trim() | ConvertFrom-Json -ErrorAction Stop } catch {}
         }
-        if ($v -and @($v.results).Count -eq 1 -and $v.results[0].coin -eq $c.coin -and $v.results[0].timeframe -eq $c.timeframe) {
+        if ($v -and @($v.results).Count -eq 1 -and $v.results[0].coin -eq $c.coin -and $v.results[0].timeframe -eq $c.timeframe -and $w.elapsed_ms -lt 60000) {
             $meta = $v
             $rec = $v.results[0]
             $rec.elapsed_ms = $w.elapsed_ms
