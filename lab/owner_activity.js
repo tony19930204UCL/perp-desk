@@ -117,8 +117,10 @@ function render(data) {
     (route.steps||[]).forEach(step=>{
       const stop=add(line,'div',undefined,'metro-stop '+step.state);
       add(stop,'span',step.state==='done'?'✓':'', 'dot');
-      add(stop,'span',step.title+' · '+({done:'已核驗',active:'運作中',waiting:'等待中',next:'下一站'}[step.state]||'未知'));
+      add(stop,'span',step.title+' · '+({done:'已核驗',active:'運作中',waiting:'等待中',next:'下一站',retest:'失敗重測中',user:'待使用者核准',failed:'已失敗'}[step.state]||'未知'));
     });
+    (route.steps||[]).filter(x=>x.note||x.item).forEach(x=>
+      add(card,'p',[x.item,x.note].filter(Boolean).join(' · '),'route-note'));
     add(card,'p','現在：'+(route.current||'未確認')+' · 下一步：'+(route.next||'未確認'),'route-note');
     add(card,'p','最後核驗：'+(route.verified_at||'未知'),'route-note');
     (route.steps||[]).filter(x=>x.evidence).forEach(x=>
@@ -127,7 +129,7 @@ function render(data) {
   const spot=clear('metroSpot'),maker=data.maker||{},results=maker.results||{};
   add(spot,'p','階段：'+(maker.phase||'未確認'));
   add(spot,'p','產品程序：'+(data.processes||[]).filter(p=>p.product==='maker'&&p.state==='verified')
-    .map(p=>p.kind+' PID '+p.pid+' · '+(p.elapsed_s??'NA')+' s · RSS '+(p.rss_bytes??'NA')+' bytes').join('；') || '沒有核實的程序');
+    .map(p=>p.kind+(p.identity==='managed'?' · cron 管理':'')+' PID '+p.pid+' · '+(p.elapsed_s??'NA')+' s · RSS '+(p.rss_bytes??'NA')+' bytes').join('；') || '沒有核實的程序');
   add(spot,'p','清算 heartbeat：'+(data.heartbeat?.at||'NA')+
     ' · age '+(data.heartbeat?.age_ms??'NA')+' ms');
   add(spot,'p',results.count>0?'初步結果 '+results.count+'/48，尚未全局驗收':'尚無有效 baseline cell');
