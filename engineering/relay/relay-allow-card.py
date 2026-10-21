@@ -75,6 +75,8 @@ ev('(()=>{const b=[...document.querySelectorAll("button")].filter(e=>e.innerText
        'if(b.length!==1)throw Error("Ambiguous approval");b[0].click();return true})()')
 time.sleep(4)
 gone = CARD not in snap()['text']
+if gone:
+    pd.reconcile(j, S, iid, receipt='APPROVED', chat=j.get('dispatch_chat_url'))
 open(S + '/approved_once_manual_%d.json' % int(time.time()), 'w').write(json.dumps({
     'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
     'by': 'operator allow-once (relay-allow-card.py)', 'tool': tool, 'file': a['path'],
