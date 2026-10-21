@@ -17,7 +17,8 @@ SOURCES = {
     "work": ("lab", "shared", "work_status.json"),
     "journal": ("lab", "journal", "entries.jsonl"),
 }
-MAX_ITEMS = 500
+MAX_ITEMS = 4096
+SMALL_ITEMS = 500
 ACTIVE = {"running", "testing", "verifying"}
 
 
@@ -128,7 +129,9 @@ def _read_bytes(root, parts, limit, tail=False):
 
 def _read_source(root, key, limit):
     try:
-        raw, offset = _read_bytes(root, SOURCES[key], limit, tail=(key == "journal"))
+        # Ledger has its own finite cap; non-ledger sources keep the old budget.
+        bound = 4 * 1024 * 1024 if key == "ledger" else limit
+        raw, offset = _read_bytes(root, SOURCES[key], bound, tail=(key == "journal"))
         if key == "journal":
             # A truncated first line and a partial last line are never trusted.
             if offset:
@@ -151,7 +154,8 @@ def _read_source(root, key, limit):
         if not isinstance(data, dict):
             raise ValueError("not object")
         key_required = {"ledger": "items", "cron": "jobs", "roadmap": "items", "work": "tasks"}[key]
-        if not isinstance(data.get(key_required), list) or len(data[key_required]) > MAX_ITEMS:
+        cap = MAX_ITEMS if key == "ledger" else SMALL_ITEMS
+        if not isinstance(data.get(key_required), list) or len(data[key_required]) > cap:
             raise ValueError("invalid collection")
         return data, "available"
     except FileNotFoundError:
