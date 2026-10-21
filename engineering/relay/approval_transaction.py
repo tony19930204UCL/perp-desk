@@ -7,10 +7,12 @@ DOM structures here are hypotheses awaiting authenticated live inspection.
 """
 from __future__ import annotations
 
+import ast
 import datetime as dt
 import difflib
 import fcntl
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -18,6 +20,7 @@ import re
 import secrets
 import subprocess
 import time
+import tokenize
 import product_dispatch as pd
 
 CARD = "要允許 ChatGPT 使用 GitHub 嗎？"
@@ -336,52 +339,131 @@ def scoped(op, job):
     return tool, a, c
 
 
-def strict_policy(op, job):
-    tool, a, c = scoped(op, job)
-    for word in LONG.findall(c):
-        ok = SNAKE.fullmatch(word) and sum(ch.isdigit() for ch in word) <= len(word) * .1
-        if not ok:
-            raise PolicyRejected("TOKEN_LIKE", fallback=True)
-    if STRICT_NEVER.search(c):
-        raise PolicyRejected("TOKEN_LIKE", fallback=True)
-    for match in STRICT_REGEX.finditer(c):
-        line = c[c.rfind("\n", 0, match.start()) + 1:c.find("\n", match.end()) if "\n" in c[match.end():] else len(c)]
-        if "re.compile" not in line and "SECRET" not in line.upper():
-            raise PolicyRejected("TOKEN_LIKE", fallback=True)
-    return {"tool":tool, "path":a["path"], "changed_lines":None}
+def _line_offsets(source):
+    offsets = [0]
+    for ln in source.splitlines(keepends=True):
+        offsets.append(offsets[-1] + len(ln))
+    return offsets
+
+
+def _syntax_allow(source):
+    """Only genuine parsed Python identifiers and reviewed detector regex."""
+    try:
+        tree = ast.parse(source)
+        tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
+    except (SyntaxError, IndentationError, tokenize.TokenError, ValueError) as exc:
+        raise PolicyRejected("INVALID_PY_SYNTAX") from exc
+    funs = {n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and n.name.startswith("test_")}
+    diagnostics = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for t in targets:
+                if isinstance(t, ast.Name) and re.fullmatch(r"[A-Z][A-Z0-9_]*", t.id):
+                    diagnostics.add(t.id)
+    allowed = funs | diagnostics
+    positions = {(t.start[0], t.start[1], t.string) for t in tokens
+                 if t.type == tokenize.NAME and t.string in allowed}
+    regex_spans = []
+    offsets = _line_offsets(source)
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name) and node.func.value.id == "re"
+                and node.func.attr == "compile" and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+                and re.search(r"\\[|\[[^\]]+\]|\{[0-9,]+\}|\(\?", node.args[0].value)):
+            arg = node.args[0]
+            regex_spans.append((offsets[arg.lineno - 1] + arg.col_offset,
+                                offsets[arg.end_lineno - 1] + arg.end_col_offset))
+    return positions, regex_spans
+
+
+def _source_guard(content, path):
+    if re.search(r"(?i)(?:^|[/\\])\.env(?:\.[A-Za-z0-9_-]+)?(?:$|[/\\])", path):
+        raise PolicyRejected("ENV_FILE_DENIED")
+    if re.search(r"(?i)(?<![A-Za-z0-9_])\.env(?:\.[A-Za-z0-9_-]+)?(?![A-Za-z0-9_])", content):
+        raise PolicyRejected("ENV_ACCESS_DENIED")
+    python_source = path.endswith(".py")
+    positions, regex_spans = _syntax_allow(content) if python_source else (set(), [])
+    offsets = _line_offsets(content)
+    def regex_rule(pos, value):
+        return bool(re.search(r"[\\\[\]{}()?*+]", value)
+                    and any(lo <= pos < hi for lo, hi in regex_spans))
+    for pattern in (STRICT_NEVER, DIFF_SECRET):
+        for hit in pattern.finditer(content):
+            if not regex_rule(hit.start(), hit.group()):
+                raise PolicyRejected("SECRET_DENIED")
+    for hit in LONG.finditer(content):
+        line = content.count("\n", 0, hit.start()) + 1
+        col = hit.start() - offsets[line - 1]
+        name = hit.group()
+        if python_source and (line, col, name) in positions:
+            continue
+        if regex_rule(hit.start(), name):
+            continue
+        if _mailbox_hash(content, path, hit.start(), name):
+            continue
+        raise PolicyRejected("TOKEN_LIKE")
+    return True
+
+
+def _mailbox_hash(content, path, at, token):
+    """Only schema-v2 mailbox source-head SHA, not arbitrary JSON strings."""
+    if not path.endswith(".json") or not re.fullmatch(r"[0-9a-f]{40}", token):
+        return False
+    try:
+        obj = json.loads(content)
+    except (ValueError, TypeError):
+        return False
+    if (not isinstance(obj, dict) or obj.get("schema_version") != 2
+            or obj.get("source_head_sha") != token or
+            not path.endswith("mailbox/" + path.rsplit("/", 1)[-1])):
+        return False
+    before = content[:at]
+    return bool(re.search(r'"source_head_sha"\s*:\s*"\s*$', before))
+
+
+def _fetch_base(job, path):
+    cmd = ["gh", "api", "-H", "Accept: application/vnd.github.raw",
+           "repos/%s/contents/%s?ref=%s" % (job["repository"], path, job["branch"])]
+    try:
+        reply = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise InfraError("BASE_FETCH_FAILURE") from exc
+    if reply.returncode:
+        raise InfraError("BASE_FETCH_NONZERO")
+    return reply.stdout
+
+
+def changed_policy(op, job, max_lines=600, fetch_base=None):
+    """Single hard ceiling for create/update, strict/diff/carrier."""
+    if type(max_lines) is not int or not 0 < max_lines <= 600:
+        raise PolicyRejected("DIFF_LIMIT_INVALID")
+    tool, args, content = scoped(op, job)
+    _source_guard(content, args["path"])
+    if tool == "create_file":
+        lines = len(content.splitlines())
+    else:
+        base = (fetch_base or _fetch_base)(job, args["path"])
+        if not isinstance(base, str):
+            raise InfraError("BASE_INVALID")
+        changes = (x for x in difflib.unified_diff(
+            base.splitlines(), content.splitlines(), lineterm="", n=0)
+                   if x[:1] in "+-" and x[:3] not in ("+++", "---"))
+        lines = sum(1 for _ in changes)
+    if not 0 < lines <= max_lines:
+        raise PolicyRejected("DIFF_SIZE")
+    return {"tool": tool, "path": args["path"], "changed_lines": lines}
+
+
+def strict_policy(op, job, max_lines=600, fetch_base=None):
+    return changed_policy(op, job, max_lines, fetch_base)
 
 
 def diff_policy(op, job, max_lines=600, fetch_base=None):
-    tool, a, c = scoped(op, job)
-    if tool != "update_file":
-        raise PolicyRejected("DIFF_REQUIRES_UPDATE")
-    if not isinstance(max_lines, int) or not 0 < max_lines <= 600:
-        raise PolicyRejected("DIFF_LIMIT_INVALID")
-    if fetch_base is None:
-        command = ["gh", "api", "-H", "Accept: application/vnd.github.raw",
-                   "repos/%s/contents/%s?ref=%s" % (job["repository"], a["path"], job["branch"])]
-        try:
-            p = subprocess.run(command, capture_output=True, text=True, timeout=60)
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            raise InfraError("BASE_FETCH_FAILURE") from exc
-        if p.returncode:
-            raise InfraError("BASE_FETCH_NONZERO")
-        base = p.stdout
-    else:
-        base = fetch_base(job, a["path"])
-    if not isinstance(base, str) or not base:
-        raise InfraError("BASE_EMPTY")
-    lines = [ln for ln in difflib.unified_diff(base.splitlines(), c.splitlines(), n=0, lineterm="")
-             if ln[:1] in "+-" and ln[:3] not in ("+++", "---")]
-    if not 0 < len(lines) <= max_lines:
-        raise PolicyRejected("DIFF_SIZE")
-    for ln in (x[1:] for x in lines if x.startswith("+")):
-        if DIFF_SECRET.search(ln):
-            raise PolicyRejected("ADDED_SECRET")
-        for word in LONG.findall(ln):
-            if not re.fullmatch(r"[a-z][a-z0-9_]*", word):
-                raise PolicyRejected("ADDED_LONG_NONIDENTIFIER")
-    return {"tool":tool, "path":a["path"], "changed_lines":len(lines)}
+    return changed_policy(op, job, max_lines, fetch_base)
 
 
 def journal_path(job_dir):
@@ -482,7 +564,7 @@ def approve(job_dir, mode="auto", max_lines=600, *, send=transport, fetch_base=N
                 return {"status":"UNKNOWN", "reason":"PRIOR_APPROVAL_ATTEMPT",
                         "fingerprint":fp1}
             if mode == "strict":
-                audit = strict_policy(op1, j)
+                audit = strict_policy(op1, j, max_lines, fetch_base)
             elif mode == "diff":
                 audit = diff_policy(op1, j, max_lines, fetch_base)
             elif mode == "auto":
