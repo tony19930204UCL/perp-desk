@@ -55,7 +55,13 @@ class Relay:
         j=self.job
         pd.claim(j, self.root, instruction_id, chat=j.get('dispatch_chat_url'))
         contract={'repository':j['repository'],'pr_number':j['pr_number'],'branch':j['branch'],'task_id':j['task_id'],'instruction_id':instruction_id,'mailbox':j['mailbox'],'write_allowlist':j['write_allowlist']}
-        text=prompt+'\n\nMAIN BOUNDED CONTEXT: '+json.dumps(contract,ensure_ascii=False)+'\nNo merge/deploy/trade or changes outside allowlist. Write schema_version=2 mailbox with these exact IDs, real pre-mailbox source_head_sha, status, summary, changed_files, tests with actual command/result/evidence, remaining_work, and next_step_reminder {to:Main CIO,verify_now,if_pass,if_fail,blockers:[]}. Do not claim tests not run. Main owns independent acceptance.'
+        from pathlib import Path as _Path
+        template = (_Path(__file__).with_name('instruction-template.txt')).read_text(encoding='utf-8')
+        context = template.format(repository=j['repository'], pr_number=j['pr_number'],
+            branch=j['branch'], chat_url=j.get('dispatch_chat_url'),
+            instruction_id=instruction_id, write_allowlist=json.dumps(j['write_allowlist']),
+            valid_until=j['valid_until'])
+        text=context+'\n\n'+prompt+'\n\nMAIN BOUNDED CONTEXT: '+json.dumps(contract,ensure_ascii=False)+'\nNo merge/deploy/trade or changes outside allowlist. Write schema_version=2 mailbox with these exact IDs, real pre-mailbox source_head_sha, status, summary, changed_files, tests with actual command/result/evidence, remaining_work, and next_step_reminder {to:Main CIO,verify_now,if_pass,if_fail,blockers:[]}. Do not claim tests not run. Main owns independent acceptance.'
         new=j.get('conversation_mode','new')=='new'
         if new: snapshot=self._fresh_chat()
         else:
