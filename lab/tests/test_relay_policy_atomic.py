@@ -240,7 +240,7 @@ class AtomicDispatchTests(unittest.TestCase):
         self.assertTrue(carrier.permission(
             {"text": "要允許 ChatGPT 使用 GitHub 嗎？"}, **params))
         self.assertEqual(approvals, [True])
-        self.assertEqual(dispatch.inspect(self.job, self.first, "one")["phase"], "APPROVED")
+        self.assertEqual([x["phase"] for x in dispatch.inspect(self.job, self.first, "one")["cards"].values()], ["APPROVED"])
         with self.assertRaises(dispatch.DispatchBlocked):
             carrier.permission({"text": "要允許 ChatGPT 使用 GitHub 嗎？"}, **params)
         self.assertEqual(approvals, [True])
