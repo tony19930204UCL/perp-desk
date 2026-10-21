@@ -525,7 +525,7 @@ def approve(job_dir, mode="auto", max_lines=600, *, send=transport, fetch_base=N
                         "fingerprint":fp1}
             ledger = read_journal(ledger_file)
             pd.reconcile(j, path, ident[1], receipt="APPROVED",
-                         chat=j.get("dispatch_chat_url"))
+                         chat=j.get("dispatch_chat_url"), fingerprint=fp1)
             ledger["attempts"][key]["status"] = "READBACK_PROVEN"
             save_journal(ledger_file, ledger)
             return {"status":"APPROVED", "fingerprint":fp1, **audit}
