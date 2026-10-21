@@ -4,57 +4,63 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "RELAY-POLICY-ATOMIC",
-  "instruction_id": "RELAY-POLICY-ATOMIC-r0",
+  "instruction_id": "RELAY-POLICY-ATOMIC-r1",
   "status": "BLOCKED",
-  "source_head_sha": "6ca40a365c2fea8f1ff6082029e67f057cc34f3f",
-  "summary": "Partial bounded source delivery ONLY, not integrated acceptance: seeded original paths inspected, new shared durable cross-jobdir claim in engineering/relay/product_dispatch.py with PID/boot/start, scope/lease, unknown-send hold, 600 max-lines parameter in historical approval_transaction.py, source instruction template, initial six offline product-claim tests. CRITICAL: direct strict/diff scripts, carrier permission/send, page-IO worker/direct-send, profile_runner, auto_allow and noarg stage_relay are NOT all wired to shared product dispatch. Thus observed conflicting product dispatch remains possible; no live-effect atomic guarantee and no operator install authorization. No local execution, shell, browser or credential access.",
+  "source_head_sha": "b9c498d46d32c107c363bc33ccc67d1f3e48f703",
+  "summary": "One bounded r1 partially updates r0: fixes subprocess test invalid semicolon/try syntax, adds deterministic subprocess reap and on-disk test job scope, re-reads actual job.json and active_instruction.json in product claim/check, adds durable approval intent with independent PID delegated against positive send evidence, shortens new diagnostic names, propagates explicit 600 diff caller limits to auto_allow and relay-poll, bounds live diff helper maximum 600. IMPORTANT not a finished integrated repair: page IO send/worker/carrier/profile_runner/strict helper/noarg supervisor approval and dispatch effects still lack enforced shared claim; true narrow parsed-identifier and genuine secrets/env checks, create/update hard boundary, full browser harness and entrypoint coverage are not shipped. Do not deploy or claim atomic behavior.",
   "changed_files": [
     "engineering/relay/product_dispatch.py",
-    "engineering/relay/approval_transaction.py",
-    "engineering/relay/instruction-template.txt",
     "lab/tests/test_relay_policy_atomic.py",
+    "engineering/relay/auto_allow.py",
+    "engineering/relay/relay-poll.py",
+    "engineering/relay/relay-allow-if-diff-clean.py",
     ".relay/mailbox/c0041-stage-relay.json"
   ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v",
       "result": "NOT_RUN",
-      "evidence": "Six offline preliminary claim/scope/unknown-send tests authored but no shell execution. They do NOT constitute full installed-path/browser acceptance."
+      "evidence": "Six source-level tests modified, r0 operator reported 5 PASS and 1 syntax ERROR on exact old HEAD; no new r1 shell/CI evidence."
     },
     {
       "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
       "result": "NOT_RUN",
-      "evidence": "Original stage tests not run in this turn; source contracts not claimed verified."
+      "evidence": "Existing stage relay suite not executed here; stage_relay.py unchanged."
     },
     {
       "command": "python3 -m unittest discover -s lab/tests -v",
       "result": "NOT_RUN",
-      "evidence": "Existing lab tests not rerun. No new exact-head CI conclusion confirmed."
+      "evidence": "Not executed here."
     },
     {
-      "command": "Isolated real Chromium/CDP installed-layout end-to-end acceptance (no test entrypoint yet)",
+      "command": "Real isolated installed-profile Chromium/CDP browser entrypoint",
       "result": "NOT_RUN",
-      "evidence": "Requested browser-layout runner not implemented; no Chromium/approval/send action executed."
+      "evidence": "No runnable new browser harness delivered; no browser invocation or installed behavior tested. Existing stdlib CDP tools identified but not integrated."
+    },
+    {
+      "command": "Exact HEAD push and pull_request CI",
+      "result": "NOT_RUN",
+      "evidence": "No new run conclusions observed. r0 PR CI39577038980 FAILED and push39577033689 still running at user observation; no claim of r1 success."
     }
   ],
   "remaining_work": [
-    "BLOCKING: integrate claim/check/phase at EVERY actual page IO click, carrier sender/permission, worker, profile_runner, strict/diff and auto_allow approval route; prevent bypass and avoid nested approval lock deadlock.",
-    "BLOCKING: full immutable scope generation checks, explicit external adoption, safe PID/lease handoff and no uncertain-send reuse across separate processes; current product_dispatch.py has only partial contract tests and has not been tested.",
-    "BLOCKING: implement narrow real parsed identifier policy, genuine secret/ENV/PAT/private-key negatives, create/update propagation and 180/200/238/600/601 bounded change-line tests; current historical library upper limit change is not installed live policy.",
-    "BLOCKING: provide a runnable stdlib CDP/browser-layout harness using installed entrypoints and deterministic override, plus complete live-entrypoint installation coverage table; no silently skipped checks.",
-    "Main must inspect exact-head CI and all tests, require an independently authorized bounded follow-up before installing anything; no PR75 operations, deployment or live sends."
+    "Complete one atomic effectful claim through actual main/cron carrier send, profile_runner, relay_dispatch_worker and chatgpt_page_io click; attach exact scoped authenticated delegation and no-unknown-send retry. Current shared helper alone does not enforce effectful send uniqueness.",
+    "Enforce approved product owner and exact current scope immediately before strict/diff/carrier/approval clicks; keep auto_allow.lock separate and avoid deadlock, do not invent owner or bypass existing receipts.",
+    "Implement 600 changed-line create/update at every live strict/diff default/caller and narrowly parsed test/diagnostic identifiers with secret/PAT/private-key/.env priorities, preserving prior refusals.",
+    "Add finite 180/200/238/600/601 and secret/identifier tests and real subprocess effectful send plus installed-layout CDP browser suite and documented exact executable override/install mapping.",
+    "Do not install or deploy this incomplete patch; preserve PR75 and actual existing product owner, no replay or active send."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Treat current PR76 addition as partial BLOCKED, not deployable. Review diff, run preliminary offline suite only as diagnostic, require complete actual entrypoint integration and browser acceptance before independently accepting. No default/private path inference.",
-    "if_pass": "Do not accept as full repair on these tests alone. A separately authorized scope must finish and verify missing real send/approval integration and exact-head dual CI before installation.",
-    "if_fail": "Preserve exact failure and current HEAD, route to owner for bounded decision; never retry refused operations or actual sends automatically.",
+    "verify_now": "BLOCKED: treat r1 as partial, do not install. Independently inspect exact HEAD tests and security contracts, verify incomplete send/approval integrations, both push/PR CI, and establish separately scoped implementation decision if needed.",
+    "if_pass": "Passing partial claim tests is insufficient; require fully wired effectful sender/approval browser tests and dual exact-head CI before any installation.",
+    "if_fail": "Preserve exact failing logs and original refusal history; do not replay uncertain sends or deploy.",
     "blockers": [
-      "Actual effect entrypoints not integrated to shared lock",
-      "Changed-line policy only historical library, existing strict/diff callsites still 200",
-      "Secret-aware parsed identifier exception and full security boundary tests absent",
-      "Installed real-browser harness and full CI evidence absent",
-      "Current source not safe to install or claim unattended atomic behavior"
+      "Shared atomic lock not wired to effectful send and every approval click",
+      "Scoped strict + create path + parsed identifier/secret detection incomplete",
+      "No installed browser/CDP finite tests, full coverage table or all caller migration",
+      "r1 tests/CI NOT_RUN, not release-ready",
+      "Maker market workflow remains NOT_PROVEN"
     ]
   }
 }
