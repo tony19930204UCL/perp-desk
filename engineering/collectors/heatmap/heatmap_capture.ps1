@@ -5,7 +5,7 @@ param(
     [int]$SavePng = 1,
     [switch]$DryRun,
     [switch]$DeadlineProbe,
-    [ValidateSet('connect','login','reload','output','hash','cleanup','next')][string]$ProbeCase = 'connect',
+    [ValidateSet('connect','login','reload','output','hash','cleanup','next','ok')][string]$ProbeCase = 'connect',
     [int]$ProbeMs = 150,
     [switch]$ComboWorker,
     [int]$ComboIndex = 0,
@@ -55,7 +55,7 @@ function Invoke-Worker {
     $watch = [System.Diagnostics.Stopwatch]::StartNew()
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = (Get-Process -Id $PID).Path
-    $items = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath) + $WorkerArgs
+    $items = @('-NoProfile','-File',$PSCommandPath) + $WorkerArgs
     $psi.Arguments = ($items | ForEach-Object { '"' + ($_ -replace '"','\"') + '"' }) -join ' '
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true
@@ -98,7 +98,8 @@ if ($DeadlineProbe) {
         $w = Invoke-Worker -WorkerArgs @('-ProbeWorker','-ProbeCase',$name) -BudgetMs $ProbeMs
         $passed = ($name -eq 'ok' -and -not $w.timeout -and $w.rc -eq 0)
         $err = if ($passed) { $null } elseif ($w.timeout) { 'combo_timeout' } else { 'worker_error' }
-        $probeResults += @{ coin = $name; ok = $passed; error = $err; elapsed_ms = $w.elapsed_ms }
+        $detail = if ($err -eq 'worker_error') { ([string]$w.stderr).Trim() } else { '' }
+        $probeResults += @{ coin = $name; ok = $passed; error = $err; elapsed_ms = $w.elapsed_ms; detail = $detail.Substring(0, [Math]::Min(300, $detail.Length)) }
     }
     Send-JsonAndExit @{schema=1; status='deadline_probe'; budget_ms=$ProbeMs; results=$probeResults}
 }
