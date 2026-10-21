@@ -13,6 +13,7 @@ from maker_exit_lab import X2Error
 from signal_features import eligible_decisions
 
 D = Decimal
+BAR_PROGRESS = None
 
 
 def _account(config, rates=None):
@@ -94,8 +95,15 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
     equity_path = []
     last_daily_point = None
     for bar_i, bar in enumerate(bars):
-        if progress is not None and bar_i and bar_i % 100000 == 0:
-            progress(bar_i)
+        if bar_i and bar_i % 100000 == 0:
+            callback = progress if progress is not None else BAR_PROGRESS
+            if callback is not None:
+                scenario = ("cost1_5x" if rates is not None else
+                            "delay2" if delay_minutes else "baseline")
+                identity = f"{symbol}:{framework}m:{k}:{ttl}:{exit_style}"
+                callback("REPLAY", symbol, scenario+":"+identity+
+                         (":matched" if signal_times is not None else ":strategy"),
+                         bar_i, len(bars) if hasattr(bars,"__len__") else 0)
         start = bar["ts"]
         end = start + MINUTE
         if end < evaluation_start:
