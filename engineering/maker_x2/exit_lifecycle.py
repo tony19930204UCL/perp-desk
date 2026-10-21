@@ -6,7 +6,7 @@ synthetic explicit fills. Immutable accounting.replay checks actual events.
 from decimal import Decimal, localcontext
 
 from accounting import replay
-from entry_lifecycle import MINUTE, closed_bar
+from entry_lifecycle import MINUTE, closed_bar, reduce_execution
 from maker_exit_lab import MakerX2, X2Error, MAKER_FEE, TAKER_FEE, SLIP, number
 
 D = Decimal
@@ -57,6 +57,7 @@ class ShortExit:
         self.stale = False
         self.truncated = False
         self.history = []
+        self.reduce_audit = []
         self.unknown_future_funding = known_funding_cost is None
         if style == "X1":
             self.target = number(vwap, "signal_frozen_vwap", True)
@@ -97,6 +98,19 @@ class ShortExit:
             return self._on_bar(bar, settlements=settlements,
                                 maker_fill=maker_fill)
 
+    def _close_reduce(self, eid, ts, requested, price, liquidity, reason):
+        # Original MakerX2._exit still owns all strict fee/ledger validation.
+        available = replay(self.core.initial_cash,
+                           self.core.events)["remaining_qty"]
+        executed, cancelled = reduce_execution(
+            requested, available, self.reduce_audit, reason, ts)
+        if executed > ZERO:
+            self.core._exit(eid, ts, executed, price, liquidity, reason)
+        if cancelled > ZERO or executed == ZERO:
+            self.history.append(("REDUCE_ONLY_CANCEL", ts,
+                                 str(requested), str(cancelled)))
+        return executed
+
     def _on_bar(self, bar, settlements=(), maker_fill=False):
         if self.core.phase != "OPEN":
             raise X2Error("closed episode cannot process more bars")
@@ -128,7 +142,7 @@ class ShortExit:
             with localcontext() as ctx:
                 ctx.prec = 50
                 price = max(op, self.core.stop) * (1 + self.rates.slip)
-            self.core._exit("risk-" + str(end), end, self.core.qty, price,
+            self._close_reduce("risk-" + str(end), end, self.core.qty, price,
                             "taker", "SL_GAP" if op >= self.core.stop else "SL")
             self.status = "CLOSED_SL"
             self.pending = None
@@ -147,7 +161,7 @@ class ShortExit:
                     self.history.append(("POST_ONLY_REJECT", ts))
                     self.pending = None
                 elif maker_fill and lo <= order["limit"] * (1 - MAKER_FEE):
-                    self.core._exit(order["id"], end, self.core.qty,
+                    self._close_reduce(order["id"], end, self.core.qty,
                                     order["limit"], "maker", "X3")
                     self.pending = None
             elif maker_fill and lo <= order["limit"] * (1 - MAKER_FEE):
@@ -159,7 +173,7 @@ class ShortExit:
             amount = self.core.orders[order]
             limit = self.core.targets[order]
             if amount > ZERO and lo <= limit * (1 - MAKER_FEE):
-                self.core._exit("profit-" + str(end), end, amount,
+                self._close_reduce("profit-" + str(end), end, amount,
                                 limit, "maker", order)
                 if self.core.phase == "OPEN":
                     self.core.orders[order] = ZERO
