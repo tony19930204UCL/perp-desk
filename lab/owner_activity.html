@@ -30,11 +30,50 @@ footer{color:#a8b6c7;font-size:.8rem;margin-top:26px;line-height:1.6}
  .toolbar select{flex:1 1 calc(50% - 5px);min-width:0}
 }
 @media(max-width:430px){.metrics{gap:8px}.panel,.metric{padding:13px}.metric strong{font-size:1.45rem}.tabs{gap:10px}.shell{padding-inline:12px}}
+
+/* Owner Metro white product; old observer IDs retained for audit details. */
+:root{color-scheme:light;background:#F8FAFC;color:#0F172A}
+body{background:#F8FAFC;color:#0F172A}
+.panel,.metric{background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px}
+nav{border-color:#E2E8F0}nav .brand{color:#0F172A}
+nav .tabs a,.subtle,.meta,footer,.metric span,.count{color:#64748B}
+nav .tabs [aria-current=page]{color:#2563EB;border-color:#2563EB}
+.eyebrow{color:#475569}.notice{background:#EFF6FF;border-color:#3B82F6}
+button,input,select{background:white;color:#0F172A;border-color:#CBD5E1}
+.task{border-color:#E2E8F0}.task:hover,.task[data-selected=true]{background:#EFF6FF}
+.pill{background:#F1F5F9;color:#475569}.pill.ok{background:#DCFCE7;color:#166534}
+.pill.warning{background:#FEF3C7;color:#92400E}
+#metro{margin:18px 0 26px}
+#metro .layout{grid-template-columns:minmax(0,68fr) minmax(0,32fr)}
+.metro-routes{display:grid;gap:14px}
+.metro-route{border:1px solid #E2E8F0;border-radius:16px;background:#fff;padding:18px;min-width:0}
+.metro-route h3{margin:0 0 14px}
+.metro-line{display:flex;gap:0;overflow-x:auto;padding:12px 0 18px}
+.metro-stop{min-width:132px;flex:1;display:grid;grid-template-rows:auto auto;justify-items:center;gap:9px;text-align:center;font-size:.8rem;color:#475569;position:relative}
+.metro-stop:not(:last-child):after{content:'';position:absolute;top:10px;left:calc(50% + 13px);width:calc(100% - 26px);border-top:3px dashed #CBD5E1}
+.metro-stop.done:not(:last-child):after{border-top:3px solid #16A34A}
+.metro-stop .dot{width:23px;height:23px;border-radius:50%;border:2px solid currentColor;background:#fff;z-index:1;display:grid;place-items:center}
+.metro-stop.done .dot{color:white;background:#16A34A;border-color:#16A34A}
+.metro-stop.active .dot{width:28px;height:28px;border-width:6px;animation:metro-pulse 1.5s ease-in-out infinite}
+.metro-stop.waiting .dot{border-color:#F59E0B}
+.metro-route.blue .active .dot{color:#2563EB}.metro-route.green .active .dot{color:#16A34A}.metro-route.purple .active .dot{color:#9333EA}
+.metro-route .route-note{font-size:.83rem;color:#64748B;overflow-wrap:anywhere}
+@keyframes metro-pulse{50%{box-shadow:0 0 0 7px #94A3B833}}
+@media(prefers-reduced-motion:reduce){.metro-stop.active .dot{animation:none}.metro-stop:after{animation:none}}
+@media(max-width:850px){#metro .layout{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:430px){.metro-stop{min-width:120px}.metro-route{padding:12px}}
 </style><script src="/owner_activity.js" defer></script></head><body><div class="shell">
 <nav aria-label="Observer sections"><span class="brand">◈ PAPER / OBSERVER</span><div class="tabs"><a href="/dashboard_v2.html">帳務 / Account</a><a href="/owner_activity.html" aria-current="page">Monitor / 工作活動</a></div><span class="meta">READ-ONLY · LOCAL</span></nav>
 <header class="heading"><div><span class="eyebrow">OWNER ACTIVITY / OBSERVATION</span><h1>工作活動總覽</h1><p class="subtle">執行證據、計畫與排程分開呈現。沒有資料並不代表一切正常。</p></div><button id="refresh" type="button">↻ 重新整理</button></header>
 <div class="notice" id="status" role="status" aria-live="polite">等待唯讀來源…</div>
 <div class="metrics" id="metrics" aria-label="Observed counts"></div>
+<section id="metro" aria-label="Owner Metro live observation">
+<div class="metrics" id="metroKpis" aria-label="Live verified product counts"></div>
+<div class="layout"><div class="metro-routes" id="metroRoutes" aria-live="polite"></div>
+<aside class="stack"><section class="panel"><h2>Spotlight · Maker</h2><div id="metroSpot"></div></section>
+<section class="panel"><h2>來源狀態 / Verification</h2><div id="metroHealth"></div></section></aside></div>
+<details class="panel" id="metroHistory" style="margin-top:16px"><summary>歷史與凍結工作（<span id="metroHistoryCount">未知</span>）</summary><div id="metroHistoryRows"></div></details>
+</section>
 <main class="layout"><div class="stack">
 <section class="panel"><div class="inline"><h2>工作與承諾</h2><span class="count" id="visibleCount">—</span></div><div class="toolbar"><label class="sr-only" for="search">搜尋 C-ID 或標題</label><input id="search" type="search" placeholder="搜尋 C-ID / 工作名稱"><label class="sr-only" for="stateFilter">狀態</label><select id="stateFilter"><option value="">全部狀態</option><option value="running_verified">可驗證執行</option><option value="activity_unconfirmed">活動未確認</option><option value="blocked">受阻</option><option value="scheduled_idle">排程閒置</option><option value="missed">排程逾期</option><option value="failed">失敗</option><option value="engineering_accepted">工程已驗收</option></select><label class="sr-only" for="stageFilter">階段</label><select id="stageFilter"><option value="">全部階段</option></select></div><div id="tasks" aria-live="polite"></div></section>
 <section class="panel"><h2>階段與依賴</h2><p class="subtle">退出門檻及日期無權威來源時明確標為未提供，不使用完成百分比。</p><div id="stages"></div></section>
