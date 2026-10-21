@@ -49,7 +49,7 @@ class MetroUnit(unittest.TestCase):
             self.assertEqual(model["kpis"]["pending_decisions"], 7)
             self.assertEqual(len(model["routes"]), 3)
             self.assertEqual(model["kpis"]["processes"], 0)
-            self.assertEqual(model["kpis"]["maker_cells"], 0)
+            self.assertIsNone(model["kpis"]["maker_cells"])
             self.assertTrue(all(s["state"] != "done" for r in model["routes"]
                                 for s in r["steps"]))
             self.assertEqual(model["source_totals"]["union"], 1202)
