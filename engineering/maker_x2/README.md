@@ -1623,3 +1623,57 @@ establish market, performance, strategy or product PASS.
 historical research are NOT_RUN** in this GitHub-file-only session.
 No further routine rework is implicitly authorized; another
 failure requires architecture reassessment and explicit direction.
+
+
+## MAKER-V3-X2-ACCOUNTING-AUTH-1-r2 — final authorized fixture context repair
+
+Main independently measured r1 at exact HEAD
+`62345f6e8155a7bcbed6bab01e7c85e01d06eb41`:
+113 tests executed in 13.580 seconds, **112 PASS / 1 FAIL**, rc1.
+The original 107 controls and four reduce-only tests passed.
+The only failing assertion in
+`test_fractional_partial_tp_funding_exact_conservation` compared
+real Decimal50 funding cost against the test's unary negation of
+`funding_credit` after leaving its `localcontext`, thereby
+rounding that expected negative number to default Decimal28.
+This is an observed fixture-context leak, not a demonstrated
+production or independent ledger defect.
+
+This final explicitly parent-reassessed r2 changes **only** the
+existing fixture's expected/sign arithmetic boundary: it constructs
+`expected_funding_cost = -funding_credit` in the same Decimal50
+block as independent executed quantities, actual TP1/TP2 prices,
+sequential shrinking-basis gross, each Maker fee and cash. All
+linked expected comparisons remain inside that context, and the
+previous independently signed `expected_funding` is separately
+checked exactly. The unchanged raw independent replay equality
+and excessive external buy rejection remain strict. No
+quantize, epsilon, tolerance, assertion removal or copied
+production expected value is introduced. The complete forensic
+harness and all other source/tests remain untouched.
+
+Main CIO must first run from `engineering/maker_x2`:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 backtest_entry.py --self-test
+python3 tests/test_overclose_regression.py -v
+python3 tests/test_reduce_only.py -v
+```
+
+Acceptance is exactly **113 positive controls**, including all
+original 107; only after they pass run the original 20 separate
+mutation subprocesses with genuine named AssertionError/rc1 and
+verify exact-head push and pull_request CI. Per this r2 authority,
+the unchanged previous resource/differential evidence is reused
+and not rerun. If finite gates pass, Main may operate the original
+full ETH/BTC matrix with existing local inputs, unchanged 5 GiB,
+6000 shared samples, 9999 calendar bootstrap and shipped
+`--verify`. Neither a source commit nor CI success alone is
+market, strategy or deployment acceptance.
+
+**This r2 GitHub-only handback: Python, self-test, mutations, CI
+and historical market all NOT_RUN.** r1's exact one-FAIL outcome
+and every earlier failure remain historical. Another r2 failure
+requires architecture reassessment; no third correction is
+authorized.
