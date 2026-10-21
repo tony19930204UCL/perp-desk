@@ -16,6 +16,7 @@ from backtest_reports import persist_run, verify_run, source_manifest, BoundedRe
 from bounded_history import prepare_bars, prepare_decisions
 from tempfile import TemporaryDirectory
 from backtest_controls import discovery_gate
+import market_replay
 
 
 def load_config(path):
@@ -101,9 +102,10 @@ def execute_prepared(sources, config, input_path, config_path, output,
             def write_cell(scenario,meta,strategy,matched):
                 report.record(scenario,meta,strategy,matched)
                 heartbeat("CELL_DONE",symbol,scenario+":"+meta["cell_id"])
+            market_replay.BAR_PROGRESS = heartbeat
             _, selections = bounded_symbol(symbol,bars["bars"],
-                funding["events"],prepared,config,start,end,write_cell,count=sample_count,
-                progress=heartbeat)
+                funding["events"],prepared,config,start,end,write_cell,count=sample_count)
+            market_replay.BAR_PROGRESS = None
             samplers.update(selections)
             del prepared, bars, funding
     if source_manifest(root)!=source_before:
