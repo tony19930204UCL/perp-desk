@@ -43,7 +43,8 @@ class MetroUnit(unittest.TestCase):
             (root / "owner_metro/bindings.json").write_text(json.dumps({
                 "schema_version": 1, "sources": {"directive": "owner_metro/directive.json"}}))
             (root / "owner_metro/directive.json").write_text(json.dumps({
-                "pending_decisions": 7, "owner": "Synthetic"}))
+                "pending_decisions": 7, "owner": "Synthetic",
+                "updated_at": 1792065600}))
             model = read_metro(str(root), now_ms=1792065600000)
             self.assertEqual(model["source_totals"]["ledger"], 1202)
             self.assertEqual(model["kpis"]["pending_decisions"], 7)
