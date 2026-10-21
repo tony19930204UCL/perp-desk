@@ -242,7 +242,7 @@ def assertion_kill(result, selector):
     # -14, timeouts, import failures and unittest ERROR are never kills.
     if code is None or code <= 0 or "ERROR:" in output:
         return False
-    match = re.search(r"^FAIL: (\\w+) \\(test_liq_collector\\.TestLiqCollector\\)\\s*$",
+    match = re.search(r"^FAIL: (\w+) \(test_liq_collector\.TestLiqCollector\.\1\)\s*$",
                       output, re.MULTILINE)
     return (match is not None and match.group(1) == selector
             and "AssertionError:" in output and "FAILED (failures=" in output)
