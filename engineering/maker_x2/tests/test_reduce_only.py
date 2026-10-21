@@ -22,6 +22,8 @@ class ReduceOnlyControl(unittest.TestCase):
         a=account()
         self.assertEqual(a.submit("FICTION","witness",0,"100","100","1",
                          ".25",2,Q,"X1",signal_vwap="99"),"PENDING")
+        entry=a.entry
+        self.assertIsNotNone(entry)
         result=a.bar(bar(0,"100","100.9","99.9","100"),entry_qty=Q)
         self.assertEqual(result,"CLOSED_SL")
         events=[e for e in a.events if e["type"]=="fill"]
@@ -30,10 +32,17 @@ class ReduceOnlyControl(unittest.TestCase):
         self.assertEqual(a.ledger()["qty"],D(0))
         self.assertEqual(a.ledger()["reserved"],D(0))
         self.assertEqual(a.ledger(),replay_account("1000",a.events))
-        self.assertTrue(any(v["type"]=="REDUCE_ONLY" and
-                            v["requested"]==Q and v["executed"]==Q and
-                            v["cancelled"]=="0" for v in a.entry.audit)
-                        if a.entry else True)
+        audits=[v for v in entry.audit if isinstance(v,dict)
+                and v.get("type")=="REDUCE_ONLY"]
+        self.assertEqual(len(audits),1)
+        self.assertEqual(audits[0]["reason"],"ENTRY_HARD_SL")
+        self.assertEqual((D(audits[0]["requested"]),
+                          D(audits[0]["executed"]),
+                          D(audits[0]["cancelled"])),(D(Q),D(Q),D(0)))
+        self.assertEqual(a.ledger()["fees"], sum(
+            (D(e["qty"])*D(e["price"])*
+             (D(".0002") if e["liquidity"]=="maker" else D(".0005"))
+             for e in events),D(0)))
 
     def test_true_external_excess(self):
         events=[{"type":"reserve","id":"reserve","seq":0,"ts":0,
@@ -50,6 +59,34 @@ class ReduceOnlyControl(unittest.TestCase):
         with self.assertRaisesRegex(X2Error,"over-close"):
             replay_account("1000",events)
 
+
+    def test_x2_partial_flat(self):
+        a=account()
+        self.assertEqual(a.submit("FICTION","scale",0,"100","100","1",
+                                  ".25",2,"2","X2"),"PENDING")
+        self.assertEqual(a.bar(bar(0,"100","100.27005","99.9","100"),
+                               entry_qty="2"),"FILLED")
+        exit_state=a.exit
+        self.assertIsNotNone(exit_state)
+        self.assertEqual(a.bar(bar(60000,"100","100","99.5","99.8"),
+                               maker_fill=True),"OPEN")
+        self.assertEqual(a.ledger()["qty"],D("1"))
+        self.assertEqual(a.bar(bar(120000,"99.4","99.5","99","99.2"),
+                               maker_fill=True),"CLOSED")
+        self.assertEqual(a.ledger()["qty"],D(0))
+        self.assertEqual(a.ledger()["reserved"],D(0))
+        self.assertIsNone(a.exit)
+        self.assertEqual(a.ledger(),replay_account("1000",a.events))
+        audits=exit_state.reduce_audit
+        self.assertEqual(len(audits),2)
+        self.assertEqual([v["reason"] for v in audits],["tp1","tp2"])
+        for v in audits:
+            self.assertEqual((D(v["requested"]),D(v["executed"]),
+                              D(v["cancelled"])),(D("1"),D("1"),D(0)))
+        self.assertTrue(all(D(v)==0 for v in exit_state.core.orders.values()))
+        self.assertEqual(exit_state.core.qty,D(0))
+        self.assertIsNone(exit_state.pending)
+
     def test_requested_execution_cancel(self):
         audit=[]
         with localcontext() as ctx:
@@ -57,7 +94,9 @@ class ReduceOnlyControl(unittest.TestCase):
             req=D(Q)+D(".0000000000000000000000000001")
         executed,cancelled=reduce_execution(req,D(Q),audit,"TEST",60000)
         self.assertEqual(executed,D(Q))
-        self.assertEqual(executed+cancelled,req)
+        with localcontext() as ctx:
+            ctx.prec=50
+            self.assertEqual(executed+cancelled,req)
         self.assertEqual(audit[-1]["outcome"],"REDUCED")
         executed,cancelled=reduce_execution(Q,D(0),audit,"TEST",60001)
         self.assertEqual(executed,D(0))
