@@ -1,4 +1,3 @@
-import product_dispatch as pd
 #!/usr/bin/env python3
 """Operator allow-once for a GitHub write card the automatic scope check refused.
 
@@ -11,6 +10,7 @@ defines a regex (detection code, not a value). Clicks the button starting with t
 allow-once label. Never the conversation-wide option.
 """
 import datetime, json, re, subprocess, sys, time
+import product_dispatch as pd
 
 S = sys.argv[1]
 j = json.load(open(S + '/job.json'))
