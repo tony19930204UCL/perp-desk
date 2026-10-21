@@ -1,1 +1,59 @@
-{"placeholder":true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 78,
+  "branch": "fix/heatmap-collector-contract-20261021",
+  "task_id": "HEATMAP-HA003-R4B",
+  "instruction_id": "HEATMAP-R4B-20261021",
+  "status": "BLOCKED",
+  "source_head_sha": "9635c0ead88ca78eecc94839bc4d1565d3fc864a",
+  "summary": "Bounded code changes made to PS monotonic combo deadline checks and CDP reconnection, non-widened per-call remaining budget, wait/reload/login, timeout fail closed after synchronous disk/hash, explicit staging root replacing redacted user path; executable offline PS delay probes added. HA003 strict wall-clock <=60s for every potentially blocking synchronous file/compression/hash/cleanup operation is NOT proven or guaranteed by current synchronous implementation. Offline synthetic delay probes do not exercise actual CDP connect/reload/output; Windows Chrome validation and original suites not executed.",
+  "changed_files": [
+    "engineering/collectors/heatmap/heatmap_capture.ps1",
+    "engineering/collectors/heatmap/heatmap_archive.py",
+    "engineering/collectors/heatmap/tests/test_heatmap_archive.py",
+    ".relay/mailbox/heatmap-collector.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s engineering/collectors/heatmap/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No authorized executor was available through GitHub file connector; test_43 requires native PowerShell."
+    },
+    {
+      "command": "python3 engineering/collectors/heatmap/heatmap_archive.py --selftest",
+      "result": "NOT_RUN",
+      "evidence": "No executor used."
+    },
+    {
+      "command": "powershell.exe -NoProfile -File engineering/collectors/heatmap/heatmap_capture.ps1 -DeadlineProbe -ProbeCase next -ProbeMs 60000",
+      "result": "NOT_RUN",
+      "evidence": "Shipped executable probe; not independently executed. Delay-only probe, not real blocking I/O."
+    },
+    {
+      "command": "python3 engineering/collectors/heatmap/mutation_check.py",
+      "result": "NOT_RUN",
+      "evidence": "No executor used."
+    },
+    {
+      "command": "python3 engineering/collectors/heatmap/heatmap_archive.py --config engineering/collectors/heatmap/config.json --data-root <operator-output> --staging-root <operator-staging-root> --ps-script engineering/collectors/heatmap/heatmap_capture.ps1",
+      "result": "NOT_RUN",
+      "evidence": "Requires operator's dedicated Windows Chrome 19301 and declared paths."
+    }
+  ],
+  "remaining_work": [
+    "Hard deadline during synchronous conversion/compression/file I/O/hash/cleanup and final JSON formatting still requires robust cancellable isolation or real operator acceptance; code is not fully HA003 accepted.",
+    "Probe uses controlled Task.Delay, not actual PowerShell CDP/socket or I/O branch injection; required deterministic actual-operation PowerShell coverage remains unmet.",
+    "Execute full original 42 tests and 11 selftests, 8 manifest entries, the additional PowerShell tests, actual Chrome DOM/source data, and two operator archive cycles."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Review exact source, run Windows PowerShell 60s probe with Stopwatch rc/output and original test suites, validate dedicated Chrome 19301 then two real archive cycles; no deployment or live activation.",
+    "if_pass": "Only accept HA003 after actual slow connect/reload/login/output/cleanup and next-combo tests prove genuine <=60000ms wall-clock limits.",
+    "if_fail": "Return focused exact trace and authorize bounded repair on same PR78 branch; no main changes.",
+    "blockers": [
+      "No Windows PowerShell or Chrome execution through permitted GitHub file actions.",
+      "Synchronous output/hash/cleanup and serialization remain potentially over 60000ms; fail closed occurs after operation completion."
+    ]
+  }
+}
