@@ -885,7 +885,7 @@ def build_parser():
     g.add_argument("--chat-url")
     g.add_argument("--new", action="store_true")
     s.add_argument("--job-dir", required=True)
-    s.add_argument("--dispatch-ticket", required=True)
+    s.add_argument("--dispatch-ticket")
     s.add_argument("--instruction-id", required=True)
     s.add_argument("--prompt-file", required=True)
     s.add_argument("--dry-run", action="store_true", help="draft + verify + clear; never clicks send")
