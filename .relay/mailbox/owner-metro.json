@@ -4,66 +4,50 @@
   "pr_number": 79,
   "branch": "feat/owner-metro-live-20261021",
   "task_id": "OWNER-METRO-20261021",
-  "instruction_id": "owner-metro-001-r3",
+  "instruction_id": "owner-metro-001-r4",
   "status": "WAITING_CI",
-  "source_head_sha": "25128d6e7f25b49afb86849b5513133ea3d14677",
-  "original_head_sha": "ad79643a2bf06687241593068ef5a2c848d8e413",
-  "summary": "Fourth final owner-authorized contract alignment: native heartbeat ts_iso/ts_ms and events_total; optional private managed cron PID identity source with current /proc argv/start verification and strict/managed dedup; dynamic canonical-ledger per-route user/retest/active/failed overrides and ledger pending-human fallback; seven UI states and product label; bounded tests and operator docs. No changes to strict adoption verification, Maker results, core trading, deployment or CI workflow.",
+  "source_head_sha": "d1311f0f8f0dfc2f22fc3a21b1028134d9900711",
+  "summary": "Minimal fourth/fifth owner-authorized correction: ledger pending-decision fallback is now permitted only for a readable stale directive, never corrupt/missing/unverifiable. Existing canonical ledger assertion kept untouched. Node tests now supply a stale directive and additionally distinguish stale, fresh, corrupt and missing.",
   "changed_files": [
-    "lab/owner_metro_sources.py",
     "lab/owner_metro_model.py",
-    "lab/owner_metro_nodes.py",
-    "lab/owner_activity.js",
-    "lab/owner_activity.html",
-    "lab/tests/test_owner_metro_bind.py",
     "lab/tests/test_owner_metro_node.py",
-    "lab/tests/test_owner_metro_ui.py",
-    "lab/tests/fixtures/owner_metro_hb.json",
-    "engineering/owner_metro/OPERATOR.md",
     ".relay/mailbox/owner-metro.json"
   ],
   "tests": [
     {
-      "command": "cd lab && python3 -m unittest -v tests.test_owner_metro_bind tests.test_owner_metro_node tests.test_owner_metro_ui",
+      "command": "cd lab && python3 -m unittest -v tests.test_owner_metro tests.test_owner_metro_node",
       "result": "NOT_RUN",
-      "evidence": "Source delivered using permitted GitHub create_file/update_file only; no Python runner used."
+      "evidence": "No local test subprocess executed; previous HEAD d7c63f93 workflow 39694928588 failed as reported."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "New tests discoverable by existing workflow; no exact r3 execution evidence."
+      "evidence": "Final r4 test discovery not yet executed."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests -v",
       "result": "NOT_RUN",
-      "evidence": "Not executed at r3."
+      "evidence": "Not executed at r4."
     },
     {
-      "command": "exact r3 HEAD push and pull_request CI",
+      "command": "Exact final r4 HEAD push and pull_request CI",
       "result": "NOT_RUN",
-      "evidence": "No completed exact source/full-head dual CI evidence at writing. Prior r2 source HEAD had green CI."
-    },
-    {
-      "command": "real Chromium 1280/390 and native staging acceptance",
-      "result": "NOT_RUN",
-      "evidence": "Operator-only verification not executed by remote engineering delivery."
+      "evidence": "No completed dual-head CI at source handback."
     }
   ],
   "remaining_work": [
-    "Obtain green push and pull_request CI on exact mailbox-final full HEAD; report actual failing tests if any, no additional revision budget.",
-    "Run native Chromium and operator trusted private source binding/identity/staged API acceptance. No private file is committed.",
-    "Confirm real live collector heartbeat fresh timestamp and current managed process from private operator profile; do not infer admission from synthetic fixture.",
-    "Review original frozen acceptance and immutable spare-port install/rollback obligations before any switch."
+    "Run actual old unchanged MetroUnit.test_large_ledger_and_source and new stale/corrupt/missing/fresh regression cases.",
+    "Verify exact mailbox-final HEAD push and PR CI, with status recorded from genuine runs.",
+    "Operator-only private bindings and immutable spare-port browser/HTTP acceptance still outstanding."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Recheck exact HEAD push/PR CI and tests.test_owner_metro_bind / tests.test_owner_metro_node; inspect native heartbeat, managed process and ledger node behavior using operator-owned private bindings.",
-    "if_pass": "Proceed to operator-only immutable spare-port staging and frozen acceptance; switch designated listener only on independent approval.",
-    "if_fail": "Keep PR79 draft/uninstalled. No further engineering correction budget; document exact failure.",
+    "verify_now": "Check exact final HEAD CI and unchanged original MetroUnit assertion; verify stale-only fallback and new source-health regression cases.",
+    "if_pass": "Proceed only with original frozen operator acceptance on spare port; no automatic merge/deploy.",
+    "if_fail": "Keep PR79 draft uninstalled; report exact failure without further repair allocation.",
     "blockers": [
-      "r3 tests not locally executed",
-      "exact-head dual CI pending",
-      "native private source and browser/staging acceptance operator-only"
+      "Exact r4 tests and dual CI not yet confirmed",
+      "Operator native staging and Chromium acceptance pending"
     ]
   },
   "uninstalled": true,
