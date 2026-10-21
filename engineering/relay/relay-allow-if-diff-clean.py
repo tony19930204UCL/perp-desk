@@ -1,9 +1,9 @@
-import product_dispatch as pd
 """Allow-once ONLY if the card's update_file content differs from the branch file by at most N changed lines
 and the operation is in repo/branch/allowlist. Use when the secret-regex heuristic refuses a file that
 contains its own detection regex (for example the exporter review_sync.py). Usage: python3 relay-allow-if-diff-clean.py JOB_DIR [MAX_CHANGED_LINES]
 Prints the file and changed line count and saves the approved diff next to the job."""
 import json,subprocess,sys,time,difflib,datetime
+import product_dispatch as pd
 S=sys.argv[1]; MAXL=int(sys.argv[2]) if len(sys.argv)>2 else 600
 j=json.load(open(S+'/job.json')); CARD='要允許 ChatGPT 使用 GitHub 嗎？'
 def run(req):
