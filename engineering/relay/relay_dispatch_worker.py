@@ -16,6 +16,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+import product_dispatch as pd
 
 HERE = Path(__file__).resolve().parent
 IO = str(HERE / "chatgpt_page_io.py")
@@ -80,6 +81,11 @@ def main(argv=None):
     a = ap.parse_args(argv)
     job = Path(a.job_dir)
     job.mkdir(parents=True, exist_ok=True)
+    policy = json.loads((job / "job.json").read_text(encoding="utf-8"))
+    if policy.get("repository") != a.repo or policy.get("branch") != a.branch:
+        raise pd.DispatchBlocked("WORKER_SCOPE_MISMATCH")
+    owner = pd.claim(policy, job, a.instruction_id,
+                     chat=policy.get("dispatch_chat_url"))
     deadline = time.monotonic() + a.deadline_min * 60
     st = {"instruction_id": a.instruction_id, "started": now(), "phase": "WAIT_LOGIN", "send": None, "handback": False, "cycles": 0}
     rpath = job / ("receipt-%s.json" % a.instruction_id)
@@ -103,7 +109,8 @@ def main(argv=None):
                     st["phase"] = "ABORTED_PREFLIGHT"
                     break
                 cmd = [sys.executable, IO, "send", "--job-dir", str(job), "--instruction-id", a.instruction_id,
-                       "--prompt-file", a.prompt_file] + (["--new"] if a.new else ["--chat-url", a.chat_url])
+                       "--prompt-file", a.prompt_file,
+                       "--dispatch-ticket", owner["send_ticket"]] + (["--new"] if a.new else ["--chat-url", a.chat_url])
                 rc, res = run_json(cmd, 420)
                 st["send"] = res
                 if res.get("status") in ("CONFIRMED", "SEND_UNKNOWN"):
