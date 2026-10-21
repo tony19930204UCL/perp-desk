@@ -1,7 +1,75 @@
 {
   "schema_version": 2,
-  "status": "OPERATOR_SETUP_ONLY",
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 79,
+  "branch": "feat/owner-metro-live-20261021",
   "task_id": "OWNER-METRO-20261021",
   "instruction_id": "owner-metro-001",
-  "note": "Not dispatched, implemented, accepted or deployed."
+  "status": "BLOCKED",
+  "source_head_sha": "125fbc1368c321434a3b8a543b4863b8507bc380",
+  "summary": "Initial bounded source-only implementation delivered: 4 MiB/4096-row ledger admission; fixed root-relative binding parser; proc identity check; Maker artifact digest checks; conservative three-route aggregation, white UI, 3-second separate poll, loopback endpoint, synthetic tests and operator handoff. This is not complete finite acceptance.",
+  "changed_files": [
+    "lab/owner_activity.py",
+    "lab/dashboard_v2_server.py",
+    "lab/owner_activity.html",
+    "lab/owner_activity.js",
+    "lab/owner_metro_sources.py",
+    "lab/owner_metro_results.py",
+    "lab/owner_metro_model.py",
+    "lab/tests/test_owner_metro.py",
+    "lab/tests/test_owner_metro_live.py",
+    "lab/tests/test_owner_metro_ui.py",
+    "lab/tests/fixtures/owner_metro.json",
+    "engineering/owner_metro/OPERATOR.md",
+    ".relay/mailbox/owner-metro.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest -v tests.test_owner_metro tests.test_owner_metro_live tests.test_owner_metro_ui",
+      "result": "NOT_RUN",
+      "evidence": "Source connector edits only; no local executor used."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No executed test log."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No executed test log."
+    },
+    {
+      "command": "1280/390 real Chromium DOM/CSS/fetch acceptance",
+      "result": "NOT_RUN",
+      "evidence": "No browser execution or screenshots."
+    },
+    {
+      "command": "exact-head push and pull_request CI",
+      "result": "NOT_RUN",
+      "evidence": "At pre-mailbox source HEAD no workflow runs returned by GitHub PR-run lookup."
+    }
+  ],
+  "remaining_work": [
+    "Complete real /proc positive identity and wrapper deduplication proof; Windows non-/proc identity remains unsupported.",
+    "Implement source mtime/metadata cache, independent source timestamp/age and fail-safe stale state for all Metro sources.",
+    "Verify actual Maker PR75 output wrapper attempt identity and full artifact/cell identity requirements; current incomplete report cannot count as accepted.",
+    "Prove 3-second polls across failures and recovery, browser responsive computed viewports and no console issues.",
+    "Run full isolated regressions and verify exact full HEAD push and PR CI both successful.",
+    "Operator privately bind authentic sources, stage and verify complete immutable release on spare port; no installation performed."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Do not accept or deploy. Review bounded source-only implementation, run all listed acceptance suites and reconcile real Maker output adapter.",
+    "if_pass": "Request one evidence-focused bounded correction only if full finite gates can be satisfied, then verify exact HEAD.",
+    "if_fail": "Keep PR79 draft uninstalled and report specific failing evidence.",
+    "blockers": [
+      "Acceptance not executed",
+      "No dual CI success",
+      "Cross-platform PID/start proof and source cache incomplete",
+      "Full Maker cells identity/attempt validation incomplete"
+    ]
+  },
+  "deployed": false,
+  "uninstalled": true
 }
