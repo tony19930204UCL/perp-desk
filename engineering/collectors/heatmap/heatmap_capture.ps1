@@ -6,7 +6,10 @@ param(
     [switch]$DryRun,
     [switch]$DeadlineProbe,
     [ValidateSet('connect','login','reload','output','cleanup','next')][string]$ProbeCase = 'connect',
-    [int]$ProbeMs = 150
+    [int]$ProbeMs = 150,
+    [switch]$ComboWorker,
+    [int]$ComboIndex = 0,
+    [switch]$ProbeWorker
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,44 +49,114 @@ function Wait-Combo {
     [void](Get-ComboRemaining -Clock $Clock -LimitMs $LimitMs)
 }
 
-# Executable offline PowerShell deadline probe; never reaches Chrome or live paths.
-if ($DeadlineProbe) {
-    if ($ProbeMs -lt 50 -or $ProbeMs -gt 60000) { throw 'invalid_probe_budget' }
-    $probeResults = @()
-    $names = if ($ProbeCase -eq 'next') { @('connect','ok','cleanup') } else { @($ProbeCase) }
-    foreach ($name in $names) {
-        $clock = [System.Diagnostics.Stopwatch]::StartNew()
-        $err = $null
-        try {
-            switch ($name) {
-                'connect' { Wait-Combo -Clock $clock -Ms ($ProbeMs + 100) -LimitMs $ProbeMs }
-                'login' {
-                    Wait-Combo -Clock $clock -Ms ([int]($ProbeMs / 2)) -LimitMs $ProbeMs
-                    Wait-Combo -Clock $clock -Ms $ProbeMs -LimitMs $ProbeMs
-                }
-                'reload' {
-                    Wait-Combo -Clock $clock -Ms ([int]($ProbeMs / 3)) -LimitMs $ProbeMs
-                    Wait-Combo -Clock $clock -Ms $ProbeMs -LimitMs $ProbeMs
-                }
-                'output' {
-                    Wait-Combo -Clock $clock -Ms ([int]($ProbeMs / 2)) -LimitMs $ProbeMs
-                    Wait-Combo -Clock $clock -Ms $ProbeMs -LimitMs $ProbeMs
-                }
-                'cleanup' { Wait-Combo -Clock $clock -Ms ($ProbeMs + 100) -LimitMs $ProbeMs }
-                'ok' { Wait-Combo -Clock $clock -Ms 1 -LimitMs $ProbeMs }
-            }
-            [void](Get-ComboRemaining -Clock $clock -LimitMs $ProbeMs)
-        } catch {
-            $err = if ($_.Exception.Message -like '*combo_timeout*') { 'combo_timeout' } else { $_.Exception.Message }
+# Own each combination in a killable process. The parent owns no CDP session.
+function Invoke-Worker {
+    param([string[]]$WorkerArgs, [int]$BudgetMs = 60000)
+    $watch = [System.Diagnostics.Stopwatch]::StartNew()
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = (Get-Process -Id $PID).Path
+    $items = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath) + $WorkerArgs
+    $psi.Arguments = ($items | ForEach-Object { '"' + ($_ -replace '"','\"') + '"' }) -join ' '
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = [System.Text.UTF8Encoding]::new($false)
+    $psi.StandardErrorEncoding = [System.Text.UTF8Encoding]::new($false)
+    $proc = New-Object System.Diagnostics.Process
+    $proc.StartInfo = $psi
+    try {
+        if (-not $proc.Start()) { throw 'worker_start_failed' }
+        $outTask = $proc.StandardOutput.ReadToEndAsync()
+        $errTask = $proc.StandardError.ReadToEndAsync()
+        $left = [Math]::Max(1, $BudgetMs - 1000 - [int]$watch.ElapsedMilliseconds)
+        $timedOut = -not $proc.WaitForExit($left)
+        if ($timedOut) {
+            $proc.Kill()
+            if (-not $proc.WaitForExit(500)) { throw 'worker_not_terminated' }
         }
-        $clock.Stop()
-        $probeResults += @{ coin = $name; ok = ($null -eq $err); error = $err; elapsed_ms = [int]$clock.ElapsedMilliseconds }
-    }
-    Send-JsonAndExit @{
-        schema = 1; status = 'deadline_probe'; results = $probeResults; budget_ms = $ProbeMs
+        $stdout = $outTask.GetAwaiter().GetResult()
+        $stderr = $errTask.GetAwaiter().GetResult()
+        $watch.Stop()
+        return @{ timeout = ($timedOut -or $watch.ElapsedMilliseconds -ge $BudgetMs);
+            elapsed_ms = [int]$watch.ElapsedMilliseconds; stdout = $stdout; stderr = $stderr; rc = $proc.ExitCode }
+    } finally {
+        if ($proc -and -not $proc.HasExited) {
+            try { $proc.Kill(); [void]$proc.WaitForExit(500) } catch {}
+            if (-not $proc.HasExited) { throw 'worker_not_terminated' }
+        }
+        $proc.Dispose()
     }
 }
 
+# Explicit offline fault injection enters production methods in a supervised child.
+if ($DeadlineProbe) {
+    if ($ProbeMs -lt 1000 -or $ProbeMs -gt 60000) { throw 'invalid_probe_budget' }
+    $names = if ($ProbeCase -eq 'next') { @('connect','ok','cleanup') } else { @($ProbeCase) }
+    $probeResults = @()
+    foreach ($name in $names) {
+        $w = Invoke-Worker -WorkerArgs @('-ProbeWorker','-ProbeCase',$name) -BudgetMs $ProbeMs
+        $passed = ($name -eq 'ok' -and -not $w.timeout -and $w.rc -eq 0)
+        $err = if ($passed) { $null } elseif ($w.timeout) { 'combo_timeout' } else { 'worker_error' }
+        $probeResults += @{ coin = $name; ok = $passed; error = $err; elapsed_ms = $w.elapsed_ms }
+    }
+    Send-JsonAndExit @{schema=1; status='deadline_probe'; budget_ms=$ProbeMs; results=$probeResults}
+}
+
+if (-not $ComboWorker -and -not $ProbeWorker -and -not $DryRun) {
+    if ($ConfigFile -and (Test-Path $ConfigFile)) {
+        $cfg = Get-Content $ConfigFile -Raw -Encoding UTF8 | ConvertFrom-Json
+        $enabled = @($cfg.combos | Where-Object { $_.enabled -eq $true })
+    } else {
+        $enabled = @(
+            @{coin='BTC'; mode='pair'; timeframe='24 hour'; model=1},
+            @{coin='ETH'; mode='pair'; timeframe='24 hour'; model=1},
+            @{coin='SOL'; mode='pair'; timeframe='24 hour'; model=1},
+            @{coin='XRP'; mode='pair'; timeframe='24 hour'; model=1},
+            @{coin='BTC'; mode='pair'; timeframe='1 week'; model=1},
+            @{coin='ETH'; mode='pair'; timeframe='1 week'; model=1}
+        )
+    }
+    $results = @()
+    $meta = $null
+    for ($ix = 0; $ix -lt $enabled.Count; $ix++) {
+        $c = $enabled[$ix]
+        $args = @('-ComboWorker','-ComboIndex',"$ix",'-Port',"$Port",'-SavePng',"$SavePng")
+        if ($ConfigFile) { $args += @('-ConfigFile',$ConfigFile) }
+        if ($OutDir) { $args += @('-OutDir',$OutDir) }
+        $w = Invoke-Worker -WorkerArgs $args -BudgetMs 60000
+        $v = $null
+        if (-not $w.timeout -and $w.rc -eq 0) {
+            try { $v = $w.stdout.Trim() | ConvertFrom-Json -ErrorAction Stop } catch {}
+        }
+        if ($v -and @($v.results).Count -eq 1 -and $v.results[0].coin -eq $c.coin -and $v.results[0].timeframe -eq $c.timeframe) {
+            $meta = $v
+            $rec = $v.results[0]
+            $rec.elapsed_ms = $w.elapsed_ms
+            $results += $rec
+        } else {
+            $err = if ($w.timeout) { 'combo_timeout' } elseif ($v -and $v.status -ne 'ok') { [string]$v.status } else { 'powershell_error' }
+            $results += @{coin=$c.coin; mode=$c.mode; timeframe=$c.timeframe; model=$c.model;
+                ok=$false; error=$err; login_required=$false; elapsed_ms=$w.elapsed_ms}
+        }
+    }
+    $allOk = @($results | Where-Object { -not $_.ok }).Count -eq 0
+    Send-JsonAndExit @{
+        schema=1; status=$(if ($allOk) {'ok'} else {'partial'});
+        chrome=$(if ($meta) {$meta.chrome} else {@{version='';port=19301;owner_ok=$false}});
+        page=$(if ($meta) {$meta.page} else {@{title='';url='';tabs=@()}});
+        logged_in=$(if ($meta) {$meta.logged_in} else {'unknown'});
+        login_evidence=$(if ($meta) {$meta.login_evidence} else {'none'});
+        login_wait_ms=$(if ($meta) {$meta.login_wait_ms} else {0});
+        visibility=$(if ($meta) {$meta.visibility} else {'unknown'});
+        focus_mode=$(if ($meta) {$meta.focus_mode} else {'none'});
+        warnings=$(if ($meta) {$meta.warnings} else {@()});
+        viewport=@(1400,1200); browser_tz_offset_min=$(if ($meta) {$meta.browser_tz_offset_min} else {0});
+        results=$results
+    }
+}
+
+if (-not $ProbeWorker) {
 # 1. Port whitelist check - strictly only 19301
 if ($Port -ne 19301) {
     Send-JsonAndExit @{
@@ -179,6 +252,7 @@ if ($coinglassPages.Count -lt 1) {
 }
 
 $targetTab = $coinglassPages[0]
+}
 
 # Add PdSess C# WebSocket transport
 if (-not ([System.Management.Automation.PSTypeName]'PdSess').Type) {
@@ -193,6 +267,7 @@ public class PdSess : IDisposable {
     ClientWebSocket ws = new ClientWebSocket();
     CancellationTokenSource ct = new CancellationTokenSource();
     string ep = "";
+    public static string BlockAt = "";
     public void Open(string endpoint) {
         ep = endpoint;
         using (var init = new CancellationTokenSource(5000)) {
@@ -200,6 +275,7 @@ public class PdSess : IDisposable {
         }
     }
     private void Connect(CancellationToken token) {
+        if (BlockAt == "connect") new ManualResetEvent(false).WaitOne();
         if (ws != null) {
             try { ws.Dispose(); } catch {}
         }
@@ -212,6 +288,7 @@ public class PdSess : IDisposable {
         }
     }
     public string Call(string payload, int id, int timeoutMs = 60000) {
+        if (BlockAt == "login" || BlockAt == "reload") new ManualResetEvent(false).WaitOne();
         if (timeoutMs <= 0) throw new Exception("combo_timeout");
         using (var cts = CancellationTokenSource.CreateLinkedTokenSource(ct.Token)) {
             cts.CancelAfter(timeoutMs);
@@ -243,6 +320,7 @@ public class PdSess : IDisposable {
         }
     }
     public void Dispose() {
+        if (BlockAt == "cleanup") new ManualResetEvent(false).WaitOne();
         try { ws.Dispose(); } catch {}
         try { ct.Dispose(); } catch {}
     }
@@ -299,6 +377,7 @@ function Invoke-CdpEval {
 
 function Compress-GzipData {
     param([string]$Data, [string]$FilePath)
+    if ($ProbeWorker -and $ProbeCase -eq 'output') { [void]([System.Threading.ManualResetEvent]::new($false).WaitOne()) }
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($Data)
     $fs = [System.IO.File]::Create($FilePath)
     try {
@@ -315,6 +394,7 @@ function Compress-GzipData {
 
 function Get-Sha256Hex {
     param([string]$FilePath)
+    if ($ProbeWorker -and $ProbeCase -eq 'hash') { [void]([System.Threading.ManualResetEvent]::new($false).WaitOne()) }
     $sha256 = [System.Security.Cryptography.SHA256]::Create()
     try {
         $fs = [System.IO.File]::OpenRead($FilePath)
@@ -343,6 +423,21 @@ function Convert-TfToTag {
     if ($Tf -eq '1 Year') { return '1Y' }
     if ($Tf -eq '2 Year') { return '2Y' }
     return ($Tf -replace '\s+', '')
+}
+
+if ($ProbeWorker) {
+    [PdSess]::BlockAt = $ProbeCase
+    $probeSess = New-Object PdSess
+    switch ($ProbeCase) {
+        'connect' { $probeSess.Open('ws://127.0.0.1:19301/') }
+        'login' { Invoke-CdpEval -Sess $probeSess -Expression 'true' | Out-Null }
+        'reload' { Invoke-CdpCall -Sess $probeSess -Method 'Page.reload' | Out-Null }
+        'output' { Compress-GzipData -Data '{}' -FilePath $null }
+        'hash' { Get-Sha256Hex -FilePath $null | Out-Null }
+        'cleanup' { $probeSess.Dispose() }
+        'ok' { Send-JsonAndExit @{schema=1;status='ok';results=@()} }
+    }
+    throw 'probe_did_not_block'
 }
 
 $sess = New-Object PdSess
@@ -528,6 +623,10 @@ try {
 
     $results = @()
     $combos = @($config.combos | Where-Object { $_.enabled -eq $true })
+    if ($ComboWorker) {
+        if ($ComboIndex -lt 0 -or $ComboIndex -ge $combos.Count) { throw 'invalid_combo_index' }
+        $combos = @($combos[$ComboIndex])
+    }
 
     $driverJsCode = @'
 (async (coin, model, tf, mode) => {
