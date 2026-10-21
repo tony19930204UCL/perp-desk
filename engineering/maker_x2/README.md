@@ -1553,3 +1553,73 @@ RED/candidate GREEN, financial differential, actual single-cell
 original witness replay, CI and historical runner all NOT_RUN.**
 The real market witness is operator-supplied observed evidence,
 not independent confirmation that this candidate passes it.
+
+
+## MAKER-V3-X2-ACCOUNTING-AUTH-1-r1 — final fixture-only rework
+
+Main independently ran the previous source at full HEAD
+`8a2b9eaa7d1a9ad6077b3b3a7a11ab4ec76c048b`: discovery
+112 tests in 13.601 seconds, 110 PASS / 2 FAIL, rc1. All original
+107 tests, witnessed synthetic X1 entry-risk positive and strict
+external over-buy negative passed. Both standalone r14 and
+reduce-only controls failed; mutations and market were NOT_RUN
+because positive controls were red. This history is retained.
+
+The first measured failure was an **independent test expectation**:
+the former one-formula gross expression differed in the last
+Decimal50 digits from the required event-by-event shrinking-basis
+realization. `tests/test_overclose_regression.py` now derives its
+expected quantities, exact TP1/TP2 limit prices, first/second
+realized gross, actual per-leg Maker fees, settled funding and
+cash in an explicit Decimal50 sequential chronology. It asserts
+exact executed buy-quantity sum, remaining qty=0, reserved=0,
+gross, fees, funding, cash and strict independent
+`replay_account` equality. No monetary tolerance, guard removal,
+production quantization or change to account logic was made.
+
+The second measured failure was an ambient Decimal28 test addition
+of requested+cancelled. `tests/test_reduce_only.py` now executes
+this equality inside Decimal50. The witnessed entry-risk case
+captures the original `ShortEntry` object **before** terminal
+closure and inspects typed dictionary audit records; it asserts a
+single actual `ENTRY_HARD_SL` reduce-only record, requested and
+executed exact witnessed quantity and zero cancellation, plus
+independently calculated actual fees and raw ledger equality.
+There is no vacuous `if a.entry else True` fallback. A new
+discoverable `test_x2_partial_flat` exercises genuine
+OfflineAccount/ShortExit TP1 and TP2 with partial then flat
+position, exact requested/executed/cancelled audit for both legs,
+zero remaining orders, zero margin and unchanged independent
+ledger reconciliation. The malformed external excess-fill test
+remains and still expects the original strict `over-close` guard.
+
+Only these two existing tests, this README and formal mailbox
+may differ in this r1. All production, previously accepted
+regressions and frozen research inputs must remain byte-identical.
+
+Main runs from `engineering/maker_x2`, positives **first**:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 backtest_entry.py --self-test
+python3 tests/test_reduce_only.py -v
+python3 tests/test_overclose_regression.py -v
+python3 tests/test_capacity.py --differential --base-dir PRE_R13_MAKER_X2_DIR
+python3 tests/test_capacity.py --resource --minutes 30000
+```
+
+Then the original ten standalone positive entrypoints from the
+earlier finite acceptance. Only if every positive is green run
+all 20 previously documented negative mutation subprocesses and
+check real executed test IDs, genuine AssertionError and nonzero
+exit code. Obtain exact-head push **and** pull_request CI, then
+independently replay the genuine single-cell witness. After
+finite acceptance the operator may proceed with the separately
+authorized original full unchanged BTC/ETH historical matrix and
+shipped `--verify`. This fixture-only rework does not itself
+establish market, performance, strategy or product PASS.
+
+**Current r1 Python tests, mutations, CI, original witness rerun and
+historical research are NOT_RUN** in this GitHub-file-only session.
+No further routine rework is implicitly authorized; another
+failure requires architecture reassessment and explicit direction.
