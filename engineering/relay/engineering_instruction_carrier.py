@@ -371,7 +371,7 @@ def permission(
     gone = '要允許 ChatGPT 使用 GitHub 嗎？' not in after.get('text', '')
     if gone:
         pd.reconcile(dispatch_job, dispatch_dir, instruction_id, receipt='APPROVED',
-                     chat=dispatch_job.get('dispatch_chat_url'))
+                     chat=dispatch_job.get('dispatch_chat_url'), fingerprint=fingerprint)
     event_fn('APPROVAL_READBACK', prompt_gone=gone)
     return True
 
