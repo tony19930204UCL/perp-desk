@@ -1,7 +1,7 @@
 """Conservative per-source metro projection, no acceptance inference."""
 from owner_metro_sources import load, processes, parts
 from owner_metro_results import read as read_results
-from owner_activity import read_activity
+from owner_activity import read_activity, _read_source
 
 ROUTES = (
     ("maker", "PR75 · Maker", "blue",
@@ -32,6 +32,11 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576):
         except (TypeError, ValueError):
             result = {"state": "invalid", "count": 0, "total": 48, "metrics": []}
     phases = stage.get("products", {}) if isinstance(stage.get("products"), dict) else {}
+    owners = directive.get("active_owners") if isinstance(directive.get("active_owners"), list) else []
+    owners = [{"item": x.get("item"), "actor": x.get("actor"),
+               "scope": x.get("scope"), "product": x.get("product")}
+              for x in owners[:128] if isinstance(x, dict) and
+              x.get("product") in ("maker", "collectors", "relay")]
     routes = []
     for ident, label, color, steps in ROUTES:
         rows = phases.get(ident, {}) if isinstance(phases.get(ident), dict) else {}
@@ -44,6 +49,7 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576):
             proof = evidence.get(str(i)) if isinstance(evidence, dict) else None
             done = i in verified and isinstance(proof, dict) and proof.get("accepted") is True
             live = (i == active and any(p["state"] == "verified" and
+                        p.get("product") == ident and
                         p["kind"] in ("compute", "collector", "coordination") for p in proc))
             statuses.append({"title": caption,
                              "state": "done" if done else "active" if live else
@@ -53,11 +59,22 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576):
                        "steps": statuses, "current": rows.get("current"),
                        "next": rows.get("next"), "verified_at": rows.get("verified_at")})
     tasks = activity["tasks"]
-    history = [t for t in tasks if t.get("ledger_state") in
-               ("VERIFIED", "DROPPED", "SUPERSEDED", "FROZEN")]
+    canonical, ledger_state = _read_source(root, "ledger", 4 * 1024 * 1024)
+    past_states = ("VERIFIED", "DROPPED", "SUPERSEDED", "FROZEN")
+    raw_rows = canonical.get("items", []) if isinstance(canonical, dict) else []
+    history_count = sum(isinstance(t, dict) and t.get("state") in past_states for t in raw_rows)
+    history = [{"id": t.get("id"), "title": t.get("text"), "state": t.get("state"),
+                "note": t.get("reason") if isinstance(t.get("reason"), str) else None}
+               for t in raw_rows if isinstance(t, dict) and t.get("state") in past_states]
+    current = [t for t in tasks if t.get("ledger_state") not in past_states]
     pending = directive.get("pending_decisions") if isinstance(directive, dict) else None
+    if isinstance(pending, list):
+        pending = sum(isinstance(x, dict) and x.get("status") in
+                      ("PENDING", "WAITING_HUMAN") for x in pending)
     pending = pending if type(pending) is int and pending >= 0 else None
     count = liq.get("event_count") if isinstance(liq, dict) else None
+    if count is None and isinstance(heartbeat, dict):
+        count = heartbeat.get("liquidation_event_count")
     count = count if type(count) is int and count >= 0 else None
     return {"schema_version": 1, "observer_only": True, "installed": False,
             "generated_ms": now_ms, "sources": {**activity["sources"], **health},
@@ -68,9 +85,10 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576):
                                         "results": result,
                                         "lease": stage.get("lease_status"),
                                         "output": stage.get("output_status")},
-            "heartbeat": {"at": heartbeat.get("at"), "status": heartbeat.get("status")},
-            "directive": {"owner": directive.get("owner") if isinstance(directive.get("owner"), str) else None},
+            "heartbeat": {"at": heartbeat.get("at"), "status": heartbeat.get("status"),
+                          "age_ms": health.get("heartbeat", {}).get("age_ms")},
+            "directive": {"owners": owners}, "current": current[-4096:],
             "routes": routes, "history": history[-4096:],
-            "history_count": len(history),
+            "history_count": history_count,
             "source_totals": activity["totals"],
             "warnings": activity["warnings"]}
