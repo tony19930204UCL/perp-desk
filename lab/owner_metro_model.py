@@ -16,12 +16,12 @@ ROUTES = (
 )
 
 
-def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576):
+def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576, proc_root="/proc"):
     docs, health, paths = load(root, now_ms, max_bytes)
     activity = read_activity(root, now_ms=now_ms, max_age_ms=max_age_ms,
                              max_bytes=max_bytes)
     launch, adoption = docs.get("launch", {}), docs.get("adoption", {})
-    proc = processes(launch, adoption, now_ms)
+    proc = processes(launch, adoption, now_ms, proc_root=proc_root)
     directive, stage = docs.get("directive", {}), docs.get("stage", {})
     heartbeat, liq = docs.get("heartbeat", {}), docs.get("liquidations", {})
     outputs = docs.get("results", {})
