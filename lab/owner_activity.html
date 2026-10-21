@@ -68,6 +68,11 @@ button,input,select{background:white;color:#0F172A;border-color:#CBD5E1}
 @media(prefers-reduced-motion:reduce){.metro-stop.active .dot{animation:none}.metro-stop:after{animation:none}}
 @media(max-width:850px){#metro .layout{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:430px){.metro-stop{min-width:120px}.metro-route{padding:12px}}
+.metro-stop.retest .dot{color:#D97706;background:#FFFBEB;border-color:#D97706}
+.metro-stop.user .dot{color:#7C3AED;background:#F5F3FF;border-color:#7C3AED}
+.metro-stop.failed .dot{color:#DC2626;background:#FEF2F2;border-color:#DC2626}
+.metro-stop.retest:not(:last-child):after,.metro-stop.failed:not(:last-child):after{border-top:3px dashed #D97706}
+.metro-stop.user:not(:last-child):after{border-top:3px dotted #7C3AED}
 </style><script src="/owner_activity.js" defer></script></head><body><div class="shell">
 <nav aria-label="Observer sections"><span class="brand">◈ PAPER / OBSERVER</span><div class="tabs"><a href="/dashboard_v2.html">帳務 / Account</a><a href="/owner_activity.html" aria-current="page">Monitor / 工作活動</a></div><span class="meta">READ-ONLY · LOCAL</span></nav>
 <header class="heading"><div><span class="eyebrow">OWNER ACTIVITY / OBSERVATION</span><h1>工作活動總覽</h1><p class="subtle">執行證據、計畫與排程分開呈現。沒有資料並不代表一切正常。</p></div><button id="refresh" type="button">↻ 重新整理</button></header>
