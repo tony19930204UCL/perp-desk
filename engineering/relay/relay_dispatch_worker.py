@@ -84,6 +84,16 @@ def main(argv=None):
     policy = json.loads((job / "job.json").read_text(encoding="utf-8"))
     if policy.get("repository") != a.repo or policy.get("branch") != a.branch:
         raise pd.DispatchBlocked("WORKER_SCOPE_MISMATCH")
+    template = (Path(__file__).with_name("instruction-template.txt")).read_text(encoding="utf-8")
+    guidance = template.format(repository=policy["repository"], pr_number=policy["pr_number"],
+        branch=policy["branch"], chat_url=policy["dispatch_chat_url"],
+        instruction_id=a.instruction_id, write_allowlist=json.dumps(policy["write_allowlist"]),
+        valid_until=policy["valid_until"])
+    body = Path(a.prompt_file).read_text(encoding="utf-8")
+    prompt_path = job / ("bounded_" + a.instruction_id + ".txt")
+    if prompt_path.exists():
+        raise pd.DispatchBlocked("BOUNDED_PROMPT_EXISTS")
+    prompt_path.write_text(guidance + "\n\n" + body, encoding="utf-8")
     owner = pd.claim(policy, job, a.instruction_id,
                      chat=policy.get("dispatch_chat_url"))
     deadline = time.monotonic() + a.deadline_min * 60
@@ -109,7 +119,7 @@ def main(argv=None):
                     st["phase"] = "ABORTED_PREFLIGHT"
                     break
                 cmd = [sys.executable, IO, "send", "--job-dir", str(job), "--instruction-id", a.instruction_id,
-                       "--prompt-file", a.prompt_file,
+                       "--prompt-file", str(prompt_path),
                        "--dispatch-ticket", owner["send_ticket"]] + (["--new"] if a.new else ["--chat-url", a.chat_url])
                 rc, res = run_json(cmd, 420)
                 st["send"] = res
