@@ -3,7 +3,10 @@ param(
     [string]$OutDir,
     [int]$Port = 19301,
     [int]$SavePng = 1,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$DeadlineProbe,
+    [ValidateSet('connect','login','reload','output','cleanup','next')][string]$ProbeCase = 'connect',
+    [int]$ProbeMs = 150
 )
 
 $ErrorActionPreference = 'Stop'
@@ -19,6 +22,66 @@ function Send-JsonAndExit {
     $json = ConvertTo-Json -InputObject $Obj -Depth 15 -Compress
     [Console]::Out.WriteLine($json)
     exit 0
+}
+
+# One monotonic budget for every blocking action in a combination.
+function Get-ComboRemaining {
+    param([System.Diagnostics.Stopwatch]$Clock, [int]$LimitMs = 60000)
+    $left = [int]($LimitMs - $Clock.ElapsedMilliseconds)
+    if ($left -le 0) { throw 'combo_timeout' }
+    return $left
+}
+
+function Wait-Combo {
+    param([System.Diagnostics.Stopwatch]$Clock, [int]$Ms, [int]$LimitMs = 60000)
+    $left = Get-ComboRemaining -Clock $Clock -LimitMs $LimitMs
+    $cts = [System.Threading.CancellationTokenSource]::new($left)
+    try {
+        [System.Threading.Tasks.Task]::Delay($Ms, $cts.Token).GetAwaiter().GetResult()
+    } catch [System.OperationCanceledException] {
+        throw 'combo_timeout'
+    } finally {
+        $cts.Dispose()
+    }
+    [void](Get-ComboRemaining -Clock $Clock -LimitMs $LimitMs)
+}
+
+# Executable offline PowerShell deadline probe; never reaches Chrome or live paths.
+if ($DeadlineProbe) {
+    if ($ProbeMs -lt 50 -or $ProbeMs -gt 60000) { throw 'invalid_probe_budget' }
+    $probeResults = @()
+    $names = if ($ProbeCase -eq 'next') { @('connect','ok','cleanup') } else { @($ProbeCase) }
+    foreach ($name in $names) {
+        $clock = [System.Diagnostics.Stopwatch]::StartNew()
+        $err = $null
+        try {
+            switch ($name) {
+                'connect' { Wait-Combo -Clock $clock -Ms ($ProbeMs + 100) -LimitMs $ProbeMs }
+                'login' {
+                    Wait-Combo -Clock $clock -Ms ([int]($ProbeMs / 2)) -LimitMs $ProbeMs
+                    Wait-Combo -Clock $clock -Ms $ProbeMs -LimitMs $ProbeMs
+                }
+                'reload' {
+                    Wait-Combo -Clock $clock -Ms ([int]($ProbeMs / 3)) -LimitMs $ProbeMs
+                    Wait-Combo -Clock $clock -Ms $ProbeMs -LimitMs $ProbeMs
+                }
+                'output' {
+                    Wait-Combo -Clock $clock -Ms ([int]($ProbeMs / 2)) -LimitMs $ProbeMs
+                    Wait-Combo -Clock $clock -Ms $ProbeMs -LimitMs $ProbeMs
+                }
+                'cleanup' { Wait-Combo -Clock $clock -Ms ($ProbeMs + 100) -LimitMs $ProbeMs }
+                'ok' { Wait-Combo -Clock $clock -Ms 1 -LimitMs $ProbeMs }
+            }
+            [void](Get-ComboRemaining -Clock $clock -LimitMs $ProbeMs)
+        } catch {
+            $err = if ($_.Exception.Message -like '*combo_timeout*') { 'combo_timeout' } else { $_.Exception.Message }
+        }
+        $clock.Stop()
+        $probeResults += @{ coin = $name; ok = ($null -eq $err); error = $err; elapsed_ms = [int]$clock.ElapsedMilliseconds }
+    }
+    Send-JsonAndExit @{
+        schema = 1; status = 'deadline_probe'; results = $probeResults; budget_ms = $ProbeMs
+    }
 }
 
 # 1. Port whitelist check - strictly only 19301
@@ -128,31 +191,32 @@ using System.Threading;
 
 public class PdSess : IDisposable {
     ClientWebSocket ws = new ClientWebSocket();
-    CancellationTokenSource ct = new CancellationTokenSource(180000);
+    CancellationTokenSource ct = new CancellationTokenSource();
     string ep = "";
     public void Open(string endpoint) {
         ep = endpoint;
-        Connect();
+        using (var init = new CancellationTokenSource(5000)) {
+            Connect(init.Token);
+        }
     }
-    private void Connect() {
+    private void Connect(CancellationToken token) {
         if (ws != null) {
             try { ws.Dispose(); } catch {}
         }
         ws = new ClientWebSocket();
-        ws.ConnectAsync(new Uri(ep), ct.Token).GetAwaiter().GetResult();
+        ws.ConnectAsync(new Uri(ep), token).GetAwaiter().GetResult();
     }
-    public void EnsureOpen() {
+    public void EnsureOpen(CancellationToken token) {
         if (ws == null || ws.State != WebSocketState.Open) {
-            Connect();
+            Connect(token);
         }
     }
     public string Call(string payload, int id, int timeoutMs = 60000) {
-        EnsureOpen();
+        if (timeoutMs <= 0) throw new Exception("combo_timeout");
         using (var cts = CancellationTokenSource.CreateLinkedTokenSource(ct.Token)) {
-            if (timeoutMs > 0) {
-                cts.CancelAfter(timeoutMs);
-            }
+            cts.CancelAfter(timeoutMs);
             try {
+                EnsureOpen(cts.Token);
                 var data = Encoding.UTF8.GetBytes(payload);
                 ws.SendAsync(new ArraySegment<byte>(data), WebSocketMessageType.Text, true, cts.Token).GetAwaiter().GetResult();
                 var buffer = new byte[65536];
@@ -189,7 +253,7 @@ public class PdSess : IDisposable {
 $reqIdCounter = 0
 
 function Invoke-CdpCall {
-    param($Sess, [string]$Method, $Params = @{}, [int]$TimeoutMs = 60000)
+    param($Sess, [string]$Method, $Params = @{}, [int]$TimeoutMs = 60000, [System.Diagnostics.Stopwatch]$Clock)
     $script:reqIdCounter++
     $id = $script:reqIdCounter
     $payload = @{
@@ -197,12 +261,14 @@ function Invoke-CdpCall {
         method = $Method
         params = $Params
     } | ConvertTo-Json -Depth 15 -Compress
+    if ($Clock) { $TimeoutMs = [Math]::Min($TimeoutMs, (Get-ComboRemaining -Clock $Clock)) }
     $raw = $Sess.Call($payload, $id, $TimeoutMs)
+    if ($Clock) { [void](Get-ComboRemaining -Clock $Clock) }
     return ($raw | ConvertFrom-Json)
 }
 
 function Invoke-CdpEval {
-    param($Sess, [string]$Expression, [switch]$AwaitPromise, [int]$TimeoutMs = 60000)
+    param($Sess, [string]$Expression, [switch]$AwaitPromise, [int]$TimeoutMs = 60000, [System.Diagnostics.Stopwatch]$Clock)
     $script:reqIdCounter++
     $id = $script:reqIdCounter
     $p = @{
@@ -217,7 +283,9 @@ function Invoke-CdpEval {
         method = 'Runtime.evaluate'
         params = $p
     } | ConvertTo-Json -Depth 15 -Compress
+    if ($Clock) { $TimeoutMs = [Math]::Min($TimeoutMs, (Get-ComboRemaining -Clock $Clock)) }
     $raw = $Sess.Call($payload, $id, $TimeoutMs)
+    if ($Clock) { [void](Get-ComboRemaining -Clock $Clock) }
     $resp = $raw | ConvertFrom-Json
     if ($resp.error) {
         throw $resp.error.message
@@ -627,7 +695,6 @@ try {
     $comboTimeoutMs = 60000
     foreach ($combo in $combos) {
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
-        $comboDeadline = [System.DateTime]::UtcNow.AddMilliseconds($comboTimeoutMs)
         $coin = $combo.coin
         $mode = $combo.mode
         $timeframe = $combo.timeframe
@@ -657,15 +724,15 @@ try {
         # Single retry loop (max 1 retry)
         for ($attempt = 0; $attempt -lt 2; $attempt++) {
             try {
-                $remMs = [int]($comboDeadline - [System.DateTime]::UtcNow).TotalMilliseconds
+                $remMs = Get-ComboRemaining -Clock $sw
                 if ($remMs -le 0 -or $sw.ElapsedMilliseconds -ge $comboTimeoutMs) {
                     $comboError = 'combo_timeout'
                     break
                 }
-                $callTimeout = [Math]::Max(1000, [Math]::Min($remMs, $comboTimeoutMs))
+                $callTimeout = $remMs
 
                 $switchExpr = "($driverJsCode)('$coin', $model, '$timeframe', '$mode')"
-                $switchResJson = Invoke-CdpEval -Sess $sess -Expression $switchExpr -AwaitPromise -TimeoutMs $callTimeout
+                $switchResJson = Invoke-CdpEval -Sess $sess -Expression $switchExpr -AwaitPromise -TimeoutMs $callTimeout -Clock $sw
                 $switchRes = $switchResJson | ConvertFrom-Json
 
                 if ($switchRes.login_required -eq $true -or $switchRes.err -eq 'login_required') {
@@ -680,28 +747,28 @@ try {
                         code = 'Escape'
                         windowsVirtualKeyCode = 27
                         nativeVirtualKeyCode = 27
-                    } -TimeoutMs 5000 | Out-Null
+                    } -TimeoutMs 5000 -Clock $sw | Out-Null
                     Invoke-CdpCall -Sess $sess -Method 'Input.dispatchKeyEvent' -Params @{
                         type = 'keyUp'
                         key = 'Escape'
                         code = 'Escape'
                         windowsVirtualKeyCode = 27
                         nativeVirtualKeyCode = 27
-                    } -TimeoutMs 5000 | Out-Null
+                    } -TimeoutMs 5000 -Clock $sw | Out-Null
 
                     # Read back to verify dialog is closed
                     for ($k = 0; $k -lt 10; $k++) {
-                        Start-Sleep -Milliseconds 100
-                        $dlgOpen = Invoke-CdpEval -Sess $sess -Expression 'Boolean([...document.querySelectorAll("[role=dialog],.MuiModal-root")].find(d => /Log in to unlock/i.test(d.innerText || "")))' -TimeoutMs 2000
+                        Wait-Combo -Clock $sw -Ms 100
+                        $dlgOpen = Invoke-CdpEval -Sess $sess -Expression 'Boolean([...document.querySelectorAll("[role=dialog],.MuiModal-root")].find(d => /Log in to unlock/i.test(d.innerText || "")))' -TimeoutMs 2000 -Clock $sw
                         if (-not $dlgOpen) { break }
                     }
                     break
                 }
                 if ($switchRes.err) {
-                    $remMs = [int]($comboDeadline - [System.DateTime]::UtcNow).TotalMilliseconds
-                    if ($attempt -eq 0 -and $remMs -gt 6000) {
-                        Invoke-CdpCall -Sess $sess -Method 'Page.reload' -TimeoutMs 5000 | Out-Null
-                        Start-Sleep -Seconds 4
+                    $remMs = Get-ComboRemaining -Clock $sw
+                    if ($attempt -eq 0 -and $remMs -gt 9500) {
+                        Invoke-CdpCall -Sess $sess -Method 'Page.reload' -TimeoutMs 5000 -Clock $sw | Out-Null
+                        Wait-Combo -Clock $sw -Ms 4000
                         continue
                     }
                     $comboError = if ($sw.ElapsedMilliseconds -ge $comboTimeoutMs) { 'combo_timeout' } else { [string]$switchRes.err }
@@ -709,22 +776,22 @@ try {
                 }
 
                 $header = [string]$switchRes.head
-                $remMs = [int]($comboDeadline - [System.DateTime]::UtcNow).TotalMilliseconds
+                $remMs = Get-ComboRemaining -Clock $sw
                 if ($remMs -le 4000) {
                     $comboError = 'combo_timeout'
                     break
                 }
-                Start-Sleep -Seconds 4
+                Wait-Combo -Clock $sw -Ms 4000
 
-                $remMs = [int]($comboDeadline - [System.DateTime]::UtcNow).TotalMilliseconds
+                $remMs = Get-ComboRemaining -Clock $sw
                 if ($remMs -le 0) {
                     $comboError = 'combo_timeout'
                     break
                 }
-                $callTimeout = [Math]::Max(1000, [Math]::Min($remMs, $comboTimeoutMs))
+                $callTimeout = $remMs
 
                 # Capture chart data and canvas
-                $chartResJson = Invoke-CdpEval -Sess $sess -Expression $captureChartJsCode -TimeoutMs $callTimeout
+                $chartResJson = Invoke-CdpEval -Sess $sess -Expression $captureChartJsCode -TimeoutMs $callTimeout -Clock $sw
                 $chartRes = $chartResJson | ConvertFrom-Json
 
                 if ($chartRes.err) {
@@ -732,6 +799,7 @@ try {
                     break
                 }
 
+                [void](Get-ComboRemaining -Clock $sw)
                 $canvasSize = @([int]$chartRes.w, [int]$chartRes.h)
                 $chartDataOk = [bool]$chartRes.chart_data_ok
 
@@ -744,7 +812,9 @@ try {
                     $b64 = if ($idx -ge 0) { $chartRes.png.Substring($idx + 7) } else { $chartRes.png }
                     $pngBytes = [Convert]::FromBase64String($b64)
                     [System.IO.File]::WriteAllBytes($pngPath, $pngBytes)
+                    [void](Get-ComboRemaining -Clock $sw)
                     $pngSha256 = Get-Sha256Hex -FilePath $pngPath
+                    [void](Get-ComboRemaining -Clock $sw)
                 }
 
                 # Save chart.json.gz if structured data available
@@ -765,7 +835,9 @@ try {
                     }
                     $chartJsonStr = ConvertTo-Json -InputObject $chartObj -Depth 12 -Compress
                     Compress-GzipData -Data $chartJsonStr -FilePath $chartPath
+                    [void](Get-ComboRemaining -Clock $sw)
                     $chartSha256 = Get-Sha256Hex -FilePath $chartPath
+                    [void](Get-ComboRemaining -Clock $sw)
 
                     $yMin = $chartRes.ymin
                     $yMax = $chartRes.ymax
@@ -783,6 +855,7 @@ try {
                     }
                 }
 
+                [void](Get-ComboRemaining -Clock $sw)
                 $comboOk = $true
                 break
             } catch {
@@ -791,11 +864,11 @@ try {
                     $comboError = 'combo_timeout'
                     break
                 }
-                $remMs = [int]($comboDeadline - [System.DateTime]::UtcNow).TotalMilliseconds
-                if ($attempt -eq 0 -and $remMs -gt 6000) {
+                $remMs = Get-ComboRemaining -Clock $sw
+                if ($attempt -eq 0 -and $remMs -gt 9500) {
                     try {
-                        Invoke-CdpCall -Sess $sess -Method 'Page.reload' -TimeoutMs 5000 | Out-Null
-                        Start-Sleep -Seconds 4
+                        Invoke-CdpCall -Sess $sess -Method 'Page.reload' -TimeoutMs 5000 -Clock $sw | Out-Null
+                        Wait-Combo -Clock $sw -Ms 4000
                     } catch {}
                     continue
                 }
@@ -804,13 +877,17 @@ try {
             }
         }
 
-        # Safe cleanup for next combo
-        if ($comboError -eq 'combo_timeout' -or (-not $comboOk)) {
-            try {
-                if ($sess) { $sess.EnsureOpen() }
-            } catch {}
+        # A failed or overdue combo publishes no staged output references.
+        if ($sw.ElapsedMilliseconds -ge $comboTimeoutMs) {
+            $comboOk = $false
+            $comboError = 'combo_timeout'
         }
-
+        if (-not $comboOk) {
+            $pngFile = $null
+            $pngSha256 = $null
+            $chartFile = $null
+            $chartSha256 = $null
+        }
         $sw.Stop()
         $results += @{
             coin = $coin
@@ -835,6 +912,13 @@ try {
             chart_sha256 = $chartSha256
             chart_data_ok = $chartDataOk
             elapsed_ms = [int]$sw.ElapsedMilliseconds
+        }
+        # Includes per-combo bookkeeping, not just CDP work.
+        if ($sw.ElapsedMilliseconds -ge $comboTimeoutMs) {
+            $results[-1].ok = $false
+            $results[-1].error = 'combo_timeout'
+            $results[-1].png_file = $null
+            $results[-1].chart_file = $null
         }
     }
 
