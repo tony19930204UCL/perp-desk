@@ -8,6 +8,7 @@ import time
 
 from dashboard_v2_reader import read_dashboard
 from owner_activity import read_activity
+from owner_metro_model import read_metro
 
 
 _ROUTE = '/api/dashboard'
@@ -136,6 +137,20 @@ def create_server(*, scorecard_path, journal_path, ledger_path, port=0,
                 self._respond(403, _ERRORS[403], head=head)
                 return
             target = self.raw_requestline.split()[1]
+            if self.path == '/api/owner-metro' and target == b'/api/owner-metro':
+                if monitor_root is None:
+                    self._respond(404, _ERRORS[404], head=head)
+                    return
+                try:
+                    result = read_metro(monitor_root, now_ms=clock(),
+                                        max_age_ms=age, max_bytes=limit)
+                    payload = json.dumps(result, ensure_ascii=False, allow_nan=False,
+                                         separators=(',', ':')).encode('utf-8')
+                except Exception:
+                    self._respond(500, _ERRORS[500], head=head)
+                    return
+                self._respond(200, payload, head=head)
+                return
             if self.path == '/api/owner-activity' and target == b'/api/owner-activity':
                 if monitor_root is None:
                     self._respond(404, _ERRORS[404], head=head)
