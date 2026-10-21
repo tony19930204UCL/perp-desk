@@ -2012,6 +2012,7 @@ global.window = {innerWidth: 1400};
 function el(tag, text, children = []) {
   return {tagName:tag, innerText:text, textContent:text, children:children,
     querySelector: s => children.find(c => c.tagName === s.toUpperCase()) || null,
+    querySelectorAll: s => children.filter(c => c.tagName === s.toUpperCase()),
     getBoundingClientRect: () => ({right:1380,top:47,bottom:90})};
 }
 global.document = {
