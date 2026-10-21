@@ -127,10 +127,43 @@ def _read_bytes(root, parts, limit, tail=False):
         os.close(directory)
 
 
+_SOURCE_CACHE = {}
+
+
+def _source_meta(root, parts):
+    """Metadata through the same no-follow dirfd boundary as actual reads."""
+    if not isinstance(root, str) or not os.path.isabs(root):
+        raise ValueError("invalid root")
+    if os.path.realpath(root) != os.path.normpath(root):
+        raise ValueError("linked root")
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    fd = os.open(root, flags | os.O_DIRECTORY)
+    try:
+        for part in parts[:-1]:
+            child = os.open(part, flags | os.O_DIRECTORY, dir_fd=fd)
+            os.close(fd)
+            fd = child
+        info = os.stat(parts[-1], dir_fd=fd, follow_symlinks=False)
+        if not stat.S_ISREG(info.st_mode):
+            raise ValueError("nonregular")
+        return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns,
+                info.st_ctime_ns)
+    finally:
+        os.close(fd)
+
+
 def _read_source(root, key, limit):
     try:
-        # Ledger has its own finite cap; non-ledger sources keep the old budget.
+        # Native ledger is bounded independently; other contracts retain the
+        # caller budget. Cache only verified regular-file metadata for JSON.
         bound = 4 * 1024 * 1024 if key == "ledger" else limit
+        signature = _source_meta(root, SOURCES[key])
+        if signature[2] > bound and key != "journal":
+            raise ValueError("over limit")
+        cachekey = (root, key, bound)
+        cached = _SOURCE_CACHE.get(cachekey)
+        if key != "journal" and cached is not None and cached[0] == signature:
+            return cached[1], "available"
         raw, offset = _read_bytes(root, SOURCES[key], bound, tail=(key == "journal"))
         if key == "journal":
             # A truncated first line and a partial last line are never trusted.
@@ -157,6 +190,9 @@ def _read_source(root, key, limit):
         cap = MAX_ITEMS if key == "ledger" else SMALL_ITEMS
         if not isinstance(data.get(key_required), list) or len(data[key_required]) > cap:
             raise ValueError("invalid collection")
+        _SOURCE_CACHE[cachekey] = (signature, data)
+        if len(_SOURCE_CACHE) > 24:
+            _SOURCE_CACHE.pop(next(iter(_SOURCE_CACHE)))
         return data, "available"
     except FileNotFoundError:
         return None, "missing"
