@@ -87,3 +87,73 @@ document.addEventListener('DOMContentLoaded',()=>{
  refresh();setInterval(refresh,30000);
 });
 })();
+/* Separate 3-second Metro poll: nonoverlapping, monotonic, last-known on error. */
+(() => {
+'use strict';
+const get = id => document.getElementById(id);
+const add = (parent,tag,value,cls) => {
+  const el=document.createElement(tag);
+  if(value!==undefined&&value!==null)el.textContent=String(value);
+  if(cls)el.className=cls;
+  parent.appendChild(el);return el;
+};
+const clear=id=>{const el=get(id);el.replaceChildren();return el};
+let snapshot=null, pending=false, cycle=0, lastOk=0;
+function render(data) {
+  if(!data||!Array.isArray(data.routes)||!data.kpis||!data.sources)throw Error('invalid metro');
+  snapshot=data;lastOk=Date.now();
+  const k=clear('metroKpis');
+  [['核驗中程序 / PIDs',data.kpis.processes],['Maker baseline',String(data.kpis.maker_cells??'NA')+'/48'],
+   ['清算事件',data.kpis.liquidations],['待人工決策',data.kpis.pending_decisions]].forEach(([label,v])=>{
+    const box=add(k,'div',undefined,'metric');
+    add(box,'strong',v===null||v===undefined?'NA':v);
+    add(box,'span',label);
+  });
+  const routes=clear('metroRoutes');
+  data.routes.forEach(route=>{
+    const card=add(routes,'section',undefined,'metro-route '+route.color);
+    add(card,'h3',route.title);
+    const line=add(card,'div',undefined,'metro-line');
+    (route.steps||[]).forEach(step=>{
+      const stop=add(line,'div',undefined,'metro-stop '+step.state);
+      add(stop,'span',step.state==='done'?'✓':'', 'dot');
+      add(stop,'span',step.title+' · '+({done:'已核驗',active:'運作中',waiting:'等待中',next:'下一站'}[step.state]||'未知'));
+    });
+    add(card,'p','現在：'+(route.current||'未確認')+' · 下一步：'+(route.next||'未確認'),'route-note');
+    add(card,'p','最後核驗：'+(route.verified_at||'未知'),'route-note');
+  });
+  const spot=clear('metroSpot'),maker=data.maker||{},results=maker.results||{};
+  add(spot,'p','階段：'+(maker.phase||'未確認'));
+  add(spot,'p',results.count>0?'初步結果 '+results.count+'/48，尚未全局驗收':'尚無有效 baseline cell');
+  add(spot,'p','租約：'+(maker.lease||'未知')+' · 輸出：'+(maker.output||'未知'));
+  add(spot,'p','研究結果：'+(results.state||'未知')+'；未推論策略 PASS');
+  const rows=Array.isArray(results.metrics)?results.metrics:[];
+  rows.slice(0,4).forEach(m=>{
+    add(spot,'p',m.cell+' · Gross '+(m.gross_bp??'NA')+' bp · Net '+(m.net_bp??'NA')+
+      ' bp · PF '+(m.profit_factor??'NA')+' · TP/(TP+SL+SL_GAP) '+
+      (m.conditional_win_rate??'NA')+' (n='+m.risk_denominator+') · TIME '+(m.actual_time_share??'NA'),'meta');
+  });
+  const health=clear('metroHealth');
+  Object.entries(data.sources).forEach(([name,v])=>add(health,'p',name+'：'+(v.state||'未知'),'meta'));
+  get('metroHistoryCount').textContent=String(data.history_count??'未知');
+  const history=clear('metroHistoryRows');
+  (data.history||[]).forEach(t=>add(history,'p',(t.id||'?')+' · '+(t.title||'未確認')+' · '+(t.state||'未知'),'meta'));
+}
+async function poll() {
+  if(pending)return;
+  pending=true;const current=++cycle;
+  try {
+    const response=await fetch('/api/owner-metro',{cache:'no-store'});
+    if(!response.ok)throw Error('HTTP');
+    const model=await response.json();
+    if(current===cycle)render(model);
+  } catch (_) {
+    const old=lastOk?Math.max(0,Math.floor((Date.now()-lastOk)/1000))+' 秒前':'無';
+    get('metroHealth').textContent='本輪讀取失敗；保留最後已知資料，成功讀取：'+old;
+  } finally {pending=false;}
+}
+window.refreshOwnerMetro=poll;
+document.addEventListener('DOMContentLoaded',()=>{
+  poll();setInterval(poll,3000);
+});
+})();
