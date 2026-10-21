@@ -4,18 +4,15 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "RELAY-POLICY-ATOMIC",
-  "instruction_id": "RELAY-POLICY-ATOMIC-r2-u1",
+  "instruction_id": "RELAY-POLICY-ATOMIC-r3-u1",
   "status": "WAITING_CI",
-  "source_head_sha": "12fdce8148baaad09a6c29f2a2728ec91cdb87e5",
-  "summary": "Scoped Unit1 source delivered (NOT whole product approval). Added exact parent-owned product claim/delegated direct-child send ticket, durable SEND_INTENT→SEND_UNKNOWN before actual effect, positive receipt hash bound to source/ID/chat/scope, separately delegated independent approval PID with one click-intent and immediate scope/receipt recheck and positive-only approval readback. Connected real profile_runner->carrier.send and carrier.permission, relay_dispatch_worker->chatgpt_page_io cmd_send direct effect, strict/diff scripts and historical transaction approval. Legacy profile runner unscoped approval shortcut now routes via parsed carrier.permission. Shared product lock stays distinct from auto_allow.lock. Fail closed on absent absolute dispatch_lock_root, pinned explicit dispatch_chat_url, job.json/current active identity, positive receipt and valid lease. Preserved existing stage/market code. 11 total offline stdlib tests include injected carrier send/UNKNOWN, permission effect and mutation. No r2 tests/CI or live send performed.",
+  "source_head_sha": "bddb7846bf83f2881500a6e17c0ad4d90c4db709",
+  "summary": "Final scoped Unit1 correction: repaired actual hyphenated strict helper SyntaxError; canonical product_dispatch module identity and required event_fn callbacks; shortened ten newly introduced overlong test names <=25 characters with old/new mapping in evidence. Added explicit exact-source confirmed send adoption (not market owner adoption) and durable per-distinct-card approval records under a fixed source receipt, click intent, owner PID/boot/start, scope and lease. Two distinct reviewed cards may each approve once, repeat/unknown same card stays held. Strict/diff/carrier/transaction approval readbacks reconcile exact card fingerprints; scope mutation before approval intent leaves no click. Added four focused synthetic offline tests; original tests retained; 15 total source-authored. Prior r2 CI failed 11 tests 6 PASS/5 ERROR, no new r3 test execution or CI claimed. Entire product, Unit2 and Unit3 not accepted or deployed.",
   "changed_files": [
     "engineering/relay/product_dispatch.py",
-    "engineering/relay/engineering_instruction_carrier.py",
-    "engineering/relay/profile_runner.py",
-    "engineering/relay/chatgpt_page_io.py",
-    "engineering/relay/relay_dispatch_worker.py",
     "engineering/relay/relay-allow-card.py",
     "engineering/relay/relay-allow-if-diff-clean.py",
+    "engineering/relay/engineering_instruction_carrier.py",
     "engineering/relay/approval_transaction.py",
     "lab/tests/test_relay_policy_atomic.py",
     ".relay/mailbox/c0041-stage-relay.json"
@@ -24,41 +21,46 @@
     {
       "command": "python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v",
       "result": "NOT_RUN",
-      "evidence": "11 offline methods authored, including actual carrier send/permission effect injected without network; not executed in this file-only GitHub turn. Prior r1 exact-head six library tests passed independently per user."
+      "evidence": "Fifteen offline methods present after this edit; not run by assistant. Prior exact r2 push 39594636316 and PR 39594643572 failed: 11 tests 6PASS/5ERROR."
     },
     {
       "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
       "result": "NOT_RUN",
-      "evidence": "Existing 26 stage tests not rerun or modified by Unit1; r1 exact-head CI stage suite green per user."
+      "evidence": "Existing stage tests unchanged, prior r1 exact-head 26 passing per user; r3 not executed."
     },
     {
-      "command": "Unit1 exact-head push and pull_request CI",
+      "command": "python3 -m unittest discover -s lab/tests -v",
       "result": "NOT_RUN",
-      "evidence": "No Unit1 CI conclusions independently observed; prior r1 push39589784869/PR39589791440 successful only."
+      "evidence": "Unrelated full lab suite not rerun; user requested focused acceptance first."
     },
     {
-      "command": "Actual installed Chromium/CDP multi-process browser effect suite",
+      "command": "python3 -m py_compile engineering/relay/product_dispatch.py engineering/relay/engineering_instruction_carrier.py engineering/relay/chatgpt_page_io.py engineering/relay/relay_dispatch_worker.py engineering/relay/profile_runner.py engineering/relay/relay-allow-card.py engineering/relay/relay-allow-if-diff-clean.py engineering/relay/approval_transaction.py lab/tests/test_relay_policy_atomic.py",
       "result": "NOT_RUN",
-      "evidence": "Reserved for Unit3; no host/browser/market send or private workspace access."
+      "evidence": "All nine actual changed Python entrypoint files require operator compile, including hyphen helpers; shell not used."
+    },
+    {
+      "command": "New final r3 exact-head GitHub push and pull_request CI",
+      "result": "NOT_RUN",
+      "evidence": "No new exact-head CI conclusions observed; Main must verify both."
     }
   ],
   "remaining_work": [
-    "Main independently run Unit1 11-method offline suite and inspect exact-head push+PR CI, reject on any failures.",
-    "Unit2: complete hard 600 create/update defaults/caller propagation, syntax-position-aware identifier exceptions and genuine secret/environment access negatives, template actually injected into dispatch, without weakening approvals.",
-    "Unit3: true two independent subprocess effect contenders and authenticated handoff/restart/expiry/UNKNOWN and installed stdlib CDP/Chromium browser-layout tests and full installation mapping, including all copies of auto_allow; not yet delivered.",
-    "Before any install, operator must explicitly configure SAME absolute dispatch_lock_root across all jobdirs, real pinned dispatch_chat_url, job.json in state_dir, current exact active instruction and positive send receipt; absent/mismatched configuration fails closed.",
-    "No profile install/deployment/trading, no market owner claimed, PR75 not touched; full Maker product NOT_PROVEN."
+    "Main: compile every listed real Python entrypoint (including hyphen helpers), execute 15-method focused offline suite and review both final-head push/PR CI before Unit1 source acceptance.",
+    "Main: verify source-bound adoption and per-card distinct readback positive/negative; changed scope/expiry, owner-dead and uncertain click cannot retry. Independent explicit source evidence is mandatory, no external market owner made GitHub approver.",
+    "Unit2 INITIAL: full HARD600 create+update scoped caller propagation and AST/syntax-aware identifier exceptions with credential/.env/PAT/private-key precedence, prompt/template use.",
+    "Unit3 INITIAL: two real effectful subprocess competing senders, distinct-product independence, restart/expiry/death/UNKNOWN and installed isolated stdlib CDP/Chromium checks with complete ten-entrypoint installation destinations and executable override.",
+    "No operator installation, paid/network sends, deployment, paper/live/trading, PR75 edits or real Maker/reflection acceptance performed."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review Unit1 branch+mailbox HEAD, run python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v and existing stage suite if needed; observe exact-head dual CI. Inspect carrier/worker/page IO send tickets, real prior confirmed receipt source binding, strict/diff and carrier approval checked immediately before external effect. Do not install yet.",
-    "if_pass": "Mark only Unit1 scoped source ready for next predefined Unit2 policy unit; Unit3 installed browser/multiprocess acceptance remains mandatory before any deployment.",
-    "if_fail": "Preserve exact traceback/current SHA, return evidence-based scoped repair decision; no send replay, no bypass of refused operation.",
+    "verify_now": "Compile all nine changed actual Python entrypoints including hyphen scripts; run python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v; verify all 15 cases, exact confirmed source adoption, two distinct approvals and repeated/unknown card stop, current job scope mutation and full new dual exact-head CI. Old→new names: test_shared_product_claim_winner_truth→test_claim_winner; test_separate_product_is_independent→test_distinct_products; test_unknown_send_does_not_reopen→test_unknown_hold; test_no_implicit_configuration→test_no_default_root; test_real_competing_subprocess_winner→test_two_proc_claim; test_carrier_effect_exactly_once→test_carrier_once; test_carrier_unknown_never_retry→test_unknown_no_retry; test_permission_source_and_scope_mutation→test_scope_before_click; test_permission_requires_confirmed_source→test_no_source_click; test_permission_once_effect→test_card_once.",
+    "if_pass": "Accept only bounded Unit1 correction source. Proceed only with original initial Unit2 then Unit3 verification; no deployment or financial acceptance.",
+    "if_fail": "Return exact test traceback, compiled file/error and HEAD for parent decision, with no automatic further Unit1 revision or send replay.",
     "blockers": [
-      "Unit1 new tests/CI NOT_RUN in assistant turn",
-      "Unit2 600-line/source-aware identifier and prompt propagation unfinished",
-      "Unit3 multiprocess real external effects, host CDP/browser and complete installation mapping unfinished",
-      "No installed migration and no market/reflection acceptance"
+      "Unit1 exact final-head tests and CI NOT_RUN in this conversation",
+      "Unit2 full 600/source-aware security policy not yet implemented",
+      "Unit3 full real subprocess/browser layout and installation mapping not yet implemented",
+      "No verified deployment, market results or operator reflection"
     ]
   }
 }
