@@ -4,18 +4,17 @@
   "pr_number": 79,
   "branch": "feat/owner-metro-live-20261021",
   "task_id": "OWNER-METRO-20261021",
-  "instruction_id": "owner-metro-001",
+  "instruction_id": "owner-metro-001-r1",
   "status": "BLOCKED",
-  "source_head_sha": "125fbc1368c321434a3b8a543b4863b8507bc380",
-  "summary": "Initial bounded source-only implementation delivered: 4 MiB/4096-row ledger admission; fixed root-relative binding parser; proc identity check; Maker artifact digest checks; conservative three-route aggregation, white UI, 3-second separate poll, loopback endpoint, synthetic tests and operator handoff. This is not complete finite acceptance.",
+  "source_head_sha": "ed38b6e51eaca5ddeebc6607b9141558ed2b7606",
+  "summary": "Final authorized r1 correction: canonical ledger metadata cache, full historical count, source freshness and cache, dynamic owner/decision projection, independent product PID scope and wrappers, native PR75 cell artifact parsing with separately pinned expected input/config/source, single visible KPI row, closed legacy and history details, heartbeat/PID/RSS/phase/X1-X3 spotlight, animated dashed Next, browser CDP test entrypoint and synthetic contract tests. Source committed but acceptance incomplete; no deployment.",
   "changed_files": [
     "lab/owner_activity.py",
-    "lab/dashboard_v2_server.py",
-    "lab/owner_activity.html",
-    "lab/owner_activity.js",
     "lab/owner_metro_sources.py",
     "lab/owner_metro_results.py",
     "lab/owner_metro_model.py",
+    "lab/owner_activity.html",
+    "lab/owner_activity.js",
     "lab/tests/test_owner_metro.py",
     "lab/tests/test_owner_metro_live.py",
     "lab/tests/test_owner_metro_ui.py",
@@ -25,51 +24,52 @@
   ],
   "tests": [
     {
-      "command": "cd lab && python3 -m unittest -v tests.test_owner_metro tests.test_owner_metro_live tests.test_owner_metro_ui",
+      "command": "cd lab && python3 -m unittest -v tests.test_owner_metro tests.test_owner_metro_live tests.test_owner_metro_ui tests.test_owner_activity tests.test_owner_activity_browser",
       "result": "NOT_RUN",
-      "evidence": "Source connector edits only; no local executor used."
+      "evidence": "Operator ran 24 focused tests rc0 at previous head 4b192463; one real Chromium test SKIPPED. No exact r1 execution evidence."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "No executed test log."
+      "evidence": "No exact r1 full-suite result."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests -v",
       "result": "NOT_RUN",
-      "evidence": "No executed test log."
+      "evidence": "No exact r1 full-suite result."
     },
     {
-      "command": "1280/390 real Chromium DOM/CSS/fetch acceptance",
+      "command": "cd lab && OWNER_METRO_CHROME=/existing/chromium python3 -m unittest -v tests.test_owner_metro_ui.MetroUI.test_real_chromium",
       "result": "NOT_RUN",
-      "evidence": "No browser execution or screenshots."
+      "evidence": "Real 1280/390 Chromium CDP test shipped, but no browser execution."
     },
     {
-      "command": "exact-head push and pull_request CI",
+      "command": "both push and pull_request workflows for exact final head",
       "result": "NOT_RUN",
-      "evidence": "At pre-mailbox source HEAD no workflow runs returned by GitHub PR-run lookup."
+      "evidence": "No successful dual workflow evidence at source HEAD."
     }
   ],
   "remaining_work": [
-    "Complete real /proc positive identity and wrapper deduplication proof; Windows non-/proc identity remains unsupported.",
-    "Implement source mtime/metadata cache, independent source timestamp/age and fail-safe stale state for all Metro sources.",
-    "Verify actual Maker PR75 output wrapper attempt identity and full artifact/cell identity requirements; current incomplete report cannot count as accepted.",
-    "Prove 3-second polls across failures and recovery, browser responsive computed viewports and no console issues.",
-    "Run full isolated regressions and verify exact full HEAD push and PR CI both successful.",
-    "Operator privately bind authentic sources, stage and verify complete immutable release on spare port; no installation performed."
+    "Full finite acceptance cannot be certified; exact-head tests and Chromium 1280/390/two-cycle refresh proof not yet executed.",
+    "Linux fake-proc positive boot/argv/cwd/PID reuse/manual expiry/wrapper regression cases are not fully implemented or independently executed.",
+    "Maker native artifact adapter requires verification against full reporter fixtures including 48 completion, old attempts, repeated/invalid data; true expected attempt cannot be generated from observed outputs.",
+    "Source freshness/read-cache restoration and stage/heartbeat partial failure integration need two-cycle real proof.",
+    "Actual collector heartbeat and stage/status record shapes need reconciliation with operator private bound originals without any code changes or guessing.",
+    "Operator alone performs immutable spare-port staging, Windows native HTTP/browser readback, protected PID/hash comparison and deployment only after acceptance."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Do not accept or deploy. Review bounded source-only implementation, run all listed acceptance suites and reconcile real Maker output adapter.",
-    "if_pass": "Request one evidence-focused bounded correction only if full finite gates can be satisfied, then verify exact HEAD.",
-    "if_fail": "Keep PR79 draft uninstalled and report specific failing evidence.",
+    "verify_now": "Keep draft and uninstalled. Independently run focused and full suites, authentic native Maker fixtures and real Chromium acceptance; inspect exact-head push and PR CI.",
+    "if_pass": "Only accept if ALL frozen gates independently passed; operator privately binds trusted source contracts and stages an immutable release.",
+    "if_fail": "No further engineering correction budget. Leave BLOCKED; document specific gaps without deploying or broadening policy.",
     "blockers": [
-      "Acceptance not executed",
-      "No dual CI success",
-      "Cross-platform PID/start proof and source cache incomplete",
-      "Full Maker cells identity/attempt validation incomplete"
+      "Full finite acceptance not completed",
+      "Exact-head dual CI success not observed",
+      "Linux positive identity and real two-cycle browser evidence missing"
     ]
   },
+  "uninstalled": true,
   "deployed": false,
-  "uninstalled": true
+  "prior_head": "4b192463ac4d3e6bb0d0a8768d024d86281a42a2",
+  "original_start_head": "5d218b807d57a8ff9ffecee9709c5e1ed375e8c2"
 }
