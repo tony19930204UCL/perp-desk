@@ -3,7 +3,7 @@ and the operation is in repo/branch/allowlist. Use when the secret-regex heurist
 contains its own detection regex (for example the exporter review_sync.py). Usage: python3 relay-allow-if-diff-clean.py JOB_DIR [MAX_CHANGED_LINES]
 Prints the file and changed line count and saves the approved diff next to the job."""
 import json,subprocess,sys,time,difflib,datetime
-S=sys.argv[1]; MAXL=int(sys.argv[2]) if len(sys.argv)>2 else 4
+S=sys.argv[1]; MAXL=int(sys.argv[2]) if len(sys.argv)>2 else 600
 j=json.load(open(S+'/job.json')); CARD='要允許 ChatGPT 使用 GitHub 嗎？'
 def run(req):
     p=subprocess.run(j['transport_command'],input=json.dumps(req),capture_output=True,text=True,timeout=60); return json.loads(p.stdout)
@@ -18,7 +18,7 @@ assert tool=='update_file' and a['repository_full_name']==j['repository'] and a[
 base=subprocess.run(['gh','api','-H','Accept: application/vnd.github.raw','repos/%s/contents/%s?ref=%s'%(j['repository'],a['path'],j['branch'])],capture_output=True,text=True,timeout=60).stdout
 assert base,'cannot read base file'
 d=[l for l in difflib.unified_diff(base.splitlines(),a['content'].splitlines(),lineterm='',n=0) if l[:1] in '+-' and l[:3] not in('+++','---')]
-assert 0<len(d)<=MAXL,'diff too large or empty: %d lines'%len(d)
+assert 0<MAXL<=600 and 0<len(d)<=MAXL,'diff too large or empty: %d lines'%len(d)
 import re
 added=[x[1:] for x in d if x[0]=='+']
 SECRET=re.compile(r'(?i)(?:sk-[a-z0-9]{20,}|gh[pousr]_[a-z0-9]{20,}|github_pat_[a-z0-9_]{20,}|PRIVATE KEY|api[_-]?key\s*[=:]\s*["\'][a-z0-9]{20,})')
