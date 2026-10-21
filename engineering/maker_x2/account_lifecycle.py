@@ -11,6 +11,42 @@ D = Decimal
 Z = D("0")
 
 
+class _LedgerView(dict):
+    """O(1) financial snapshot, historical collections materialized on demand."""
+    def __init__(self, account, state, count):
+        super().__init__(state)
+        self._account, self._count = account, count
+        self._closed = len(state["episodes"])
+        self._open = (None if state["open_episode"] is None else
+                      dict(state["open_episode"]))
+
+    def __getitem__(self, key):
+        if key == "ids":
+            return {event["id"] for event in self._account.events[:self._count]}
+        if key == "settlements":
+            return {event["settlement_id"] for event in
+                    self._account.events[:self._count]
+                    if event["type"] == "funding"}
+        if key == "episodes":
+            return [dict(ep) for ep in
+                    self._account._ledger_state["episodes"][:self._closed]]
+        if key == "open_episode":
+            return None if self._open is None else dict(self._open)
+        return super().__getitem__(key)
+
+    def get(self, key, default=None):
+        return self[key] if key in self else default
+
+    def items(self):
+        return [(key, self[key]) for key in self]
+
+    def values(self):
+        return [self[key] for key in self]
+
+    def __eq__(self, other):
+        return dict(self.items()) == other
+
+
 class OfflineAccount:
     def __init__(self, capital, per_trade_margin, leverage, daily_loss_limit,
                  loss_streak_limit, halt_hours, liq_pct, liq_fee_pct, rates=None):
@@ -31,6 +67,18 @@ class OfflineAccount:
         if self.liq_pct != D(".0145") or self.liq_fee != D(".0005"):
             raise X2Error("frozen LIQ assumptions")
         self.events = []
+        self._event_ids = set()
+        self._applied_ids = set()
+        self._applied_settlements = set()
+        self._sell_ids = set()
+        self._cursor = 0
+        self._applied_events = 0
+        self._full_replays = 0
+        self._last_ledger_ts = None
+        self._ledger_state = {
+            "cash": self.capital, "reserved": Z, "qty": Z, "basis": Z,
+            "gross": Z, "fees": Z, "funding_cost": Z, "writeoff": Z,
+            "episodes": [], "open_episode": None}
         self.seen_signals = set()
         self.entry = None
         self.exit = None
@@ -49,32 +97,148 @@ class OfflineAccount:
         self.last_mark = None
         self.stale = False
 
+    def _apply_event(self, event):
+        """One strict Decimal50 transition; replay_account stays independent."""
+        from account_ledger import utc_day
+        with localcontext() as ctx:
+            ctx.prec = 50
+            s, seq = self._ledger_state, self._cursor
+            if type(event) is not dict:
+                raise X2Error("account event must be dict")
+            eid, ts = event.get("id"), event.get("ts")
+            if not isinstance(eid, str) or not eid or eid in self._applied_ids:
+                raise X2Error("duplicate account event id")
+            if event.get("seq") != seq or type(event.get("seq")) is not int:
+                raise X2Error("account event sequence gap")
+            utc_day(ts)
+            if self._last_ledger_ts is not None and ts < self._last_ledger_ts:
+                raise X2Error("backwards account event")
+            kind = event["type"]
+            ep = s["open_episode"]
+            if kind == "reserve":
+                amount = number(event["amount"], "reserve", True)
+                if s["reserved"] != Z or s["qty"] != Z or amount > s["cash"]:
+                    raise X2Error("double/insufficient reserve")
+                s["reserved"] += amount
+                ep = {"id": event["episode"], "start_cash": s["cash"],
+                      "gross": Z, "fees": Z, "funding_cost": Z,
+                      "writeoff": Z, "net": Z}
+            elif kind == "release":
+                amount = number(event["amount"], "release", True)
+                if amount > s["reserved"]:
+                    raise X2Error("overrelease margin")
+                s["reserved"] -= amount
+            elif kind == "fill":
+                amount = number(event["qty"], "qty", True)
+                price = number(event["price"], "price", True)
+                liquidity = event["liquidity"]
+                if liquidity not in ("maker", "taker"):
+                    raise X2Error("bad fill liquidity")
+                fee = amount * price * (self.rates.maker_fee if
+                      liquidity == "maker" else self.rates.taker_fee)
+                if event["side"] == "sell":
+                    if s["reserved"] <= Z or ep is None:
+                        raise X2Error("fill without reserved episode")
+                    s["qty"] += amount
+                    s["basis"] += amount * price
+                    realized = Z
+                elif event["side"] == "buy":
+                    if amount > s["qty"]:
+                        raise X2Error("over-close")
+                    realized = (s["basis"] / s["qty"] - price) * amount
+                    s["basis"] -= s["basis"] / s["qty"] * amount
+                    s["qty"] -= amount
+                    if s["qty"] == Z:
+                        s["basis"] = Z
+                else:
+                    raise X2Error("bad fill side")
+                s["cash"] += realized - fee
+                s["gross"] += realized
+                s["fees"] += fee
+                ep = dict(ep)
+                ep["gross"] += realized
+                ep["fees"] += fee
+            elif kind == "funding":
+                sid = event["settlement_id"]
+                if (not isinstance(sid, str) or not sid or
+                        sid in self._applied_settlements):
+                    raise X2Error("duplicate settlement")
+                amount = s["qty"] * number(event["mark"], "mark", True) * (
+                    number(event["rate"], "rate"))
+                s["cash"] += amount
+                s["funding_cost"] -= amount
+                ep = dict(ep)
+                ep["funding_cost"] -= amount
+            elif kind == "liquidation":
+                amount = number(event["qty"], "liq_qty", True)
+                margin = number(event["margin_writeoff"], "writeoff")
+                fee = number(event["fee"], "liq_fee")
+                if (amount != s["qty"] or margin < Z or
+                        margin > s["reserved"] or fee < Z):
+                    raise X2Error("invalid LIQ")
+                s["qty"] = s["basis"] = Z
+                s["reserved"] -= margin
+                s["cash"] -= margin + fee
+                s["writeoff"] += margin
+                s["fees"] += fee
+                ep = dict(ep)
+                ep["writeoff"] += margin
+                ep["fees"] += fee
+            else:
+                raise X2Error("unknown account event")
+            if ep is not None:
+                ep["net"] = ep["gross"] - ep["fees"] - ep["funding_cost"] - ep["writeoff"]
+            if ep is not None and s["qty"] == Z and s["reserved"] == Z:
+                s["episodes"].append(dict(ep))
+                ep = None
+            s["open_episode"] = ep
+            self._applied_ids.add(eid)
+            if kind == "funding":
+                self._applied_settlements.add(sid)
+            self._last_ledger_ts = ts
+            self._cursor += 1
+            self._applied_events += 1
+
     def ledger(self):
-        return replay_account(self.capital, self.events, rates=self.rates)
+        while self._cursor < len(self.events):
+            self._apply_event(self.events[self._cursor])
+        s = dict(self._ledger_state)
+        s["available"] = s["cash"] - s["reserved"]
+        s["ids"] = None
+        s["settlements"] = None
+        return _LedgerView(self, s, self._cursor)
+
+    def verify_ledger(self):
+        self._full_replays += 1
+        independent = replay_account(self.capital, self.events, rates=self.rates)
+        if self.ledger() != independent:
+            raise X2Error("independent full account ledger divergence")
+        return independent
 
     def _emit(self, kind, eid, ts, **fields):
-        if eid in {e["id"] for e in self.events}:
+        if eid in self._event_ids:
             raise X2Error("duplicate account event")
         if self.events and ts < self.events[-1]["ts"]:
             raise X2Error("account event moved backwards")
         event = {"type": kind, "id": eid, "ts": ts, "seq": len(self.events)}
         event.update(fields)
         self.events.append(event)
+        self._event_ids.add(eid)
+        if kind == "fill" and fields.get("side") == "sell":
+            self._sell_ids.add(eid)
 
     def _sync(self, source):
         # Scope original source IDs by episode while retaining provenance.
         prefix = self.entry.signal_id + ":" if self.entry else ""
-        ids = {e["id"] for e in self.events}
         for event in source:
             eid = prefix + event["id"]
-            if eid in ids:
+            if eid in self._event_ids:
                 continue
             kind = event["type"]
             old_qty = self.ledger()["qty"]
             extra = {k: v for k, v in event.items()
                      if k not in ("type", "id", "ts", "seq")}
             self._emit(kind, eid, event["ts"], source_id=event["id"], **extra)
-            ids.add(eid)
             if kind == "fill" and event["side"] == "buy" and old_qty > Z:
                 fraction = number(event["qty"], "buy_qty", True) / (
                     self.entry.qty_target)
@@ -162,9 +326,8 @@ class OfflineAccount:
             return
         if len(state["episodes"]) > self.counted_episodes:
             net = state["episodes"][-1]["net"]
-            had_fill = any(e["type"] == "fill" and e["side"] == "sell"
-                           and e["id"].startswith(self.entry.signal_id + ":")
-                           for e in self.events)
+            had_fill = any(eid.startswith(self.entry.signal_id + ":")
+                           for eid in self._sell_ids)
             if had_fill:
                 self.day_realized += net
                 self.loss_streak = self.loss_streak + 1 if net < Z else 0
@@ -318,6 +481,7 @@ class OfflineAccount:
 
     def checkpoint(self):
         """Detached pure-Python state including identities and open lifecycle."""
+        self.verify_ledger()
         return deepcopy(self)
 
     @classmethod
@@ -326,7 +490,7 @@ class OfflineAccount:
         if type(checkpoint) is not cls:
             raise X2Error("trusted OfflineAccount checkpoint required")
         restored = deepcopy(checkpoint)
-        restored.ledger()  # independently reject corrupt event history
+        restored.verify_ledger()  # strict raw replay versus incrementally cached state
         return restored
 
     def snapshot(self):
