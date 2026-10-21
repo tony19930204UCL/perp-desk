@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 77,
+  "branch": "fix/liq-collector-contract-20261021",
+  "task_id": "LIQ-CONTRACT-R5",
+  "instruction_id": "LIQ-R5-R2-20261021",
+  "status": "WAITING_CI",
+  "source_head_sha": "9e89a034601d317a9748bb3c73c668176a3cc5e0",
+  "summary": "Final bounded R2: CI installs public websockets dependency before additive collector step; test_14b bounded observer now always stops the collector after up to 60 polls, awaits the observer, and verifies heartbeat task settled, allowing m14/m18 to reach unchanged behavioral heartbeat assertions rather than outer 5s TimeoutError. Kept all 37 original+regression test identifiers, 27 original mutants/selectors, original assertions, protected producer and fixtures unchanged. No executor available for this revision.",
+  "changed_files": [
+    "engineering/collectors/liq/test_liq_collector.py",
+    ".github/workflows/ci.yml",
+    ".relay/mailbox/liq-collector.json"
+  ],
+  "tests": [
+    {
+      "command": "(cd engineering/collectors/liq && umask 0022 && python3 -B -m unittest -v test_liq_collector)",
+      "result": "NOT_RUN_R2",
+      "evidence": "Earlier exact R1 operator evidence 37/37 pass; post-R2 needs CI."
+    },
+    {
+      "command": "(cd engineering/collectors/liq && umask 0002 && python3 -B -m unittest -v test_liq_collector)",
+      "result": "NOT_RUN_R2",
+      "evidence": "Earlier exact R1 operator evidence 37/37 pass; post-R2 needs CI."
+    },
+    {
+      "command": "cd engineering/collectors/liq && python3 -u -B mutate.py",
+      "result": "NOT_RUN_R2",
+      "evidence": "R1 operator evidence 25 assertion kills; m14/m18 ended with 5s TimeoutError and were not counted. R2 bounded shutdown awaits verification of 27/27 assertion kills."
+    },
+    {
+      "command": "cd engineering/collectors/liq && python3 -B liq_collector.py --selfcheck",
+      "result": "NOT_RUN_R2",
+      "evidence": "Collector CI step contains selfcheck; no executor connected here."
+    },
+    {
+      "command": "GitHub Actions Liq collector contract and mutations",
+      "result": "WAITING_CI",
+      "evidence": "New websockets dependency install step added; final-source CI conclusion pending."
+    }
+  ],
+  "remaining_work": [
+    "Verify exact final source SHA PR and push CI both execute full 37-test controls (umask 0022/0002) and 27 original mutants with same-selector passing CONTROL and genuine AssertionError kills, with no ERROR/signal/timeouts counted.",
+    "Verify selfcheck OK and protected producer SHA256/fixture bytes remain unchanged.",
+    "Main independently executes normal deployed-entry public 180s probe/guard/status/stop; existing prior public 50-event evidence remains historical and is not deployment authorization."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Check exact source SHA CI runs, compare 37 unique original+regression IDs, 27 original mutants and m14/m18 AssertionError evidence, websocket dependency, protected source hash.",
+    "if_pass": "Complete owner-side deployed-entry probe and accept review only after independent source/CI/evidence validation; no merge or deploy by this worker.",
+    "if_fail": "Report exact failed test or mutant with command, CI run ID and stdout/stderr. R2 is final authorized revision; no further edits.",
+    "blockers": []
+  }
+}
