@@ -1405,3 +1405,84 @@ proof of the actual 2115-second market failure's cause until
 independent original-event reproduction or equivalent exact
 RED/GREEN evidence is established. There is no implicit further
 r14 revision, no market PnL and no paper/live/deployment.
+
+
+## r14-forensics-1 — test-literal repair and real-data bounded diagnostic
+
+Independent measurements on the prior r14 candidate and immutable
+base both executed two test IDs and failed the same earliest
+`test_fractional_partial_tp_funding_exact_conservation` assertion:
+the expected funding was calculated in ambient Decimal28 rather than
+production's Decimal50. Neither execution reached the TP2 over-close
+guard. The synthetic fixture now derives funding and monetary
+expected results in explicit Decimal50 contexts. Both historical
+FAILs remain FAIL, and the synthetic producer hypothesis is NOT a
+verified cause of the original 2115-second actual market failure.
+No production file was edited by this continuation.
+
+A new **opt-in** read-only diagnostic is in the existing
+`tests/test_overclose_regression.py`. It accepts the original local
+`--config` and `--input` manifest (not copied or uploaded) and
+validates them with the original loaders, prepares the selected
+symbol/framework's causal features, then runs **one** original
+strategy or matched cell through genuine `OfflineAccount.bar`,
+`ShortEntry`, `ShortExit`, `_sync` and unchanged
+`account_ledger.replay_account`. It never executes the full grid,
+never changes or bypasses the over-close guard, and applies the
+unchanged 5 GiB address-space cap. A `--base-dir` points to an
+independent read-only checkout of the exact historical
+`91ec6eb834e62f45c73163562c885ee0be03f437` source while the
+diagnostic file stays on current PR75. No baseline source write is
+required.
+
+For original ETH S1, k=.25, TTL2, X1 baseline, using finite
+operator-selected limits (replace the illustrative integers with the
+actual bounds authorized for local observation):
+
+```sh
+python3 tests/test_overclose_regression.py --forensic \
+  --base-dir PRE_R14_MAKER_X2_DIR \
+  --config LOCAL_CONFIG.json --input LOCAL_INPUT_MANIFEST.json \
+  --expected-config-sha256 d0059f87572537078eb167871099061a5f5ce3a1dfad3b4b48942d89b300d794 \
+  --expected-input-sha256 a8801cfb32ee6fc31799b1d8d3f1627805b88904847ab5557b40f85395bf68b4 \
+  --symbol ETHUSDT --framework 1 --k .25 --ttl 2 --exit X1 \
+  --scenario baseline --max-bars 100000 --max-events 2000
+```
+
+To inspect another **single** original cell, choose the original
+`--framework 1|15`, `--k .25|.50`, `--ttl 2|5`,
+`--exit X1|X2|X3`, `--scenario baseline|delay2|cost1_5x`;
+add `--matched` only when examining the original matched account,
+which retains seed=20261020+framework and 6000 draws. Without
+`--base-dir`, it uses current PR75 production source.
+This command is a bounded diagnostic, never an authorized new
+full-market experiment or shortened research result.
+
+A confirmed **first** actual `over-close` prints lossless JSON:
+cell/source/input/config hashes; bar index/timestamp; original
+account/source event dictionaries with ids/seq/timestamps and
+Decimal strings; preceding independent ledger, before qty,
+offending buy qty, resulting signed remainder, fee per actual fill,
+funding, reservation, exact entry and exit core state, plus active
+Decimal context. It then **re-raises** the original
+`X2Error("over-close")` for a nonzero rc. No inferred market
+timestamps or accounts are embedded in public source.
+When limits are reached, or no offending event is encountered,
+the result is explicitly `INCOMPLETE`, rc3, **not PASS**.
+The first genuine event capture should remain in the operator's
+approved local evidence boundary; do not publish private history in
+GitHub or chat.
+
+The normal regression remains discoverable:
+
+```sh
+python3 -m unittest discover -s tests -p test_overclose_regression.py -v
+python3 tests/test_overclose_regression.py -v
+python3 -m unittest discover -s tests -v
+python3 backtest_entry.py --self-test
+```
+
+The first two historical r14 fixture failures, original market
+`over-close` rc1, and all earlier financial/memory failure records
+are unchanged. New Python, actual-data forensic, mutations and CI
+are **NOT_RUN** at this GitHub-only source handback.
