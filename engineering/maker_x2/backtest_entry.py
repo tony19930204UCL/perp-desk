@@ -116,18 +116,59 @@ def execute_prepared(sources, config, input_path, config_path, output,
     return written
 
 
+
+def profile_cell(sources, config, n, symbol="ETHUSDT"):
+    """Finite actual-account N-bar prefix, not whole-matrix research."""
+    from itertools import islice
+    from time import monotonic
+    from market_replay import replay_cell
+    if n <= 0:
+        raise X2Error("positive profile bar count required")
+    with TemporaryDirectory(prefix="maker-profile-") as scratch:
+        prepared=prepare_bars(sources[symbol]["bars"],
+                              Path(scratch)/"bars.db")
+        features=prepare_decisions(prepared["bars"],1,
+                                   Path(scratch)/"features.db")
+        start=int(config["evaluation_start"])
+        bars=(bar for bar in prepared["bars"]
+              if bar["ts"]+60000 >= start)
+        began=monotonic()
+        result=replay_cell(symbol,islice(bars,n),
+                           read_funding(sources[symbol]["funding"])["events"],
+                           1,".25",2,"X1",config,start,
+                           int(config["evaluation_end"]),eligible=features)
+        return {"status":"PROFILE_ONLY_NOT_MARKET_ACCEPTANCE",
+                "symbol":symbol,"requested_bars":n,
+                "elapsed_seconds":monotonic()-began,
+                "ledger_events":len(result["events"]),
+                "account_episodes":len(result["episodes"])}
+
+
+
 def main(argv=None):
     parser=argparse.ArgumentParser(description="Offline Maker V3 backtest")
     mode=parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--self-test",action="store_true")
     mode.add_argument("--run",action="store_true")
     mode.add_argument("--verify",action="store_true")
+    mode.add_argument("--profile-cell",action="store_true")
+    parser.add_argument("--bars",type=int,default=20000)
     parser.add_argument("--config")
     parser.add_argument("--input",help="JSON manifest of local ETH/BTC bar/funding filenames")
     parser.add_argument("--output",help="new output directory or existing verify directory")
     args=parser.parse_args(argv)
     if args.self_test:
         return 0 if discovery_gate() else 1
+    if args.profile_cell:
+        if not (args.config and args.input):
+            parser.error("--profile-cell requires --config --input")
+        config=load_config(args.config)
+        with open(args.input,encoding="utf-8") as handle:
+            sources=json.load(handle)
+        if set(sources)!={"ETHUSDT","BTCUSDT"}:
+            raise X2Error("original two-symbol input required")
+        print(json.dumps(profile_cell(sources,config,args.bars),sort_keys=True))
+        return 0
     if args.verify:
         if not (args.output and args.input and args.config):
             parser.error("--verify requires --config --input --output")
