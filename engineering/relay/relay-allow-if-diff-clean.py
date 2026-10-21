@@ -18,7 +18,7 @@ assert len(ops)==1; op=ops[0]; a=op['args']; tool=op['path'].rsplit('/',1)[-1]
 assert tool=='update_file' and a['repository_full_name']==j['repository'] and a['branch']==j['branch'] and a['path'] in j['write_allowlist'],'scope'
 import approval_transaction as tx
 audit = tx.changed_policy(op, j, MAXL)
-d = [audit['changed_lines']]
+d = []
 assert CARD in snap()['text']
 # Exact verified card + shared confirmed-send source must authorize click.
 active = json.load(open(S + '/active_instruction.json', encoding='utf-8'))
@@ -29,5 +29,5 @@ pd.approve_check(j, S, iid, fp, chat=j.get('dispatch_chat_url'))
 ev('(()=>{const b=[...document.querySelectorAll("button")].filter(e=>e.innerText.startsWith("允許一次"));if(b.length!==1)throw Error("Ambiguous approval");b[0].click();return true})()'); time.sleep(4)
 gone=CARD not in snap()['text']
 if gone: pd.reconcile(j, S, iid, receipt='APPROVED', chat=j.get('dispatch_chat_url'), fingerprint=fp)
-open('%s/approved_once_diffclean_%d.json'%(S,int(time.time())),'w').write(json.dumps(dict(at=datetime.datetime.now(datetime.timezone.utc).isoformat(),file=a['path'],changed_lines=audit['changed_lines'],prompt_gone=gone,diff=[x[:400] for x in d]),indent=1,ensure_ascii=False))
+open('%s/approved_once_diffclean_%d.json'%(S,int(time.time())),'w').write(json.dumps(dict(at=datetime.datetime.now(datetime.timezone.utc).isoformat(),file=a['path'],changed_lines=audit['changed_lines'],prompt_gone=gone,diff=[]),indent=1,ensure_ascii=False))
 print('ALLOWED_ONCE',a['path'],'changed_lines',audit['changed_lines'],'prompt_gone',gone)
