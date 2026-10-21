@@ -3,115 +3,64 @@
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 78,
   "branch": "fix/heatmap-collector-contract-20261021",
-  "task_id": "HEATMAP-HA003-R4B",
-  "instruction_id": "HEATMAP-R4B-R3-20261021",
+  "task_id": "HEATMAP-LOGIN-TIMEOUT-FIX",
+  "instruction_id": "heatmap-fix-001",
   "status": "WAITING_CI",
-  "source_head_sha": "adfd6d78ce3b7837645884744bd7514573b02855",
-  "summary": "Sole R3 product IPC repair: observed worker stdout had 'System.Threading.Tasks.VoidTaskResult' immediately before valid JSON, empty stderr. Wait-Combo invoked Task.Delay(...).GetAwaiter().GetResult() without suppressing its PowerShell success-stream result; source-compatible cause now suppressed at origin using [void]. Worker parent retains strict whole-document ConvertFrom-Json, refactored into Read-WorkerJson shared by actual parent and opt-in IPC probe. Added native PowerShell 5.1 child/parent test for pure single-line JSON, stderr separation, null, error, polluted/malformed rejection, timeout and continuation. The normal 60000ms deadline and existing no-bypass host policy are unchanged. No native local execution of new changed bytes is authorized; prior 60k baseline seven-case probe PASSED but is not candidate or full product acceptance.",
+  "source_head_sha": "3e23e51688fdf8fe71bc809c13b353c9e8a656ce",
+  "summary": "Login leaf requires uninterrupted >=2000 ms before false; logout_leaf and two-sample user_menu_button true remain. Parent sequential combo loop uses 230000 ms stopwatch, skips subsequent workers with run_deadline when under 20000 ms remain, reserves 5000 ms and caps each worker at 60000 ms. PHASE stderr markers added. Python captures TimeoutExpired.stderr bytes/str/None as <=300-character stderr_tail while preserving ERROR line and powershell_timeout. Python per-combo error summarization already accepts run_deadline. Added tests 46-49; updated test30 expected assertions to reflect stability. Windows and Linux acceptance not executed locally.",
   "changed_files": [
     "engineering/collectors/heatmap/heatmap_capture.ps1",
+    "engineering/collectors/heatmap/heatmap_archive.py",
     "engineering/collectors/heatmap/tests/test_heatmap_archive.py",
-    ".github/workflows/ci.yml",
     ".relay/mailbox/heatmap-collector.json"
   ],
-  "runtime_manifest": [
-    {
-      "path": "engineering/collectors/heatmap/heatmap_capture.ps1",
-      "sha256": "960f46c7de8803beabe22d176e9ccabdae018644766dc2a3f60e37548a84e69d",
-      "git_blob": "260a038efe3a2a6a29b0f822987a5ed5dac84843",
-      "windows_executed": true,
-      "changed": true
-    },
-    {
-      "path": "engineering/collectors/heatmap/tests/test_heatmap_archive.py",
-      "sha256": "2e1da5dbef3b8ba3f845de85977ede7ef67594b6a5450e9813fa5c50c28fbb54",
-      "git_blob": "f0f4161b8b676ac5c0c52a96b6246911d4275daf",
-      "windows_executed": true,
-      "changed": true
-    },
-    {
-      "path": "engineering/collectors/heatmap/heatmap_archive.py",
-      "sha256": "6556dd5479e5da32cc739e639219102840454b55b837e3f80522937cfb759faf",
-      "git_blob": "7f894ecf0c93fc6d9ea1f753eb70f95ef667ba8a",
-      "windows_executed": false,
-      "changed": false
-    },
-    {
-      "path": ".github/workflows/ci.yml",
-      "sha256": "aa3db855558eb1df9c68c84a36954a0e010eb364c4110b9224a6d68cbbddc76f",
-      "git_blob": "7014defc34dcf33b3fe24a4fd091a439be78564e",
-      "windows_executed": false,
-      "changed": true
-    },
-    {
-      "path": "engineering/collectors/heatmap/config.json",
-      "sha256": "0fe49af15090daf8378b85009faf17f09b9dd90c3e6a3eb14d6cd7a68913944b",
-      "git_blob": "e7d0470c493a4146a8a77f03f9724f4f3ca4d6e6",
-      "windows_executed": false,
-      "changed": false
-    }
-  ],
-  "prior_provenance": {
-    "base_head": "8a6b80f584c3a21b3d09ef261039ff5936feabbb",
-    "base_ps_sha256": "fcdde8e70b11d1f81e6db103525ca7089b191cc50e2ffad0612bf369854e4fa1",
-    "r2_pr_ci": {
-      "run_id": 39583240524,
-      "result": "SUCCESS"
-    },
-    "r2_push_ci": {
-      "run_id": 39583232406,
-      "result": "SUCCESS"
-    },
-    "native_baseline_60000": "Operator-reported seven isolated 60k cases PASS, next 119.072s across three sequential budgets; unchanged previously trusted bytes only",
-    "archive_actual": "rc0 partial 0/6, bytes0, wall129.353s; one BTC24h ComboWorker chart288x137 14394cells/png, login=false/login_leaf, age265s; no six-combo/live data acceptance"
+  "changed_assertions": {
+    "test_30_node_login_poll_behavior": [
+      "case1 state false -> unknown; evidence login_leaf -> timeout; waited_ms bounded <=1400 -> >=1500",
+      "case6 state false -> true; evidence login_leaf -> user_menu_button"
+    ]
   },
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/collectors/heatmap/tests -v",
-      "result": "NOT_RUN (candidate)",
-      "evidence": "Existing 44 IDs preserved, added test45. Prior R2 head PR/push CI SUCCESS; candidate CI pending."
+      "result": "not run",
+      "evidence": "Local clean clone unavailable; current push CI 39692033723 was in_progress when inspected. No PASS claimed."
     },
     {
       "command": "python3 engineering/collectors/heatmap/heatmap_archive.py --selftest",
-      "result": "NOT_RUN (candidate)",
-      "evidence": "Original 11 selftests untouched. Existing Linux workflow still runs both."
+      "result": "not run",
+      "evidence": "No local checkout; CI pending."
     },
     {
       "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_43 -v",
-      "result": "NOT_RUN (candidate)",
-      "evidence": "Native Windows existing 4k CI remains; no changed-native-byte local execution."
+      "result": "not run",
+      "evidence": "Native Windows runner required; Windows job not inspected as complete."
     },
     {
       "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_45 -v",
-      "result": "NOT_RUN (candidate)",
-      "evidence": "New ordinary Windows CI opt-in test calls actual production Invoke-Worker and Wait-Combo paths under normal host policy; no credential or Chrome use."
+      "result": "not run",
+      "evidence": "Native Windows runner required; Windows job not inspected as complete."
     },
     {
-      "command": "powershell.exe -NoProfile -File .\\engineering\\collectors\\heatmap\\heatmap_capture.ps1 -IpcProbe -IpcCase next",
-      "result": "NOT_RUN (candidate)",
-      "evidence": "Requires fresh exact-version native trust decision before local execution."
-    },
-    {
-      "command": "python3 engineering/collectors/heatmap/heatmap_archive.py --config engineering/collectors/heatmap/config.json --data-root <output> --staging-root <staging> --ps-script engineering/collectors/heatmap/heatmap_capture.ps1",
-      "result": "NOT_RUN (candidate)",
-      "evidence": "Operator must reauthorize changed native artifacts; no new runtime execution."
+      "command": "python3 engineering/collectors/heatmap/mutation_check.py",
+      "result": "not run",
+      "evidence": "Mutation gate unchanged, not executed."
     }
   ],
   "remaining_work": [
-    "Candidate push+PR exact-head CI: 45 tests Linux and 11 selftests, Windows existing native 4k + new IPC test45; no success claimed yet.",
-    "Obtain fresh native exact-version decision for changed heatmap_capture.ps1 and test file. Previous RemoteSigned trust only applied to fixed base bytes; no ExecutionPolicy changes, bypass, signing or Unblock.",
-    "Confirm actual parent IPC fixes full six combination archive, including strict stdout, false/null/login_required/error, timeout and owned-process termination.",
-    "Real six-combination ECharts structured chart+PNG source timestamps/freshness, login (BTC proof had login_leaf false and 265s old), official no_agent cron/producer and two builtin scheduled cycles not accepted.",
-    "Strict 60000ms full per-combination startup/parse/cleanup remains product gate; native prior 60k baseline is not proof of changed executable."
+    "Verify new tests 46-49 are discovered and green in exact-head CI, as well as all 01-45 original gates and selftests.",
+    "Native Windows test43/test45 and manual login fake-DOM acceptance remain pending.",
+    "Verify both umask 0022 and 0002, mutation_check.py, branch-only scope and real six-combo capture within timeout.",
+    "The new PS1 bytes require operator's exact-version Windows approval; no deployment or Chrome capture performed."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review candidate exact-head PR/push CI for Linux original44+test45, 11 selftests and Windows native test43 4k and test45 IPC; inspect stdout whole JSON, stderr, null/errors, rejected noise/malformed, timeout+next, no policy change. Confirm runtime_manifest SHA256 against freshly trusted candidate bytes before native installation.",
-    "if_pass": "Consider IPC-only review; obtain independent exact-version native approval, then run real dedicated Chrome19301 six combos and official scheduled cycles, no automatic deploy.",
-    "if_fail": "Record exact CI job id, failure log and rejected candidate without resetting bounded R3; no R4.",
+    "verify_now": "Run exact-head clean clone Linux suite and selftest, Windows -k test_43/-k test_45, verify test46-49 names in logs, old gates, mutation, umask modes, stderr isolation, and manual JS login fake DOM. Recheck current source commit and CI after mailbox commit.",
+    "if_pass": "Review PR78 candidate, then request separate native exact-version trust approval and real scheduled run verification; no merge or deploy automatically.",
+    "if_fail": "Record exact failing test/CI run and smallest bounded correction. No status PASS without execution.",
     "blockers": [
-      "New Windows executable bytes not authorized for local native execution pending exact-version trust decision.",
-      "Formal product live capture/freshness and two built-in scheduled cycles not yet accepted."
+      "No local clone or execution environment with repo source; CI was pending at last check.",
+      "Native Windows exact-version authorization and production verification pending."
     ]
   }
 }
