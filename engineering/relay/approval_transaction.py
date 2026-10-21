@@ -18,6 +18,7 @@ import re
 import secrets
 import subprocess
 import time
+import product_dispatch as pd
 
 CARD = "要允許 ChatGPT 使用 GitHub 嗎？"
 EXACT_CHAT = re.compile(r"https://chatgpt\.com/c/[A-Za-z0-9-]+")
@@ -508,6 +509,10 @@ def approve(job_dir, mode="auto", max_lines=600, *, send=transport, fetch_base=N
                                       "instruction_id":ident[1],
                                       "at":clock().isoformat()}
             save_journal(ledger_file, ledger)
+            pd.approval_once(j, path, ident[1], fp1,
+                             chat=j.get("dispatch_chat_url"))
+            pd.approve_check(j, path, ident[1], fp1,
+                             chat=j.get("dispatch_chat_url"))
             clicked = True  # fail closed even when acknowledge is lost; no retry
             ack = evaluate(j, token, "click", send)
             if ack.get("clicked") is not True or ack.get("invocation") != state["invocation"]:
