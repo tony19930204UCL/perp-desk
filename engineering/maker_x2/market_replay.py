@@ -43,7 +43,8 @@ def _funding_for_bar(events, cursor, bar_end, prev_close, close):
 
 def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                 account_config, evaluation_start, evaluation_end,
-                signal_times=None, delay_minutes=0, eligible=None, rates=None):
+                signal_times=None, delay_minutes=0, eligible=None, rates=None,
+                progress=None):
     """Return actual event stream and account results for one isolated cell.
 
     signal_times=None means S1/S2; supplied times mean matched placebo.
@@ -92,7 +93,9 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
     episode_starts = {}
     equity_path = []
     last_daily_point = None
-    for bar in bars:
+    for bar_i, bar in enumerate(bars):
+        if progress is not None and bar_i and bar_i % 100000 == 0:
+            progress(bar_i)
         start = bar["ts"]
         end = start + MINUTE
         if end < evaluation_start:
@@ -244,9 +247,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
         equity_path.append(last_daily_point)
     account.tail()
     snap = account.snapshot()
-    ledger = replay_account(account.capital, account.events, rates=account.rates)
-    if ledger != account.ledger():
-        raise X2Error("independent full account ledger divergence")
+    ledger = account.verify_ledger()
     completed = []
     for episode in ledger["episodes"]:
         original = episode_starts.get(episode["id"], {})
