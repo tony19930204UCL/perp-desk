@@ -65,7 +65,7 @@ for m in pat.finditer(c):
     line = c[c.rfind('\n', 0, m.start()) + 1: end if end >= 0 else len(c)]
     assert 're.compile' in line or 'SECRET' in line.upper(), 'hit outside a detection rule: ' + line[:80]
 assert CARD in snap()['text']
-r = # Exact verified card + shared confirmed-send source must authorize click.
+# Exact verified card + shared confirmed-send source must authorize click.
 active = json.load(open(S + '/active_instruction.json', encoding='utf-8'))
 iid = active['instruction_id']
 fp = __import__('hashlib').sha256(json.dumps(op, sort_keys=True).encode()).hexdigest()
@@ -76,7 +76,7 @@ ev('(()=>{const b=[...document.querySelectorAll("button")].filter(e=>e.innerText
 time.sleep(4)
 gone = CARD not in snap()['text']
 if gone:
-    pd.reconcile(j, S, iid, receipt='APPROVED', chat=j.get('dispatch_chat_url'))
+    pd.reconcile(j, S, iid, receipt='APPROVED', chat=j.get('dispatch_chat_url'), fingerprint=fp)
 open(S + '/approved_once_manual_%d.json' % int(time.time()), 'w').write(json.dumps({
     'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
     'by': 'operator allow-once (relay-allow-card.py)', 'tool': tool, 'file': a['path'],
