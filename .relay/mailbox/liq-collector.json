@@ -1,1 +1,54 @@
-{"placeholder":true}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 77,
+  "branch": "fix/liq-collector-contract-20261021",
+  "task_id": "LIQ-CONTRACT-R5",
+  "instruction_id": "LIQ-R5-20261021",
+  "status": "BLOCKED",
+  "source_head_sha": "5990297d871c7ba6d2b6e4dfc668b17b3c59cfa1",
+  "summary": "Updated original 35-test suite with injected UTC heartbeat clock, 2 regression tests, removal of SIGALRM hazard, explicit early assertion stop for boundary tests, and mutation runner with two-umask full CONTROL before 27 selector-matched assertion-only mutations. Existing repository CI does not discover engineering/collectors/liq tests; requested acceptance cannot be established under file allowlist. No test executor provided by connected GitHub app.",
+  "changed_files": [
+    "engineering/collectors/liq/test_liq_collector.py",
+    "engineering/collectors/liq/mutate.py",
+    ".relay/mailbox/liq-collector.json"
+  ],
+  "tests": [
+    {
+      "command": "cd engineering/collectors/liq && umask 0022 && python3 -m unittest -v test_liq_collector",
+      "result": "NOT_RUN",
+      "evidence": "No available repository execution interface."
+    },
+    {
+      "command": "cd engineering/collectors/liq && umask 0002 && python3 -m unittest -v test_liq_collector",
+      "result": "NOT_RUN",
+      "evidence": "No available repository execution interface."
+    },
+    {
+      "command": "cd engineering/collectors/liq && python3 mutate.py",
+      "result": "NOT_RUN",
+      "evidence": "27 original mutants retained; runner requires 2 passing controls and same-selector AssertionError."
+    },
+    {
+      "command": "cd engineering/collectors/liq && python3 liq_collector.py --selfcheck",
+      "result": "NOT_RUN",
+      "evidence": "No available repository execution interface."
+    },
+    {
+      "command": "GitHub CI workflow isolated-tests",
+      "result": "NOT_RUN",
+      "evidence": "Current .github/workflows/ci.yml discovers automation/tests and lab/tests, not engineering/collectors/liq."
+    }
+  ],
+  "remaining_work": "Run and independently verify 37 tests under both umasks, all 27 mutants (real assertion kills), --selfcheck, and authorized public 180s probe/guard/status/stop only in isolated operator environment. Add CI discovery via separate authorization for workflow change; file outside allowed scope.",
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Check exact branch HEAD and source diffs; execute both 37-test controls, all 27 selector mutations, selfcheck, and verify CI discovery gap.",
+    "if_pass": "Authorize minimal CI coverage wiring separately, then review independent offline and 180s public probe evidence; retain draft until accepted.",
+    "if_fail": "Return exact test ID, traceback/assertion, mutant output, and command for one evidence-based revision; treat signal/timeouts/import errors as not killed.",
+    "blockers": [
+      "No connected GitHub code-execution facility; tests NOT_RUN.",
+      "Existing CI does not discover allowlisted collector tests; workflow edit is outside allowed paths."
+    ]
+  }
+}
