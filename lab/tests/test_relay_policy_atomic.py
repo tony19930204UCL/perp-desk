@@ -408,5 +408,27 @@ class AtomicDispatchTests(unittest.TestCase):
         self.assertIn("instruction-template.txt", runner)
 
 
+    def test_public_boundaries(self):
+        carrier = self._carrier()
+        for mode in ("create_file", "update_file"):
+            for n in (180, 200, 238, 600, 601):
+                with self.subTest(mode=mode, n=n):
+                    content = "x\n" * (n if mode == "create_file" else n-1)
+                    op = self._write_op(content, mode=mode, path="safe.txt")
+                    ok = carrier.approve_operation(
+                        op, self.job["repository"], self.job["branch"],
+                        "safe.txt", {"safe.txt"}, 123,
+                        fetch_base=lambda *a: "old\n")
+                    self.assertEqual(ok, n <= 600)
+        self.assertFalse(carrier.approve_operation(
+            self._write_op("x\n"), self.job["repository"], self.job["branch"],
+            "safe.txt", {"safe.txt"}, 123, max_lines=601))
+        malformed = self._write_op("x\n")
+        malformed["path"] = "mcp__GitHub__create_file"
+        self.assertFalse(carrier.approve_operation(
+            malformed, self.job["repository"], self.job["branch"],
+            "safe.txt", {"safe.txt"}, 123))
+
+
 if __name__ == "__main__":
     unittest.main()
