@@ -15,6 +15,8 @@ import unittest
 SOURCE = Path(__file__).resolve().parents[2] / "engineering" / "relay" / "product_dispatch.py"
 spec = importlib.util.spec_from_file_location("product_dispatch", SOURCE)
 dispatch = importlib.util.module_from_spec(spec)
+sys.modules['product_dispatch'] = dispatch
+sys.path.insert(0, str(SOURCE.parent))
 spec.loader.exec_module(dispatch)
 
 
@@ -35,14 +37,14 @@ class AtomicDispatchTests(unittest.TestCase):
             jobdir.mkdir()
             (jobdir / "job.json").write_text(json.dumps(self.job), encoding="utf-8")
 
-    def test_shared_product_claim_winner_truth(self):
+    def test_claim_winner(self):
         owner = dispatch.claim(self.job, self.first, "one")
         with self.assertRaises(dispatch.DispatchBlocked) as result:
             dispatch.claim(self.job, self.second, "two")
         self.assertEqual(result.exception.winner, owner["owner"])
         self.assertEqual(dispatch.check(self.job, self.first, "one")["phase"], "PREPARED")
 
-    def test_separate_product_is_independent(self):
+    def test_distinct_products(self):
         one = dispatch.claim(self.job, self.first, "one")
         second = dict(self.job, pr_number=124)
         (self.second / "job.json").write_text(json.dumps(second), encoding="utf-8")
@@ -56,7 +58,7 @@ class AtomicDispatchTests(unittest.TestCase):
         with self.assertRaises(dispatch.DispatchBlocked):
             dispatch.check(self.job, self.first, "one", phase="send")
 
-    def test_unknown_send_does_not_reopen(self):
+    def test_unknown_hold(self):
         dispatch.claim(self.job, self.first, "one")
         dispatch.phase(self.job, self.first, "one", "SEND_INTENT")
         dispatch.phase(self.job, self.first, "one", "SEND_UNKNOWN")
@@ -65,13 +67,13 @@ class AtomicDispatchTests(unittest.TestCase):
         with self.assertRaises(dispatch.DispatchBlocked):
             dispatch.check(self.job, self.first, "one", phase="send")
 
-    def test_no_implicit_configuration(self):
+    def test_no_default_root(self):
         job = dict(self.job)
         job.pop("dispatch_lock_root")
         with self.assertRaisesRegex(dispatch.DispatchBlocked, "UNCONFIGURED"):
             dispatch.claim(job, self.first, "one")
 
-    def test_real_competing_subprocess_winner(self):
+    def test_two_proc_claim(self):
         script = (
             "import importlib.util,json,sys,time\n"
             "s=importlib.util.spec_from_file_location('d',sys.argv[1]);"
@@ -135,7 +137,7 @@ class AtomicDispatchTests(unittest.TestCase):
                  valid_until=self.job["valid_until"], dispatch_job=self.job)
         return call, clicks, save
 
-    def test_carrier_effect_exactly_once(self):
+    def test_carrier_once(self):
         call, clicks, _ = self._sent()
         call()
         self.assertEqual(clicks, ["send"])
@@ -145,7 +147,7 @@ class AtomicDispatchTests(unittest.TestCase):
             call()
         self.assertEqual(clicks, ["send"])
 
-    def test_carrier_unknown_never_retry(self):
+    def test_unknown_no_retry(self):
         call, clicks, _ = self._sent(unknown=True)
         with self.assertRaises(RuntimeError):
             call()
@@ -156,7 +158,7 @@ class AtomicDispatchTests(unittest.TestCase):
             call()
         self.assertEqual(clicks, ["send"])
 
-    def test_permission_source_and_scope_mutation(self):
+    def test_scope_before_click(self):
         carrier = self._carrier()
         call, clicks, save = self._sent()
         call()
@@ -180,12 +182,13 @@ class AtomicDispatchTests(unittest.TestCase):
                 repo=self.job["repository"], branch=self.job["branch"],
                 mailbox="synthetic.py", allowed={"synthetic.py"},
                 pr_number=self.job["pr_number"], save_fn=save,
-                dispatch_job=self.job, dispatch_dir=self.first, instruction_id="one")
+                dispatch_job=self.job, dispatch_dir=self.first, instruction_id="one",
+                event_fn=lambda *a,**kw: None)
         self.assertEqual(effects, [])
         self.assertEqual(dispatch.inspect(dict(self.job, write_allowlist=["changed.py"]),
                                           self.first, "one")["phase"], "APPROVE_INTENT")
 
-    def test_permission_requires_confirmed_source(self):
+    def test_no_source_click(self):
         carrier = self._carrier()
         dispatch.claim(self.job, self.first, "one")
         op = {"path": "mcp__GitHub__update_file",
@@ -206,12 +209,13 @@ class AtomicDispatchTests(unittest.TestCase):
                 mailbox="synthetic.py", allowed={"synthetic.py"},
                 pr_number=self.job["pr_number"],
                 save_fn=lambda name,obj:(self.first/name).write_text(json.dumps(obj)),
-                dispatch_job=self.job, dispatch_dir=self.first, instruction_id="one")
+                dispatch_job=self.job, dispatch_dir=self.first, instruction_id="one",
+                event_fn=lambda *a,**kw: None)
         self.assertFalse(clicked)
 
 
 
-    def test_permission_once_effect(self):
+    def test_card_once(self):
         carrier = self._carrier()
         call, sent, save = self._sent()
         call()
@@ -232,7 +236,7 @@ class AtomicDispatchTests(unittest.TestCase):
                       mailbox="synthetic.py", allowed={"synthetic.py"},
                       pr_number=self.job["pr_number"], save_fn=save,
                       dispatch_job=self.job, dispatch_dir=self.first,
-                      instruction_id="one")
+                      instruction_id="one", event_fn=lambda *a,**kw: None)
         self.assertTrue(carrier.permission(
             {"text": "要允許 ChatGPT 使用 GitHub 嗎？"}, **params))
         self.assertEqual(approvals, [True])
