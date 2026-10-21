@@ -81,6 +81,23 @@ def _scope(job, job_dir, instruction, chat=None):
             raise DispatchBlocked("DISPATCH_AUTHORIZATION_EXPIRED")
     except (TypeError, ValueError, KeyError) as exc:
         raise DispatchBlocked("DISPATCH_EXPIRY_UNVERIFIED") from exc
+    # Reload on disk at each claim/check, never trust a stale caller copy.
+    job_file = Path(job_dir).resolve() / "job.json"
+    if job_file.is_file():
+        newest = json.loads(job_file.read_text(encoding="utf-8"))
+        for field in ("repository", "pr_number", "branch", "dispatch_lock_root",
+                      "dispatch_chat_url", "chat_url", "valid_until", "write_allowlist"):
+            if newest.get(field) != job.get(field):
+                raise DispatchBlocked("JOB_SCOPE_CHANGED")
+    else:
+        raise DispatchBlocked("JOB_FILE_REQUIRED")
+    active_file = Path(job_dir).resolve() / "active_instruction.json"
+    if active_file.is_file():
+        active = json.loads(active_file.read_text(encoding="utf-8"))
+        if active.get("instruction_id") != instruction:
+            raise DispatchBlocked("ACTIVE_INSTRUCTION_CHANGED")
+        if active.get("chat_url") not in (None, url):
+            raise DispatchBlocked("ACTIVE_CHAT_CHANGED")
     allowlist = job.get("write_allowlist")
     if not isinstance(allowlist, list) or not allowlist:
         raise DispatchBlocked("DISPATCH_WRITE_SCOPE_MISSING")
@@ -116,7 +133,7 @@ def claim(job, job_dir, instruction, *, chat=None, lease=600):
         if prior:
             if prior["scope"] != scope or prior["job_dir"] != directory:
                 raise DispatchBlocked("PRODUCT_ALREADY_CLAIMED", prior.get("owner"))
-            if prior.get("phase") in ("SEND_UNKNOWN", "SEND_INTENT", "SENT_CONFIRMED"):
+            if prior.get("phase") in ("SEND_UNKNOWN", "SEND_INTENT", "SENT_CONFIRMED", "APPROVE_INTENT", "APPROVED"):
                 raise DispatchBlocked("SEND_ALREADY_INTENDED_NO_RETRY", prior.get("owner"))
             if prior.get("owner") != owner:
                 raise DispatchBlocked("OWNER_ALREADY_EXISTS", prior.get("owner"))
@@ -138,15 +155,15 @@ def check(job, job_dir, instruction, *, phase="prepare", chat=None):
         if prior is None:
             raise DispatchBlocked("DISPATCH_CLAIM_MISSING")
         if prior.get("scope_sha256") != _sha(scope) or prior.get("scope") != scope or prior.get("job_dir") != directory:
-            raise DispatchBlocked("DISPATCH_SCOPE_GENERATION_CHANGED", prior.get("owner"))
+            raise DispatchBlocked("SCOPE_CHANGED", prior.get("owner"))
         if prior.get("owner") != _identity():
-            raise DispatchBlocked("DISPATCH_OWNER_PID_START_MISMATCH", prior.get("owner"))
+            raise DispatchBlocked("OWNER_ID_MISMATCH", prior.get("owner"))
         if time.time() >= prior["lease_until"]:
             raise DispatchBlocked("DISPATCH_LEASE_EXPIRED", prior.get("owner"))
         if phase == "send" and prior["phase"] != "PREPARED":
             raise DispatchBlocked("SEND_ALREADY_INTENDED_NO_RETRY", prior.get("owner"))
         if phase == "approve" and prior["phase"] != "SENT_CONFIRMED":
-            raise DispatchBlocked("APPROVAL_REQUIRES_CONFIRMED_SEND", prior.get("owner"))
+            raise DispatchBlocked("SEND_RECEIPT_REQUIRED", prior.get("owner"))
         return dict(prior)
 
 
@@ -159,7 +176,7 @@ def phase(job, job_dir, instruction, status, *, chat=None):
         if status == "SEND_INTENT" and prior["phase"] != "PREPARED":
             raise DispatchBlocked("SEND_RETRY_DENIED", prior.get("owner"))
         if status != "SEND_INTENT" and prior["phase"] not in ("SEND_INTENT", "SEND_UNKNOWN", "PREPARED"):
-            raise DispatchBlocked("DISPATCH_TERMINAL_ALREADY_RECORDED", prior.get("owner"))
+            raise DispatchBlocked("TERMINAL_ALREADY_SET", prior.get("owner"))
         prior["phase"] = status
         prior["updated"] = time.time()
         _write(path, prior)
@@ -187,3 +204,56 @@ def adopt_existing(job, job_dir, instruction, identity, *, chat=None):
                   "created": time.time()}
         _write(path, record)
         return record
+
+
+def approval_once(job, job_dir, instruction, fingerprint, *, chat=None):
+    """Independent approval writer delegated by exact confirmed send+job scope.
+
+    Atomically record click intent before external browser click, no retry.
+    Do not acquire auto_allow.lock here; the caller already owns it.
+    """
+    if not isinstance(fingerprint, str) or not re.fullmatch(r"[0-9a-f]{64}", fingerprint):
+        raise DispatchBlocked("CARD_FINGERPRINT_INVALID")
+    root, key, scope, directory = _scope(job, job_dir, instruction, chat)
+    with _record(root, key) as (path, prior):
+        if prior is None or prior.get("scope") != scope or prior.get("job_dir") != directory:
+            raise DispatchBlocked("NO_DELEGATED_SEND", prior.get("owner") if prior else None)
+        if prior["phase"] != "SENT_CONFIRMED":
+            raise DispatchBlocked("SEND_RECEIPT_REQUIRED", prior.get("owner"))
+        send_receipt = Path(directory) / ("send_" + instruction + ".json")
+        io_receipt = Path(directory) / ("receipt-" + instruction + ".json")
+        confirmed = False
+        for candidate in (send_receipt, io_receipt):
+            if candidate.is_file():
+                receipt = json.loads(candidate.read_text(encoding="utf-8"))
+                if receipt.get("status", receipt.get("stage")) == "CONFIRMED" and (
+                        receipt.get("chat_url", receipt.get("url")) == scope["chat"]):
+                    confirmed = True
+        if not confirmed:
+            raise DispatchBlocked("EXACT_SEND_NOT_CONFIRMED", prior.get("owner"))
+        if time.time() >= prior["lease_until"]:
+            raise DispatchBlocked("DISPATCH_LEASE_EXPIRED", prior.get("owner"))
+        # Approval PID is authenticated by this exact confirmed receipt and job
+        # scope, not incorrectly equated to the separate sender process PID.
+        prior["phase"] = "APPROVE_INTENT"
+        prior["approval_owner"] = _identity()
+        prior["card_fingerprint"] = fingerprint
+        prior["updated"] = time.time()
+        _write(path, prior)
+        return dict(prior)
+
+
+def reconcile(job, job_dir, instruction, *, receipt, chat=None):
+    """Only positive readback is recorded; never re-opens send/approval rights."""
+    root, key, scope, directory = _scope(job, job_dir, instruction, chat)
+    with _record(root, key) as (path, prior):
+        if not prior or prior.get("scope") != scope or prior.get("job_dir") != directory:
+            raise DispatchBlocked("RECONCILE_SCOPE_INVALID")
+        if receipt not in ("SEND_CONFIRMED", "APPROVED"):
+            raise DispatchBlocked("POSITIVE_READBACK_REQUIRED")
+        required = "SEND_UNKNOWN" if receipt == "SEND_CONFIRMED" else "APPROVE_INTENT"
+        if prior["phase"] != required:
+            raise DispatchBlocked("RECONCILE_PHASE_INVALID")
+        prior["phase"] = "SENT_CONFIRMED" if receipt == "SEND_CONFIRMED" else "APPROVED"
+        _write(path, prior)
+        return dict(prior)
