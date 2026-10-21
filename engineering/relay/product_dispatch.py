@@ -190,7 +190,12 @@ def _confirmed(directory, instruction, chat):
         data = json.loads(p.read_text(encoding="utf-8"))
         if (data.get("status", data.get("stage")) == "CONFIRMED"
                 and data.get("chat_url", data.get("url")) == chat
-                and data.get("instruction_id", instruction) == instruction):
+                and data.get("instruction_id") == instruction
+                and (data.get("evidence_kind") == "EXACT_RENDERED_USER_BUBBLE"
+                     or any(x.get("stage") == "CONFIRMED" and
+                            x.get("evidence") == "EXACT_RENDERED_USER_BUBBLE"
+                            for x in data.get("history", [])))
+                and (data.get("text_hash") or data.get("prompt_sha256"))):
             return hashlib.sha256(p.read_bytes()).hexdigest()
     return None
 
@@ -216,6 +221,10 @@ def phase(job, job_dir, instruction, status, *, chat=None, ticket=None):
             if not evidence:
                 raise DispatchBlocked("EXACT_SEND_NOT_CONFIRMED", prior.get("owner"))
             prior["send_receipt_sha256"] = evidence
+            prior["approval_grant"] = {"scope_sha256": _sha(scope),
+                                       "receipt_sha256": evidence,
+                                       "instruction_id": instruction,
+                                       "chat": scope["chat"]}
         prior["phase"] = status
         prior["updated"] = time.time()
         _write(path, prior)
@@ -245,63 +254,115 @@ def adopt_existing(job, job_dir, instruction, identity, *, chat=None):
         return record
 
 
-def approval_once(job, job_dir, instruction, fingerprint, *, chat=None):
-    """Independent approval writer delegated by exact confirmed send+job scope.
+def adopt_send(job, job_dir, instruction, *, chat=None):
+    """Explicit operator adoption of a previously CONFIRMED instruction send.
 
-    Atomically record click intent before external browser click, no retry.
-    Do not acquire auto_allow.lock here; the caller already owns it.
+    Unrelated adopt_existing remains ADOPTED_EXTERNAL_NO_SEND and cannot approve.
+    No message, market launch, or approval occurs here.
     """
+    root, key, scope, directory = _scope(job, job_dir, instruction, chat)
+    receipt_sha = _confirmed(directory, instruction, scope["chat"])
+    grant = job.get("dispatch_adopt_source")
+    expected = {"receipt_sha256": receipt_sha, "repository": scope["repo"],
+                "pr_number": scope["pr"], "branch": scope["branch"],
+                "chat": scope["chat"], "instruction_id": instruction,
+                "scope_sha256": _sha(scope)}
+    if not receipt_sha or not isinstance(grant, dict) or grant != expected:
+        raise DispatchBlocked("ADOPT_SEND_SOURCE_INVALID")
+    with _record(root, key) as (path, prior):
+        if prior is not None:
+            raise DispatchBlocked("EXISTING_PRODUCT_CLAIM", prior.get("owner"))
+        owner = _identity()  # approval actor, NOT the external market owner
+        now = time.time()
+        record = {"schema_version": 1, "scope": scope, "scope_sha256": _sha(scope),
+                  "job_dir": directory, "owner": owner, "lease_until": now + 600,
+                  "phase": "SENT_CONFIRMED", "send_receipt_sha256": receipt_sha,
+                  "approval_grant": {"scope_sha256": _sha(scope),
+                                     "receipt_sha256": receipt_sha,
+                                     "instruction_id": instruction, "chat": scope["chat"]},
+                  "adopted_send": True, "cards": {}, "created": now,
+                  "generation": _sha([scope, directory, owner])}
+        _write(path, record)
+        return dict(record)
+
+
+def approval_once(job, job_dir, instruction, fingerprint, *, chat=None):
+    """Atomically claim ONE distinct card delegated from exact sent instruction."""
     if not isinstance(fingerprint, str) or not re.fullmatch(r"[0-9a-f]{64}", fingerprint):
         raise DispatchBlocked("CARD_FINGERPRINT_INVALID")
     root, key, scope, directory = _scope(job, job_dir, instruction, chat)
     with _record(root, key) as (path, prior):
-        if prior is None or prior.get("scope") != scope or prior.get("job_dir") != directory:
+        if not prior or prior.get("scope") != scope or prior.get("job_dir") != directory:
             raise DispatchBlocked("NO_DELEGATED_SEND", prior.get("owner") if prior else None)
-        if prior["phase"] != "SENT_CONFIRMED":
+        if prior.get("phase") != "SENT_CONFIRMED":
             raise DispatchBlocked("SEND_RECEIPT_REQUIRED", prior.get("owner"))
-        current_receipt = _confirmed(directory, instruction, scope["chat"])
-        if not current_receipt or current_receipt != prior.get("send_receipt_sha256"):
+        current = _confirmed(directory, instruction, scope["chat"])
+        grant = {"scope_sha256": _sha(scope), "receipt_sha256": current,
+                 "instruction_id": instruction, "chat": scope["chat"]}
+        if not current or prior.get("send_receipt_sha256") != current or prior.get("approval_grant") != grant:
             raise DispatchBlocked("SEND_SOURCE_CHANGED", prior.get("owner"))
         if time.time() >= prior["lease_until"]:
             raise DispatchBlocked("DISPATCH_LEASE_EXPIRED", prior.get("owner"))
-        # Approval PID is authenticated by this exact confirmed receipt and job
-        # scope, not incorrectly equated to the separate sender process PID.
-        prior["phase"] = "APPROVE_INTENT"
-        prior["approval_owner"] = _identity()
-        prior["card_fingerprint"] = fingerprint
-        prior["updated"] = time.time()
+        cards = prior.setdefault("cards", {})
+        if fingerprint in cards:
+            raise DispatchBlocked("CARD_ALREADY_ATTEMPTED", cards[fingerprint].get("owner"))
+        if any(c["phase"] == "APPROVE_INTENT" for c in cards.values()):
+            raise DispatchBlocked("CARD_OUTCOME_UNKNOWN")
+        cards[fingerprint] = {"phase": "APPROVE_INTENT", "owner": _identity(),
+                              "source_sha256": current, "at": time.time()}
         _write(path, prior)
         return dict(prior)
 
 
-def reconcile(job, job_dir, instruction, *, receipt, chat=None):
-    """Only positive readback is recorded; never re-opens send/approval rights."""
+def reconcile(job, job_dir, instruction, *, receipt, chat=None, fingerprint=None):
+    """Positive readback only; never reopen send or card effects."""
     root, key, scope, directory = _scope(job, job_dir, instruction, chat)
     with _record(root, key) as (path, prior):
         if not prior or prior.get("scope") != scope or prior.get("job_dir") != directory:
             raise DispatchBlocked("RECONCILE_SCOPE_INVALID")
-        if receipt not in ("SEND_CONFIRMED", "APPROVED"):
+        if receipt == "SEND_CONFIRMED":
+            if prior["phase"] != "SEND_UNKNOWN":
+                raise DispatchBlocked("RECONCILE_PHASE_INVALID")
+            evidence = _confirmed(directory, instruction, scope["chat"])
+            if not evidence:
+                raise DispatchBlocked("EXACT_SEND_NOT_CONFIRMED")
+            prior["phase"] = "SENT_CONFIRMED"
+            prior["send_receipt_sha256"] = evidence
+            prior["approval_grant"] = {"scope_sha256": _sha(scope),
+                                       "receipt_sha256": evidence,
+                                       "instruction_id": instruction, "chat": scope["chat"]}
+        elif receipt == "APPROVED":
+            card = prior.get("cards", {}).get(fingerprint)
+            if not card or card.get("phase") != "APPROVE_INTENT" or card.get("owner") != _identity():
+                raise DispatchBlocked("CARD_RECONCILE_INVALID")
+            if _confirmed(directory, instruction, scope["chat"]) != card["source_sha256"]:
+                raise DispatchBlocked("SEND_SOURCE_CHANGED")
+            card["phase"] = "APPROVED"
+            card["readback_at"] = time.time()
+        else:
             raise DispatchBlocked("POSITIVE_READBACK_REQUIRED")
-        required = "SEND_UNKNOWN" if receipt == "SEND_CONFIRMED" else "APPROVE_INTENT"
-        if prior["phase"] != required:
-            raise DispatchBlocked("RECONCILE_PHASE_INVALID")
-        prior["phase"] = "SENT_CONFIRMED" if receipt == "SEND_CONFIRMED" else "APPROVED"
         _write(path, prior)
         return dict(prior)
 
 
 def approve_check(job, job_dir, instruction, fingerprint, *, chat=None):
-    """Re-read exact owner/scope/expiry and immutable card immediately before click."""
+    """Immediate before-click scope/owner/lease/card/source-generation check."""
     root, key, scope, directory = _scope(job, job_dir, instruction, chat)
     with _record(root, key) as (_, prior):
         if not prior or prior.get("scope") != scope or prior.get("job_dir") != directory:
             raise DispatchBlocked("CARD_SCOPE_CHANGED", prior.get("owner") if prior else None)
-        if prior.get("phase") != "APPROVE_INTENT" or prior.get("card_fingerprint") != fingerprint:
+        card = prior.get("cards", {}).get(fingerprint)
+        if not card or card.get("phase") != "APPROVE_INTENT":
             raise DispatchBlocked("CARD_INTENT_MISMATCH", prior.get("owner"))
-        if prior.get("approval_owner") != _identity():
-            raise DispatchBlocked("CARD_OWNER_MISMATCH", prior.get("approval_owner"))
+        if card.get("owner") != _identity():
+            raise DispatchBlocked("CARD_OWNER_MISMATCH", card.get("owner"))
         if time.time() >= prior["lease_until"]:
             raise DispatchBlocked("DISPATCH_LEASE_EXPIRED", prior.get("owner"))
-        if _confirmed(directory, instruction, scope["chat"]) != prior.get("send_receipt_sha256"):
+        current = _confirmed(directory, instruction, scope["chat"])
+        if (not current or current != card["source_sha256"]
+                or current != prior.get("send_receipt_sha256")
+                or prior.get("approval_grant") != {
+                    "scope_sha256": _sha(scope), "receipt_sha256": current,
+                    "instruction_id": instruction, "chat": scope["chat"]}):
             raise DispatchBlocked("SEND_SOURCE_CHANGED", prior.get("owner"))
         return dict(prior)
