@@ -39,10 +39,13 @@ class ReduceOnlyControl(unittest.TestCase):
         self.assertEqual((D(audits[0]["requested"]),
                           D(audits[0]["executed"]),
                           D(audits[0]["cancelled"])),(D(Q),D(Q),D(0)))
-        self.assertEqual(a.ledger()["fees"], sum(
-            (D(e["qty"])*D(e["price"])*
-             (D(".0002") if e["liquidity"]=="maker" else D(".0005"))
-             for e in events),D(0)))
+        with localcontext() as ctx:
+            ctx.prec=50
+            expected_fees=sum(
+                (D(e["qty"])*D(e["price"])*
+                 (D(".0002") if e["liquidity"]=="maker" else D(".0005"))
+                 for e in events),D(0))
+        self.assertEqual(a.ledger()["fees"],expected_fees)
 
     def test_true_external_excess(self):
         events=[{"type":"reserve","id":"reserve","seq":0,"ts":0,
