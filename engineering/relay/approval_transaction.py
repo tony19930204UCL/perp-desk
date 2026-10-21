@@ -326,9 +326,11 @@ def fingerprint(op, invocation):
 
 def scoped(op, job):
     a = op.get("args", {})
-    tool = str(op.get("path", "")).rsplit("/", 1)[-1]
-    if tool not in ("update_file", "create_file"):
+    wire = op.get("path", "")
+    if not isinstance(wire, str) or not re.fullmatch(
+            r"/connector_[A-Za-z0-9_-]+/link_[A-Za-z0-9_-]+/(?:update_file|create_file)", wire):
         raise PolicyRejected("TOOL_OUT_OF_SCOPE")
+    tool = wire.rsplit("/", 1)[-1]
     if a.get("repository_full_name") != job["repository"] or a.get("branch") != job["branch"]:
         raise PolicyRejected("REPOSITORY_OR_BRANCH")
     if a.get("path") not in job["write_allowlist"]:
@@ -410,19 +412,25 @@ def _source_guard(content, path):
 
 
 def _mailbox_hash(content, path, at, token):
-    """Only schema-v2 mailbox source-head SHA, not arbitrary JSON strings."""
-    if not path.endswith(".json") or not re.fullmatch(r"[0-9a-f]{40}", token):
+    """Only schema-v2 structured provenance digest field values."""
+    if not path.endswith(".json") or not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", token):
         return False
     try:
-        obj = json.loads(content)
-    except (ValueError, TypeError):
+        data = json.loads(content)
+    except (TypeError, ValueError):
         return False
-    if (not isinstance(obj, dict) or obj.get("schema_version") != 2
-            or obj.get("source_head_sha") != token or
-            not path.endswith("mailbox/" + path.rsplit("/", 1)[-1])):
+    if not isinstance(data, dict) or data.get("schema_version") != 2:
+        return False
+    if not ("/mailbox/" in "/" + path or path.endswith("_HANDOFF.json")):
         return False
     before = content[:at]
-    return bool(re.search(r'"source_head_sha"\s*:\s*"\s*$', before))
+    match = re.search(r'"([A-Za-z][A-Za-z0-9_]*)"\s*:\s*"$', before)
+    if not match:
+        return False
+    key = match.group(1)
+    if key == "source_head_sha" and len(token) == 40:
+        return data.get(key) == token
+    return len(token) == 64 and (key.endswith("_sha256") or key == "sha256")
 
 
 def _fetch_base(job, path):
