@@ -1892,6 +1892,45 @@ print(json.dumps(out))
         self.assertEqual(rec["combos_ok"], 0)
         self.assertEqual(rec["results"][0]["error"], "combo_timeout")
 
+    def test_43_ps_deadline_probe(self):
+        """Execute shipped PowerShell's real monotonic deadline branches offline."""
+        exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh")
+        if not exe:
+            self.skipTest("PowerShell not installed: Windows operator must execute")
+        for case in ("connect", "login", "reload", "output", "cleanup", "next"):
+            with self.subTest(case=case):
+                started = time.monotonic()
+                proc = subprocess.run(
+                    [exe, "-NoProfile", "-File", CAPTURE_PS1,
+                     "-DeadlineProbe", "-ProbeCase", case, "-ProbeMs", "150"],
+                    capture_output=True, text=True, timeout=10,
+                )
+                wall_ms = (time.monotonic() - started) * 1000
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                result = json.loads(proc.stdout.strip().splitlines()[-1])
+                self.assertEqual(result["status"], "deadline_probe")
+                self.assertLess(wall_ms, 10000)
+                rows = result["results"]
+                self.assertEqual(len(rows), 3 if case == "next" else 1)
+                for row in rows:
+                    self.assertEqual(row["error"], None if row["coin"] == "ok" else "combo_timeout")
+                    self.assertEqual(row["ok"], row["coin"] == "ok")
+                    self.assertGreaterEqual(row["elapsed_ms"], 0)
+                    self.assertLess(row["elapsed_ms"], 1000)
+                if case == "next":
+                    self.assertEqual([r["coin"] for r in rows], ["connect", "ok", "cleanup"])
+
+    def test_44_deadline_static_guards(self):
+        """Require no old widened call budget or post-failure reconnection."""
+        with open(CAPTURE_PS1, encoding="utf-8") as f:
+            src = f.read()
+        self.assertIn("Get-ComboRemaining", src)
+        self.assertIn("DeadlineProbe", src)
+        self.assertNotIn("Max(1000, [Math]::Min", src)
+        self.assertNotIn("comboDeadline", src)
+        self.assertNotIn("EnsureOpen()", src)
+        self.assertIn("cts.CancelAfter(timeoutMs)", src)
+
     def test_42_ps1_static_per_combo_deadline_enforcement(self):
         """HA-ACCEPT-003: Static check on ps1 for per-combo 60s deadline contract and reconnection."""
         with open(CAPTURE_PS1, "r", encoding="utf-8") as f:
