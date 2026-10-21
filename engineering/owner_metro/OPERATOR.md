@@ -103,3 +103,36 @@ implies fourteen days of effective coverage.
 If using an environment assignment, set it before the Python process, e.g.
 `cd lab && OWNER_METRO_CHROME=/path/to/existing/chromium python3 -m unittest -v tests.test_owner_metro_ui.MetroUI.test_real_chromium`.
 This is an actual CDP browser runner, not a static substring check.
+
+## r2 exact CI regression and acceptance entrypoints
+
+The previous head `e7c6498261de0bba9626ef7e6a24040b31a1533f`
+had one focused failure: `MetroUnit.test_large_ledger_and_source`
+expected seven pending decisions from an *undated* directive. The fixture
+now supplies `updated_at:1792065600` for the frozen test clock.
+Undated or aged directives remain unavailable for current decisions.
+
+Additional isolated commands from repository root:
+
+```sh
+cd lab && python3 -m unittest -v tests.test_owner_metro_proc tests.test_owner_metro_cells
+cd lab && python3 -m unittest -v tests.test_owner_metro tests.test_owner_metro_live tests.test_owner_metro_ui
+cd lab && python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s automation/tests -v
+```
+
+The first three fixture JSON documents under `lab/tests/fixtures/`
+are synthetic report *data*, not operator bindings. They are loaded by
+`test_owner_metro_cells`, which synthesizes actual native
+`cells/NN_strategy.json`, `cells/NN_matched.json`, `results.json`
+and `manifest.json` inside a temporary root. They must not be used as
+production sources or interpreted as trading acceptance.
+
+Browser test `tests.test_owner_metro_ui.MetroUI.test_real_chromium`
+searches the explicit `OWNER_METRO_CHROME` or `CHROMIUM_PATH` executable,
+then existing `~/.cache/ms-playwright/chromium-*` binaries and native
+Chrome/Chromium names. Missing browsers cleanly SKIP. A SKIP is never an
+accepted viewport proof; operator must record genuine 1280 and 390 CDP
+evidence separately and verify final exact-HEAD push and PR CI success.
+No update to `.github/workflows/ci.yml` is needed: its existing
+`python3 -m unittest discover -s tests -v` discovers `test_owner_metro*.py`.
