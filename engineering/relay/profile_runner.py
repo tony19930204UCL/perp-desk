@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 from datetime import datetime,timezone
 from engineering_instruction_carrier import InstructionCarrier
+import product_dispatch as pd
 from engineering_github_inbox import GitHubInboxObserver
 from main_verdict import atomic,folder_for,record_verdict,validate_result,MainHandbackError
 
@@ -52,6 +53,7 @@ class Relay:
     def dispatch(self,instruction_id,prompt):
         if not re.fullmatch(r'[A-Za-z0-9_.-]{1,140}',instruction_id): raise ValueError('INSTRUCTION_ID_FORMAT')
         j=self.job
+        pd.claim(j, self.root, instruction_id, chat=j.get('dispatch_chat_url'))
         contract={'repository':j['repository'],'pr_number':j['pr_number'],'branch':j['branch'],'task_id':j['task_id'],'instruction_id':instruction_id,'mailbox':j['mailbox'],'write_allowlist':j['write_allowlist']}
         text=prompt+'\n\nMAIN BOUNDED CONTEXT: '+json.dumps(contract,ensure_ascii=False)+'\nNo merge/deploy/trade or changes outside allowlist. Write schema_version=2 mailbox with these exact IDs, real pre-mailbox source_head_sha, status, summary, changed_files, tests with actual command/result/evidence, remaining_work, and next_step_reminder {to:Main CIO,verify_now,if_pass,if_fail,blockers:[]}. Do not claim tests not run. Main owns independent acceptance.'
         new=j.get('conversation_mode','new')=='new'
@@ -59,7 +61,7 @@ class Relay:
         else:
             snapshot=self.transport({'op':'snapshot'})
             if snapshot.get('url')!=j['chat_url']: raise RuntimeError('PINNED_CHAT_CHANGED')
-        carrier=InstructionCarrier(root=self.root,chat_path='/' if new else urlparse(j['chat_url']).path,repo=j['repository'],branch=j['branch'],mailbox=j['mailbox'],allowed=set(j['write_allowlist']),pr_number=j['pr_number'],cdp_fn=lambda expression:self.transport({'op':'evaluate','expression':expression}),snapshot_fn=lambda:self.transport({'op':'snapshot'}),save_fn=lambda name,obj:atomic(self.root/name,obj),event_fn=lambda event,**kw:atomic(self.root/'transport_event_latest.json',{'event':event,**kw}),valid_until=j['valid_until'])
+        carrier=InstructionCarrier(root=self.root,chat_path='/' if new else urlparse(j['chat_url']).path,repo=j['repository'],branch=j['branch'],mailbox=j['mailbox'],allowed=set(j['write_allowlist']),pr_number=j['pr_number'],cdp_fn=lambda expression:self.transport({'op':'evaluate','expression':expression}),snapshot_fn=lambda:self.transport({'op':'snapshot'}),save_fn=lambda name,obj:atomic(self.root/name,obj),event_fn=lambda event,**kw:atomic(self.root/'transport_event_latest.json',{'event':event,**kw}),valid_until=j['valid_until'],dispatch_job=j)
         carrier.send_instruction(text,instruction_id,snapshot)
         path=self.root/('send_'+instruction_id+'.json')
         receipt=read(path) if path.exists() else {'status':'BROWSER_BUSY_NOT_SENT'}
