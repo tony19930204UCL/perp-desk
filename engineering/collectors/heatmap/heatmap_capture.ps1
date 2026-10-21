@@ -5,11 +5,13 @@ param(
     [int]$SavePng = 1,
     [switch]$DryRun,
     [switch]$DeadlineProbe,
-    [ValidateSet('connect','login','reload','output','hash','cleanup','next','ok')][string]$ProbeCase = 'connect',
+    [ValidateSet('connect','login','reload','output','hash','cleanup','next','ok','ipcgood','ipcnoise','ipcbad','ipcerror','ipcnull')][string]$ProbeCase = 'connect',
     [int]$ProbeMs = 150,
     [switch]$ComboWorker,
     [int]$ComboIndex = 0,
-    [switch]$ProbeWorker
+    [switch]$ProbeWorker,
+    [switch]$IpcProbe,
+    [ValidateSet('next','good','noise','bad','error','null','timeout')][string]$IpcCase = 'next'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,7 +42,7 @@ function Wait-Combo {
     $left = Get-ComboRemaining -Clock $Clock -LimitMs $LimitMs
     $cts = [System.Threading.CancellationTokenSource]::new($left)
     try {
-        [System.Threading.Tasks.Task]::Delay($Ms, $cts.Token).GetAwaiter().GetResult()
+        [void]([System.Threading.Tasks.Task]::Delay($Ms, $cts.Token).GetAwaiter().GetResult())
     } catch [System.OperationCanceledException] {
         throw 'combo_timeout'
     } finally {
@@ -89,6 +91,35 @@ function Invoke-Worker {
     }
 }
 
+# Both the production parent and the opt-in IPC test parse the whole stdout.
+function Read-WorkerJson {
+    param($Worker)
+    if ($Worker.timeout -or $Worker.rc -ne 0) { return $null }
+    try { return ConvertFrom-Json -InputObject (([string]$Worker.stdout).Trim()) -ErrorAction Stop }
+    catch { return $null }
+}
+
+# Windows PowerShell 5.1 child/parent protocol, with real Wait-Combo calls.
+if ($IpcProbe) {
+    $names = if ($IpcCase -eq 'next') {
+        @('noise','good','error','null','bad','timeout','good')
+    } else { @($IpcCase) }
+    $records = @()
+    foreach ($name in $names) {
+        $child = if ($name -eq 'timeout') { 'hash' } else { 'ipc' + $name }
+        $w = Invoke-Worker -WorkerArgs @('-ProbeWorker','-ProbeCase',$child) -BudgetMs 4000
+        $v = Read-WorkerJson -Worker $w
+        $records += @{
+            case = $name; accepted = ($null -ne $v);
+            status = $(if ($v) { [string]$v.status } else { $null });
+            error = $(if ($v -and @($v.results).Count) { $v.results[0].error } else { $null });
+            stderr_ok = (([string]$w.stderr).Contains('ipc_expected_error'));
+            timeout = [bool]$w.timeout; rc = $w.rc; elapsed_ms = $w.elapsed_ms
+        }
+    }
+    Send-JsonAndExit @{schema=1;status='ipc_probe';results=$records}
+}
+
 # Explicit offline fault injection enters production methods in a supervised child.
 if ($DeadlineProbe) {
     if ($ProbeMs -lt 1000 -or $ProbeMs -gt 60000) { throw 'invalid_probe_budget' }
@@ -126,10 +157,7 @@ if (-not $ComboWorker -and -not $ProbeWorker -and -not $DryRun) {
         if ($ConfigFile) { $args += @('-ConfigFile',$ConfigFile) }
         if ($OutDir) { $args += @('-OutDir',$OutDir) }
         $w = Invoke-Worker -WorkerArgs $args -BudgetMs 60000
-        $v = $null
-        if (-not $w.timeout -and $w.rc -eq 0) {
-            try { $v = $w.stdout.Trim() | ConvertFrom-Json -ErrorAction Stop } catch {}
-        }
+        $v = Read-WorkerJson -Worker $w
         if ($v -and @($v.results).Count -eq 1 -and $v.results[0].coin -eq $c.coin -and $v.results[0].timeframe -eq $c.timeframe -and $w.elapsed_ms -lt 60000) {
             $meta = $v
             $rec = $v.results[0]
@@ -437,6 +465,29 @@ if ($ProbeWorker) {
         'hash' { Get-Sha256Hex -FilePath $null | Out-Null }
         'cleanup' { $probeSess.Dispose() }
         'ok' { Send-JsonAndExit @{schema=1;status='ok';results=@()} }
+        'ipcgood' {
+            Wait-Combo -Clock ([System.Diagnostics.Stopwatch]::StartNew()) -Ms 20
+            Send-JsonAndExit @{schema=1;status='ok';results=@(@{coin='BTC';ok=$true;error=$null})}
+        }
+        'ipcerror' {
+            Wait-Combo -Clock ([System.Diagnostics.Stopwatch]::StartNew()) -Ms 20
+            [Console]::Error.WriteLine('ipc_expected_error')
+            Send-JsonAndExit @{schema=1;status='partial';results=@(@{coin='BTC';ok=$false;error='chart_missing'})}
+        }
+        'ipcnull' {
+            Wait-Combo -Clock ([System.Diagnostics.Stopwatch]::StartNew()) -Ms 20
+            Send-JsonAndExit @{schema=1;status='partial';results=@(@{coin='BTC';ok=$false;error=$null})}
+        }
+        'ipcnoise' {
+            Wait-Combo -Clock ([System.Diagnostics.Stopwatch]::StartNew()) -Ms 20
+            [Console]::Out.WriteLine('unexpected_prefix')
+            Send-JsonAndExit @{schema=1;status='ok';results=@(@{coin='BTC';ok=$true;error=$null})}
+        }
+        'ipcbad' {
+            Wait-Combo -Clock ([System.Diagnostics.Stopwatch]::StartNew()) -Ms 20
+            [Console]::Out.WriteLine('{"status":')
+            exit 0
+        }
     }
     throw 'probe_did_not_block'
 }
