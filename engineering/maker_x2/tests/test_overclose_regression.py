@@ -66,18 +66,36 @@ class OvercloseControl(unittest.TestCase):
         self.assertEqual(len(sells),1)
         self.assertEqual(len(buys),2)
         with localcontext() as ctx:
-            ctx.prec=50  # identical to independent replay's cash arithmetic
-            self.assertEqual(sum((D(e["qty"]) for e in buys),D("0")),D(Q))
-            gross=sum(((D("100.25")-D(e["price"]))*D(e["qty"])
-                       for e in buys),D("0"))
-            fee=sum((D(e["qty"])*D(e["price"])*
-                     (D(".0002") if e["liquidity"]=="maker" else D(".0005"))
-                     for e in sells+buys),D("0"))
-            expected_cash=D("1000")+gross-fee-expected_funding
+            ctx.prec=50
+            qty=D(Q)
+            entry_price=D("100.25")
+            half=qty/D(2)
+            rest=qty-half
+            tp1=entry_price*(1-D(".0045"))
+            tp2=entry_price*(1-D(".0090"))
+            self.assertEqual(D(sells[0]["qty"]),qty)
+            self.assertEqual(D(sells[0]["price"]),entry_price)
+            self.assertEqual([(D(e["qty"]),D(e["price"])) for e in buys],
+                             [(half,tp1),(rest,tp2)])
+            self.assertEqual(half+rest,qty)
+            basis=qty*entry_price
+            first=(basis/qty-tp1)*half
+            basis-=basis/qty*half
+            second=(basis/rest-tp2)*rest
+            gross=first+second
+            entry_fee=qty*entry_price*D(".0002")
+            first_fee=half*tp1*D(".0002")
+            second_fee=rest*tp2*D(".0002")
+            fee=entry_fee+first_fee+second_fee
+            funding_credit=qty*D("100")*D(".001")
+            cash=D("1000")-entry_fee
+            cash+=funding_credit
+            cash+=first-first_fee
+            cash+=second-second_fee
         self.assertEqual(finished["gross"],gross)
         self.assertEqual(finished["fees"],fee)
-        self.assertEqual(finished["funding_cost"],expected_funding)
-        self.assertEqual(finished["cash"],expected_cash)
+        self.assertEqual(finished["funding_cost"],-funding_credit)
+        self.assertEqual(finished["cash"],cash)
         self.assertEqual(finished,replay_account("1000",a.events))
 
     def test_true_overclose_remains_rejected(self):
