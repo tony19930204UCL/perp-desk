@@ -4,50 +4,40 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "C0041-MAKER-INTEGRATION",
-  "instruction_id": "C0041-MAKER-INTEGRATION-r8",
+  "instruction_id": "C0041-MAKER-INTEGRATION-r9",
   "status": "WAITING_CI",
-  "source_head_sha": "cc55f09e6f78effe98614d8b527152a066c2b796",
-  "summary": "One bounded actual-producer argv compatibility update. Bridge (<350 lines) resolves literal python3 -u backtest_entry.py relative child argv against explicit trusted absolute cwd and operator-configured existing absolute child_executable; compares actual resolved Python/script to exact absolute configured verify interpreter/script and preserves immutable config/input/output/source checks. Does NOT rewrite real adopted run argv or launch --run. Added two temporary installed-sibling actual subprocess/normalizer CLI and fail-closed wrong binding tests, original 24 methods retained (26 total). Documented captured executable/cwd contract and updated unconfigured example. stage_relay.py, workflow and PR75 source untouched; real C1069 producer PID not accessed. Market and reflection remain NOT_PROVEN.",
+  "source_head_sha": "aa1c9e064a1b50e817b1cea91a42ca4149c87eb2",
+  "summary": "One-line isolated test loader typo correction only in test_maker_relative_python_rejects_bad_bindings: ModuleSpec.loader.exec_module(bridge) instead of ModuleSpec.exec_module(bridge). All original 26 test methods and all negative binding assertions remain; no bridge/stage_relay/example/CI/source changes. r8 exact-head operator suite had 25 PASS 1 ERROR from this loader typo; r8 push39517628898 and PR39517633243 failed. R9 requires fresh exact-head independent tests and CI.",
   "changed_files": [
-    "engineering/maker_stage_bridge.py",
     "engineering/tests/test_stage_relay.py",
-    "engineering/STAGE_RELAY.md",
-    "engineering/stage_relay_example.json",
     ".relay/mailbox/c0041-stage-relay.json"
   ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
       "result": "NOT_RUN",
-      "evidence": "r8 source-only connector operations; 26 test methods authored. User/operator independently reports prior r7 24/24 PASS and exact prior push CI39516152207/pull_request CI39516154904 SUCCESS; these are not r8 results."
+      "evidence": "R9 file-only GitHub update. Operator independently measured r8 26 tests 25 PASS 1 ERROR at test line 806; the only r9 source change fixes that loader call. No new test execution observed."
     },
     {
-      "command": "R8 installed temp profile real relative python3 -u child and maker_stage_bridge.py normalize CLI regression",
+      "command": "R9 exact-head push and pull_request GitHub CI",
       "result": "NOT_RUN",
-      "evidence": "New synthetic-only subprocess and fail-closed cases are source-contained but not executed in this chat."
-    },
-    {
-      "command": "r8 final exact-head push and pull_request CI",
-      "result": "NOT_RUN",
-      "evidence": "Not checked or represented as green; independent operator must observe both new exact-head conclusions."
+      "evidence": "Previous r8 push 39517628898 and PR 39517633243 FAILED, not r9 conclusions; must independently verify both new exact-head runs."
     }
   ],
   "remaining_work": [
-    "Operator independently run all 26 finite unittest methods and both new exact-head push/pull_request CI; review any runtime error before authorizing a new installed sibling copy.",
-    "Operator bind actual absolute Python executable, trusted cwd and verify argv to live captured producer child without altering original run_argv, owner PID/start/boot, cap or source/input/config identity.",
-    "Wait for trusted external C1069 completion and actual shipped Maker --verify results, three 48-cell scenario reports, 289 inventory hashes, independent result acceptance and operator model reflection. No fabricated market proof.",
-    "Only separately authorized operator may install updated sibling; no deploy/trading/real producer restart or cwd/private path access in this turn."
+    "Run complete 26 tests; ensure all malformed captured executable/script/cwd/flags/config/output negative subcases genuinely execute and fail closed.",
+    "Confirm both NEW exact-head push/pull_request CI success before any separate installation decision.",
+    "Do not operate real historical child, PR75 or local AGY resources; 3x48 actual Maker result and independent operator reflection remain unavailable/unproven."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review r8 branch final/head, confirm bridge remains <350 lines, stage_relay.py and workflow unchanged, run 26 tests including actual relative Python child with PID/start and installed normalize plus wrong executable/script/flag/cwd/output refusal, and verify both final-head GitHub CI.",
-    "if_pass": "Accept bounded source compatibility only; separately coordinate verified installed sibling update without disturbing actual running external producer, and wait for real market acceptance chain.",
-    "if_fail": "Return exact failing traceback/HEAD for parent authorization decision; do not re-run original historical source or bypass approval.",
+    "verify_now": "Verify PR76 r9 exact HEAD; run all 26 tests and assert negative binding subcases execute, check both new push/pull_request CI, verify only test and mailbox blobs changed.",
+    "if_pass": "Accept strictly scoped test-loader typo correction only; separate installation and market-evidence acceptance remain required.",
+    "if_fail": "Return exact new failing traceback and head to parent; no autonomous broader changes, source edits or real history restart.",
     "blockers": [
-      "R8 tests and dual CI NOT_RUN by assistant",
-      "Live C1069 source still running; terminal/3x48/verify/independent acceptance not yet available",
-      "Whole Maker financial product chain NOT_PROVEN",
-      "No installed update, deployment, paper/live or trading performed"
+      "R9 tests and both exact-head CI NOT_RUN here",
+      "Real Maker market history and reflection chain NOT_PROVEN",
+      "No install, deployment or trading authorized"
     ]
   }
 }
