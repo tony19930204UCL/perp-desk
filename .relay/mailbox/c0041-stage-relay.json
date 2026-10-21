@@ -3,41 +3,58 @@
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
-  "task_id": "C0041-MAKER-INTEGRATION",
-  "instruction_id": "C0041-MAKER-INTEGRATION-r9",
-  "status": "WAITING_CI",
-  "source_head_sha": "aa1c9e064a1b50e817b1cea91a42ca4149c87eb2",
-  "summary": "One-line isolated test loader typo correction only in test_maker_relative_python_rejects_bad_bindings: ModuleSpec.loader.exec_module(bridge) instead of ModuleSpec.exec_module(bridge). All original 26 test methods and all negative binding assertions remain; no bridge/stage_relay/example/CI/source changes. r8 exact-head operator suite had 25 PASS 1 ERROR from this loader typo; r8 push39517628898 and PR39517633243 failed. R9 requires fresh exact-head independent tests and CI.",
+  "task_id": "RELAY-POLICY-ATOMIC",
+  "instruction_id": "RELAY-POLICY-ATOMIC-r0",
+  "status": "BLOCKED",
+  "source_head_sha": "6ca40a365c2fea8f1ff6082029e67f057cc34f3f",
+  "summary": "Partial bounded source delivery ONLY, not integrated acceptance: seeded original paths inspected, new shared durable cross-jobdir claim in engineering/relay/product_dispatch.py with PID/boot/start, scope/lease, unknown-send hold, 600 max-lines parameter in historical approval_transaction.py, source instruction template, initial six offline product-claim tests. CRITICAL: direct strict/diff scripts, carrier permission/send, page-IO worker/direct-send, profile_runner, auto_allow and noarg stage_relay are NOT all wired to shared product dispatch. Thus observed conflicting product dispatch remains possible; no live-effect atomic guarantee and no operator install authorization. No local execution, shell, browser or credential access.",
   "changed_files": [
-    "engineering/tests/test_stage_relay.py",
+    "engineering/relay/product_dispatch.py",
+    "engineering/relay/approval_transaction.py",
+    "engineering/relay/instruction-template.txt",
+    "lab/tests/test_relay_policy_atomic.py",
     ".relay/mailbox/c0041-stage-relay.json"
   ],
   "tests": [
     {
-      "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
+      "command": "python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v",
       "result": "NOT_RUN",
-      "evidence": "R9 file-only GitHub update. Operator independently measured r8 26 tests 25 PASS 1 ERROR at test line 806; the only r9 source change fixes that loader call. No new test execution observed."
+      "evidence": "Six offline preliminary claim/scope/unknown-send tests authored but no shell execution. They do NOT constitute full installed-path/browser acceptance."
     },
     {
-      "command": "R9 exact-head push and pull_request GitHub CI",
+      "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
       "result": "NOT_RUN",
-      "evidence": "Previous r8 push 39517628898 and PR 39517633243 FAILED, not r9 conclusions; must independently verify both new exact-head runs."
+      "evidence": "Original stage tests not run in this turn; source contracts not claimed verified."
+    },
+    {
+      "command": "python3 -m unittest discover -s lab/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "Existing lab tests not rerun. No new exact-head CI conclusion confirmed."
+    },
+    {
+      "command": "Isolated real Chromium/CDP installed-layout end-to-end acceptance (no test entrypoint yet)",
+      "result": "NOT_RUN",
+      "evidence": "Requested browser-layout runner not implemented; no Chromium/approval/send action executed."
     }
   ],
   "remaining_work": [
-    "Run complete 26 tests; ensure all malformed captured executable/script/cwd/flags/config/output negative subcases genuinely execute and fail closed.",
-    "Confirm both NEW exact-head push/pull_request CI success before any separate installation decision.",
-    "Do not operate real historical child, PR75 or local AGY resources; 3x48 actual Maker result and independent operator reflection remain unavailable/unproven."
+    "BLOCKING: integrate claim/check/phase at EVERY actual page IO click, carrier sender/permission, worker, profile_runner, strict/diff and auto_allow approval route; prevent bypass and avoid nested approval lock deadlock.",
+    "BLOCKING: full immutable scope generation checks, explicit external adoption, safe PID/lease handoff and no uncertain-send reuse across separate processes; current product_dispatch.py has only partial contract tests and has not been tested.",
+    "BLOCKING: implement narrow real parsed identifier policy, genuine secret/ENV/PAT/private-key negatives, create/update propagation and 180/200/238/600/601 bounded change-line tests; current historical library upper limit change is not installed live policy.",
+    "BLOCKING: provide a runnable stdlib CDP/browser-layout harness using installed entrypoints and deterministic override, plus complete live-entrypoint installation coverage table; no silently skipped checks.",
+    "Main must inspect exact-head CI and all tests, require an independently authorized bounded follow-up before installing anything; no PR75 operations, deployment or live sends."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Verify PR76 r9 exact HEAD; run all 26 tests and assert negative binding subcases execute, check both new push/pull_request CI, verify only test and mailbox blobs changed.",
-    "if_pass": "Accept strictly scoped test-loader typo correction only; separate installation and market-evidence acceptance remain required.",
-    "if_fail": "Return exact new failing traceback and head to parent; no autonomous broader changes, source edits or real history restart.",
+    "verify_now": "Treat current PR76 addition as partial BLOCKED, not deployable. Review diff, run preliminary offline suite only as diagnostic, require complete actual entrypoint integration and browser acceptance before independently accepting. No default/private path inference.",
+    "if_pass": "Do not accept as full repair on these tests alone. A separately authorized scope must finish and verify missing real send/approval integration and exact-head dual CI before installation.",
+    "if_fail": "Preserve exact failure and current HEAD, route to owner for bounded decision; never retry refused operations or actual sends automatically.",
     "blockers": [
-      "R9 tests and both exact-head CI NOT_RUN here",
-      "Real Maker market history and reflection chain NOT_PROVEN",
-      "No install, deployment or trading authorized"
+      "Actual effect entrypoints not integrated to shared lock",
+      "Changed-line policy only historical library, existing strict/diff callsites still 200",
+      "Secret-aware parsed identifier exception and full security boundary tests absent",
+      "Installed real-browser harness and full CI evidence absent",
+      "Current source not safe to install or claim unattended atomic behavior"
     ]
   }
 }
