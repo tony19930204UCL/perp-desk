@@ -53,6 +53,15 @@ class MetroUnit(unittest.TestCase):
             self.assertTrue(all(s["state"] != "done" for r in model["routes"]
                                 for s in r["steps"]))
             self.assertEqual(model["source_totals"]["union"], 1202)
+            self.assertEqual(model["history_count"], 0)
+            ledger["items"][-1]["state"] = "VERIFIED"
+            ledger["items"][-2]["state"] = "DROPPED"
+            (root / "commitments/ledger.json").write_text(json.dumps(ledger))
+            updated = read_metro(str(root), now_ms=1792065600000)
+            self.assertEqual(updated["history_count"], 2)
+            self.assertEqual(updated["history"][-1]["id"], "C-1201")
+            self.assertEqual(updated["source_totals"]["ledger"], 1202)
+            self.assertEqual(updated["source_totals"]["union"], 1202)
             (root / "owner_metro/directive.json").write_text("{")
             self.assertIsNone(read_metro(str(root), now_ms=1792065600000)
                               ["kpis"]["pending_decisions"])
