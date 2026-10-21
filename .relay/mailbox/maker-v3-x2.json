@@ -4,12 +4,11 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-X2-OVERCLOSE-r14",
+  "instruction_id": "MAKER-V3-X2-OVERCLOSE-r14-forensics-1",
   "status": "WAITING_CI",
-  "source_head_sha": "76ae0efd45981bd9926184338e8c4b13c4bbd0d8",
-  "summary": "Authorized new r14 engineering unit following genuine full-history run_rc1 elapsed2115.4119164943695s and X2Error over-close from account._sync -> account_ledger.replay_account, after 107 control PASS and ETH 1m/15m prepared but zero market cells written. No real failing event ID/timestamp/quantity available: root cause in original historical stream UNKNOWN. Source inspection reveals independently testable high-precision producer risk in X2: separate halves from default Decimal context can sum above a >28-digit entry quantity; MakerX2._exit qty subtraction inherits caller context. Candidate changes only ShortExit X2 order halves to exact complementary quantities and wraps on_bar's original logic in a Decimal context of at least 50 digits and enough entry-qty digits. No rounding/clamp/tolerance/overclose handling, no independent ledger guard or core/risk/fee/funding changes. New discoverable synthetic test_overclose_regression.py drives real OfflineAccount/ShortEntry/ShortExit/replay_account, fractional Maker entry, TP1/TP2 exits, finalized funding, exact fractional quantity and cash/fees/gross/margin conservation, and independent negative true-excess-buy rejection. README documents exact immutable base RED and candidate GREEN commands, which are NOT_RUN in GitHub-only environment. This is a bounded candidate and NOT verified cause of the real-market failure or market/PnL acceptance.",
+  "source_head_sha": "e2c20c96bf4f3476c5e813528b9241515e8a9b78",
+  "summary": "Bounded test-only correction of independently observed r14 synthetic fixture Decimal28 expected funding mismatch, and opt-in source-bound original-market single-cell forensic in tests/test_overclose_regression.py. Expected funding/gross/fees/cash now computed using explicit Decimal50 without tolerance, rounding or production changes. Both earlier immutable base91ec6eb8 and r14 candidate6b646d7 ran 2 IDs, failed same earliest funding assertion and never reached over-close guard; they remain historical FAIL. Forensic accepts existing local --config/--input with optional exact source --base-dir, explicit symbol/framework/k/TTL/exit/scenario/matched and finite --max-bars/--max-events under 5GiB. It uses original loading, validated SQLite bar/features, causal account replay, and unchanged OfflineAccount/ShortEntry/ShortExit/account_ledger. On first genuine unchanged X2Error('over-close') in _sync it emits lossless exact original event/qty/fees/funding/reservation and cell, source and context provenance then re-raises; absent error returns INCOMPLETE rc3 rather than PASS. No actual raw history available in GitHub-only session. No original market root cause established, no financial/strategy/production changes, no source or tests outside allowlist edited.",
   "changed_files": [
-    "engineering/maker_x2/exit_lifecycle.py",
     "engineering/maker_x2/tests/test_overclose_regression.py",
     "engineering/maker_x2/README.md",
     ".relay/mailbox/maker-v3-x2.json"
@@ -18,150 +17,40 @@
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_overclose_regression.py -v",
       "result": "NOT_RUN",
-      "evidence": "File-only GitHub connector; no new Python process executed. Pin immutable r14 base 91ec6eb834e62f45c73163562c885ee0be03f437 for independently measured RED with this new test, then exact candidate GREEN. Real-market over-close trace lacks original source events."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_overclose_regression.py -v",
-      "result": "NOT_RUN",
-      "evidence": "File-only GitHub connector; no new Python process executed. Pin immutable r14 base 91ec6eb834e62f45c73163562c885ee0be03f437 for independently measured RED with this new test, then exact candidate GREEN. Real-market over-close trace lacks original source events."
+      "evidence": "r14-forensics-1 corrected Python source was delivered via GitHub connector only; historical base and candidate each failed earliest funding literal prior to modification."
     },
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "File-only GitHub connector; no new Python process executed. Pin immutable r14 base 91ec6eb834e62f45c73163562c885ee0be03f437 for independently measured RED with this new test, then exact candidate GREEN. Real-market over-close trace lacks original source events."
+      "evidence": "No execution on this source head; original 107 control history not a new PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --self-test",
       "result": "NOT_RUN",
-      "evidence": "File-only GitHub connector; no new Python process executed. Pin immutable r14 base 91ec6eb834e62f45c73163562c885ee0be03f437 for independently measured RED with this new test, then exact candidate GREEN. Real-market over-close trace lacks original source events."
+      "evidence": "No r14-forensics-1 execution."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_capacity.py --differential --base-dir PRE_R13_MAKER_X2_DIR",
+      "command": "cd engineering/maker_x2 && python3 tests/test_overclose_regression.py --forensic --base-dir PRE_R14_MAKER_X2_DIR --config LOCAL_CONFIG.json --input LOCAL_INPUT_MANIFEST.json --expected-config-sha256 d0059f87572537078eb167871099061a5f5ce3a1dfad3b4b48942d89b300d794 --expected-input-sha256 a8801cfb32ee6fc31799b1d8d3f1627805b88904847ab5557b40f85395bf68b4 --symbol ETHUSDT --framework 1 --k .25 --ttl 2 --exit X1 --scenario baseline --max-bars 100000 --max-events 2000",
       "result": "NOT_RUN",
-      "evidence": "File-only GitHub connector; no new Python process executed. Pin immutable r14 base 91ec6eb834e62f45c73163562c885ee0be03f437 for independently measured RED with this new test, then exact candidate GREEN. Real-market over-close trace lacks original source events."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_capacity.py --resource --minutes 30000",
-      "result": "NOT_RUN",
-      "evidence": "File-only GitHub connector; no new Python process executed. Pin immutable r14 base 91ec6eb834e62f45c73163562c885ee0be03f437 for independently measured RED with this new test, then exact candidate GREEN. Real-market over-close trace lacks original source events."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-fee",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-funding",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-be",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_x2.py mut-duplicate",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py mut-lookahead",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_entry_lifecycle.py mut-touch",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py mut-time",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_exit_lifecycle.py mut-reverse",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py mut-double-entry",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py mut-kill-bypass",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py mut-partial-liq",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_account_lifecycle.py mut-open-mtm",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_signal_features.py mut-lookahead",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py mut-replacement",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_matched_signals.py mut-resample",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-fee",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-funding",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-fake-time",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-future",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_backtest_mutations.py mut-overfill",
-      "result": "NOT_RUN",
-      "evidence": "Run only after current positive controls PASS; require named genuine AssertionError and rc1, not inherited prior evidence."
+      "evidence": "Operator-local original market data and private paths unavailable to this GitHub connector. A finite single cell may yield INCOMPLETE rc3, not market PASS; cell selection may need to follow forensic evidence."
     }
   ],
   "remaining_work": [
-    "Main CIO independently copy test-only r14 regression to isolated immutable base HEAD91ec6eb834e62f45c73163562c885ee0be03f437 and measure actual failing ID/traces without changing original source. Then on exact r14 candidate execute same test and full 107+discovered controls, record precise event IDs/seq/ts/qty, fees, funding, margin and return codes.",
-    "Verify actual precision candidate preserves frozen default economic outputs and proper X2 next-bar BE, true excess-buy rejection, duplicate/time/order/partial and negative original mutations; only after all positives PASS run 20 original mutation subprocesses with real AssertionError/test IDs/rc1.",
-    "Validate exact-head push and pull_request CI for r14, noting broad CI may omit nested maker_x2 tests; no inherited PASS.",
-    "Market root cause remains unproven because no original offending event dump is available. No new full-history run permitted within this r14; do not infer PnL/product acceptance or synthesize market results.",
-    "No additional r14 revision implicitly authorized. If RED cannot be reproduced, candidate fails, or trace establishes different cause, record BLOCKED findings rather than relaxing ledger or changing protected modules."
+    "Main CIO independently run corrected normal regression and examine whether it reaches genuine immutable-base over-close RED and candidate GREEN; if not, explicitly label synthetic fixture DOES_NOT_REPRODUCE.",
+    "Operator may run documented finite local single-cell --forensic against immutable original source and targeted cell, validating original config and input SHA; INCOMPLETE or any other exception is not an over-close reproduction.",
+    "Only the first genuine original over-close record with exact account/source events, before/after qty, fee/funding/reservation and context supports a causal production repair decision; no original root cause verified yet.",
+    "Preserve original market rc1 after2115.4119164943695s and original r14 both synthetic red at funding assertion; do not launch original whole 48x3 grid or claim PnL.",
+    "No production changes permitted in this continuation and no bypass of original accounting over-close guard. Independent push and PR CI status requires checking; no CI run claimed."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Pin exact source_head_sha 76ae0efd45981bd9926184338e8c4b13c4bbd0d8 and verify only allowlisted three source/test/doc paths changed before mailbox. Run exact new regression against isolated immutable base and candidate, full discovery and self-test, then original 20 true mutation entrypoints; inspect unchanged over-close guard and exact Decimal event/fee/funding/margin invariants. Obtain new exact-head push and PR CI. The original full-history failure is NOT validated as this precision cause.",
-    "if_pass": "Accept only bounded r14 engineering producer fix with real base RED/candidate GREEN, exact ledger and unchanged 107 tests/20 mutations; no historical market or strategy PASS. Separate authorization required to retry actual whole history.",
-    "if_fail": "Preserve exact trace, rejected base/candidate test IDs and source SHA. No fallback clamp, tolerance, over-close catch or unapproved additional revision.",
+    "verify_now": "Pin exact source SHA and run the corrected 2-ID synthetic test plus full discovery. Confirm only tests/test_overclose_regression.py and README changed before mailbox, all production and old tests byte-identical. Run documented local one-cell forensic within strict 5GiB and bounded bars/events against immutable original source; preserve actual original event evidence. Treat INCOMPLETE as non-acceptance, not PASS.",
+    "if_pass": "Accept only a tested diagnostic capability. Establish genuine first historical over-close event before any separately authorized production correction or full market replay. Synthetic green alone is not an original market fix.",
+    "if_fail": "Report exact test/forensic trace, rc and identity; preserve original failures without guessing or relaxing over-close guard.",
     "blockers": [
-      "Real historical failing event sequence and actual root cause remain UNKNOWN",
-      "r14 RED/GREEN/Python/CI all NOT_RUN",
-      "Historical full BTC/ETH market run previously FAILED; no completed market cell, no PnL"
+      "Corrected synthetic regression and actual-data forensic NOT_RUN on this source",
+      "Original first offending account event and root cause UNKNOWN",
+      "No accepted market result, no authorization to alter protected production"
     ]
   }
 }
