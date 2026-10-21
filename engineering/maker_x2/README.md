@@ -1335,3 +1335,73 @@ r13-correction-2 tests, CI, mutations and full-market run remain
 **NOT_RUN** at GitHub source delivery. Previous real full-market
 failure and prior independent r13 success are preserved, not
 reclassified as new PASS. No third r13 correction is authorized.
+
+
+## r14 — measured full-history over-close, fractional producer candidate
+
+Observed original genuine full-history `--run` at
+`91ec6eb834e62f45c73163562c885ee0be03f437` failed rc1 after
+2115.4119164943695 seconds under the unchanged 5 GiB limit.
+The original 107 controls passed, ETHUSDT 1m/15m features prepared,
+and **zero** raw market cells were completed. Error:
+`account_lifecycle._sync -> account_ledger.replay_account:
+X2Error("over-close")`. No actual offending event timestamp or
+quantity was captured, so **the real-market root cause is still
+unverified**. The old FAIL remains a FAIL.
+
+Source inspection identifies a testable producer-side high-precision
+risk: X2's two separately rounded `qty/2` passive quantities and
+subsequent `MakerX2._exit` subtraction previously used the caller's
+default Decimal context. High-precision per-margin sizing can
+produce fractional quantities exceeding 28 digits. This bounded
+candidate changes **only** `exit_lifecycle.ShortExit`: X2 TP2 is
+computed as the exact complement of TP1, and `on_bar` runs its
+existing original transition inside a local high-precision context
+(at least Decimal50 and sufficient exact entry-qty digits).
+No fees, stops, prices, fill ordering, funding convention, risk
+threshold or `account_ledger` validation is altered; no
+tolerance, clamp or quantization is introduced.
+
+New discoverable `tests/test_overclose_regression.py` exercises real
+`OfflineAccount -> ShortEntry -> ShortExit -> replay_account` with
+a specifically labeled fictional high-precision qty and a
+chronological Maker entry, finalized funding, TP1 partial buy and
+TP2 final buy. Assertions require **exact** sum of both buy
+quantities equal to original sell quantity, flat qty, zero reserved
+margin, explicit funding cost, gross and cash identity and exact
+independent ledger equality. A separate actually excessive buy
+event must still raise the unchanged `X2Error("over-close")`.
+This is synthetic engineering evidence only, never a purported
+extraction of private market events.
+
+### r14 finite acceptance
+
+From `engineering/maker_x2`, Main CIO pins the immutable base
+checkout at the SHA above and verifies a genuine RED of the
+new test at that base (test-only file may be copied into the
+isolated base working tree without altering original production).
+Then run the **same** test against the exact corrected PR75
+HEAD for GREEN, with captured event/qty/fee/funding
+and test IDs:
+
+```sh
+python3 -m unittest discover -s tests -p test_overclose_regression.py -v
+python3 -m unittest discover -s tests -v
+python3 backtest_entry.py --self-test
+python3 tests/test_overclose_regression.py -v
+```
+
+Run all previously shipped standalone positive entrypoints and
+20 real named-AssertionError mutation subprocesses after all
+positives PASS; check exact-head push and PR CI separately.
+No whole-history retry is authorized by this engineering
+instruction. Old source-failure, original data/config hashes
+and all prior acceptance history remain unchanged.
+
+**Execution in this GitHub-file-only handback: NOT_RUN** for
+base RED, candidate GREEN, all original 107 regressions, mutation,
+CI and genuine market. The regression must not be counted as
+proof of the actual 2115-second market failure's cause until
+independent original-event reproduction or equivalent exact
+RED/GREEN evidence is established. There is no implicit further
+r14 revision, no market PnL and no paper/live/deployment.
