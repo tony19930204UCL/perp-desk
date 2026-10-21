@@ -151,14 +151,27 @@ if (-not $ComboWorker -and -not $ProbeWorker -and -not $DryRun) {
     }
     $results = @()
     $meta = $null
+    $runLimitMs = 230000
+    $runClock = [System.Diagnostics.Stopwatch]::StartNew()
+    [Console]::Error.WriteLine('PHASE start')
     for ($ix = 0; $ix -lt $enabled.Count; $ix++) {
         $c = $enabled[$ix]
+        $elapsed = [int]$runClock.ElapsedMilliseconds
+        [Console]::Error.WriteLine("PHASE combo $ix start t=$elapsed")
+        $remaining = $runLimitMs - $elapsed
+        if ($remaining -lt 20000) {
+            $results += @{coin=$c.coin; mode=$c.mode; timeframe=$c.timeframe; model=$c.model;
+                ok=$false; error='run_deadline'; login_required=$false; elapsed_ms=0}
+            [Console]::Error.WriteLine("PHASE combo $ix end ok=false t=$([int]$runClock.ElapsedMilliseconds)")
+            continue
+        }
+        $workerBudgetMs = [Math]::Min(60000, $remaining - 5000)
         $args = @('-ComboWorker','-ComboIndex',"$ix",'-Port',"$Port",'-SavePng',"$SavePng")
         if ($ConfigFile) { $args += @('-ConfigFile',$ConfigFile) }
         if ($OutDir) { $args += @('-OutDir',$OutDir) }
-        $w = Invoke-Worker -WorkerArgs $args -BudgetMs 60000
+        $w = Invoke-Worker -WorkerArgs $args -BudgetMs $workerBudgetMs
         $v = Read-WorkerJson -Worker $w
-        if ($v -and @($v.results).Count -eq 1 -and $v.results[0].coin -eq $c.coin -and $v.results[0].timeframe -eq $c.timeframe -and $w.elapsed_ms -lt 60000) {
+        if ($v -and @($v.results).Count -eq 1 -and $v.results[0].coin -eq $c.coin -and $v.results[0].timeframe -eq $c.timeframe -and $w.elapsed_ms -lt $workerBudgetMs) {
             $meta = $v
             $rec = $v.results[0]
             $rec.elapsed_ms = $w.elapsed_ms
@@ -168,6 +181,7 @@ if (-not $ComboWorker -and -not $ProbeWorker -and -not $DryRun) {
             $results += @{coin=$c.coin; mode=$c.mode; timeframe=$c.timeframe; model=$c.model;
                 ok=$false; error=$err; login_required=$false; elapsed_ms=$w.elapsed_ms}
         }
+        [Console]::Error.WriteLine("PHASE combo $ix end ok=$([string]([bool]$results[-1].ok).ToLowerInvariant()) t=$([int]$runClock.ElapsedMilliseconds)")
     }
     $allOk = @($results | Where-Object { -not $_.ok }).Count -eq 0
     Send-JsonAndExit @{
@@ -560,6 +574,7 @@ try {
 (async (maxMs, intervalMs) => {
     const start = Date.now();
     let userMenuConsecutive = 0;
+    let loginStart = null;
     while (true) {
         const allElements = document.querySelectorAll('*');
         const leaves = [];
@@ -591,7 +606,9 @@ try {
             }
         }
         if (hasLogin) {
-            return JSON.stringify({ state: 'false', evidence: 'login_leaf', waited_ms: Date.now() - start });
+            if (loginStart === null) loginStart = Date.now();
+        } else {
+            loginStart = null;
         }
         let hasUserButton = false;
         if (window.innerWidth >= 1000) {
@@ -617,6 +634,9 @@ try {
             }
         } else {
             userMenuConsecutive = 0;
+        }
+        if (loginStart !== null && Date.now() - loginStart >= 2000) {
+            return JSON.stringify({ state: 'false', evidence: 'login_leaf', waited_ms: Date.now() - start });
         }
         if (Date.now() - start >= maxMs) {
             return JSON.stringify({ state: 'unknown', evidence: 'timeout', waited_ms: Date.now() - start });
