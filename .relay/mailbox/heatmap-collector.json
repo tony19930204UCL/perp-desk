@@ -4,63 +4,59 @@
   "pr_number": 78,
   "branch": "fix/heatmap-collector-contract-20261021",
   "task_id": "HEATMAP-LOGIN-TIMEOUT-FIX",
-  "instruction_id": "heatmap-fix-001",
+  "instruction_id": "heatmap-fix-002",
   "status": "WAITING_CI",
-  "source_head_sha": "3e23e51688fdf8fe71bc809c13b353c9e8a656ce",
-  "summary": "Login leaf requires uninterrupted >=2000 ms before false; logout_leaf and two-sample user_menu_button true remain. Parent sequential combo loop uses 230000 ms stopwatch, skips subsequent workers with run_deadline when under 20000 ms remain, reserves 5000 ms and caps each worker at 60000 ms. PHASE stderr markers added. Python captures TimeoutExpired.stderr bytes/str/None as <=300-character stderr_tail while preserving ERROR line and powershell_timeout. Python per-combo error summarization already accepts run_deadline. Added tests 46-49; updated test30 expected assertions to reflect stability. Windows and Linux acceptance not executed locally.",
+  "source_head_sha": "7d29b824f8674145e3fcd42eeb9c8fdf772d479a",
+  "summary": "Corrected JS login eligibility: when hasLogin is true the user-menu path cannot increment; it resets the consecutive streak. Persistent Login still resolves false/login_leaf only after >=2000 ms, logout leaf still wins immediately, and transient Login followed by two menu samples resolves true/user_menu_button. Restored original test30 case1 and case6 state/evidence assertions with longer fake-DOM max wait, added case1 upper bound and new test50 concurrent Login/menu regression. Preserved tests46-49, archive Python, deadlines and diagnostics unchanged. No local execution or test PASS asserted.",
   "changed_files": [
     "engineering/collectors/heatmap/heatmap_capture.ps1",
-    "engineering/collectors/heatmap/heatmap_archive.py",
     "engineering/collectors/heatmap/tests/test_heatmap_archive.py",
     ".relay/mailbox/heatmap-collector.json"
   ],
-  "changed_assertions": {
-    "test_30_node_login_poll_behavior": [
-      "case1 state false -> unknown; evidence login_leaf -> timeout; waited_ms bounded <=1400 -> >=1500",
-      "case6 state false -> true; evidence login_leaf -> user_menu_button"
-    ]
-  },
+  "changed_assertions": [
+    "test_30 case1 state: unknown -> false (restore original)",
+    "test_30 case1 evidence: timeout -> login_leaf (restore original)",
+    "test_30 case1 waited_ms lower bound: 1500 -> 2300",
+    "test_30 case1 waited_ms upper bound: <=3200 (restored bounded expectation, adjusted for 2000ms stability)",
+    "test_30 case6 state: true -> false (restore original)",
+    "test_30 case6 evidence: user_menu_button -> login_leaf (restore original)",
+    "test_50 adds steady concurrent Login/menu false/login_leaf and waited_ms >=2000, transient Login then menu true/user_menu_button"
+  ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/collectors/heatmap/tests -v",
       "result": "not run",
-      "evidence": "Local clean clone unavailable; current push CI 39692033723 was in_progress when inspected. No PASS claimed."
+      "evidence": "Main CIO reported 49-test baseline execution before correction; no local run of this exact source head or test50."
     },
     {
       "command": "python3 engineering/collectors/heatmap/heatmap_archive.py --selftest",
       "result": "not run",
-      "evidence": "No local checkout; CI pending."
+      "evidence": "Unchanged source but exact-head selftest not executed."
     },
     {
       "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_43 -v",
       "result": "not run",
-      "evidence": "Native Windows runner required; Windows job not inspected as complete."
+      "evidence": "Main CIO reports earlier Windows CI green, not evidence for updated source."
     },
     {
       "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_45 -v",
       "result": "not run",
-      "evidence": "Native Windows runner required; Windows job not inspected as complete."
-    },
-    {
-      "command": "python3 engineering/collectors/heatmap/mutation_check.py",
-      "result": "not run",
-      "evidence": "Mutation gate unchanged, not executed."
+      "evidence": "Main CIO reports earlier Windows CI green, not evidence for updated source."
     }
   ],
   "remaining_work": [
-    "Verify new tests 46-49 are discovered and green in exact-head CI, as well as all 01-45 original gates and selftests.",
-    "Native Windows test43/test45 and manual login fake-DOM acceptance remain pending.",
-    "Verify both umask 0022 and 0002, mutation_check.py, branch-only scope and real six-combo capture within timeout.",
-    "The new PS1 bytes require operator's exact-version Windows approval; no deployment or Chrome capture performed."
+    "Clean-clone verification of all 50 tests including test30 and test46-50, plus Windows 43/45.",
+    "Verify updated push/PR exact-head CI green, mutation gate and umask 0022/0002.",
+    "No Windows native execution or live collector scheduling on new PS1 bytes without operator exact-version approval."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Run exact-head clean clone Linux suite and selftest, Windows -k test_43/-k test_45, verify test46-49 names in logs, old gates, mutation, umask modes, stderr isolation, and manual JS login fake DOM. Recheck current source commit and CI after mailbox commit.",
-    "if_pass": "Review PR78 candidate, then request separate native exact-version trust approval and real scheduled run verification; no merge or deploy automatically.",
-    "if_fail": "Record exact failing test/CI run and smallest bounded correction. No status PASS without execution.",
+    "verify_now": "Verify source SHA 7d29b824f8674145e3fcd42eeb9c8fdf772d479a and mailbox successor, three-file scope, all test30 original state/evidence assertions restored, fake maxMs=4000 in cases1/6, concurrent Login/menu test50 and all 50 tests, Windows 43/45, exact-head CI and existing gates.",
+    "if_pass": "Mark candidate ready for review only after exact-head CI acceptance; separately approve any native Windows installation; do not merge/deploy automatically.",
+    "if_fail": "Record exact failure and smallest correction, keep branch history and no main mutations.",
     "blockers": [
-      "No local clone or execution environment with repo source; CI was pending at last check.",
-      "Native Windows exact-version authorization and production verification pending."
+      "Exact-head local and CI verification not completed.",
+      "Changed native PowerShell bytes not independently approved for host execution."
     ]
   }
 }
