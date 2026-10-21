@@ -121,14 +121,22 @@ function render(data) {
     });
     add(card,'p','現在：'+(route.current||'未確認')+' · 下一步：'+(route.next||'未確認'),'route-note');
     add(card,'p','最後核驗：'+(route.verified_at||'未知'),'route-note');
+    (route.steps||[]).filter(x=>x.evidence).forEach(x=>
+      add(card,'p',x.title+' · '+x.evidence,'route-note'));
   });
   const spot=clear('metroSpot'),maker=data.maker||{},results=maker.results||{};
   add(spot,'p','階段：'+(maker.phase||'未確認'));
+  add(spot,'p','產品程序：'+(data.processes||[]).filter(p=>p.product==='maker'&&p.state==='verified')
+    .map(p=>p.kind+' PID '+p.pid+' · '+(p.elapsed_s??'NA')+' s · RSS '+(p.rss_bytes??'NA')+' bytes').join('；') || '沒有核實的程序');
+  add(spot,'p','清算 heartbeat：'+(data.heartbeat?.at||'NA')+
+    ' · age '+(data.heartbeat?.age_ms??'NA')+' ms');
   add(spot,'p',results.count>0?'初步結果 '+results.count+'/48，尚未全局驗收':'尚無有效 baseline cell');
   add(spot,'p','租約：'+(maker.lease||'未知')+' · 輸出：'+(maker.output||'未知'));
   add(spot,'p','研究結果：'+(results.state||'未知')+'；未推論策略 PASS');
   const rows=Array.isArray(results.metrics)?results.metrics:[];
-  rows.slice(0,4).forEach(m=>{
+  add(spot,'p','X1 / X2 / X3 有效格數：'+['X1','X2','X3'].map(
+    x=>x+' '+(results.by_exit?.[x]??'NA')).join(' · '));
+  rows.slice(0,12).forEach(m=>{
     add(spot,'p',m.cell+' · Gross '+(m.gross_bp??'NA')+' bp · Net '+(m.net_bp??'NA')+
       ' bp · PF '+(m.profit_factor??'NA')+' · TP/(TP+SL+SL_GAP) '+
       (m.conditional_win_rate??'NA')+' (n='+m.risk_denominator+') · TIME '+(m.actual_time_share??'NA'),'meta');
