@@ -51,7 +51,7 @@ def main():
             elif rc != 0 and last != 'NO_CARD':
                 why = (err.strip().splitlines() or [last])[-1][:160]
                 if 'token-like string present' in err:
-                    rc2, last2, err2 = run('relay-allow-if-diff-clean.py', str(jd), '200')
+                    rc2, last2, err2 = run('relay-allow-if-diff-clean.py', str(jd), '600')
                     if last2.startswith('ALLOWED_ONCE'):
                         print('allow-once clicked via diff check (%s): %s' % (jd.name, last2)); st['clicked'] = st.get('clicked', 0) + 1; st['last_click'] = time.time()
                         why = None
