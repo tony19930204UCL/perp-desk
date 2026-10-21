@@ -1,0 +1,1 @@
+Operator setup placeholder. Bind actual dispatch template: prefer diff <=180 changed lines; new constant/error/test identifiers <=25 characters. Security and scope checks remain mandatory.
