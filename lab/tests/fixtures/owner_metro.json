@@ -11,8 +11,24 @@
     "liquidations": "owner_metro/liq.json"
   },
   "directive": {
-    "owner": "SYNTHETIC_OWNER",
-    "pending_decisions": 2
+    "active_owners": [
+      {
+        "item": "C-SYNTH-NEW",
+        "actor": "SYNTHETIC_CONSUMER",
+        "scope": "notification",
+        "product": "collectors"
+      }
+    ],
+    "pending_decisions": [
+      {
+        "status": "PENDING",
+        "kind": "operator_review"
+      },
+      {
+        "status": "WAITING_HUMAN",
+        "kind": "approval"
+      }
+    ]
   },
   "stage": {
     "maker_phase": "synthetic research",
@@ -40,23 +56,50 @@
         "verified_steps": [],
         "evidence": {}
       }
-    }
+    },
+    "updated_at": "2026-10-21T12:00:00Z"
   },
   "heartbeat": {
     "at": "2026-10-21T12:00:00Z",
-    "status": "observed"
+    "status": "observed",
+    "updated_at": "2026-10-21T12:00:00Z"
   },
   "liquidations": {
-    "event_count": 3
+    "event_count": 3,
+    "updated_at": "2026-10-21T12:00:00Z"
   },
   "launch": {
-    "processes": []
+    "processes": [
+      {
+        "id": "synthetic-consumer",
+        "pid": 999999,
+        "start_ticks": 123456,
+        "kind": "coordination",
+        "product": "collectors",
+        "boot_id": "00000000-0000-0000-0000-000000000000",
+        "argv_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "cwd": "/synthetic"
+      }
+    ]
   },
   "adoption": {
-    "processes": []
+    "processes": [
+      {
+        "id": "synthetic-consumer",
+        "pid": 999999,
+        "start_ticks": 123456
+      }
+    ]
   },
   "results": {
     "root": "owner_metro/research_outputs",
-    "attempt": "SYNTHETIC_ATTEMPT"
+    "attempt": "SYNTHETIC_ATTEMPT",
+    "expected": {
+      "input_manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "config_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_sha256": {
+        "backtest_entry.py": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    }
   }
 }
