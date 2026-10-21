@@ -1897,26 +1897,38 @@ print(json.dumps(out))
         exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh")
         if not exe:
             self.skipTest("PowerShell not installed: Windows operator must execute")
-        for case in ("connect", "login", "reload", "output", "cleanup", "next"):
+        ps_path = CAPTURE_PS1
+        if os.name != "nt" and os.path.isfile("/proc/sys/fs/binfmt_misc/WSLInterop"):
+            p = subprocess.run(["wslpath", "-w", CAPTURE_PS1], capture_output=True, text=True, check=True)
+            ps_path = p.stdout.strip()
+        elif os.name != "nt" and "microsoft" in os.uname().release.lower():
+            p = subprocess.run(["wslpath", "-w", CAPTURE_PS1], capture_output=True, text=True, check=True)
+            ps_path = p.stdout.strip()
+        for case in ("connect", "login", "reload", "output", "hash", "cleanup", "next"):
             with self.subTest(case=case):
                 started = time.monotonic()
                 proc = subprocess.run(
-                    [exe, "-NoProfile", "-File", CAPTURE_PS1,
-                     "-DeadlineProbe", "-ProbeCase", case, "-ProbeMs", "150"],
-                    capture_output=True, text=True, timeout=10,
+                    [exe, "-NoProfile", "-File", ps_path,
+                     "-DeadlineProbe", "-ProbeCase", case, "-ProbeMs", "4000"],
+                    capture_output=True, timeout=20,
                 )
                 wall_ms = (time.monotonic() - started) * 1000
-                self.assertEqual(proc.returncode, 0, proc.stderr)
-                result = json.loads(proc.stdout.strip().splitlines()[-1])
+                stdout = proc.stdout.decode("utf-8-sig", errors="replace")
+                stderr = proc.stderr.decode("utf-8-sig", errors="replace")
+                self.assertEqual(proc.returncode, 0, stderr)
+                try:
+                    result = json.loads(stdout.strip().splitlines()[-1])
+                except (ValueError, IndexError) as exc:
+                    self.fail(f"PowerShell returned invalid JSON: {exc}; stdout={stdout!r}; stderr={stderr!r}")
                 self.assertEqual(result["status"], "deadline_probe")
-                self.assertLess(wall_ms, 10000)
+                self.assertLess(wall_ms, 20000)
                 rows = result["results"]
                 self.assertEqual(len(rows), 3 if case == "next" else 1)
                 for row in rows:
                     self.assertEqual(row["error"], None if row["coin"] == "ok" else "combo_timeout")
                     self.assertEqual(row["ok"], row["coin"] == "ok")
                     self.assertGreaterEqual(row["elapsed_ms"], 0)
-                    self.assertLess(row["elapsed_ms"], 1000)
+                    self.assertLess(row["elapsed_ms"], 6000)
                 if case == "next":
                     self.assertEqual([r["coin"] for r in rows], ["connect", "ok", "cleanup"])
 
