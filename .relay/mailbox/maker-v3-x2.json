@@ -4,13 +4,12 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-X2-ACCOUNTING-AUTH-1-r1",
+  "instruction_id": "MAKER-V3-X2-ACCOUNTING-AUTH-1-r2",
   "status": "WAITING_CI",
-  "source_head_sha": "57aa0a504dffe6b74903e17b64ec7e72a3a6edfc",
-  "summary": "ONE authorized evidence-based final fixture-only rework at original full HEAD8a2b9eaa7d1a9ad6077b3b3a7a11ab4ec76c048b. Independently executed previous version had 112 discovered in13.601s rc1 with exactly TWO FAIL, 110 pass (original 107 passed), while synthetic real entry-risk witness and true external overbuy positive controls PASS. The X2 fractional control's naive independent gross one-formula was different from event-sequential Decimal50 basis realization; revised test derives expected entry limit, exact complementary TP qty, each actual TP limit, first then remaining basis gross, per-leg fees, settled funding and cash in Decimal50 and separately asserts exact qty sum, open qty0, margin0, gross/fees/funding/cash and independent replay_account identity, no tolerance. Second measured FAIL came from test-only ambient Decimal28 executed+cancelled sum; moved equality to Decimal50. Also removed vacuous audit if a.entry else True by retaining actual ShortEntry before closure, selecting dict audit records only, checking a real ENTRY_HARD_SL requested/executed witness quantity with cancelled zero and exact fee; added discoverable genuine OfflineAccount X2 TP1 partial->TP2 flat source-level reduce-only records and zero orders/qty/margin. All protected production/financial/research source unchanged, no removed old tests, strict external over-close negative intact. New r1 tests, mutation, CI, genuine original singlecell candidate witness, market NOT_RUN in file-only session. Previous full 112 FAIL and all market FAIL remain recorded.",
+  "source_head_sha": "30752268b828fb1d6aa4943b2154811d8a23d7ba",
+  "summary": "Final explicitly authorized parent-reassessed r2 fixture-only Decimal context correction. Main independently ran r1 exact HEAD62345f6e8155a7bcbed6bab01e7c85e01d06eb41: 113 unique controls, 112PASS/1FAIL, rc1, all original107 and four reduce-only tests PASS. Sole test_overclose_regression.py failure at expected signed funding arose because unary -funding_credit ran OUTSIDE Decimal50 at ambient precision28. In the existing test only, expected_funding_cost=-funding_credit is now materialized within the same Decimal50 block as independent TP1/TP2 exact quantities/prices, sequential realized shrinking-basis gross, per-leg Maker fees, funding and cash. All linked monetary assertions execute inside Decimal50; exact independently computed expected_funding also cross-checked. Raw independent replay and strict external over-close rejection unchanged. No quantization, tolerance, removed assertions, changed literals, changed forensic harness or production. All other tests, product modules, strategy/rates/resources remain byte-identical. Source-only GitHub work: r2 tests, CI and market NOT_RUN; previous r1 112PASS/1FAIL retained.",
   "changed_files": [
     "engineering/maker_x2/tests/test_overclose_regression.py",
-    "engineering/maker_x2/tests/test_reduce_only.py",
     "engineering/maker_x2/README.md",
     ".relay/mailbox/maker-v3-x2.json"
   ],
@@ -18,51 +17,40 @@
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "This r1 used GitHub file-only update_file, not a Python executor. Earlier immutable exact8a2b9e test outcome 112 total 110PASS/2FAIL rc1 must not be relabeled r1 PASS."
+      "evidence": "GitHub update_file only; no local Python executor. Historical exact r1 checkout had 113 executed/112PASS/1FAIL, not an r2 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --self-test",
       "result": "NOT_RUN",
-      "evidence": "This r1 used GitHub file-only update_file, not a Python executor. Earlier immutable exact8a2b9e test outcome 112 total 110PASS/2FAIL rc1 must not be relabeled r1 PASS."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_reduce_only.py -v",
-      "result": "NOT_RUN",
-      "evidence": "This r1 used GitHub file-only update_file, not a Python executor. Earlier immutable exact8a2b9e test outcome 112 total 110PASS/2FAIL rc1 must not be relabeled r1 PASS."
+      "evidence": "GitHub update_file only; no local Python executor. Historical exact r1 checkout had 113 executed/112PASS/1FAIL, not an r2 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 tests/test_overclose_regression.py -v",
       "result": "NOT_RUN",
-      "evidence": "This r1 used GitHub file-only update_file, not a Python executor. Earlier immutable exact8a2b9e test outcome 112 total 110PASS/2FAIL rc1 must not be relabeled r1 PASS."
+      "evidence": "GitHub update_file only; no local Python executor. Historical exact r1 checkout had 113 executed/112PASS/1FAIL, not an r2 PASS."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_capacity.py --differential --base-dir PRE_R13_MAKER_X2_DIR",
+      "command": "cd engineering/maker_x2 && python3 tests/test_reduce_only.py -v",
       "result": "NOT_RUN",
-      "evidence": "This r1 used GitHub file-only update_file, not a Python executor. Earlier immutable exact8a2b9e test outcome 112 total 110PASS/2FAIL rc1 must not be relabeled r1 PASS."
-    },
-    {
-      "command": "cd engineering/maker_x2 && python3 tests/test_capacity.py --resource --minutes 30000",
-      "result": "NOT_RUN",
-      "evidence": "This r1 used GitHub file-only update_file, not a Python executor. Earlier immutable exact8a2b9e test outcome 112 total 110PASS/2FAIL rc1 must not be relabeled r1 PASS."
+      "evidence": "GitHub update_file only; no local Python executor. Historical exact r1 checkout had 113 executed/112PASS/1FAIL, not an r2 PASS."
     }
   ],
   "remaining_work": [
-    "Main CIO pin real r1 head and verify only two test files and README differ before mailbox, all production and 107 old test files byte-identical.",
-    "Run full nested discovery and standalone new positive controls first, confirm both earlier failures fixed without weakening raw ledger. Inspect executed IDs, individual fees/funding/cash/qty assertions and nonvacuous real entry-risk audit.",
-    "Run all original other positive entrypoints and immutable financial differential plus 30000minute/symbol 5GiB actual resource check. Only if every positive passes, run all 20 original valid mutation entrypoints separately with genuine named AssertionError and rc1.",
-    "Obtain new exact-head push and pull_request CI, separately from nested tests.",
-    "Independently reexecute real actual original market singlecell witness under source/input identity; only if finite gates pass may operator run full unchanged 48x3 BTC/ETH 5GiB original history and --verify. No PnL or deployment claims.",
-    "This was the only authorized evidence-based revision for AUTH1. Any second failure requires architecture reassessment, not silent repeat."
+    "Main CIO pin exact r2 source HEAD and verify ancestry; byte-compare every production module and every other test with 62345f6e8155a7bcbed6bab01e7c85e01d06eb41. Only test_overclose_regression.py and README changed before mailbox.",
+    "Run full normal 113-control discovery, backtest_entry.py --self-test and standalone reduce-only/overclose controls; assert exact Decimal50 signed funding, per-leg sequential financial invariants and strict raw ledger replay; all 107 original identifiers preserved.",
+    "Only after ALL positive gates PASS, execute original twenty mutation subprocesses independently, each genuine named AssertionError and rc1; verify new exact-head push and pull_request CI.",
+    "Reuse accepted unchanged differential and resource evidence rather than repeating capacity run. If positive/mutation/CI pass, Main may launch original full 48 baseline+matched,48 delay2+matched,48 cost1.5x+matched, shared6000,9999 bootstrap, ETH/BTC BH24 plus BH48 at 5GiB with unchanged local inputs, then shipped --verify and independent raw/ledger/episode/performance review.",
+    "If r2 fails, stop and reassess architecture; no third correction authorized. No market success, strategy PASS or deployment implied."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Pin full r1 source_head_sha 57aa0a504dffe6b74903e17b64ec7e72a3a6edfc; run python3 -m unittest discover -s tests -v, python3 tests/test_reduce_only.py -v, python3 tests/test_overclose_regression.py -v and existing positives. Confirm actual requested/executed/cancelled record after closure, exact Decimal50 sequential realized cash/funding/fees/qty, and actual X2 partial->flat. Only after all PASS run original twenty mutations, independent financial differential/resource, new exact-head two CIs, genuine witness and authorized market as appropriate.",
-    "if_pass": "Accept only bounded accounting fixture and source unit after independently measured finite controls, then operator can use original full historical data and shipped verification under frozen limits. No strategy, paper/live or product approval implied.",
-    "if_fail": "Record precise failing test IDs/trace/source and stop for architecture reassessment. No further AUTH1 revision authorized by this message.",
+    "verify_now": "Confirm source_head_sha 30752268b828fb1d6aa4943b2154811d8a23d7ba is exact r2 pre-mailbox ancestor and allowlist-only changes. In immutable checkout run cd engineering/maker_x2 && python3 -m unittest discover -s tests -v, backtest_entry.py --self-test, both standalone positive scripts; expect all113 PASS but do not claim until executed. Then all20 original mutations with named AssertionError rc1, and check both exact-head CI.",
+    "if_pass": "Accept only finite engineering r2 if 113 positives, 20 mutations and exact-head CI independently pass. Then operator may run unchanged full BTC/ETH exploration and --verify; never treat unit success as market or strategy acceptance.",
+    "if_fail": "Report exact failing ID/trace/full SHA; no third accounting AUTH1 revision, require architecture reassessment.",
     "blockers": [
-      "New r1 tests/CI/mutation/full market NOT_RUN in file-only tool environment",
-      "Previous AUTH1 test run had 2 positive FAIL; current fix needs independent validation",
-      "No accepted full historical strategy PnL or deployment"
+      "r2 Python controls, mutations, and exact-head CI NOT_RUN",
+      "Full historical BTC/ETH run and verified result/PnL NOT_RUN",
+      "No deployment/paper/live authorized"
     ]
   }
 }
