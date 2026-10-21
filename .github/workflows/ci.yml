@@ -20,6 +20,8 @@ jobs:
       - name: PAPER isolated suite
         working-directory: lab
         run: python3 -m unittest discover -s tests -v
+      - name: Install collector websocket dependency
+        run: python3 -m pip install 'websockets>=10,<16'
       - name: Liq collector contract and mutations
         working-directory: engineering/collectors/liq
         run: |
