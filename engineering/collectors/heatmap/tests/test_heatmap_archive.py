@@ -1227,10 +1227,9 @@ runTests();
         data = json.loads(res.stdout.strip())
 
         # (i)
-        self.assertEqual(data["case1"]["state"], "false")
-        self.assertEqual(data["case1"]["evidence"], "login_leaf")
-        self.assertGreaterEqual(data["case1"]["waited_ms"], 350)
-        self.assertLessEqual(data["case1"]["waited_ms"], 1400)
+        self.assertEqual(data["case1"]["state"], "unknown")
+        self.assertEqual(data["case1"]["evidence"], "timeout")
+        self.assertGreaterEqual(data["case1"]["waited_ms"], 1500)
 
         # (ii)
         self.assertEqual(data["case2"]["state"], "true")
@@ -1254,8 +1253,8 @@ runTests();
         self.assertEqual(data["case5"]["evidence"], "timeout")
 
         # (vi)
-        self.assertEqual(data["case6"]["state"], "false")
-        self.assertEqual(data["case6"]["evidence"], "login_leaf")
+        self.assertEqual(data["case6"]["state"], "true")
+        self.assertEqual(data["case6"]["evidence"], "user_menu_button")
 
     def test_31_ps1_focus_emulation_static(self):
         """Static test on ps1: focus emulation order, bringToFront inside hidden check, focusMode strings, SavePng param, output fields."""
@@ -1997,6 +1996,108 @@ print(json.dumps(out))
         self.assertIn("combo_timeout", content, "ps1 must handle combo_timeout error")
         self.assertIn("EnsureOpen", content, "ps1 must have EnsureOpen reconnection method")
         self.assertIn("CancellationTokenSource.CreateLinkedTokenSource", content, "ps1 must link cancellation token for per-call timeout")
+
+
+    def _login_node(self, scenarios):
+        node = shutil.which("node")
+        self.assertIsNotNone(node, "node required")
+        with open(CAPTURE_PS1, encoding="utf-8") as f:
+            src = f.read()
+        m = re.search(r"\$loginPollJs\s*=\s*@'\r?\n(.*?)\r?\n'@", src, re.DOTALL)
+        self.assertIsNotNone(m)
+        js = """const loginPollJs = (""" + m.group(1) + """);
+let tick = 0, sample = 0, frame = [];
+Date.now = () => tick;
+global.window = {innerWidth: 1400};
+function el(tag, text, children = []) {
+  return {tagName:tag, innerText:text, textContent:text, children:children,
+    querySelector: s => children.find(c => c.tagName === s.toUpperCase()) || null,
+    getBoundingClientRect: () => ({right:1380,top:47,bottom:90})};
+}
+global.document = {
+  querySelectorAll: s => frame,
+  querySelector: s => s === 'header' ? frame.find(e => e.tagName === 'HEADER') : null
+};
+global.setTimeout = fn => { tick += 500; sample++; fn(); };
+(async () => {
+  const output = [];
+  for (const seq of SCENARIOS) {
+    tick = 0; sample = 0;
+    Object.defineProperty(global.document, 'querySelectorAll', {
+      configurable:true, value:() => {
+        frame = seq[Math.min(sample,seq.length-1)].map(n =>
+          n === 'login' ? el('BUTTON','Login') :
+          n === 'menu' ? el('HEADER','',[el('BUTTON','',[el('SVG','')])]) :
+          el('DIV','Log out'));
+        const all = [];
+        for (const e of frame) {all.push(e,...e.children,...e.children.flatMap(c=>c.children));}
+        return all;
+      }});
+    output.push(JSON.parse(await loginPollJs(10000,500)));
+  }
+  process.stdout.write(JSON.stringify(output));
+})().catch(e => {console.error(e);process.exitCode=1});
+""".replace("SCENARIOS", json.dumps(scenarios))
+        proc = subprocess.run([node, "-e", js], capture_output=True, text=True, timeout=5)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return json.loads(proc.stdout)
+
+    def test_46_login_transient(self):
+        a, b = self._login_node([
+            [["login"], ["menu"], ["menu"]],
+            [["login"], [], [], [], []],
+        ])
+        self.assertEqual((a["state"], a["evidence"]), ("true", "user_menu_button"))
+        self.assertEqual((b["state"], b["evidence"]), ("unknown", "timeout"))
+
+    def test_47_login_stable(self):
+        result = self._login_node([[["login"]]])[0]
+        self.assertEqual((result["state"], result["evidence"]), ("false", "login_leaf"))
+        self.assertGreaterEqual(result["waited_ms"], 2000)
+
+    def test_48_run_deadline(self):
+        with open(CAPTURE_PS1, encoding="utf-8") as f:
+            src = f.read()
+        parent = src.split("if (-not $ComboWorker -and -not $ProbeWorker -and -not $DryRun) {", 1)[1].split("if (-not $ProbeWorker)", 1)[0]
+        for part in ("Stopwatch]::StartNew()", "$runLimitMs = 230000",
+                     "$remaining -lt 20000", "[Math]::Min(60000, $remaining - 5000)",
+                     "-BudgetMs $workerBudgetMs", "error='run_deadline'",
+                     "PHASE start", "PHASE combo $ix start", "PHASE combo $ix end",
+                     "Send-JsonAndExit"):
+            self.assertIn(part, parent)
+        cfg = self.make_config()
+        fake = os.path.join(self.test_dir, "partial.py")
+        with open(fake, "w", encoding="utf-8") as f:
+            f.write("import json\nprint(json.dumps({'status':'partial','results':[{'coin':'BTC','mode':'pair','timeframe':'24 hour','model':1,'ok':False,'error':'run_deadline','login_required':False,'elapsed_ms':0}]}))\n")
+        res = self.run_wrapper(cfg, fake)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("status=partial", res.stdout)
+        with open(os.path.join(self.data_root, "runs.jsonl"), encoding="utf-8") as f:
+            row = json.loads(f.readlines()[-1])
+        self.assertEqual(row["results"][0]["error"], "run_deadline")
+
+    def test_49_timeout_diag(self):
+        cfg = self.make_config()
+        fake = os.path.join(self.test_dir, "stalled.py")
+        with open(fake, "w", encoding="utf-8") as f:
+            f.write("import sys,time\nprint('PHASE start',file=sys.stderr,flush=True)\nprint('PHASE combo 0 start t=7',file=sys.stderr,flush=True)\ntime.sleep(20)\n")
+        with open(ARCHIVE_PY, encoding="utf-8") as f:
+            src = f.read()
+        self.assertIn("timeout=280", src)
+        short = os.path.join(self.test_dir, "short_archive.py")
+        with open(short, "w", encoding="utf-8") as f:
+            f.write(src.replace("timeout=280", "timeout=0.3"))
+        cmd = [sys.executable, short, "--config", cfg, "--data-root",
+               self.data_root, "--ps-script", CAPTURE_PS1,
+               "--powershell", sys.executable + " " + fake]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=6)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("status=powershell_timeout", res.stdout)
+        with open(os.path.join(self.data_root, "runs.jsonl"), encoding="utf-8") as f:
+            row = json.loads(f.readlines()[-1])
+        self.assertEqual(row["status"], "powershell_timeout")
+        self.assertIn("PHASE combo 0 start t=7", row["stderr_tail"])
+        self.assertLessEqual(len(row["stderr_tail"]), 300)
 
 
 if __name__ == "__main__":
