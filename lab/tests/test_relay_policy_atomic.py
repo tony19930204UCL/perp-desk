@@ -4,6 +4,7 @@ Not a substitute for browser/CDP integration or installed producer acceptance.
 """
 import datetime
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -99,6 +100,115 @@ class AtomicDispatchTests(unittest.TestCase):
         self.assertEqual(sum(value["ok"] for value in values), 1)
         winner = next(value["owner"] for value in values if value["ok"])
         self.assertEqual(next(value["winner"] for value in values if not value["ok"]), winner)
+
+
+    def _carrier(self):
+        sys.path.insert(0, str(SOURCE.parent))
+        import engineering_instruction_carrier as carrier
+        return carrier
+
+    def _sent(self, *, unknown=False):
+        """Real carrier.send, injected only offline browser effects."""
+        carrier = self._carrier()
+        key = "one"
+        text = "SYNTHETIC_OFFLINE_INSTRUCTION"
+        self.first.mkdir(exist_ok=True)
+        snap = {"url": self.job["dispatch_chat_url"],
+                "user_messages": [], "composer_text": "", "busy": False}
+        clicks = []
+        def cdp(js):
+            if "Send button unavailable" in js:
+                clicks.append("send")
+                if unknown:
+                    raise RuntimeError("OFFLINE_SEND_UNKNOWN")
+            return True
+        def save(name, obj):
+            (self.first / name).write_text(json.dumps(obj), encoding="utf-8")
+        def after():
+            return {"url": self.job["dispatch_chat_url"], "user_messages": [text],
+                    "composer_text": "", "busy": False}
+        dispatch.claim(self.job, self.first, key)
+        def call():
+            return carrier.send(text, key, snap, root=self.first,
+                 chat_path="/c/11111111-2222-3333-4444-555555555555",
+                 cdp_fn=cdp, snapshot_fn=after, save_fn=save,
+                 valid_until=self.job["valid_until"], dispatch_job=self.job)
+        return call, clicks, save
+
+    def test_carrier_effect_exactly_once(self):
+        call, clicks, _ = self._sent()
+        call()
+        self.assertEqual(clicks, ["send"])
+        self.assertEqual(dispatch.inspect(self.job, self.first, "one")["phase"],
+                         "SENT_CONFIRMED")
+        with self.assertRaises(dispatch.DispatchBlocked):
+            call()
+        self.assertEqual(clicks, ["send"])
+
+    def test_carrier_unknown_never_retry(self):
+        call, clicks, _ = self._sent(unknown=True)
+        with self.assertRaises(RuntimeError):
+            call()
+        self.assertEqual(clicks, ["send"])
+        self.assertEqual(dispatch.inspect(self.job, self.first, "one")["phase"],
+                         "SEND_UNKNOWN")
+        with self.assertRaises(dispatch.DispatchBlocked):
+            call()
+        self.assertEqual(clicks, ["send"])
+
+    def test_permission_source_and_scope_mutation(self):
+        carrier = self._carrier()
+        call, clicks, save = self._sent()
+        call()
+        op = {"path": "mcp__GitHub__update_file",
+              "args": {"repository_full_name": self.job["repository"],
+                       "branch": self.job["branch"], "path": "synthetic.py",
+                       "content": "safe = 1"}}
+        effects = []
+        card = {"text": "要允許 ChatGPT 使用 GitHub 嗎？"}
+        def cdp(js):
+            if "JSON.stringify" in js:
+                return ["call_tool\n" + json.dumps(op)]
+            if "關閉對話框" in js:
+                changed = dict(self.job, write_allowlist=["changed.py"])
+                (self.first / "job.json").write_text(json.dumps(changed))
+            if "允許一次" in js:
+                effects.append("approval")
+            return True
+        with self.assertRaises(dispatch.DispatchBlocked):
+            carrier.permission(card, cdp_fn=cdp, snapshot_fn=lambda: {"text": ""},
+                repo=self.job["repository"], branch=self.job["branch"],
+                mailbox="synthetic.py", allowed={"synthetic.py"},
+                pr_number=self.job["pr_number"], save_fn=save,
+                dispatch_job=self.job, dispatch_dir=self.first, instruction_id="one")
+        self.assertEqual(effects, [])
+        self.assertEqual(dispatch.inspect(dict(self.job, write_allowlist=["changed.py"]),
+                                          self.first, "one")["phase"], "APPROVE_INTENT")
+
+    def test_permission_requires_confirmed_source(self):
+        carrier = self._carrier()
+        dispatch.claim(self.job, self.first, "one")
+        op = {"path": "mcp__GitHub__update_file",
+              "args": {"repository_full_name": self.job["repository"],
+                       "branch": self.job["branch"], "path": "synthetic.py",
+                       "content": "value = 1"}}
+        clicked = []
+        def cdp(js):
+            if "JSON.stringify" in js:
+                return ["call_tool\n" + json.dumps(op)]
+            if "允許一次" in js:
+                clicked.append(True)
+            return True
+        with self.assertRaises(dispatch.DispatchBlocked):
+            carrier.permission({"text":"要允許 ChatGPT 使用 GitHub 嗎？"},
+                cdp_fn=cdp, snapshot_fn=lambda: {"text":""},
+                repo=self.job["repository"], branch=self.job["branch"],
+                mailbox="synthetic.py", allowed={"synthetic.py"},
+                pr_number=self.job["pr_number"],
+                save_fn=lambda name,obj:(self.first/name).write_text(json.dumps(obj)),
+                dispatch_job=self.job, dispatch_dir=self.first, instruction_id="one")
+        self.assertFalse(clicked)
+
 
 
 if __name__ == "__main__":
