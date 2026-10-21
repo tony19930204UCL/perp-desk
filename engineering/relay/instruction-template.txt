@@ -1,1 +1,19 @@
-Operator setup placeholder. Bind actual dispatch template: prefer diff <=180 changed lines; new constant/error/test identifiers <=25 characters. Security and scope checks remain mandatory.
+ENGINEERING RELAY DISPATCH TEMPLATE (bounded operator policy, not authorization)
+
+Repository: {repository}
+PR: {pr_number}
+Branch: {branch}
+Chat: {chat_url}
+Instruction: {instruction_id}
+Allowed paths: {write_allowlist}
+Expiry: {valid_until}
+
+Prefer a minimal focused change of <=180 changed lines. Newly introduced
+constant/error/test identifier names should be <=25 characters. Do not rename
+existing identifiers, SHAs or evidence to evade rejection. The hard ceiling is
+600 changed lines for this authorized job only, subject to actual scope, content,
+secret detection, exact card identity, prior refusal, expiry and dispatch lock.
+Never interpret this prompt as granting conversation-wide permissions.
+Do not send when product ownership is already held or SEND_UNKNOWN is pending.
+No deployment, trading, credential/environment-file access or scope expansion.
+Report exact tests performed and NOT_RUN for anything not executed.
