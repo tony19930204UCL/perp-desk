@@ -42,33 +42,33 @@ def delivered_prompt(text: str, s: Dict[str, Any], chat_path: str) -> bool:
     return any(normalize_rendered_bubble(m) == target for m in messages)
 
 def approve_operation(
-    op: Dict[str, Any],
-    repo: str,
-    branch: str,
-    mailbox: str,
-    allowed: Set[str],
-    pr_number: int
+    op: Dict[str, Any], repo: str, branch: str, mailbox: str,
+    allowed: Set[str], pr_number: int, *,
+    fetch_base=None, max_lines=600
 ) -> bool:
-    """Gate tool operations strictly within repository and PR file allowlist."""
-    args = op.get('args', {})
-    tool = op.get('path', '').rsplit('/', 1)[-1]
-    if args.get('repository_full_name') != repo:
+    """Public scope and HARD600 source admission for actual permission cards."""
+    path = op.get('path', '')
+    if not isinstance(path, str) or not re.fullmatch(
+            r'/connector_[A-Za-z0-9_-]+/link_[A-Za-z0-9_-]+/(?:update_file|create_file|create_issue_comment|add_issue_comment)', path):
         return False
-    if tool == 'update_file' or (tool == 'create_file' and args.get('path') == mailbox):
-        content = args.get('content', '')
-        return (
-            args.get('branch') == branch
-            and args.get('path') in allowed
-            and isinstance(content, str)
-            and len(content) <= 180000
-            and not re.search(r'(?i)(?:sk-[a-z0-9]{20,}|ghp_[a-z0-9]{20,}|PRIVATE KEY|api[_-]?key\s*[=:]\s*[\"\'][a-z0-9]{20,})', content)
-        )
+    tool = path.rsplit('/', 1)[-1]
+    args = op.get('args', {})
+    if not isinstance(args, dict) or args.get('repository_full_name') != repo:
+        return False
     if tool in ('create_issue_comment', 'add_issue_comment'):
-        return (
-            args.get('issue_number', args.get('issue')) == pr_number
-            and len(args.get('body', '')) <= 20000
-        )
-    return False
+        return (args.get('issue_number', args.get('issue')) == pr_number
+                and len(args.get('body', '')) <= 20000)
+    if args.get('branch') != branch or args.get('path') not in allowed:
+        return False
+    # Source policy is single-authority; never fallback to a weaker check.
+    import approval_transaction as tx
+    job = {'repository': repo, 'branch': branch, 'write_allowlist': list(allowed)}
+    try:
+        tx.changed_policy(op, job, max_lines, fetch_base)
+        return True
+    except (tx.PolicyRejected, tx.InfraError, KeyError, ValueError, TypeError):
+        return False
+
 
 def recover_browser(
     error: Any,
