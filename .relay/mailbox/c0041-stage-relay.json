@@ -4,63 +4,61 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "RELAY-POLICY-ATOMIC",
-  "instruction_id": "RELAY-POLICY-ATOMIC-r1",
-  "status": "BLOCKED",
-  "source_head_sha": "b9c498d46d32c107c363bc33ccc67d1f3e48f703",
-  "summary": "One bounded r1 partially updates r0: fixes subprocess test invalid semicolon/try syntax, adds deterministic subprocess reap and on-disk test job scope, re-reads actual job.json and active_instruction.json in product claim/check, adds durable approval intent with independent PID delegated against positive send evidence, shortens new diagnostic names, propagates explicit 600 diff caller limits to auto_allow and relay-poll, bounds live diff helper maximum 600. IMPORTANT not a finished integrated repair: page IO send/worker/carrier/profile_runner/strict helper/noarg supervisor approval and dispatch effects still lack enforced shared claim; true narrow parsed-identifier and genuine secrets/env checks, create/update hard boundary, full browser harness and entrypoint coverage are not shipped. Do not deploy or claim atomic behavior.",
+  "instruction_id": "RELAY-POLICY-ATOMIC-r2-u1",
+  "status": "WAITING_CI",
+  "source_head_sha": "12fdce8148baaad09a6c29f2a2728ec91cdb87e5",
+  "summary": "Scoped Unit1 source delivered (NOT whole product approval). Added exact parent-owned product claim/delegated direct-child send ticket, durable SEND_INTENT→SEND_UNKNOWN before actual effect, positive receipt hash bound to source/ID/chat/scope, separately delegated independent approval PID with one click-intent and immediate scope/receipt recheck and positive-only approval readback. Connected real profile_runner->carrier.send and carrier.permission, relay_dispatch_worker->chatgpt_page_io cmd_send direct effect, strict/diff scripts and historical transaction approval. Legacy profile runner unscoped approval shortcut now routes via parsed carrier.permission. Shared product lock stays distinct from auto_allow.lock. Fail closed on absent absolute dispatch_lock_root, pinned explicit dispatch_chat_url, job.json/current active identity, positive receipt and valid lease. Preserved existing stage/market code. 11 total offline stdlib tests include injected carrier send/UNKNOWN, permission effect and mutation. No r2 tests/CI or live send performed.",
   "changed_files": [
     "engineering/relay/product_dispatch.py",
-    "lab/tests/test_relay_policy_atomic.py",
-    "engineering/relay/auto_allow.py",
-    "engineering/relay/relay-poll.py",
+    "engineering/relay/engineering_instruction_carrier.py",
+    "engineering/relay/profile_runner.py",
+    "engineering/relay/chatgpt_page_io.py",
+    "engineering/relay/relay_dispatch_worker.py",
+    "engineering/relay/relay-allow-card.py",
     "engineering/relay/relay-allow-if-diff-clean.py",
+    "engineering/relay/approval_transaction.py",
+    "lab/tests/test_relay_policy_atomic.py",
     ".relay/mailbox/c0041-stage-relay.json"
   ],
   "tests": [
     {
       "command": "python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v",
       "result": "NOT_RUN",
-      "evidence": "Six source-level tests modified, r0 operator reported 5 PASS and 1 syntax ERROR on exact old HEAD; no new r1 shell/CI evidence."
+      "evidence": "11 offline methods authored, including actual carrier send/permission effect injected without network; not executed in this file-only GitHub turn. Prior r1 exact-head six library tests passed independently per user."
     },
     {
       "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
       "result": "NOT_RUN",
-      "evidence": "Existing stage relay suite not executed here; stage_relay.py unchanged."
+      "evidence": "Existing 26 stage tests not rerun or modified by Unit1; r1 exact-head CI stage suite green per user."
     },
     {
-      "command": "python3 -m unittest discover -s lab/tests -v",
+      "command": "Unit1 exact-head push and pull_request CI",
       "result": "NOT_RUN",
-      "evidence": "Not executed here."
+      "evidence": "No Unit1 CI conclusions independently observed; prior r1 push39589784869/PR39589791440 successful only."
     },
     {
-      "command": "Real isolated installed-profile Chromium/CDP browser entrypoint",
+      "command": "Actual installed Chromium/CDP multi-process browser effect suite",
       "result": "NOT_RUN",
-      "evidence": "No runnable new browser harness delivered; no browser invocation or installed behavior tested. Existing stdlib CDP tools identified but not integrated."
-    },
-    {
-      "command": "Exact HEAD push and pull_request CI",
-      "result": "NOT_RUN",
-      "evidence": "No new run conclusions observed. r0 PR CI39577038980 FAILED and push39577033689 still running at user observation; no claim of r1 success."
+      "evidence": "Reserved for Unit3; no host/browser/market send or private workspace access."
     }
   ],
   "remaining_work": [
-    "Complete one atomic effectful claim through actual main/cron carrier send, profile_runner, relay_dispatch_worker and chatgpt_page_io click; attach exact scoped authenticated delegation and no-unknown-send retry. Current shared helper alone does not enforce effectful send uniqueness.",
-    "Enforce approved product owner and exact current scope immediately before strict/diff/carrier/approval clicks; keep auto_allow.lock separate and avoid deadlock, do not invent owner or bypass existing receipts.",
-    "Implement 600 changed-line create/update at every live strict/diff default/caller and narrowly parsed test/diagnostic identifiers with secret/PAT/private-key/.env priorities, preserving prior refusals.",
-    "Add finite 180/200/238/600/601 and secret/identifier tests and real subprocess effectful send plus installed-layout CDP browser suite and documented exact executable override/install mapping.",
-    "Do not install or deploy this incomplete patch; preserve PR75 and actual existing product owner, no replay or active send."
+    "Main independently run Unit1 11-method offline suite and inspect exact-head push+PR CI, reject on any failures.",
+    "Unit2: complete hard 600 create/update defaults/caller propagation, syntax-position-aware identifier exceptions and genuine secret/environment access negatives, template actually injected into dispatch, without weakening approvals.",
+    "Unit3: true two independent subprocess effect contenders and authenticated handoff/restart/expiry/UNKNOWN and installed stdlib CDP/Chromium browser-layout tests and full installation mapping, including all copies of auto_allow; not yet delivered.",
+    "Before any install, operator must explicitly configure SAME absolute dispatch_lock_root across all jobdirs, real pinned dispatch_chat_url, job.json in state_dir, current exact active instruction and positive send receipt; absent/mismatched configuration fails closed.",
+    "No profile install/deployment/trading, no market owner claimed, PR75 not touched; full Maker product NOT_PROVEN."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "BLOCKED: treat r1 as partial, do not install. Independently inspect exact HEAD tests and security contracts, verify incomplete send/approval integrations, both push/PR CI, and establish separately scoped implementation decision if needed.",
-    "if_pass": "Passing partial claim tests is insufficient; require fully wired effectful sender/approval browser tests and dual exact-head CI before any installation.",
-    "if_fail": "Preserve exact failing logs and original refusal history; do not replay uncertain sends or deploy.",
+    "verify_now": "Review Unit1 branch+mailbox HEAD, run python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v and existing stage suite if needed; observe exact-head dual CI. Inspect carrier/worker/page IO send tickets, real prior confirmed receipt source binding, strict/diff and carrier approval checked immediately before external effect. Do not install yet.",
+    "if_pass": "Mark only Unit1 scoped source ready for next predefined Unit2 policy unit; Unit3 installed browser/multiprocess acceptance remains mandatory before any deployment.",
+    "if_fail": "Preserve exact traceback/current SHA, return evidence-based scoped repair decision; no send replay, no bypass of refused operation.",
     "blockers": [
-      "Shared atomic lock not wired to effectful send and every approval click",
-      "Scoped strict + create path + parsed identifier/secret detection incomplete",
-      "No installed browser/CDP finite tests, full coverage table or all caller migration",
-      "r1 tests/CI NOT_RUN, not release-ready",
-      "Maker market workflow remains NOT_PROVEN"
+      "Unit1 new tests/CI NOT_RUN in assistant turn",
+      "Unit2 600-line/source-aware identifier and prompt propagation unfinished",
+      "Unit3 multiprocess real external effects, host CDP/browser and complete installation mapping unfinished",
+      "No installed migration and no market/reflection acceptance"
     ]
   }
 }
