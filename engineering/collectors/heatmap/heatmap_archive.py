@@ -555,8 +555,6 @@ def run_archive(args) -> int:
             win_staging = to_windows_path(staging_dir)
             cmd = ps_parts + [
                 "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
                 "-File",
                 win_script,
                 "-ConfigFile",
@@ -571,8 +569,6 @@ def run_archive(args) -> int:
         elif is_real_ps:
             cmd = ps_parts + [
                 "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
                 "-File",
                 exec_ps_script,
                 "-ConfigFile",
