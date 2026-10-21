@@ -87,17 +87,27 @@ class Relay:
         return None
     PROMPT_JS='''(()=>{const norm=t=>t.replace(/\\s+/g,' ').trim();const btn=[...document.querySelectorAll('button')].find(b=>b.getClientRects().length&&/^(允許一次|Allow once)(\\s|$)/i.test(b.innerText.trim()));if(!btn)return JSON.stringify({found:false});let e=btn;for(let i=0;i<8&&e.parentElement;i++){e=e.parentElement;if(/GitHub/i.test(e.innerText)&&e.innerText.length<1500)break}const card=norm(e.innerText);if(%s){return JSON.stringify({found:true,card:card.slice(0,600),clicked:false})}btn.click();return JSON.stringify({found:true,card:card.slice(0,600),clicked:true})})()'''
     def approve_allow_once(self,dry=False):
-        """Click ONLY 'Allow once' on a GitHub tool-permission card that names this job's repository. Never the per-conversation option."""
-        repo=json.dumps(self.job['repository'])
-        guard=('!(/GitHub/i.test(card))||dry' if self.job.get('client_authorized_github_allow_once') else '!(/GitHub/i.test(card)&&card.includes(%s))||dry'%repo)
-        js=self.PROMPT_JS%guard.replace('dry','%s'%('true' if dry else 'false'))
-        # Legacy UI card shortcut cannot bind the exact parsed operation to
-        # the confirmed send source. Require scoped permission() instead.
-        return {'found': True, 'clicked': False, 'reason': 'SOURCE_BOUND_APPROVAL_REQUIRED'}
-        r=self.transport({'op':'evaluate','expression':js})
-        r=json.loads(r) if isinstance(r,str) else r
-        if r.get('found') and r.get('clicked'): atomic(self.root/('approved_once_%s.json'%datetime.now(timezone.utc).strftime('%H%M%S')),{'at':datetime.now(timezone.utc).isoformat(),'card':r['card'],'scope':'allow_once'})
-        return r
+        """Use the same parsed operation/source-bound approval as carrier."""
+        snapshot=self.transport({'op':'snapshot'})
+        if '要允許 ChatGPT 使用 GitHub 嗎？' not in snapshot.get('text',''):
+            return {'found':False,'clicked':False}
+        if dry: return {'found':True,'clicked':False}
+        from engineering_instruction_carrier import permission
+        active=read(self.root/'active_instruction.json')
+        allowed=set(self.job['write_allowlist'])
+        clicked=permission(snapshot,
+            cdp_fn=lambda e:self.transport({'op':'evaluate','expression':e}),
+            snapshot_fn=lambda:self.transport({'op':'snapshot'}),
+            repo=self.job['repository'],branch=self.job['branch'],
+            mailbox=self.job['mailbox'],allowed=allowed,
+            pr_number=self.job['pr_number'],
+            save_fn=lambda name,obj:atomic(self.root/name,obj),
+            event_fn=lambda event,**kw:atomic(self.root/'transport_event_latest.json',
+                                              {'event':event,**kw}),
+            valid_until=self.job['valid_until'],
+            dispatch_job=self.job,dispatch_dir=self.root,
+            instruction_id=active['instruction_id'])
+        return {'found':True,'clicked':clicked}
     def watch(self):
         """Observe mailbox; if absent, inspect chat once for auth blocks. Notify exactly once per (instruction,kind)."""
         obs=self.observe()
