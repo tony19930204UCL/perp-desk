@@ -1,3 +1,4 @@
+import product_dispatch as pd
 #!/usr/bin/env python3
 """Operator allow-once for a GitHub write card the automatic scope check refused.
 
@@ -64,7 +65,13 @@ for m in pat.finditer(c):
     line = c[c.rfind('\n', 0, m.start()) + 1: end if end >= 0 else len(c)]
     assert 're.compile' in line or 'SECRET' in line.upper(), 'hit outside a detection rule: ' + line[:80]
 assert CARD in snap()['text']
-r = ev('(()=>{const b=[...document.querySelectorAll("button")].filter(e=>e.innerText.startsWith("允許一次"));'
+r = # Exact verified card + shared confirmed-send source must authorize click.
+active = json.load(open(S + '/active_instruction.json', encoding='utf-8'))
+iid = active['instruction_id']
+fp = __import__('hashlib').sha256(json.dumps(op, sort_keys=True).encode()).hexdigest()
+pd.approval_once(j, S, iid, fp, chat=j.get('dispatch_chat_url'))
+pd.approve_check(j, S, iid, fp, chat=j.get('dispatch_chat_url'))
+ev('(()=>{const b=[...document.querySelectorAll("button")].filter(e=>e.innerText.startsWith("允許一次"));'
        'if(b.length!==1)throw Error("Ambiguous approval");b[0].click();return true})()')
 time.sleep(4)
 gone = CARD not in snap()['text']
