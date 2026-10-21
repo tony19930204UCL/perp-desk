@@ -18,13 +18,23 @@ class MetroUI(unittest.TestCase):
     def test_real_chromium(self):
         import json
         import os
+        import glob
         import tempfile
         import threading
         import time
         from dashboard_v2_server import create_server
         from browser_issue3_acceptance import CdpSession, chrome_binary
         try:
-            chrome = os.environ.get("OWNER_METRO_CHROME") or chrome_binary()
+            candidates = [os.environ.get("OWNER_METRO_CHROME"),
+                          os.environ.get("CHROMIUM_PATH")]
+            candidates += sorted(glob.glob(str(Path.home() /
+                ".cache/ms-playwright/chromium-*/chrome-linux/chrome")))
+            candidates += sorted(glob.glob(str(Path.home() /
+                ".cache/ms-playwright/chromium-*/chrome-linux64/chrome")))
+            candidates += sorted(glob.glob(str(Path.home() /
+                ".cache/ms-playwright/chromium_headless_shell-*/chrome-linux/headless_shell")))
+            chrome = next((x for x in candidates if x and Path(x).is_file()
+                           and os.access(x, os.X_OK)), None) or chrome_binary()
         except RuntimeError:
             self.skipTest("native Chromium missing: operator browser gate NOT_RUN")
         with tempfile.TemporaryDirectory() as tmp:
