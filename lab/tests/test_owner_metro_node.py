@@ -78,7 +78,41 @@ class NodeProof(unittest.TestCase):
         (self.root/"commitments").mkdir()
         (self.root/"commitments/ledger.json").write_text(json.dumps(
             {"next":4,"items":self.rows}))
+        (self.root/"owner_metro").mkdir()
+        (self.root/"owner_metro/bindings.json").write_text(json.dumps({
+            "schema_version":1,"sources":{"directive":"owner_metro/directive.json"}}))
+        (self.root/"owner_metro/directive.json").write_text(json.dumps({
+            "updated_at":1792624000,"pending_decisions":9}))
         m=read_metro(str(self.root),now_ms=1792625361639,
                      proc_root=str(self.proc))
         self.assertEqual(m["kpis"]["pending_decisions"],1)
         self.assertEqual(m["kpis"]["pending_source"],"ledger")
+
+    def test_directive_states(self):
+        (self.root/"commitments").mkdir()
+        (self.root/"commitments/ledger.json").write_text(json.dumps(
+            {"next":4,"items":self.rows}))
+        (self.root/"owner_metro").mkdir()
+        binding=self.root/"owner_metro/bindings.json"
+        target=self.root/"owner_metro/directive.json"
+        binding.write_text(json.dumps({"schema_version":1,
+            "sources":{"directive":"owner_metro/directive.json"}}))
+        for label,value,count,source in (
+            ("stale",{"updated_at":1792624000,"pending_decisions":8},1,"ledger"),
+            ("fresh",{"updated_at":1792625361,"pending_decisions":8},8,"directive")):
+            with self.subTest(label=label):
+                target.write_text(json.dumps(value))
+                k=read_metro(str(self.root),now_ms=1792625361639,
+                             proc_root=str(self.proc))["kpis"]
+                self.assertEqual(k["pending_decisions"],count)
+                self.assertEqual(k["pending_source"],source)
+        target.write_text("{")
+        k=read_metro(str(self.root),now_ms=1792625361639,
+                     proc_root=str(self.proc))["kpis"]
+        self.assertIsNone(k["pending_decisions"])
+        self.assertIsNone(k["pending_source"])
+        target.unlink()
+        k=read_metro(str(self.root),now_ms=1792625361639,
+                     proc_root=str(self.proc))["kpis"]
+        self.assertIsNone(k["pending_decisions"])
+        self.assertIsNone(k["pending_source"])
