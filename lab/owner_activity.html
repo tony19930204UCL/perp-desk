@@ -46,6 +46,12 @@ button,input,select{background:white;color:#0F172A;border-color:#CBD5E1}
 #metro{margin:18px 0 26px}
 #metro .layout{grid-template-columns:minmax(0,68fr) minmax(0,32fr)}
 .metro-routes{display:grid;gap:14px}
+#metrics{display:none}
+#legacyAudit{margin-top:16px}
+.metro-stop.next:not(:last-child):after{animation:metro-flow 1.6s linear infinite;background:repeating-linear-gradient(90deg,#94A3B8 0 8px,transparent 8px 15px);border:0;height:3px}
+@keyframes metro-flow{to{background-position:30px 0}}
+@media(prefers-reduced-motion:reduce){.metro-stop.next:not(:last-child):after{animation:none}}
+
 .metro-route{border:1px solid #E2E8F0;border-radius:16px;background:#fff;padding:18px;min-width:0}
 .metro-route h3{margin:0 0 14px}
 .metro-line{display:flex;gap:0;overflow-x:auto;padding:12px 0 18px}
@@ -74,11 +80,11 @@ button,input,select{background:white;color:#0F172A;border-color:#CBD5E1}
 <section class="panel"><h2>來源狀態 / Verification</h2><div id="metroHealth"></div></section></aside></div>
 <details class="panel" id="metroHistory" style="margin-top:16px"><summary>歷史與凍結工作（<span id="metroHistoryCount">未知</span>）</summary><div id="metroHistoryRows"></div></details>
 </section>
-<main class="layout"><div class="stack">
+<details class="panel" id="legacyAudit"><summary>完整原始稽核工作與失敗紀錄（預設收合）</summary><main class="layout"><div class="stack">
 <section class="panel"><div class="inline"><h2>工作與承諾</h2><span class="count" id="visibleCount">—</span></div><div class="toolbar"><label class="sr-only" for="search">搜尋 C-ID 或標題</label><input id="search" type="search" placeholder="搜尋 C-ID / 工作名稱"><label class="sr-only" for="stateFilter">狀態</label><select id="stateFilter"><option value="">全部狀態</option><option value="running_verified">可驗證執行</option><option value="activity_unconfirmed">活動未確認</option><option value="blocked">受阻</option><option value="scheduled_idle">排程閒置</option><option value="missed">排程逾期</option><option value="failed">失敗</option><option value="engineering_accepted">工程已驗收</option></select><label class="sr-only" for="stageFilter">階段</label><select id="stageFilter"><option value="">全部階段</option></select></div><div id="tasks" aria-live="polite"></div></section>
 <section class="panel"><h2>階段與依賴</h2><p class="subtle">退出門檻及日期無權威來源時明確標為未提供，不使用完成百分比。</p><div id="stages"></div></section>
 <section class="panel"><h2>近期安全產出</h2><div id="events"></div></section></div>
 <aside class="stack"><section class="panel" id="detail" aria-label="Task detail"><h2>任務詳情</h2><p class="subtle">選擇左側任務以閱讀承諾、執行驗證與依賴。</p></section>
-<section class="panel"><h2>資料來源 / Source health</h2><div id="sources"></div></section></aside></main>
+<section class="panel"><h2>資料來源 / Source health</h2><div id="sources"></div></section></aside></main></details>
 <footer>Monitor 僅讀取啟動時設定的可信 profile。排程啟用不等於有 worker；cron 成功不等於成果驗收。工程驗收、部署與無人值守閉環為不同證據。這個畫面不會啟動服務或交易。</footer>
 </div></body></html>
