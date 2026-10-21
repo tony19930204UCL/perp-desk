@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import tempfile
 import time
 
@@ -62,6 +63,8 @@ def _scope(job, job_dir, instruction, chat=None):
     root = job.get("dispatch_lock_root")
     if not isinstance(root, str) or not Path(root).is_absolute():
         raise DispatchBlocked("DISPATCH_LOCK_ROOT_UNCONFIGURED")
+    if Path(root).is_symlink():
+        raise DispatchBlocked("DISPATCH_ROOT_SYMLINK")
     target = Path(root).resolve()
     if target.is_symlink():
         raise DispatchBlocked("DISPATCH_ROOT_SYMLINK")
@@ -142,41 +145,77 @@ def claim(job, job_dir, instruction, *, chat=None, lease=600):
             return dict(prior)
         record = {"schema_version": 1, "scope": scope, "scope_sha256": _sha(scope),
                   "job_dir": directory, "owner": owner, "lease_until": time.time() + lease,
-                  "phase": "PREPARED", "generation": _sha([scope, directory, owner]),
+                  "phase": "PREPARED", "send_ticket": secrets.token_hex(24),
+                  "generation": _sha([scope, directory, owner]),
                   "created": time.time()}
         _write(path, record)
         return record
 
 
-def check(job, job_dir, instruction, *, phase="prepare", chat=None):
-    """Call immediately before draft, send, and permission clicks."""
+def _actor(prior, ticket=None):
+    """Owner, or directly spawned child holding its explicit send ticket."""
+    actor = _identity()
+    if prior.get("owner") == actor:
+        return
+    parent = prior.get("owner")
+    if not isinstance(ticket, str) or not secrets.compare_digest(
+            str(prior.get("send_ticket", "")), ticket):
+        raise DispatchBlocked("OWNER_ID_MISMATCH", parent)
+    if os.getppid() != parent["pid"] or _identity(parent["pid"]) != parent:
+        raise DispatchBlocked("DELEGATE_PARENT_INVALID", parent)
+
+
+def check(job, job_dir, instruction, *, phase="prepare", chat=None, ticket=None):
     root, key, scope, directory = _scope(job, job_dir, instruction, chat)
     with _record(root, key) as (_, prior):
         if prior is None:
             raise DispatchBlocked("DISPATCH_CLAIM_MISSING")
         if prior.get("scope_sha256") != _sha(scope) or prior.get("scope") != scope or prior.get("job_dir") != directory:
             raise DispatchBlocked("SCOPE_CHANGED", prior.get("owner"))
-        if prior.get("owner") != _identity():
-            raise DispatchBlocked("OWNER_ID_MISMATCH", prior.get("owner"))
+        _actor(prior, ticket)
         if time.time() >= prior["lease_until"]:
             raise DispatchBlocked("DISPATCH_LEASE_EXPIRED", prior.get("owner"))
-        if phase == "send" and prior["phase"] != "PREPARED":
+        if phase in ("prepare", "send") and prior["phase"] != "PREPARED":
             raise DispatchBlocked("SEND_ALREADY_INTENDED_NO_RETRY", prior.get("owner"))
         if phase == "approve" and prior["phase"] != "SENT_CONFIRMED":
             raise DispatchBlocked("SEND_RECEIPT_REQUIRED", prior.get("owner"))
         return dict(prior)
 
 
-def phase(job, job_dir, instruction, status, *, chat=None):
+def _confirmed(directory, instruction, chat):
+    for filename in ("send_" + instruction + ".json", "receipt-" + instruction + ".json"):
+        p = Path(directory) / filename
+        if not p.is_file():
+            continue
+        data = json.loads(p.read_text(encoding="utf-8"))
+        if (data.get("status", data.get("stage")) == "CONFIRMED"
+                and data.get("chat_url", data.get("url")) == chat
+                and data.get("instruction_id", instruction) == instruction):
+            return hashlib.sha256(p.read_bytes()).hexdigest()
+    return None
+
+
+def phase(job, job_dir, instruction, status, *, chat=None, ticket=None):
     if status not in ("SEND_INTENT", "SEND_UNKNOWN", "SENT_CONFIRMED", "BLOCKED"):
         raise DispatchBlocked("DISPATCH_PHASE_INVALID")
-    check(job, job_dir, instruction, phase="send" if status == "SEND_INTENT" else "prepare", chat=chat)
     root, key, scope, directory = _scope(job, job_dir, instruction, chat)
     with _record(root, key) as (path, prior):
-        if status == "SEND_INTENT" and prior["phase"] != "PREPARED":
+        if not prior or prior.get("scope_sha256") != _sha(scope) or prior.get("job_dir") != directory:
+            raise DispatchBlocked("SCOPE_CHANGED", prior.get("owner") if prior else None)
+        _actor(prior, ticket)
+        if time.time() >= prior["lease_until"]:
+            raise DispatchBlocked("DISPATCH_LEASE_EXPIRED", prior.get("owner"))
+        transitions = {"SEND_INTENT": ("PREPARED",),
+                       "SEND_UNKNOWN": ("SEND_INTENT",),
+                       "SENT_CONFIRMED": ("SEND_UNKNOWN",),
+                       "BLOCKED": ("PREPARED",)}
+        if prior["phase"] not in transitions[status]:
             raise DispatchBlocked("SEND_RETRY_DENIED", prior.get("owner"))
-        if status != "SEND_INTENT" and prior["phase"] not in ("SEND_INTENT", "SEND_UNKNOWN", "PREPARED"):
-            raise DispatchBlocked("TERMINAL_ALREADY_SET", prior.get("owner"))
+        if status == "SENT_CONFIRMED":
+            evidence = _confirmed(directory, instruction, scope["chat"])
+            if not evidence:
+                raise DispatchBlocked("EXACT_SEND_NOT_CONFIRMED", prior.get("owner"))
+            prior["send_receipt_sha256"] = evidence
         prior["phase"] = status
         prior["updated"] = time.time()
         _write(path, prior)
@@ -220,17 +259,9 @@ def approval_once(job, job_dir, instruction, fingerprint, *, chat=None):
             raise DispatchBlocked("NO_DELEGATED_SEND", prior.get("owner") if prior else None)
         if prior["phase"] != "SENT_CONFIRMED":
             raise DispatchBlocked("SEND_RECEIPT_REQUIRED", prior.get("owner"))
-        send_receipt = Path(directory) / ("send_" + instruction + ".json")
-        io_receipt = Path(directory) / ("receipt-" + instruction + ".json")
-        confirmed = False
-        for candidate in (send_receipt, io_receipt):
-            if candidate.is_file():
-                receipt = json.loads(candidate.read_text(encoding="utf-8"))
-                if receipt.get("status", receipt.get("stage")) == "CONFIRMED" and (
-                        receipt.get("chat_url", receipt.get("url")) == scope["chat"]):
-                    confirmed = True
-        if not confirmed:
-            raise DispatchBlocked("EXACT_SEND_NOT_CONFIRMED", prior.get("owner"))
+        current_receipt = _confirmed(directory, instruction, scope["chat"])
+        if not current_receipt or current_receipt != prior.get("send_receipt_sha256"):
+            raise DispatchBlocked("SEND_SOURCE_CHANGED", prior.get("owner"))
         if time.time() >= prior["lease_until"]:
             raise DispatchBlocked("DISPATCH_LEASE_EXPIRED", prior.get("owner"))
         # Approval PID is authenticated by this exact confirmed receipt and job
