@@ -187,6 +187,13 @@ def processes_managed(rows, docs, health, now_ms, proc_root="/proc"):
     for row in rows[:16]:
         if not isinstance(row, dict) or row.get("source") != "heartbeat":
             continue
+        if (not isinstance(row.get("id"), str) or not _PART.fullmatch(row["id"])
+                or row.get("kind") not in
+                ("collector", "compute", "lease", "observer", "coordination")
+                or row.get("product") not in ("maker", "collectors", "relay")
+                or not isinstance(row.get("cmd_contains"), str)
+                or not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", row["cmd_contains"])):
+            continue
         if health.get("heartbeat", {}).get("state") != "available":
             continue
         src = docs.get("heartbeat")
