@@ -21,6 +21,45 @@ def parts(value):
     return tuple(bits)
 
 
+
+def _source_stamp(doc):
+    """Use the documented source clocks; ts_ms is an integer millisecond epoch."""
+    for name in ("updated_at", "at", "ts_iso"):
+        stamp = _stamp(doc.get(name))
+        if stamp is not None:
+            return stamp
+    value = doc.get("ts_ms")
+    if type(value) is int and 946684800000 <= value < 4102444800000:
+        return value
+    return None
+
+
+def _binding_extra(profile, paths):
+    managed = profile.get("managed", [])
+    nodes = profile.get("nodes", [])
+    if (not isinstance(managed, list) or len(managed) > 16 or
+            not isinstance(nodes, list) or len(nodes) > 24):
+        raise ValueError("oversized binding")
+    kinds = {"collector", "compute", "lease", "observer", "coordination"}
+    products = {"maker", "collectors", "relay"}
+    eligible = []
+    for row in managed:
+        if not isinstance(row, dict):
+            continue
+        if (not isinstance(row.get("id"), str) or
+                not _PART.fullmatch(row["id"]) or row.get("kind") not in kinds or
+                row.get("product") not in products or row.get("source") != "heartbeat" or
+                "heartbeat" not in paths or
+                not isinstance(row.get("cmd_contains"), str) or
+                not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", row["cmd_contains"])):
+            continue
+        eligible.append({k: row[k] for k in
+                         ("id", "kind", "product", "source", "cmd_contains")})
+    paths["managed"] = eligible
+    paths["nodes"] = nodes
+    return paths
+
+
 def load(root, now_ms, limit=1048576):
     """Only a fixed trusted local profile; an absent binding is not evidence."""
     document, health = {}, {}
@@ -36,6 +75,7 @@ def load(root, now_ms, limit=1048576):
         paths = {key: parts(value) for key, value in bindings.items()}
         if len(set(paths.values())) != len(paths):
             raise ValueError("duplicate source")
+        paths = _binding_extra(profile, paths)
     except (OSError, ValueError, TypeError):
         return {}, {"bindings": {"state": "invalid"}}, {}
     for key in _NAMES:
@@ -58,8 +98,8 @@ def load(root, now_ms, limit=1048576):
                 if len(_CACHE) > 48:
                     _CACHE.pop(next(iter(_CACHE)))
             document[key] = obj
-            at = _stamp(obj.get("updated_at") or obj.get("at"))
-            age = None if at is None else max(0, now_ms - at)
+            at = _source_stamp(obj)
+            age = None if at is None or at > now_ms + 5000 else max(0, now_ms - at)
             health[key] = {"state": "stale" if age is not None and age > 300000 else
                            "available" if age is not None else "unverifiable",
                            "age_ms": age}
