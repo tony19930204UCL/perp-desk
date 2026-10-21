@@ -83,7 +83,6 @@ class MockAsyncContext:
 
 class BaseLiqCollectorTest(unittest.TestCase):
     def setUp(self):
-        signal.alarm(20)
         # Strictly block real network connection
         self._orig_socket_connect = socket.socket.connect
 
@@ -96,7 +95,6 @@ class BaseLiqCollectorTest(unittest.TestCase):
         self.data_dir = self.temp_dir.name
 
     def tearDown(self):
-        signal.alarm(0)
         socket.socket.connect = self._orig_socket_connect
         try:
             self.temp_dir.cleanup()
@@ -355,7 +353,7 @@ class TestLiqCollector(BaseLiqCollectorTest):
         """Item 5: Dir is 0700, files are 0600 even when process umask is 0000."""
         old_umask = os.umask(0)
         try:
-            collector = Collector(data_dir=self.data_dir)
+            collector = Collector(data_dir=self.data_dir, now=lambda: 1792429790.1)
             ensure_permissions(self.data_dir)
 
             event = {
@@ -1503,6 +1501,7 @@ class TestLiqCollector(BaseLiqCollectorTest):
                     elif ws1_calls == 2:
                         # Reached after message at 22h59m59s: proves connection 1 did NOT reconnect early
                         if collector.planned_reconnects != 0:
+                            collector.stop()
                             raise AssertionError(f"Planned reconnect occurred early: {collector.planned_reconnects}")
                         # Advance to exactly 23h00m00s
                         sim_time = t0 + 23 * 3600
@@ -1511,6 +1510,7 @@ class TestLiqCollector(BaseLiqCollectorTest):
                 else:
                     # In connection 2: verify connection 1 only reconnected at or after 23h00m
                     if sim_time < t0 + 23 * 3600:
+                        collector.stop()
                         raise AssertionError(f"Reconnected before 23h00m at fake time {sim_time - t0}s")
                     collector.stop()
                     loop = asyncio.get_running_loop()
@@ -1575,6 +1575,7 @@ class TestLiqCollector(BaseLiqCollectorTest):
                     elif ws1_calls == 2:
                         # Second call reached: proves connection 1 did NOT reconnect at 899s
                         if collector.silent_reconnects != 0:
+                            collector.stop()
                             raise AssertionError(f"Silent reconnect triggered early: {collector.silent_reconnects}")
                         # Advance to exactly 900s of silence
                         sim_time = t0 + 900.0
@@ -1583,6 +1584,7 @@ class TestLiqCollector(BaseLiqCollectorTest):
                 else:
                     # In connection 2: verify connection 1 only reconnected at or after 900s of silence
                     if sim_time < t0 + 900.0:
+                        collector.stop()
                         raise AssertionError(f"Reconnected before 900s at silence duration {sim_time - t0}s")
                     collector.stop()
                     loop = asyncio.get_running_loop()
@@ -1810,6 +1812,60 @@ class TestLiqCollector(BaseLiqCollectorTest):
         self.assertEqual(Collector.HEARTBEAT_INTERVAL_S, 60)
         self.assertEqual(Collector.RECV_SLICE_S, 5)
 
+
+    def test_19_utc_rollover(self):
+        """Injected midnight UTC writes two heartbeat partitions and advances status."""
+        start = datetime.datetime(2026, 10, 19, 23, 59, 59,
+                                  tzinfo=datetime.timezone.utc).timestamp()
+        clock = [start]
+        col = Collector(data_dir=self.data_dir, now=lambda: clock[0])
+        col.heartbeat_tick()
+        clock[0] += 2
+        col.heartbeat_tick()
+        for ts in (start, clock[0]):
+            day = datetime.datetime.fromtimestamp(
+                ts, tz=datetime.timezone.utc).strftime("%Y%m%d")
+            path = os.path.join(self.data_dir, f"heartbeat-{day}.jsonl")
+            self.assertTrue(os.path.exists(path))
+            with open(path, encoding="utf-8") as stream:
+                ticks = [json.loads(line) for line in stream]
+            self.assertEqual(len(ticks), 1)
+            self.assertEqual(ticks[0]["ts_ms"], int(ts * 1000))
+        with open(os.path.join(self.data_dir, "status.json")) as stream:
+            self.assertEqual(json.load(stream)["ts_ms"], int(clock[0] * 1000))
+
+    def test_20_timeout_cancel(self):
+        """A real recv timeout cancels its task; stop still interrupts recv."""
+        canceled = []
+
+        class HangingWS(MockWebSocket):
+            async def recv(self):
+                try:
+                    await asyncio.Future()
+                except asyncio.CancelledError:
+                    canceled.append(True)
+                    raise
+
+        col = Collector(
+            data_dir=self.data_dir,
+            connect=lambda url, **kw: MockAsyncContext(ws=HangingWS()),
+        )
+        col.RECV_SLICE_S = 0.03
+
+        async def exercise():
+            async def stop_later():
+                await asyncio.sleep(0.16)
+                col.stop()
+            stopper = asyncio.create_task(stop_later())
+            await asyncio.wait_for(col.run(), timeout=2.0)
+            await stopper
+
+        asyncio.run(exercise())
+        self.assertGreaterEqual(len(canceled), 2)
+        self.assertTrue(col.stop_requested)
+        after = Collector(data_dir=self.data_dir)
+        self.assertTrue(after.acquire_lock())
+        after.release_lock()
 
 if __name__ == "__main__":
     unittest.main()
