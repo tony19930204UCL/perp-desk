@@ -1,4 +1,7 @@
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # Windows CI runs only test43; POSIX tests still require fcntl.
 import glob
 import gzip
 import hashlib
