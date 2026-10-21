@@ -25,12 +25,12 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576):
     directive, stage = docs.get("directive", {}), docs.get("stage", {})
     heartbeat, liq = docs.get("heartbeat", {}), docs.get("liquidations", {})
     outputs = docs.get("results", {})
-    result = {"state": "unbound", "count": 0, "total": 48, "metrics": []}
+    result = {"state": "unbound", "count": None, "total": 48, "metrics": []}
     if isinstance(outputs, dict) and outputs.get("root") and outputs.get("attempt"):
         try:
-            result = read_results(root, parts(outputs["root"]), outputs["attempt"])
+            result = read_results(root, parts(outputs["root"]), outputs["attempt"], outputs.get("expected"))
         except (TypeError, ValueError):
-            result = {"state": "invalid", "count": 0, "total": 48, "metrics": []}
+            result = {"state": "invalid", "count": None, "total": 48, "metrics": []}
     phases = stage.get("products", {}) if isinstance(stage.get("products"), dict) else {}
     owners = directive.get("active_owners") if isinstance(directive.get("active_owners"), list) else []
     owners = [{"item": x.get("item"), "actor": x.get("actor"),
