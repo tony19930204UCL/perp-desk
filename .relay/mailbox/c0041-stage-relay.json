@@ -4,63 +4,48 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "RELAY-POLICY-ATOMIC",
-  "instruction_id": "RELAY-POLICY-ATOMIC-r3-u1",
+  "instruction_id": "RELAY-POLICY-ATOMIC-r4-wire",
   "status": "WAITING_CI",
-  "source_head_sha": "bddb7846bf83f2881500a6e17c0ad4d90c4db709",
-  "summary": "Final scoped Unit1 correction: repaired actual hyphenated strict helper SyntaxError; canonical product_dispatch module identity and required event_fn callbacks; shortened ten newly introduced overlong test names <=25 characters with old/new mapping in evidence. Added explicit exact-source confirmed send adoption (not market owner adoption) and durable per-distinct-card approval records under a fixed source receipt, click intent, owner PID/boot/start, scope and lease. Two distinct reviewed cards may each approve once, repeat/unknown same card stays held. Strict/diff/carrier/transaction approval readbacks reconcile exact card fingerprints; scope mutation before approval intent leaves no click. Added four focused synthetic offline tests; original tests retained; 15 total source-authored. Prior r2 CI failed 11 tests 6 PASS/5 ERROR, no new r3 test execution or CI claimed. Entire product, Unit2 and Unit3 not accepted or deployed.",
+  "source_head_sha": "957dfb7314eec38496e1f1a539f79af9a4e09fe0",
+  "summary": "Fixture-only wire contract correction on PR76: changed four positive serialized permission-card operations from invalid synthetic MCP name to sanitized slash-qualified /connector_sanitized/link_sanitized/update_file, preserving identical repo/branch/path/content args and all original 15 test method IDs/assertions. Added test_wire_gate (<=25 chars); _carrier verifies actual public approve_operation admits sanitized slash wire and rejects original mcp__GitHub__update_file with identical args before lifecycle tests. No production, secret, host policy or permission code changed. Prior r3 exact-head 15 tests 9PASS/5ERROR/1FAIL and push39597078702/PR39597085787 FAILED; not overwritten or claimed fixed by execution.",
   "changed_files": [
-    "engineering/relay/product_dispatch.py",
-    "engineering/relay/relay-allow-card.py",
-    "engineering/relay/relay-allow-if-diff-clean.py",
-    "engineering/relay/engineering_instruction_carrier.py",
-    "engineering/relay/approval_transaction.py",
     "lab/tests/test_relay_policy_atomic.py",
     ".relay/mailbox/c0041-stage-relay.json"
   ],
   "tests": [
     {
+      "command": "python3 -m py_compile lab/tests/test_relay_policy_atomic.py",
+      "result": "NOT_RUN",
+      "evidence": "No shell execution; test file changed only via GitHub update_file."
+    },
+    {
       "command": "python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v",
       "result": "NOT_RUN",
-      "evidence": "Fifteen offline methods present after this edit; not run by assistant. Prior exact r2 push 39594636316 and PR 39594643572 failed: 11 tests 6PASS/5ERROR."
+      "evidence": "16 test methods authored: all original 15 plus test_wire_gate; new gate checks public approve_operation positive sanitized slash and negative malformed MCP, and is invoked before lifecycle checks. No execution or downstream lifecycle result observed."
     },
     {
-      "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
+      "command": "Both new exact-head push and pull_request CI",
       "result": "NOT_RUN",
-      "evidence": "Existing stage tests unchanged, prior r1 exact-head 26 passing per user; r3 not executed."
-    },
-    {
-      "command": "python3 -m unittest discover -s lab/tests -v",
-      "result": "NOT_RUN",
-      "evidence": "Unrelated full lab suite not rerun; user requested focused acceptance first."
-    },
-    {
-      "command": "python3 -m py_compile engineering/relay/product_dispatch.py engineering/relay/engineering_instruction_carrier.py engineering/relay/chatgpt_page_io.py engineering/relay/relay_dispatch_worker.py engineering/relay/profile_runner.py engineering/relay/relay-allow-card.py engineering/relay/relay-allow-if-diff-clean.py engineering/relay/approval_transaction.py lab/tests/test_relay_policy_atomic.py",
-      "result": "NOT_RUN",
-      "evidence": "All nine actual changed Python entrypoint files require operator compile, including hyphen helpers; shell not used."
-    },
-    {
-      "command": "New final r3 exact-head GitHub push and pull_request CI",
-      "result": "NOT_RUN",
-      "evidence": "No new exact-head CI conclusions observed; Main must verify both."
+      "evidence": "No post-r4 CI conclusion available. Prior exact-head r3 runs 39597078702 and 39597085787 FAILED, retained as historical evidence."
     }
   ],
   "remaining_work": [
-    "Main: compile every listed real Python entrypoint (including hyphen helpers), execute 15-method focused offline suite and review both final-head push/PR CI before Unit1 source acceptance.",
-    "Main: verify source-bound adoption and per-card distinct readback positive/negative; changed scope/expiry, owner-dead and uncertain click cannot retry. Independent explicit source evidence is mandatory, no external market owner made GitHub approver.",
-    "Unit2 INITIAL: full HARD600 create+update scoped caller propagation and AST/syntax-aware identifier exceptions with credential/.env/PAT/private-key precedence, prompt/template use.",
-    "Unit3 INITIAL: two real effectful subprocess competing senders, distinct-product independence, restart/expiry/death/UNKNOWN and installed isolated stdlib CDP/Chromium checks with complete ten-entrypoint installation destinations and executable override.",
-    "No operator installation, paid/network sends, deployment, paper/live/trading, PR75 edits or real Maker/reflection acceptance performed."
+    "Main independently compile delivered tests; run 16 finite tests and report which lifecycle assertions were reached, especially six formerly PERMISSION_SCOPE_BLOCKED cases; preserve exact failures if any new failure is exposed.",
+    "Main verify all production tree blobs unchanged relative to base 2f2240a4551185d3ea3f5c3f9257b63b66bec2cd, and both new exact-head push/PR CI successful before Unit1 acceptance.",
+    "Unit2 INITIAL remains: hard600 changed-line create/update/default/caller propagation, syntax-aware identifier exceptions with comment/literal negatives and true secret/PAT/private-key/.env priority, 180/200/238/600/601 boundaries and instruction template use.",
+    "Unit3 INITIAL remains: actual two sender subprocess effect race, owner expiry/restart/UNKNOWN, independent product parallelism, isolated installed stdlib CDP/Chromium acceptance and all ten live entrypoint installation mappings.",
+    "No installation, deployment, PR75 mutation, market execution or reflection evidence. Entire product still NOT_PROVEN."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Compile all nine changed actual Python entrypoints including hyphen scripts; run python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v; verify all 15 cases, exact confirmed source adoption, two distinct approvals and repeated/unknown card stop, current job scope mutation and full new dual exact-head CI. Old→new names: test_shared_product_claim_winner_truth→test_claim_winner; test_separate_product_is_independent→test_distinct_products; test_unknown_send_does_not_reopen→test_unknown_hold; test_no_implicit_configuration→test_no_default_root; test_real_competing_subprocess_winner→test_two_proc_claim; test_carrier_effect_exactly_once→test_carrier_once; test_carrier_unknown_never_retry→test_unknown_no_retry; test_permission_source_and_scope_mutation→test_scope_before_click; test_permission_requires_confirmed_source→test_no_source_click; test_permission_once_effect→test_card_once.",
-    "if_pass": "Accept only bounded Unit1 correction source. Proceed only with original initial Unit2 then Unit3 verification; no deployment or financial acceptance.",
-    "if_fail": "Return exact test traceback, compiled file/error and HEAD for parent decision, with no automatic further Unit1 revision or send replay.",
+    "verify_now": "Compile tests and run python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v. Confirm positive sanitized slash admission, negative mcp__GitHub__update_file rejection, then reached original 15 assertion outcomes; compare protected production blobs to r3 base and verify both new exact-head CI conclusions.",
+    "if_pass": "Accept only fixture-only Unit1 wire correction after all finite checks and dual CI, then proceed to separately predefined Unit2/Unit3 initial work, without deployment.",
+    "if_fail": "Preserve exact new reached traceback/current HEAD; stop and return parent decision, no production change or automatic fifth correction.",
     "blockers": [
-      "Unit1 exact final-head tests and CI NOT_RUN in this conversation",
-      "Unit2 full 600/source-aware security policy not yet implemented",
-      "Unit3 full real subprocess/browser layout and installation mapping not yet implemented",
-      "No verified deployment, market results or operator reflection"
+      "R4 tests and dual exact-head CI NOT_RUN in assistant turn",
+      "Production behavior not independently accepted from these fixtures",
+      "Unit2/Unit3 original integration and browser acceptance pending",
+      "Full unattended Maker market/reflection remains NOT_PROVEN"
     ]
   }
 }
