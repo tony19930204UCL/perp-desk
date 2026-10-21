@@ -4,12 +4,14 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-X2-ACCOUNTING-AUTH-1-r2",
-  "status": "WAITING_CI",
-  "source_head_sha": "30752268b828fb1d6aa4943b2154811d8a23d7ba",
-  "summary": "Final explicitly authorized parent-reassessed r2 fixture-only Decimal context correction. Main independently ran r1 exact HEAD62345f6e8155a7bcbed6bab01e7c85e01d06eb41: 113 unique controls, 112PASS/1FAIL, rc1, all original107 and four reduce-only tests PASS. Sole test_overclose_regression.py failure at expected signed funding arose because unary -funding_credit ran OUTSIDE Decimal50 at ambient precision28. In the existing test only, expected_funding_cost=-funding_credit is now materialized within the same Decimal50 block as independent TP1/TP2 exact quantities/prices, sequential realized shrinking-basis gross, per-leg Maker fees, funding and cash. All linked monetary assertions execute inside Decimal50; exact independently computed expected_funding also cross-checked. Raw independent replay and strict external over-close rejection unchanged. No quantization, tolerance, removed assertions, changed literals, changed forensic harness or production. All other tests, product modules, strategy/rates/resources remain byte-identical. Source-only GitHub work: r2 tests, CI and market NOT_RUN; previous r1 112PASS/1FAIL retained.",
+  "instruction_id": "MAKER-V3-X2-STALLFIX-1-r0",
+  "status": "BLOCKED",
+  "source_head_sha": "b3c7cf09456f80dd8a66750d91c2e90625ef79da",
+  "summary": "Bounded incremental-ledger source candidate: OfflineAccount consumes only never-before-applied chronological events with Decimal50 transitions, cached event identity and lazy historical collections; strict original replay_account remains byte-identical and is called for checkpoint/recover and each completed replay_cell. Added flushed UTC heartbeat and atomic output/progress.json (not included in final hashed artifact inventory) at feature stage boundaries, every100000 replay bars and completed cells. Added one-cell actual parser/account profiling CLI --profile-cell --bars N. Source only, not tested or accepted. MATERIAL GAP: earlier prose asks for new tests under tests/, but controlling final MAIN BOUNDED CONTEXT explicitly grants only five concrete paths and excludes tests/. No dedicated new differential, mutation, complexity N/4N or dual-umask tests were created because they would violate this controlling allowlist. Account code grows to 509 lines from 346 (164-line bounded diff), so also exceeds original module size if a size cap were implied; user did not impose a strict size cap here. No event/timing/economic strategy changes intended but execution equivalence UNPROVEN. Prior six-hour stall and zero market cells remain historical facts.",
   "changed_files": [
-    "engineering/maker_x2/tests/test_overclose_regression.py",
+    "engineering/maker_x2/account_lifecycle.py",
+    "engineering/maker_x2/backtest_entry.py",
+    "engineering/maker_x2/market_replay.py",
     "engineering/maker_x2/README.md",
     ".relay/mailbox/maker-v3-x2.json"
   ],
@@ -17,40 +19,50 @@
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub update_file only; no local Python executor. Historical exact r1 checkout had 113 executed/112PASS/1FAIL, not an r2 PASS."
+      "evidence": "GitHub file connector only; no Python, local private data, controlled umask, full historical run, resource profiling or exact-head CI executed."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --self-test",
       "result": "NOT_RUN",
-      "evidence": "GitHub update_file only; no local Python executor. Historical exact r1 checkout had 113 executed/112PASS/1FAIL, not an r2 PASS."
+      "evidence": "GitHub file connector only; no Python, local private data, controlled umask, full historical run, resource profiling or exact-head CI executed."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_overclose_regression.py -v",
+      "command": "cd engineering/maker_x2 && python3 backtest_entry.py --profile-cell --bars 20000 --config LOCAL_CONFIG.json --input LOCAL_INPUT.json",
       "result": "NOT_RUN",
-      "evidence": "GitHub update_file only; no local Python executor. Historical exact r1 checkout had 113 executed/112PASS/1FAIL, not an r2 PASS."
+      "evidence": "GitHub file connector only; no Python, local private data, controlled umask, full historical run, resource profiling or exact-head CI executed."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 tests/test_reduce_only.py -v",
+      "command": "cd engineering/maker_x2 && python3 backtest_entry.py --profile-cell --bars 40000 --config LOCAL_CONFIG.json --input LOCAL_INPUT.json",
       "result": "NOT_RUN",
-      "evidence": "GitHub update_file only; no local Python executor. Historical exact r1 checkout had 113 executed/112PASS/1FAIL, not an r2 PASS."
+      "evidence": "GitHub file connector only; no Python, local private data, controlled umask, full historical run, resource profiling or exact-head CI executed."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 backtest_entry.py --run --config LOCAL_CONFIG.json --input LOCAL_INPUT.json --output NEW_RESULTS",
+      "result": "NOT_RUN",
+      "evidence": "GitHub file connector only; no Python, local private data, controlled umask, full historical run, resource profiling or exact-head CI executed."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 backtest_entry.py --verify --config LOCAL_CONFIG.json --input LOCAL_INPUT.json --output NEW_RESULTS",
+      "result": "NOT_RUN",
+      "evidence": "GitHub file connector only; no Python, local private data, controlled umask, full historical run, resource profiling or exact-head CI executed."
     }
   ],
   "remaining_work": [
-    "Main CIO pin exact r2 source HEAD and verify ancestry; byte-compare every production module and every other test with 62345f6e8155a7bcbed6bab01e7c85e01d06eb41. Only test_overclose_regression.py and README changed before mailbox.",
-    "Run full normal 113-control discovery, backtest_entry.py --self-test and standalone reduce-only/overclose controls; assert exact Decimal50 signed funding, per-leg sequential financial invariants and strict raw ledger replay; all 107 original identifiers preserved.",
-    "Only after ALL positive gates PASS, execute original twenty mutation subprocesses independently, each genuine named AssertionError and rc1; verify new exact-head push and pull_request CI.",
-    "Reuse accepted unchanged differential and resource evidence rather than repeating capacity run. If positive/mutation/CI pass, Main may launch original full 48 baseline+matched,48 delay2+matched,48 cost1.5x+matched, shared6000,9999 bootstrap, ETH/BTC BH24 plus BH48 at 5GiB with unchanged local inputs, then shipped --verify and independent raw/ledger/episode/performance review.",
-    "If r2 fails, stop and reassess architecture; no third correction authorized. No market success, strategy PASS or deployment implied."
+    "Permission decision required before adding the requested discoverable tests because controlling final five-path write_allowlist excludes any engineering/maker_x2/tests/ path. Do not claim N/4N or event-by-event independent comparison is proven.",
+    "Main to evaluate candidate via isolated checkout and independent full original 113 control discovery, strict replay diff all event kinds, full checkpoint and malformed events, 20 original mutations, dual umask and N/4N event counts; no accepted evidence yet.",
+    "Confirm incremental _LedgerView collection semantics and original Decimal50 equality on random/fixed event streams including duplicate/backwards, partial fills, funding and LIQ. Source independent validation remains present but equivalence must be measured.",
+    "Confirm heartbeat stages and atomic progress.json do not alter existing manifest hashes or overwrite result roots; progress.json is explicitly unhashed.",
+    "If engineering gates eventually accepted, then and only then original full ETH/BTC matrix with same 5GiB, windows and account config may be authorized by Main for standalone execution/verify. No strategy/PnL results yet."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Confirm source_head_sha 30752268b828fb1d6aa4943b2154811d8a23d7ba is exact r2 pre-mailbox ancestor and allowlist-only changes. In immutable checkout run cd engineering/maker_x2 && python3 -m unittest discover -s tests -v, backtest_entry.py --self-test, both standalone positive scripts; expect all113 PASS but do not claim until executed. Then all20 original mutations with named AssertionError rc1, and check both exact-head CI.",
-    "if_pass": "Accept only finite engineering r2 if 113 positives, 20 mutations and exact-head CI independently pass. Then operator may run unchanged full BTC/ETH exploration and --verify; never treat unit success as market or strategy acceptance.",
-    "if_fail": "Report exact failing ID/trace/full SHA; no third accounting AUTH1 revision, require architecture reassessment.",
+    "verify_now": "Pin r0 full source_head_sha b3c7cf09456f80dd8a66750d91c2e90625ef79da. Note the concrete final allowlist conflicts with requested new test source: tests/ not authorized, so candidate remains BLOCKED for full finite acceptance. Review allowed-path diff and request precise tests-path authorization if appropriate. Independently run all original controls/20 mutations and compare incremental ledger to unchanged replay_account on strict event streams, two-umask, 20k/40k prefix resource, and exact-head CI. Do not advance historical market on this source-only report.",
+    "if_pass": "Only accept infrastructure candidate once explicit missing test deliverables and complete finite gates are independently verified. Do not interpret unit or CI success as whole-market strategy PASS.",
+    "if_fail": "Capture failing original event ID/type/seq/timestamp, exact Decimal states and HEAD. Do not weaken strict independent account replay or silently enlarge the write scope.",
     "blockers": [
-      "r2 Python controls, mutations, and exact-head CI NOT_RUN",
-      "Full historical BTC/ETH run and verified result/PnL NOT_RUN",
-      "No deployment/paper/live authorized"
+      "No authorized tests/ write paths in final MAIN BOUNDED CONTEXT, so requested new differential/complexity tests NOT DELIVERED",
+      "No new Python, N/4N complexity, differential, umask or CI execution; all NOT_RUN",
+      "Full unchanged market remains historically hard-timed-out; no 48x3 result or PnL"
     ]
   }
 }
