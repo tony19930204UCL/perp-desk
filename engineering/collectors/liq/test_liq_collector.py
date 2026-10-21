@@ -862,20 +862,31 @@ class TestLiqCollector(BaseLiqCollectorTest):
         async def stop_when_heartbeats_written():
             date_str = collector._get_utc_date_str(int(collector.now() * 1000))
             hb_path = os.path.join(self.data_dir, f"heartbeat-{date_str}.jsonl")
-            for _ in range(60):
-                await asyncio.sleep(0.02)
-                if os.path.exists(hb_path):
-                    with open(hb_path, "r") as f:
-                        lines = [json.loads(l) for l in f if json.loads(l).get("type") == "heartbeat"]
+            try:
+                for _ in range(60):
+                    await asyncio.sleep(0.02)
+                    if os.path.exists(hb_path):
+                        with open(hb_path, "r") as f:
+                            lines = [json.loads(l) for l in f if json.loads(l).get("type") == "heartbeat"]
                         if len(lines) >= 5:
-                            collector.stop()
                             break
+            finally:
+                # Always request shutdown at the bounded observation deadline.
+                # Broken heartbeat implementations must reach assertions below,
+                # not escape as a wait_for TimeoutError.
+                collector.stop()
 
         async def run_test():
-            asyncio.create_task(stop_when_heartbeats_written())
-            await asyncio.wait_for(collector.run(), timeout=5.0)
+            stopper = asyncio.create_task(stop_when_heartbeats_written())
+            try:
+                await asyncio.wait_for(collector.run(), timeout=5.0)
+            finally:
+                collector.stop()
+                await stopper
 
         asyncio.run(run_test())
+        self.assertTrue(collector.stop_requested)
+        self.assertTrue(collector.heartbeat_task is None or collector.heartbeat_task.done())
 
         # Check heartbeat file
         date_str = collector._get_utc_date_str(int(collector.now() * 1000))
