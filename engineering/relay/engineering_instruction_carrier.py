@@ -297,6 +297,7 @@ def send(
         'prompt': text,
         'chat_path': chat_path,
         'chat_url': after.get('url') if confirmed else None,
+        'instruction_id': key,
         'evidence_kind': 'EXACT_RENDERED_USER_BUBBLE' if confirmed else 'UNVERIFIED'
     })
     if confirmed:
