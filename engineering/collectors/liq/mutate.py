@@ -182,87 +182,122 @@ MUTANTS = [
 ]
 
 
+# Each original mutation must fail a relevant original assertion, not the harness.
+SELECTORS = [
+    "test_05_file_and_dir_permissions",
+    "test_07_recv_ms_from_now_not_event_ms",
+    "test_01_real_fixtures_parsing",
+    "test_04_deduplication",
+    "test_08_backoff_sequence_and_bounds",
+    "test_11_day_and_disk_caps_and_throttling",
+    "test_03_bad_messages_to_reject_file",
+    "test_13_error_exit_codes_and_url_not_market",
+    "test_12_single_instance_lock_and_guard_spawn",
+    "test_16_guard_stale_cmdline_verification_and_sigterm",
+    "test_06_date_partitioning_and_append",
+    "test_15_compression_rotation_and_verification",
+    "test_13_error_exit_codes_and_url_not_market",
+    "test_14b_heartbeat_during_disconnect",
+    "test_14c_stop_latency_and_recv_slice",
+    "test_14e_default_data_dir_resolution",
+    "test_18m_loop_signal_handler_installed",
+    "test_14b_heartbeat_during_disconnect",
+    "test_18e_rate_limited_418",
+    "test_18f_planned_24h_reconnect",
+    "test_18g_silent_reconnect_boundary_900s",
+    "test_18h_dedup_lru_boundary_2000",
+    "test_18i_ensure_permissions_new_dir_umask_000",
+    "test_18j_reject_missing_top_level_E",
+    "test_18k_reject_missing_trade_time_T",
+    "test_18l_status_json_atomic_replacement",
+    "test_18n_heartbeat_interval_constants",
+]
+
+
+def run_suite(tmp_dir, selector=None, umask=0o022):
+    args = [sys.executable, "-m", "unittest", "-v"]
+    if selector:
+        args.append("test_liq_collector.TestLiqCollector." + selector)
+    else:
+        args.append("test_liq_collector")
+    def set_mask():
+        os.umask(umask)
+    try:
+        proc = subprocess.run(args, cwd=tmp_dir, capture_output=True,
+                              text=True, timeout=45, preexec_fn=set_mask)
+        return proc.returncode, (proc.stdout or "") + "\\n" + (proc.stderr or "")
+    except subprocess.TimeoutExpired:
+        return None, "TIMEOUT"
+    except Exception as exc:
+        return None, "HARNESS_ERROR: " + repr(exc)
+
+
+def control_ok(result):
+    code, output = result
+    return code == 0 and "OK" in output and "FAILED" not in output
+
+
+def assertion_kill(result, selector):
+    code, output = result
+    # -14, timeouts, import failures and unittest ERROR are never kills.
+    if code is None or code <= 0 or "ERROR:" in output:
+        return False
+    match = re.search(r"^FAIL: (\\w+) \\(test_liq_collector\\.TestLiqCollector\\)\\s*$",
+                      output, re.MULTILINE)
+    return (match is not None and match.group(1) == selector
+            and "AssertionError:" in output and "FAILED (failures=" in output)
+
+
 def run_mutation_tests():
     base_dir = os.path.abspath(os.path.dirname(__file__))
     orig_src = os.path.join(base_dir, "liq_collector.py")
     orig_test = os.path.join(base_dir, "test_liq_collector.py")
     orig_fixtures = os.path.join(base_dir, "fixtures")
+    with open(orig_src, encoding="utf-8") as stream:
+        src_code = stream.read()
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        shutil.copy2(orig_src, os.path.join(tmp_dir, "liq_collector.py"))
+        shutil.copy2(orig_test, os.path.join(tmp_dir, "test_liq_collector.py"))
+        shutil.copytree(orig_fixtures, os.path.join(tmp_dir, "fixtures"))
+        for mask in (0o022, 0o002):
+            result = run_suite(tmp_dir, umask=mask)
+            print(f"CONTROL umask={mask:04o}: {result[0]}", flush=True)
+            if not control_ok(result):
+                print(result[1][-6000:], flush=True)
+                print("BLOCKED: CONTROL must pass before mutants", flush=True)
+                return 1
 
-    with open(orig_src, "r", encoding="utf-8") as f:
-        src_code = f.read()
-
-    total_mutants = len(MUTANTS)
-    caught_count = 0
-    survived_count = 0
-
-    for idx, mutant in enumerate(MUTANTS, 1):
-        name = mutant["name"]
-        desc = mutant["desc"]
-        target = mutant["target"]
-        replacement = mutant["replacement"]
-
-        occurrences = src_code.count(target)
-        if occurrences != 1:
-            print(f"ERROR mutant {name}: original string found {occurrences} times (expected exactly 1)")
-            survived_count += 1
-            continue
-
-        mutated_code = src_code.replace(target, replacement, 1)
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_src = os.path.join(tmp_dir, "liq_collector.py")
-            tmp_test = os.path.join(tmp_dir, "test_liq_collector.py")
-            tmp_fixtures = os.path.join(tmp_dir, "fixtures")
-
-            with open(tmp_src, "w", encoding="utf-8") as f:
-                f.write(mutated_code)
-
-            shutil.copy2(orig_test, tmp_test)
-            shutil.copytree(orig_fixtures, tmp_fixtures)
-
-            caught = False
-            detail = ""
-            try:
-                proc = subprocess.run(
-                    [sys.executable, "-m", "unittest", "test_liq_collector"],
-                    cwd=tmp_dir,
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                )
-                output = (proc.stdout or "") + "\n" + (proc.stderr or "")
-
-                if "SyntaxError" in output or "ImportError" in output:
-                    caught = False
-                    detail = "SyntaxError or ImportError"
-                else:
-                    m = re.search(r"^(?:FAIL|ERROR):\s+([a-zA-Z0-9_]+)", output, re.MULTILINE)
-                    if m:
-                        first_fail = m.group(1)
-                        caught = True
-                        detail = f"caught by {first_fail}"
-                    elif proc.returncode != 0:
-                        caught = False
-                        detail = f"exit {proc.returncode} without test FAIL/ERROR"
-                    else:
-                        caught = False
-                        detail = "tests passed"
-            except subprocess.TimeoutExpired:
-                caught = False
-                detail = "timeout (60s)"
-            except Exception as e:
-                caught = False
-                detail = f"exception {e}"
-
-            if caught:
-                caught_count += 1
-                print(f"[{idx:02d}/{total_mutants:02d}] CAUGHT   {name}: {desc} ({detail})")
+        caught = 0
+        for idx, (mutant, selector) in enumerate(zip(MUTANTS, SELECTORS), 1):
+            name = mutant["name"]
+            target = mutant["target"]
+            count = src_code.count(target)
+            if count != 1:
+                print(f"[{idx:02d}/27] INVALID {name}: target count={count}", flush=True)
+                continue
+            result = run_suite(tmp_dir, selector)
+            if not control_ok(result):
+                print(f"[{idx:02d}/27] INVALID {name}: selector control "
+                      f"{result[0]} {result[1][-800:]}", flush=True)
+                continue
+            with open(os.path.join(tmp_dir, "liq_collector.py"), "w",
+                      encoding="utf-8") as stream:
+                stream.write(src_code.replace(target, mutant["replacement"], 1))
+            result = run_suite(tmp_dir, selector)
+            if assertion_kill(result, selector):
+                caught += 1
+                state = "CAUGHT"
             else:
-                survived_count += 1
-                print(f"[{idx:02d}/{total_mutants:02d}] SURVIVED {name}: {desc} ({detail})")
-
-    print(f"\nmutants {total_mutants} caught {caught_count} survived {survived_count}")
-    return 0 if survived_count == 0 else 1
+                state = "SURVIVED"
+            evidence = result[1][-800:].replace("\\n", " ")
+            print(f"[{idx:02d}/27] {state} {name} {selector}: "
+                  f"rc={result[0]} {evidence}", flush=True)
+            with open(os.path.join(tmp_dir, "liq_collector.py"), "w",
+                      encoding="utf-8") as stream:
+                stream.write(src_code)
+        print(f"mutants {len(MUTANTS)} caught {caught} "
+              f"survived {len(MUTANTS) - caught}", flush=True)
+        return 0 if caught == len(MUTANTS) else 1
 
 
 if __name__ == "__main__":
