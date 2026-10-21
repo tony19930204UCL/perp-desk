@@ -1,3 +1,4 @@
+import product_dispatch as pd
 """Allow-once ONLY if the card's update_file content differs from the branch file by at most N changed lines
 and the operation is in repo/branch/allowlist. Use when the secret-regex heuristic refuses a file that
 contains its own detection regex (for example the exporter review_sync.py). Usage: python3 relay-allow-if-diff-clean.py JOB_DIR [MAX_CHANGED_LINES]
@@ -26,6 +27,12 @@ for ln in added:
     assert not SECRET.search(ln),'secret-format string in an added line'
     for w in re.findall(r'[A-Za-z0-9_\-]{32,}',ln): assert re.fullmatch(r'[a-z][a-z0-9_]*',w),'added line has a long non-identifier string'
 assert CARD in snap()['text']
+# Exact verified card + shared confirmed-send source must authorize click.
+active = json.load(open(S + '/active_instruction.json', encoding='utf-8'))
+iid = active['instruction_id']
+fp = __import__('hashlib').sha256(json.dumps(op, sort_keys=True).encode()).hexdigest()
+pd.approval_once(j, S, iid, fp, chat=j.get('dispatch_chat_url'))
+pd.approve_check(j, S, iid, fp, chat=j.get('dispatch_chat_url'))
 ev('(()=>{const b=[...document.querySelectorAll("button")].filter(e=>e.innerText.startsWith("允許一次"));if(b.length!==1)throw Error("Ambiguous approval");b[0].click();return true})()'); time.sleep(4)
 gone=CARD not in snap()['text']
 open('%s/approved_once_diffclean_%d.json'%(S,int(time.time())),'w').write(json.dumps(dict(at=datetime.datetime.now(datetime.timezone.utc).isoformat(),file=a['path'],changed_lines=len(d),prompt_gone=gone,diff=[x[:400] for x in d]),indent=1,ensure_ascii=False))
