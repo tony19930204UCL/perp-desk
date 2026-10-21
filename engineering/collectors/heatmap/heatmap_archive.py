@@ -524,8 +524,8 @@ def run_archive(args) -> int:
                 return 0
 
         # Choose staging directory
-        default_win_sync_dir = "/mnt/c/Users/RELAY_USER/AppData/Local/PerpDeskRelayTest/heatmap-archive"
-        use_win_sync = (args.powershell is None and os.path.isdir("/mnt/c/Users/RELAY_USER/AppData/Local/PerpDeskRelayTest"))
+        default_win_sync_dir = args.staging_root or os.path.join(data_root, "staging")
+        use_win_sync = bool(args.staging_root and args.powershell is None and os.path.isdir(args.staging_root))
 
         if use_win_sync:
             staging_root = os.path.join(default_win_sync_dir, "staging")
@@ -1473,6 +1473,7 @@ def main():
     parser.add_argument("--prune-only", action="store_true", help="Run retention policy only")
     parser.add_argument("--data-root", default=None, help="Override data_root path")
     parser.add_argument("--ps-script", default=None, help="Override powershell script path")
+    parser.add_argument("--staging-root", default=None, help="Explicit Windows-accessible sync root (no hardcoded username)")
     parser.add_argument("--powershell", default=None, help="Override powershell executable command")
     parser.add_argument("--run-id", default=None, help="Override run_id")
     args = parser.parse_args()
