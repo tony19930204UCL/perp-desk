@@ -107,7 +107,24 @@ class AtomicDispatchTests(unittest.TestCase):
     def _carrier(self):
         sys.path.insert(0, str(SOURCE.parent))
         import engineering_instruction_carrier as carrier
+        # Test admission on the public API before any lifecycle effect.
+        positive = self._card("wire")
+        negative = dict(positive, path="mcp__GitHub__update_file")
+        args = (self.job["repository"], self.job["branch"],
+                "synthetic.py", {"synthetic.py"}, self.job["pr_number"])
+        self.assertTrue(carrier.approve_operation(positive, *args))
+        self.assertFalse(carrier.approve_operation(negative, *args))
         return carrier
+
+    def test_wire_gate(self):
+        """Sanitized slash operation admitted; malformed MCP path refused."""
+        carrier = self._carrier()
+        operation = self._card("admit")
+        malformed = dict(operation, path="mcp__GitHub__update_file")
+        args = (self.job["repository"], self.job["branch"],
+                "synthetic.py", {"synthetic.py"}, self.job["pr_number"])
+        self.assertTrue(carrier.approve_operation(operation, *args))
+        self.assertFalse(carrier.approve_operation(malformed, *args))
 
     def _sent(self, *, unknown=False):
         """Real carrier.send, injected only offline browser effects."""
@@ -162,7 +179,7 @@ class AtomicDispatchTests(unittest.TestCase):
         carrier = self._carrier()
         call, clicks, save = self._sent()
         call()
-        op = {"path": "mcp__GitHub__update_file",
+        op = {"path": "/connector_sanitized/link_sanitized/update_file",
               "args": {"repository_full_name": self.job["repository"],
                        "branch": self.job["branch"], "path": "synthetic.py",
                        "content": "safe = 1"}}
@@ -191,7 +208,7 @@ class AtomicDispatchTests(unittest.TestCase):
     def test_no_source_click(self):
         carrier = self._carrier()
         dispatch.claim(self.job, self.first, "one")
-        op = {"path": "mcp__GitHub__update_file",
+        op = {"path": "/connector_sanitized/link_sanitized/update_file",
               "args": {"repository_full_name": self.job["repository"],
                        "branch": self.job["branch"], "path": "synthetic.py",
                        "content": "value = 1"}}
@@ -220,7 +237,7 @@ class AtomicDispatchTests(unittest.TestCase):
         call, sent, save = self._sent()
         call()
         self.assertEqual(sent, ["send"])
-        op = {"path": "mcp__GitHub__update_file",
+        op = {"path": "/connector_sanitized/link_sanitized/update_file",
               "args": {"repository_full_name": self.job["repository"],
                        "branch": self.job["branch"], "path": "synthetic.py",
                        "content": "safe = 1"}}
@@ -268,7 +285,7 @@ class AtomicDispatchTests(unittest.TestCase):
             dispatch_dir=self.first, instruction_id="one"), clicks
 
     def _card(self, value):
-        return {"path":"mcp__GitHub__update_file",
+        return {"path":"/connector_sanitized/link_sanitized/update_file",
                 "args":{"repository_full_name":self.job["repository"],
                         "branch":self.job["branch"],"path":"synthetic.py",
                         "content":"value = " + value}}
