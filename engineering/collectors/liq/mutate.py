@@ -215,13 +215,15 @@ SELECTORS = [
 
 
 def run_suite(tmp_dir, selector=None, umask=0o022):
-    args = [sys.executable, "-m", "unittest", "-v"]
+    args = [sys.executable, "-B", "-m", "unittest", "-v"]
     if selector:
         args.append("test_liq_collector.TestLiqCollector." + selector)
     else:
         args.append("test_liq_collector")
     def set_mask():
         os.umask(umask)
+    # Never reuse timestamp/size-valid bytecode after mutating the source.
+    shutil.rmtree(os.path.join(tmp_dir, "__pycache__"), ignore_errors=True)
     try:
         proc = subprocess.run(args, cwd=tmp_dir, capture_output=True,
                               text=True, timeout=45, preexec_fn=set_mask)
@@ -232,9 +234,17 @@ def run_suite(tmp_dir, selector=None, umask=0o022):
         return None, "HARNESS_ERROR: " + repr(exc)
 
 
-def control_ok(result):
+def control_ok(result, expected):
     code, output = result
-    return code == 0 and "OK" in output and "FAILED" not in output
+    if code != 0:
+        return False
+    # Read unittest's terminal summary, not product diagnostic text such
+    # as CONNECT_FAILED emitted by successful test scenarios.
+    match = re.search(
+        r"(?m)^Ran (\d+) tests? in [0-9.]+s\r?\n\r?\nOK[ \t]*\r?\n*\Z",
+        output,
+    )
+    return match is not None and int(match.group(1)) == expected
 
 
 def assertion_kill(result, selector):
@@ -262,7 +272,7 @@ def run_mutation_tests():
         for mask in (0o022, 0o002):
             result = run_suite(tmp_dir, umask=mask)
             print(f"CONTROL umask={mask:04o}: {result[0]}", flush=True)
-            if not control_ok(result):
+            if not control_ok(result, 37):
                 print(result[1][-6000:], flush=True)
                 print("BLOCKED: CONTROL must pass before mutants", flush=True)
                 return 1
@@ -276,7 +286,7 @@ def run_mutation_tests():
                 print(f"[{idx:02d}/27] INVALID {name}: target count={count}", flush=True)
                 continue
             result = run_suite(tmp_dir, selector)
-            if not control_ok(result):
+            if not control_ok(result, 1):
                 print(f"[{idx:02d}/27] INVALID {name}: selector control "
                       f"{result[0]} {result[1][-800:]}", flush=True)
                 continue
