@@ -1,80 +1,134 @@
-"""Read-only bounded Maker X2 artifact checks, using shipped report keys."""
+"""Native Maker X2 artifact observer; no producer rewrites or trading calls."""
 import hashlib
 import json
 import re
-from owner_activity import _read_bytes
-
+from owner_activity import _read_bytes, _source_meta
 HASH = re.compile(r"^[0-9a-f]{64}$")
-IDS = {f"{symbol}:{frame}m:{k}:{ttl}:{style}"
-       for symbol in ("ETHUSDT", "BTCUSDT") for frame in (1, 15)
-       for k in (".25", ".50") for ttl in (2, 5) for style in ("X1", "X2", "X3")}
+IDS = {f"{s}:{f}m:{k}:{t}:{x}" for s in ("ETHUSDT", "BTCUSDT")
+       for f in (1, 15) for k in (".25", ".50") for t in (2, 5)
+       for x in ("X1", "X2", "X3")}
+_CACHE = {}
 
 
-def read(root, base, attempt):
-    """Only an explicitly trusted output directory; never scan raw trade streams."""
-    state = {"state": "missing", "count": 0, "total": 48, "metrics": []}
-    if not isinstance(attempt, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", attempt):
-        return state
+def read(root, base, attempt, expected=None):
+    result = {"state": "unknown", "count": None, "total": 48,
+              "metrics": [], "by_exit": {}, "accepted": False}
+    if not isinstance(attempt, str) or not re.fullmatch(r"[\w-]{1,64}", attempt):
+        return result
+    if not isinstance(expected, dict) or not all(HASH.fullmatch(str(expected.get(k)))
+            for k in ("input_manifest_sha256", "config_sha256")):
+        return result
+    source = expected.get("source_sha256")
+    if not isinstance(source, dict) or not source or any(
+            not isinstance(k, str) or not HASH.fullmatch(str(v))
+            for k, v in source.items()):
+        return result
+    directory = tuple(base)
+    if not directory or any(not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", x)
+                            or x in (".", "..") for x in directory):
+        return result
+    # Trusted root is the pre-authorized attempt output, not a request-supplied
+    # HTTP path. Files are native cells/00_strategy.json etc, not root/attempt.
+    def get(parts):
+        signature = _source_meta(root, directory + tuple(parts))
+        if signature[2] > 1048576:
+            raise ValueError("oversized")
+        key = (root, directory, tuple(parts))
+        cached = _CACHE.get(key)
+        if cached and cached[0] == signature:
+            return cached[1], cached[2]
+        raw, _ = _read_bytes(root, directory + tuple(parts), 1048576)
+        obj = json.loads(raw, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+        digest = hashlib.sha256(raw).hexdigest()
+        _CACHE[key] = (signature, obj, digest)
+        if len(_CACHE) > 360:
+            _CACHE.pop(next(iter(_CACHE)))
+        return obj, digest
     try:
-        directory = tuple(base)
-        if not directory or any(not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", x) or x in (".", "..")
-                                for x in directory):
-            return state
-        def get(name):
-            raw, _ = _read_bytes(root, directory + (attempt, name), 1048576)
-            return json.loads(raw), hashlib.sha256(raw).hexdigest()
-        manifest, _ = get("manifest.json")
-        if (not isinstance(manifest, dict) or not isinstance(manifest.get("artifacts"), dict)
-                or manifest.get("attempt_id") != attempt
-                or not isinstance(manifest.get("source_sha256"), dict)
-                or not HASH.fullmatch(str(manifest.get("input_manifest_sha256")))
-                or not HASH.fullmatch(str(manifest.get("config_sha256")))):
-            return {**state, "state": "invalid"}
-        result, digest = get("results.json")
-        if digest != manifest["artifacts"].get("results.json"):
-            return {**state, "state": "invalid"}
-        rows = result.get("cells") if isinstance(result, dict) else None
+        manifest, _ = get(("manifest.json",))
+    except FileNotFoundError:
+        manifest = None
+    except (OSError, ValueError, UnicodeDecodeError):
+        return {**result, "state": "invalid"}
+    if manifest is not None:
+        if (not isinstance(manifest, dict) or
+                any(manifest.get(k) != expected[k] for k in (
+                    "input_manifest_sha256", "config_sha256", "source_sha256")) or
+                not isinstance(manifest.get("artifacts"), dict)):
+            return {**result, "state": "old_or_invalid"}
+    try:
+        summary, digest = get(("results.json",))
+        if not isinstance(summary, dict):
+            raise ValueError("summary")
+        if manifest is not None and manifest["artifacts"].get("results.json") != digest:
+            raise ValueError("summary digest")
+        rows = summary.get("cells")
         if not isinstance(rows, list) or len(rows) > 48:
-            return {**state, "state": "invalid"}
-        valid, seen, metrics = 0, set(), []
-        for index, cell in enumerate(rows):
-            if not isinstance(cell, dict) or cell.get("cell_id") not in IDS:
-                continue
-            cid = cell["cell_id"]
-            if cid in seen:
-                return {**state, "state": "duplicate"}
+            raise ValueError("summary cells")
+    except FileNotFoundError:
+        rows = None
+    except (OSError, ValueError, UnicodeDecodeError):
+        return {**result, "state": "invalid"}
+    # Native report writes strategy + matched *before* final manifest. A complete
+    # JSON pair can be tentatively counted only when the trusted attempt binding
+    # pins producer source/input/config; without a summary its metrics remain NA.
+    seen, records = set(), []
+    for index in range(48):
+        row = rows[index] if rows is not None and index < len(rows) else None
+        cid = row.get("cell_id") if isinstance(row, dict) else None
+        if cid is not None and cid not in IDS:
+            return {**result, "state": "invalid"}
+        if cid in seen:
+            return {**result, "state": "duplicate"}
+        if cid is not None:
             seen.add(cid)
-            m = cell.get("metrics")
-            if not isinstance(m, dict) or not all(
-                    key in m for key in ("gross_bp", "net_bp", "profit_factor",
-                                        "tp_sl_sl_gap_denominator", "tp_over_tp_plus_sl",
-                                        "actual_time_close_rate")):
-                continue
-            for part in ("strategy", "matched"):
-                name = f"cells/{index:02d}_{part}.json"
-                expected = manifest["artifacts"].get(name)
-                if not isinstance(expected, str) or not HASH.fullmatch(expected):
-                    break
-                raw, _ = _read_bytes(root, directory + (attempt, "cells",
-                                      f"{index:02d}_{part}.json"), 1048576)
-                if hashlib.sha256(raw).hexdigest() != expected:
-                    break
-                obj = json.loads(raw)
-                if part == "strategy" and (not isinstance(obj, dict)
-                        or obj.get("symbol") != cid.split(":")[0]
-                        or not isinstance(obj.get("episodes"), list)):
-                    break
-            else:
-                valid += 1
-                metrics.append({"cell": cid, "gross_bp": m["gross_bp"],
-                                "net_bp": m["net_bp"], "profit_factor": m["profit_factor"],
-                                "conditional_win_rate": m["tp_over_tp_plus_sl"],
-                                "risk_denominator": m["tp_sl_sl_gap_denominator"],
-                                "actual_time_share": m["actual_time_close_rate"],
-                                "exit": cid.split(":")[-1]})
-        state.update(count=valid, state="preliminary" if valid < 48 else "complete",
-                     metrics=metrics[:48], accepted=False)
-        # This counts parseable cells, not accepted research or a shared portfolio.
-        return state
-    except (OSError, ValueError, TypeError, KeyError, UnicodeDecodeError):
-        return {**state, "state": "invalid"}
+        try:
+            artifact = []
+            for side in ("strategy", "matched"):
+                name = ("cells", f"{index:02d}_{side}.json")
+                obj, sha = get(name)
+                if manifest is not None and manifest["artifacts"].get(
+                        "/".join(name)) != sha:
+                    raise ValueError("artifact digest")
+                if obj is not None and not isinstance(obj, dict):
+                    raise ValueError("artifact object")
+                artifact.append(obj)
+        except FileNotFoundError:
+            continue
+        except (OSError, ValueError, UnicodeDecodeError):
+            continue
+        strategy, matched = artifact
+        if not isinstance(strategy, dict) or not isinstance(strategy.get("episodes"), list):
+            continue
+        native = f"{strategy.get('symbol')}:{strategy.get('framework')}m:{strategy.get('k')}:{strategy.get('ttl')}:{strategy.get('exit')}"
+        if native not in IDS or (cid is not None and native != cid) or native in seen and cid is None:
+            continue
+        if cid is None:
+            seen.add(native)
+        metrics = row.get("metrics") if isinstance(row, dict) else None
+        def number(key):
+            value = metrics.get(key) if isinstance(metrics, dict) else None
+            if value is None or value == "NOT_APPLICABLE":
+                return None
+            try:
+                from decimal import Decimal
+                dec = Decimal(str(value))
+                return str(dec) if dec.is_finite() else None
+            except (ValueError, TypeError, ArithmeticError):
+                return None
+        records.append({"cell": native, "exit": strategy.get("exit"),
+                        "gross_bp": number("gross_bp"), "net_bp": number("net_bp"),
+                        "profit_factor": number("profit_factor"),
+                        "conditional_win_rate": number("tp_over_tp_plus_sl"),
+                        "risk_denominator": metrics.get("tp_sl_sl_gap_denominator")
+                            if isinstance(metrics, dict) else None,
+                        "actual_time_share": number("actual_time_close_rate")})
+    if rows is not None and manifest is not None and len(rows) != len(records):
+        return {**result, "state": "invalid"}
+    if not records and rows is None:
+        return {**result, "state": "missing"}
+    order = sorted(records, key=lambda x: float(x["net_bp"]) if x["net_bp"] is not None else float("-inf"), reverse=True)
+    by_exit = {x: sum(r["exit"] == x for r in records) for x in ("X1", "X2", "X3")}
+    return {**result, "state": "complete" if len(records) == 48 and manifest is not None
+            and rows is not None else "preliminary", "count": len(records),
+            "metrics": order, "by_exit": by_exit, "accepted": False}
