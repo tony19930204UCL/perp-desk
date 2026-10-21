@@ -91,6 +91,9 @@ class Relay:
         repo=json.dumps(self.job['repository'])
         guard=('!(/GitHub/i.test(card))||dry' if self.job.get('client_authorized_github_allow_once') else '!(/GitHub/i.test(card)&&card.includes(%s))||dry'%repo)
         js=self.PROMPT_JS%guard.replace('dry','%s'%('true' if dry else 'false'))
+        # Legacy UI card shortcut cannot bind the exact parsed operation to
+        # the confirmed send source. Require scoped permission() instead.
+        return {'found': True, 'clicked': False, 'reason': 'SOURCE_BOUND_APPROVAL_REQUIRED'}
         r=self.transport({'op':'evaluate','expression':js})
         r=json.loads(r) if isinstance(r,str) else r
         if r.get('found') and r.get('clicked'): atomic(self.root/('approved_once_%s.json'%datetime.now(timezone.utc).strftime('%H%M%S')),{'at':datetime.now(timezone.utc).isoformat(),'card':r['card'],'scope':'allow_once'})
