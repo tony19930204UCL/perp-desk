@@ -178,3 +178,58 @@ def processes(launch, adoption, now_ms, proc_root="/proc"):
                     "state": state, "pid": pid if state == "verified" else None,
                     "elapsed_s": elapsed, "rss_bytes": rss})
     return out
+
+def processes_managed(rows, docs, health, now_ms, proc_root="/proc"):
+    """Verify current scheduler-owned PID via fresh source and executable argv."""
+    out = []
+    if not isinstance(rows, list):
+        return out
+    for row in rows[:16]:
+        if not isinstance(row, dict) or row.get("source") != "heartbeat":
+            continue
+        if health.get("heartbeat", {}).get("state") != "available":
+            continue
+        src = docs.get("heartbeat")
+        if not isinstance(src, dict):
+            continue
+        pid = src.get("pid")
+        if type(pid) is not int or not 1 <= pid <= 4194304:
+            continue
+        state, elapsed, rss, ticks = "unverified", None, None, None
+        try:
+            with open(os.path.join(proc_root, str(pid), "stat"), "rb") as fd:
+                data = fd.read(4096).decode("utf-8")
+            fields = data[data.rfind(")") + 2:].split()
+            ticks = int(fields[19])
+            with open(os.path.join(proc_root, str(pid), "cmdline"), "rb") as fd:
+                argv = fd.read(8192).split(b"\x00")
+            word = row["cmd_contains"].encode("ascii")
+            if not any(word in os.path.basename(arg).split(b" ")[0] or word in arg
+                       for arg in argv if arg):
+                state = "mismatch"
+            else:
+                hz = os.sysconf("SC_CLK_TCK")
+                start = src.get("started_ms")
+                if type(start) is int:
+                    with open(os.path.join(proc_root, "stat"), "r") as fd:
+                        boot = next(int(line.split()[1]) for line in fd
+                                    if line.startswith("btime "))
+                    if abs((boot + ticks / hz) * 1000 - start) > 10000:
+                        state = "mismatch"
+                    else:
+                        state = "verified"
+                elif start is None:
+                    state = "verified"
+                if state == "verified":
+                    with open(os.path.join(proc_root, "uptime")) as fd:
+                        uptime = float(fd.read().split()[0])
+                    elapsed = max(0, int(uptime - ticks / hz))
+                    rss = int(fields[21]) * os.sysconf("SC_PAGE_SIZE")
+        except (OSError, IndexError, ValueError, StopIteration, OverflowError):
+            state = "gone"
+        out.append({"id": row["id"], "kind": row["kind"], "product": row["product"],
+                    "identity": "managed", "state": state,
+                    "pid": pid if state == "verified" else None,
+                    "start_ticks": ticks if state == "verified" else None,
+                    "elapsed_s": elapsed, "rss_bytes": rss})
+    return out
