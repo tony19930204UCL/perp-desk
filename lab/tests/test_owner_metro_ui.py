@@ -23,7 +23,10 @@ class MetroUI(unittest.TestCase):
         import time
         from dashboard_v2_server import create_server
         from browser_issue3_acceptance import CdpSession, chrome_binary
-        chrome = os.environ.get("OWNER_METRO_CHROME") or chrome_binary()
+        try:
+            chrome = os.environ.get("OWNER_METRO_CHROME") or chrome_binary()
+        except RuntimeError:
+            self.skipTest("native Chromium missing: operator browser gate NOT_RUN")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "owner_metro").mkdir()
