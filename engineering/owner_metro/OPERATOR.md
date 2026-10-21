@@ -136,3 +136,57 @@ accepted viewport proof; operator must record genuine 1280 and 390 CDP
 evidence separately and verify final exact-HEAD push and PR CI success.
 No update to `.github/workflows/ci.yml` is needed: its existing
 `python3 -m unittest discover -s tests -v` discovers `test_owner_metro*.py`.
+
+## r3 native heartbeat, cron-managed identity and ledger node binding
+
+This section supersedes the earlier illustrative heartbeat/launch-only notes.
+Private `owner_metro/bindings.json` may add the optional root-level keys
+`managed` (at most 16 entries) and `nodes` (at most 24 entries).
+The file remains strictly local to the operator, never committed. Both keys
+are source configuration rather than dashboard API inputs.
+
+A source named `heartbeat` points to the genuine collector status document
+via a trusted root-relative binding. Supported native fields:
+`type=heartbeat`, `ts_iso`, `ts_ms`, `events_total`,
+`events_today`, `pid`, `started_ms`, `connected`.
+Freshness is 300,000 milliseconds, accepting `updated_at`, `at`,
+`ts_iso`, then integer `ts_ms` as clock source. A stale or
+unverifiable heartbeat cannot provide an event count. An authenticated
+zero is zero, not missing. No status timestamp is rewritten.
+
+Each managed entry has public `id`, `kind`, `product`, fixed
+`source:"heartbeat"`, and a short `cmd_contains` executable/script
+name. PID comes from the fresh source, never the binding. A candidate
+is verified only when its current Linux /proc cmdline contains that
+component and any provided `started_ms` agrees with the OS boot-time
+plus start ticks within ten seconds. Missing PID/stale heartbeat/dead
+process/mismatched start or argv never certifies liveness. Strict
+launch/adoption records continue to work unchanged. Managed and strict
+identities sharing an already verified PID count only once. Live routes
+remain isolated by `product`.
+
+Each nodes entry has `route` (maker, collectors, relay), `step`
+(integer 0–3), `items` (1–8 canonical C-number ledger IDs oldest to
+newest), and optional `gate` (one canonical C-number ledger ID).
+No real IDs or private paths belong in repository assets. The last
+item is the current attempt. User approval gate wins over all other
+states; a live DISPATCHED item following DROPPED/BLOCKED predecessors
+is `retest`, while ordinary live DISPATCHED is `active`.
+Unverified/failed DISPATCHED and BLOCKED/DROPPED are `failed`.
+Manual holders are not live; cron handles require an enabled job in
+the fixed canonical cron source. Missing/invalid ledger IDs do not
+override accepted engineering stage evidence. Ledger VERIFIED alone
+never implies installed acceptance. Pending human decisions fall back
+to authoritative user-blocked canonical ledger rows only if the fresh
+directive is unavailable, and are labeled with their source.
+
+Focused checks from `lab`:
+
+```sh
+python3 -m unittest -v tests.test_owner_metro_bind tests.test_owner_metro_node tests.test_owner_metro_ui
+python3 -m unittest discover -s tests -v
+```
+
+No browser or process was restarted or staged by this GitHub-only
+engineering delivery; run the original native Chromium operator
+acceptance against the immutable release separately.
