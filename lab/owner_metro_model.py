@@ -47,7 +47,8 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576):
             # Explicit verified evidence only; candidate CI is not installation.
             evidence = rows.get("evidence", {})
             proof = evidence.get(str(i)) if isinstance(evidence, dict) else None
-            done = i in verified and isinstance(proof, dict) and proof.get("accepted") is True
+            done = (health.get("stage", {}).get("state") == "available" and
+                    i in verified and isinstance(proof, dict) and proof.get("accepted") is True)
             live = (i == active and any(p["state"] == "verified" and
                         p.get("product") == ident and
                         p["kind"] in ("compute", "collector", "coordination") for p in proc))
@@ -71,11 +72,11 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576):
     if isinstance(pending, list):
         pending = sum(isinstance(x, dict) and x.get("status") in
                       ("PENDING", "WAITING_HUMAN") for x in pending)
-    pending = pending if type(pending) is int and pending >= 0 else None
+    pending = pending if type(pending) is int and pending >= 0 and health.get("directive", {}).get("state") == "available" else None
     count = liq.get("event_count") if isinstance(liq, dict) else None
     if count is None and isinstance(heartbeat, dict):
         count = heartbeat.get("liquidation_event_count")
-    count = count if type(count) is int and count >= 0 else None
+    count = count if type(count) is int and count >= 0 and (health.get("liquidations", {}).get("state") == "available" or health.get("heartbeat", {}).get("state") == "available") else None
     return {"schema_version": 1, "observer_only": True, "installed": False,
             "generated_ms": now_ms, "sources": {**activity["sources"], **health},
             "kpis": {"processes": sum(p["state"] == "verified" for p in proc),
