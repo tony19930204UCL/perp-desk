@@ -20,6 +20,14 @@ jobs:
       - name: PAPER isolated suite
         working-directory: lab
         run: python3 -m unittest discover -s tests -v
+      - name: Liq collector contract and mutations
+        working-directory: engineering/collectors/liq
+        run: |
+          set -e
+          (umask 0022; python3 -B -m unittest -v test_liq_collector)
+          (umask 0002; python3 -B -m unittest -v test_liq_collector)
+          python3 -u -B mutate.py
+          python3 -B liq_collector.py --selfcheck
       - name: Issue 23 isolated discovery pipeline
         run: |
           mkdir -p artifacts/issue-23-discovery
