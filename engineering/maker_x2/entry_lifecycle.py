@@ -67,6 +67,28 @@ def vwap60(complete_bars):
         return quote / base
 
 
+def reduce_execution(requested, available, audit, reason, ts):
+    """Producer-only reduce-only order admission; never rewrite raw fills.
+
+    Financial ledger remains strict. Cancellations are nonfinancial audit
+    records, not fabricated buy fills or silently ignored source events.
+    """
+    req = number(requested, "requested_close", True)
+    avail = number(available, "open_qty")
+    if avail < ZERO:
+        raise X2Error("negative producer position")
+    with localcontext() as ctx:
+        ctx.prec = 50
+        executed = min(req, avail)
+        cancelled = req - executed
+    audit.append({"type": "REDUCE_ONLY", "reason": reason, "ts": ts,
+                  "requested": str(req), "executed": str(executed),
+                  "cancelled": str(cancelled),
+                  "outcome": ("NO_POSITION" if executed == ZERO else
+                              "REDUCED" if cancelled > ZERO else "FILLED")})
+    return executed, cancelled
+
+
 class ShortEntry:
     """One signal, one pending slot, explicit partial fills at exact limit.
 
@@ -175,9 +197,13 @@ class ShortEntry:
             if hi < stop:
                 return False
             price = max(op, stop) * (1 + self.rates.slip)
-        self._event("entry-risk-" + str(ts), ts, "fill",
-                    side="buy", qty=str(self.filled), price=str(price),
-                    liquidity="taker")
+        available = replay(self.cash_start, self.events)["remaining_qty"]
+        executed, cancelled = reduce_execution(
+            self.filled, available, self.audit, "ENTRY_HARD_SL", ts)
+        if executed > ZERO:
+            self._event("entry-risk-" + str(ts), ts, "fill",
+                        side="buy", qty=str(executed), price=str(price),
+                        liquidity="taker")
         self.audit.append(("SL_GAP" if op >= stop else "SL", ts))
         self.status = "CLOSED_SL"
         self.remaining = ZERO
@@ -186,6 +212,14 @@ class ShortEntry:
         return True
 
     def process(self, bar, fill_qty=None, settlements=()):
+        # Baseline independent replay uses Decimal50. Producer entry
+        # accumulation must not lose low-order quantity before hard risk.
+        with localcontext() as ctx:
+            ctx.prec = 50
+            return self._process(bar, fill_qty=fill_qty,
+                                 settlements=settlements)
+
+    def _process(self, bar, fill_qty=None, settlements=()):
         if self.status not in ("PENDING", "PARTIAL"):
             raise X2Error("entry not pending")
         op, hi, lo, cl = closed_bar(bar)
