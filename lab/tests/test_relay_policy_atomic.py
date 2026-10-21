@@ -185,8 +185,8 @@ class AtomicDispatchTests(unittest.TestCase):
                 dispatch_job=self.job, dispatch_dir=self.first, instruction_id="one",
                 event_fn=lambda *a,**kw: None)
         self.assertEqual(effects, [])
-        self.assertEqual(dispatch.inspect(dict(self.job, write_allowlist=["changed.py"]),
-                                          self.first, "one")["phase"], "APPROVE_INTENT")
+        self.assertEqual(len(dispatch.inspect(dict(self.job, write_allowlist=["changed.py"]),
+                                          self.first, "one")["cards"]), 1)
 
     def test_no_source_click(self):
         carrier = self._carrier()
@@ -244,6 +244,82 @@ class AtomicDispatchTests(unittest.TestCase):
         with self.assertRaises(dispatch.DispatchBlocked):
             carrier.permission({"text": "要允許 ChatGPT 使用 GitHub 嗎？"}, **params)
         self.assertEqual(approvals, [True])
+
+
+
+    def _permit_card(self, card, callback=None):
+        carrier = self._carrier()
+        clicks = []
+        def cdp(js):
+            if "JSON.stringify" in js:
+                return ["call_tool\n" + json.dumps(card)]
+            if "允許一次" in js:
+                clicks.append(True)
+                if callback:
+                    callback()
+            return True
+        return carrier.permission({"text": "要允許 ChatGPT 使用 GitHub 嗎？"},
+            cdp_fn=cdp, snapshot_fn=lambda: {"text": ""},
+            repo=self.job["repository"], branch=self.job["branch"],
+            mailbox="synthetic.py", allowed={"synthetic.py"},
+            pr_number=self.job["pr_number"],
+            save_fn=lambda name, data:(self.first / name).write_text(json.dumps(data)),
+            event_fn=lambda *a, **kw: None, dispatch_job=self.job,
+            dispatch_dir=self.first, instruction_id="one"), clicks
+
+    def _card(self, value):
+        return {"path":"mcp__GitHub__update_file",
+                "args":{"repository_full_name":self.job["repository"],
+                        "branch":self.job["branch"],"path":"synthetic.py",
+                        "content":"value = " + value}}
+
+    def test_two_cards(self):
+        call, _, _ = self._sent()
+        call()
+        self.assertEqual(self._permit_card(self._card("1")), (True, [True]))
+        self.assertEqual(self._permit_card(self._card("2")), (True, [True]))
+        self.assertEqual(len(dispatch.inspect(self.job, self.first, "one")["cards"]), 2)
+        with self.assertRaisesRegex(dispatch.DispatchBlocked, "CARD_ALREADY_ATTEMPTED"):
+            self._permit_card(self._card("1"))
+
+    def test_card_unknown_hold(self):
+        call, _, _ = self._sent()
+        call()
+        effects = []
+        def unknown():
+            effects.append(True)
+            raise RuntimeError("SYNTHETIC_UNKNOWN")
+        with self.assertRaisesRegex(RuntimeError, "SYNTHETIC_UNKNOWN"):
+            self._permit_card(self._card("3"), unknown)
+        with self.assertRaises(dispatch.DispatchBlocked):
+            self._permit_card(self._card("3"), unknown)
+        self.assertEqual(effects, [True])
+
+    def test_adopt_send_source(self):
+        call, _, _ = self._sent()
+        call()
+        prior = dispatch.inspect(self.job, self.first, "one")
+        other = dict(self.job, dispatch_lock_root=str(self.base / "isolated-import"))
+        (self.first / "job.json").write_text(json.dumps(other))
+        scope = dispatch._scope(other, self.first, "one")[2]
+        proof = {"receipt_sha256":prior["send_receipt_sha256"],
+                 "repository":scope["repo"],"pr_number":scope["pr"],
+                 "branch":scope["branch"],"chat":scope["chat"],
+                 "instruction_id":"one","scope_sha256":dispatch._sha(scope)}
+        other["dispatch_adopt_source"] = proof
+        self.assertEqual(dispatch.adopt_send(other, self.first, "one")["phase"],
+                         "SENT_CONFIRMED")
+        self.job = other
+        self.assertEqual(self._permit_card(self._card("4")), (True, [True]))
+
+    def test_market_adopt_denied(self):
+        dispatch.adopt_existing(self.job, self.first, "one", dispatch._identity())
+        (self.first / "send_one.json").write_text(json.dumps({
+            "status":"CONFIRMED","instruction_id":"one",
+            "chat_url":self.job["dispatch_chat_url"],
+            "evidence_kind":"EXACT_RENDERED_USER_BUBBLE","text_hash":"a"*64}))
+        with self.assertRaises(dispatch.DispatchBlocked):
+            dispatch.approval_once(self.job, self.first, "one", "a"*64)
 
 
 
