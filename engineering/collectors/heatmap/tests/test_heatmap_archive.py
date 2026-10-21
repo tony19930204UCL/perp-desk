@@ -1945,6 +1945,8 @@ print(json.dumps(out))
         self.assertNotIn("comboDeadline", src)
         self.assertNotIn("EnsureOpen()", src)
         self.assertIn("cts.CancelAfter(timeoutMs)", src)
+        self.assertIn("'next','ok'", src)
+        self.assertNotIn("-ExecutionPolicy", src)
 
     def test_42_ps1_static_per_combo_deadline_enforcement(self):
         """HA-ACCEPT-003: Static check on ps1 for per-combo 60s deadline contract and reconnection."""
