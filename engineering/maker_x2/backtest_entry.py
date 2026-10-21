@@ -2,6 +2,9 @@
 import argparse
 import json
 import hashlib
+import time
+import os
+from tempfile import NamedTemporaryFile
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -51,13 +54,31 @@ def execute_prepared(sources, config, input_path, config_path, output,
               "evaluation_start":start,"evaluation_end":end,
               "research_status":"EXPLORATORY_UNACCEPTED"}
     report=BoundedReport(output)
+    started=time.monotonic()
+    total=144
+    def heartbeat(stage, symbol="", cell_id="", bar_i=0, bar_n=0):
+        now=datetime.now(timezone.utc).isoformat()
+        done=sum(len(rows) for rows in report.rows.values())
+        payload={"stage":stage,"symbol":symbol,"cell_id":cell_id,
+                 "cell_done":done,"cell_total":total,"bar_i":bar_i,
+                 "bar_n":bar_n,"elapsed":time.monotonic()-started,
+                 "updated_utc":now}
+        target=Path(output)/"progress.json"
+        with NamedTemporaryFile("w",dir=target.parent,delete=False,
+                                 encoding="utf-8") as tmp:
+            json.dump(payload,tmp,sort_keys=True)
+            name=tmp.name
+        os.replace(name,target)
+        print(now,stage,symbol,cell_id,bar_i,bar_n,
+              round(payload["elapsed"],3),flush=True)
+    heartbeat("START")
     samplers={}
     with TemporaryDirectory(prefix="maker-v3-bounded-") as scratch:
         for symbol in ("ETHUSDT","BTCUSDT"):
             paths=sources[symbol]
             if set(paths)!={"bars","funding"}:
                 raise X2Error("each symbol needs bars and funding filenames")
-            print("PREPARING "+symbol,flush=True)
+            heartbeat("PREPARING",symbol)
             bars=prepare_bars(paths["bars"],Path(scratch)/(symbol+"-bars.db"))
             funding=read_funding(paths["funding"])
             if (not bars["count"] or (frozen and
@@ -73,20 +94,23 @@ def execute_prepared(sources, config, input_path, config_path, output,
                             "end_open_ms":bars["end_open_ms"]}
             prepared={}
             for tf in (1,15):
-                print("FEATURES "+symbol+" "+str(tf)+"m",flush=True)
+                heartbeat("FEATURES_START",symbol,str(tf)+"m")
                 prepared[tf]=prepare_decisions(
                     bars["bars"],tf,Path(scratch)/(symbol+"-"+str(tf)+".db"))
+                heartbeat("FEATURES_DONE",symbol,str(tf)+"m")
             def write_cell(scenario,meta,strategy,matched):
                 report.record(scenario,meta,strategy,matched)
-                print("CELL "+symbol+" "+scenario+" "+meta["cell_id"],
-                      flush=True)
+                heartbeat("CELL_DONE",symbol,scenario+":"+meta["cell_id"])
             _, selections = bounded_symbol(symbol,bars["bars"],
-                funding["events"],prepared,config,start,end,write_cell,count=sample_count)
+                funding["events"],prepared,config,start,end,write_cell,count=sample_count,
+                progress=heartbeat)
             samplers.update(selections)
             del prepared, bars, funding
     if source_manifest(root)!=source_before:
         raise X2Error("source/test changed during run")
+    heartbeat("FINALIZING")
     written=report.finish(manifest,samplers,config,start,end)
+    heartbeat("COMPLETE")
     return written
 
 
