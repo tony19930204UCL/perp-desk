@@ -4,62 +4,62 @@
   "pr_number": 78,
   "branch": "fix/heatmap-collector-contract-20261021",
   "task_id": "HEATMAP-HA003-R4B",
-  "instruction_id": "HEATMAP-R4B-R1-20261021",
+  "instruction_id": "HEATMAP-R4B-R2-20261021",
   "status": "WAITING_CI",
-  "source_head_sha": "69cb9b2e9511c10a1e63f307ef9c3a10cf542ed0",
-  "summary": "R1 revision: native Windows test43 WSL path conversion and decoding fixed; PowerShell per-combination worker spawned under monotonic bounded parent WaitForExit with forced Kill/wait when time expires. Real PdSess connect/Call, gzip, SHA256 and Dispose blocked-operation entrypoints injected in dedicated offline probe process. Original42 preserved, CI Linux suite/selftest and isolated Windows test43 added. No tests executed here; Windows process supervision and actual Chrome data NOT accepted. Per-worker spawn overhead and post-exit parsing/bookkeeping not yet proven strictly <=60000ms. Runner may reveal errors.",
+  "source_head_sha": "f2b9bd84bab8062c997142cad5b3eabf124669c0",
+  "summary": "R2 final bounded repair. Exact pre-R2 PR/push CI Linux 44 tests: only test43(case=next) FAIL, expected ok child but got worker_error. Source root cause: next generates -ProbeCase ok while ValidateSet lacked ok, child parameter binding rejected before ProbeWorker switch. Original log did not expose child stderr; cause grounded in source, no invented stderr. Now 'ok' admitted and bounded child stderr detail recorded for error; -ExecutionPolicy Bypass removed from Invoke-Worker and archive Powershell execution, inheriting normal host policy, no trust workaround. Windows CI had failed importing POSIX fcntl before executing any native PowerShell cases; guarded import permits test43 discovery with unchanged Linux POSIX tests. test44 strengthened no-policy-override/ok admission. No local/control execution here; native unsigned UNC remains BLOCKED by host authorization.",
   "changed_files": [
-    "engineering/collectors/heatmap/tests/test_heatmap_archive.py",
     "engineering/collectors/heatmap/heatmap_capture.ps1",
-    ".github/workflows/ci.yml",
+    "engineering/collectors/heatmap/heatmap_archive.py",
+    "engineering/collectors/heatmap/tests/test_heatmap_archive.py",
     ".relay/mailbox/heatmap-collector.json"
   ],
   "tests": [
     {
+      "command": "PR run 39578225098; push run 39578218695; python3 -m unittest discover -s engineering/collectors/heatmap/tests -v",
+      "result": "FAIL (prior head)",
+      "evidence": "Both Linux jobs 44 tests, 1 FAIL: test43 next, worker_error != None; other original42 and test44 passed. Full log retrieved."
+    },
+    {
+      "command": "PR run 39578225098 native Windows test43",
+      "result": "ERROR (prior head)",
+      "evidence": "Job 119148996131 ModuleNotFoundError: No module named 'fcntl' during module import; no PowerShell subcase executed."
+    },
+    {
       "command": "python3 -m unittest discover -s engineering/collectors/heatmap/tests -v",
-      "result": "NOT_RUN",
-      "evidence": "Operator prior immutable head reported 44 tests, rc1; test43 6 subcase errors due Windows path and utf8 stderr decode. New head pending CI."
+      "result": "NOT_RUN (R2 head)",
+      "evidence": "CI pending; no local executor."
     },
     {
       "command": "python3 engineering/collectors/heatmap/heatmap_archive.py --selftest",
-      "result": "NOT_RUN",
-      "evidence": "Preserved selftest path; CI added."
-    },
-    {
-      "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_43 -v",
-      "result": "NOT_RUN",
-      "evidence": "Windows runner added; real blocking faults on production method entrypoints; no result yet."
+      "result": "NOT_RUN (R2 head)",
+      "evidence": "Original 11 selftests preserved; CI awaits run."
     },
     {
       "command": "powershell.exe -NoProfile -File .\\engineering\\collectors\\heatmap\\heatmap_capture.ps1 -DeadlineProbe -ProbeCase next -ProbeMs 60000",
-      "result": "NOT_RUN",
-      "evidence": "Shipped operator command; inspect rc, wall elapsed, per-combo statuses."
-    },
-    {
-      "command": "python3 engineering/collectors/heatmap/mutation_check.py",
-      "result": "NOT_RUN",
-      "evidence": "No executor attached; 8-entry manifest result unverified on this HEAD."
+      "result": "NOT_RUN (R2 head)",
+      "evidence": "Native host prior rejected unsigned UNC script (UnauthorizedAccess); host trust unchanged and must not be bypassed."
     },
     {
       "command": "python3 engineering/collectors/heatmap/heatmap_archive.py --config engineering/collectors/heatmap/config.json --data-root <output> --staging-root <staging> --ps-script engineering/collectors/heatmap/heatmap_capture.ps1",
       "result": "NOT_RUN",
-      "evidence": "19301 dedicated Chrome reported by operator but login, real ECharts+PNG, timestamps and two cycles remain unverified."
+      "evidence": "Real Chrome 19301, ECharts+PNG/freshness, all six combos and two scheduled cycles require separate authorized operator acceptance."
     }
   ],
   "remaining_work": [
-    "Await exact-head Linux/Windows CI; current revision is not claimed passing.",
-    "Prove full per-combo wall-clock limit including process creation, results decode and parent bookkeeping; a process spawn can itself stall before child timeout is armed.",
-    "Native Windows faults must confirm processes terminated and next combo running; real dedicated Chrome acceptance and two scheduled cycles remain operator-only.",
-    "Preserve 19301 isolated Chrome and passive DOM login; no deployment."
+    "Exact R2 head push and PR CI Linux 44 tests + 11 selftests and Windows test43 outcomes must be inspected; no acceptance inferred.",
+    "Windows host unsigned UNC remains UnauthorizedAccess; no execution-policy bypass or alternate path authorized. Genuine native operation branch test remains blocked until normal trusted entry is available.",
+    "Parent wall clock budget includes process start/read/wait and terminal cleanup; hard <=60000ms and owned process termination under hostile real I/O remain unproven.",
+    "Actual dedicated Chrome 19301 capture with ECharts structured data, PNG/source timestamps/freshness, six combination accounting and two scheduled archive cycles not accepted; no deployment."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Read actual CI Windows test43 and Linux 42+added tests/selftests, independently run real 60-second PowerShell command capturing monotonic wall, rc, JSON and child process termination. Verify unmodified ECharts structured chart+PNG/freshness and two normal archive cycles on dedicated Chrome19301.",
-    "if_pass": "Review whole producer time budget including parent overhead, per-combo accounting and no abandoned process, then consider HA003 acceptance.",
-    "if_fail": "Provide exact failing stderr/status/line, retain PR78 draft, no deployment.",
+    "verify_now": "Read exact-head Linux/Windows push+PR CI, capture test43 full stderr/details if failure. Validate none of product code runs ExecutionPolicy override; obtain authorized signed/trusted normal host entry independently without policy changes, then independently measure actual 60000ms producer deadline and next-combo/owned-process termination, real ECharts+PNG freshness and two cycles.",
+    "if_pass": "Accept only CI-repaired R2 scope if green, preserve HA003 remaining operator gates for separate acceptance; no auto-deployment.",
+    "if_fail": "Return exact failing job log/status, keep draft PR78 blocked and do not exceed R2 revision cap.",
     "blockers": [
-      "CI and native operator execution not yet available in this chat.",
-      "End-to-end hard deadline through parent startup/parse and real Chrome still unproven."
+      "Native host unsigned UNC PowerShell entry denied; no approved bypass.",
+      "Full 60s producer, real Chrome source freshness and two archive cycles remain unverified."
     ]
   }
 }
