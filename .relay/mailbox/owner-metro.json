@@ -4,72 +4,68 @@
   "pr_number": 79,
   "branch": "feat/owner-metro-live-20261021",
   "task_id": "OWNER-METRO-20261021",
-  "instruction_id": "owner-metro-001-r2",
+  "instruction_id": "owner-metro-001-r3",
   "status": "WAITING_CI",
-  "source_head_sha": "946b9466b2d1917665cf086cc4e06b9767ae94a0",
-  "summary": "Third and final bounded correction submitted: timestamped synthetic directive without loosening fail-closed freshness; injectable fake proc identity and product route tests; native Maker 48/partial/duplicate/bad/digest/old and NA fixtures/tests; existing Playwright Chromium binary discovery; operator commands. Not installed or accepted.",
+  "source_head_sha": "25128d6e7f25b49afb86849b5513133ea3d14677",
+  "original_head_sha": "ad79643a2bf06687241593068ef5a2c848d8e413",
+  "summary": "Fourth final owner-authorized contract alignment: native heartbeat ts_iso/ts_ms and events_total; optional private managed cron PID identity source with current /proc argv/start verification and strict/managed dedup; dynamic canonical-ledger per-route user/retest/active/failed overrides and ledger pending-human fallback; seven UI states and product label; bounded tests and operator docs. No changes to strict adoption verification, Maker results, core trading, deployment or CI workflow.",
   "changed_files": [
+    "lab/owner_metro_sources.py",
     "lab/owner_metro_model.py",
-    "lab/owner_metro_results.py",
-    "lab/tests/test_owner_metro.py",
-    "lab/tests/test_owner_metro_proc.py",
-    "lab/tests/test_owner_metro_cells.py",
+    "lab/owner_metro_nodes.py",
+    "lab/owner_activity.js",
+    "lab/owner_activity.html",
+    "lab/tests/test_owner_metro_bind.py",
+    "lab/tests/test_owner_metro_node.py",
     "lab/tests/test_owner_metro_ui.py",
-    "lab/tests/fixtures/owner_metro_cell_full.json",
-    "lab/tests/fixtures/owner_metro_cell_part.json",
-    "lab/tests/fixtures/owner_metro_cell_bad.json",
+    "lab/tests/fixtures/owner_metro_hb.json",
     "engineering/owner_metro/OPERATOR.md",
     ".relay/mailbox/owner-metro.json"
   ],
   "tests": [
     {
-      "command": "cd lab && python3 -m unittest -v tests.test_owner_metro_proc tests.test_owner_metro_cells",
+      "command": "cd lab && python3 -m unittest -v tests.test_owner_metro_bind tests.test_owner_metro_node tests.test_owner_metro_ui",
       "result": "NOT_RUN",
-      "evidence": "Code delivery via GitHub file actions, no test subprocess executed."
-    },
-    {
-      "command": "cd lab && python3 -m unittest -v tests.test_owner_metro tests.test_owner_metro_live tests.test_owner_metro_ui",
-      "result": "NOT_RUN",
-      "evidence": "At previous e7c6498 HEAD, operator CI observed 701 tests with one failed synthetic undated-directive assertion; r2 not yet executed."
+      "evidence": "Source delivered using permitted GitHub create_file/update_file only; no Python runner used."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "Existing workflow discovers test_owner_metro*.py; final head not yet run."
+      "evidence": "New tests discoverable by existing workflow; no exact r3 execution evidence."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests -v",
       "result": "NOT_RUN",
-      "evidence": "Final head not yet run."
+      "evidence": "Not executed at r3."
     },
     {
-      "command": "Chromium 1280/390 CDP viewport with OWNER_METRO_CHROME or CHROMIUM_PATH",
+      "command": "exact r3 HEAD push and pull_request CI",
       "result": "NOT_RUN",
-      "evidence": "Runner browser lookup shipped; browser not executed."
+      "evidence": "No completed exact source/full-head dual CI evidence at writing. Prior r2 source HEAD had green CI."
     },
     {
-      "command": "Exact r2 push and pull_request CI",
+      "command": "real Chromium 1280/390 and native staging acceptance",
       "result": "NOT_RUN",
-      "evidence": "No completed successful exact-head dual runs verified at mailbox write."
+      "evidence": "Operator-only verification not executed by remote engineering delivery."
     }
   ],
   "remaining_work": [
-    "Obtain actual r2 full-suite and dual push/PR CI success on exact final SHA; diagnose any real failure without unapproved correction.",
-    "Run real Chromium 1280/390 and full two-cycle observations; skipped browser is not acceptance.",
-    "Operator privately provide actual root-contained bindings, verify protected identities, and stage immutable spare-port build only after independent acceptance.",
-    "Do not install, merge, trade, or alter concurrent products; no engineering repair budget remains."
+    "Obtain green push and pull_request CI on exact mailbox-final full HEAD; report actual failing tests if any, no additional revision budget.",
+    "Run native Chromium and operator trusted private source binding/identity/staged API acceptance. No private file is committed.",
+    "Confirm real live collector heartbeat fresh timestamp and current managed process from private operator profile; do not infer admission from synthetic fixture.",
+    "Review original frozen acceptance and immutable spare-port install/rollback obligations before any switch."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Check exact mailbox-final HEAD, both CI events, 48-cell test, fake-proc identity tests, and real Chromium acceptance; reuse operator evidence where compatible.",
-    "if_pass": "Approve only after frozen independent acceptance; operator stages immutable release on spare port before listener switch.",
-    "if_fail": "Keep PR79 draft uninstalled, report actual failing tests/commands; no further correction budget.",
+    "verify_now": "Recheck exact HEAD push/PR CI and tests.test_owner_metro_bind / tests.test_owner_metro_node; inspect native heartbeat, managed process and ledger node behavior using operator-owned private bindings.",
+    "if_pass": "Proceed to operator-only immutable spare-port staging and frozen acceptance; switch designated listener only on independent approval.",
+    "if_fail": "Keep PR79 draft/uninstalled. No further engineering correction budget; document exact failure.",
     "blockers": [
-      "Current r2 tests NOT_RUN",
-      "Exact final-head dual CI unverified",
-      "Real browser and private staged integration acceptance pending"
+      "r3 tests not locally executed",
+      "exact-head dual CI pending",
+      "native private source and browser/staging acceptance operator-only"
     ]
   },
-  "deployed": false,
-  "uninstalled": true
+  "uninstalled": true,
+  "deployed": false
 }
