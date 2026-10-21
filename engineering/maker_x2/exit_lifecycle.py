@@ -72,8 +72,13 @@ class ShortExit:
             self.core.targets["tp1"] = self.target
             self.core.orders["tp1"] = self.core.qty
         elif style == "X2":
-            self.core.orders = {"tp1": self.core.qty / 2,
-                                "tp2": self.core.qty / 2}
+            # Exact complementary quantities, never two separately rounded
+            # halves whose sum can exceed a long-precision entry fill.
+            with localcontext() as ctx:
+                ctx.prec = max(50, len(self.core.qty.as_tuple().digits) + 2)
+                first = self.core.qty / D(2)
+                self.core.orders = {"tp1": first,
+                                    "tp2": self.core.qty - first}
         self.status = "OPEN"
 
     def _schedule(self, close, eligible_ts):
@@ -85,6 +90,14 @@ class ShortExit:
         self.history.append(("INTENT", eligible_ts))
 
     def on_bar(self, bar, settlements=(), maker_fill=False):
+        # MakerX2's incremental qty subtraction uses the active Decimal
+        # context. Keep its exact producer quantities through both TP legs.
+        with localcontext() as ctx:
+            ctx.prec = max(50, len(self.core.entry_qty.as_tuple().digits) + 2)
+            return self._on_bar(bar, settlements=settlements,
+                                maker_fill=maker_fill)
+
+    def _on_bar(self, bar, settlements=(), maker_fill=False):
         if self.core.phase != "OPEN":
             raise X2Error("closed episode cannot process more bars")
         op, hi, lo, close = closed_bar(bar)
