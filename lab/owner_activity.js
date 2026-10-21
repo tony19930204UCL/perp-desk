@@ -153,7 +153,8 @@ async function poll() {
   } finally {pending=false;}
 }
 window.refreshOwnerMetro=poll;
-document.addEventListener('DOMContentLoaded',()=>{
-  poll();setInterval(poll,3000);
-});
+// Preserve the existing observer's DOMContentLoaded harness/handler.
+if(typeof window.addEventListener==='function') {
+  window.addEventListener('load',()=>{poll();setInterval(poll,3000);});
+}
 })();
