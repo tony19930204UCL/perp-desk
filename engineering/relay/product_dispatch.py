@@ -288,3 +288,20 @@ def reconcile(job, job_dir, instruction, *, receipt, chat=None):
         prior["phase"] = "SENT_CONFIRMED" if receipt == "SEND_CONFIRMED" else "APPROVED"
         _write(path, prior)
         return dict(prior)
+
+
+def approve_check(job, job_dir, instruction, fingerprint, *, chat=None):
+    """Re-read exact owner/scope/expiry and immutable card immediately before click."""
+    root, key, scope, directory = _scope(job, job_dir, instruction, chat)
+    with _record(root, key) as (_, prior):
+        if not prior or prior.get("scope") != scope or prior.get("job_dir") != directory:
+            raise DispatchBlocked("CARD_SCOPE_CHANGED", prior.get("owner") if prior else None)
+        if prior.get("phase") != "APPROVE_INTENT" or prior.get("card_fingerprint") != fingerprint:
+            raise DispatchBlocked("CARD_INTENT_MISMATCH", prior.get("owner"))
+        if prior.get("approval_owner") != _identity():
+            raise DispatchBlocked("CARD_OWNER_MISMATCH", prior.get("approval_owner"))
+        if time.time() >= prior["lease_until"]:
+            raise DispatchBlocked("DISPATCH_LEASE_EXPIRED", prior.get("owner"))
+        if _confirmed(directory, instruction, scope["chat"]) != prior.get("send_receipt_sha256"):
+            raise DispatchBlocked("SEND_SOURCE_CHANGED", prior.get("owner"))
+        return dict(prior)
