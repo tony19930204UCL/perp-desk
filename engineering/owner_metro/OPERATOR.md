@@ -61,3 +61,45 @@ At source delivery: real Chromium 1280/390 screenshots, source restoration
 through two 3-second poll intervals, and actual process/lease cross-platform
 proof have not been independently run. Source summaries cannot establish
 historical 14-day coverage or unattended-loop acceptance by themselves.
+
+## r1 native binding correction (supersedes initial illustrative results layout)
+
+The real Maker PR75 `BoundedReport` writes `cells/00_strategy.json`
+and `cells/00_matched.json` through index 47, while delay2 and cost1_5x
+are separate; `results.json` and `manifest.json` are emitted only by
+`finish()`. No native `attempt_id` is present in manifest. A trusted
+private `results.json` *binding document*, not the native producer output,
+must provide `root` as a relative directory **directly containing** native
+artifact files; `attempt` is an independent authenticated launch identifier;
+`expected` has the canonical producer `input_manifest_sha256`,
+`config_sha256`, and full `source_sha256` filename-to-hash map recorded
+by the authorized launch. If these expectations are not independently
+available, metrics are unknown, not an invented 0/48. Never move or rewrite
+Maker artifact files. Partially written complete JSON cell pairs can be
+observed only under the same trusted expected identity.
+
+Directive is an authoritative document, not a manually invented summary:
+`active_owners` contains entries with `item`, `actor`, `scope`,
+`product` and `pending_decisions` is either an authoritative integer or
+list of decisions with status `PENDING`/`WAITING_HUMAN`.
+Stage has `products` keyed by maker/collectors/relay. Each route step's
+`verified_steps` and `evidence` are installation/acceptance evidence,
+not source-candidate CI; `active_step` alone cannot animate without a
+matching product-specific authenticated process.
+
+Every launch and adoption entry must associate `product` with the
+canonical route ID. A `wrapper:true` entry is not counted as a product
+child. Existing authenticated operator baseline may establish expected
+PID/start/boot/argv/cwd; live `/proc` may only *compare*, never supply,
+those expectations. The live green notification consumer can be labelled
+waiting on the official scheduler; earlier retired heatmap agents cannot
+be promoted into active capture workers. No installed collector evidence
+implies fourteen days of effective coverage.
+
+### Browser entrypoint
+
+`OWNER_METRO_CHROME=/path/to/existing/chromium cd lab && python3 -m unittest -v tests.test_owner_metro_ui.MetroUI.test_real_chromium`
+
+If using an environment assignment, set it before the Python process, e.g.
+`cd lab && OWNER_METRO_CHROME=/path/to/existing/chromium python3 -m unittest -v tests.test_owner_metro_ui.MetroUI.test_real_chromium`.
+This is an actual CDP browser runner, not a static substring check.
