@@ -91,7 +91,8 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576, proc_root=
                       ("PENDING", "WAITING_HUMAN") for x in pending)
     pending = pending if type(pending) is int and pending >= 0 and health.get("directive", {}).get("state") == "available" else None
     pending_source = "directive" if pending is not None else None
-    if pending is None and ledger_state == "available":
+    if (pending is None and ledger_state == "available" and
+            health.get("directive", {}).get("state") == "stale"):
         pending = sum(isinstance(item, dict) and
                       item.get("state") not in ("VERIFIED", "DROPPED") and
                       isinstance(item.get("blocked_by"), str) and
