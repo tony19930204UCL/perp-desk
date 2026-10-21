@@ -49,21 +49,13 @@ tool = op['path'].rsplit('/', 1)[-1]
 assert tool in ('update_file', 'create_file'), tool
 assert (a.get('repository_full_name') == j['repository'] and a.get('branch') == j['branch']
         and a.get('path') in j['write_allowlist']), 'scope'
-assert isinstance(c, str) and len(c) <= 180000, 'content'
-# Long strings are allowed only when they are plain snake_case identifiers (letters and digits in words joined by underscores, at least two underscores,
-# every word 1 to 24 characters, no run of 12+ digits or hex-looking word). Random keys, hashes and base64 never look like that.
-SNAKE = re.compile(r'[a-z][a-z0-9]{0,23}(?:_[a-z0-9]{1,24}){2,}')
-for w in re.findall(r'[A-Za-z0-9_\-]{32,}', c):
-    ok = SNAKE.fullmatch(w) and sum(ch.isdigit() for ch in w) <= len(w) * 0.1
-    assert ok, 'token-like string present'
-if re.search(r'(?i)sk_(?:live|test)_|xox[abp]-|AKIA[0-9A-Z]{12,}|-----BEGIN', c):
-    raise AssertionError('token-like string present')
-pat = re.compile(r'(?i)(?:sk-[a-z0-9]{20,}|ghp_[a-z0-9]{20,}|PRIVATE KEY'
-                 r'|api[_-]?key\s*[=:]\s*["\'][a-z0-9]{20,})')
-for m in pat.finditer(c):
-    end = c.find('\n', m.end())
-    line = c[c.rfind('\n', 0, m.start()) + 1: end if end >= 0 else len(c)]
-    assert 're.compile' in line or 'SECRET' in line.upper(), 'hit outside a detection rule: ' + line[:80]
+import approval_transaction as tx
+try:
+    audit = tx.changed_policy(op, j, 600)
+except tx.PolicyRejected as exc:
+    if str(exc) == 'TOKEN_LIKE':
+        raise AssertionError('token-like string present') from exc
+    raise
 assert CARD in snap()['text']
 # Exact verified card + shared confirmed-send source must authorize click.
 active = json.load(open(S + '/active_instruction.json', encoding='utf-8'))
