@@ -1935,6 +1935,46 @@ print(json.dumps(out))
                 if case == "next":
                     self.assertEqual([r["coin"] for r in rows], ["connect", "ok", "cleanup"])
 
+    def test_45_ipc_protocol(self):
+        """Real PowerShell 5.1 worker IPC, without Chrome or authorization bypass."""
+        exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh")
+        if not exe:
+            self.skipTest("PowerShell unavailable")
+        ps_path = CAPTURE_PS1
+        if os.name != "nt" and "microsoft" in os.uname().release.lower():
+            ps_path = subprocess.run(["wslpath", "-w", CAPTURE_PS1],
+                                     capture_output=True, text=True, check=True).stdout.strip()
+        cmd = [exe, "-NoProfile", "-File", ps_path]
+        good = subprocess.run(cmd + ["-ProbeWorker", "-ProbeCase", "ipcgood"],
+                              capture_output=True, timeout=15)
+        self.assertEqual(good.returncode, 0, good.stderr.decode("utf-8", errors="replace"))
+        raw = good.stdout.decode("utf-8-sig")
+        self.assertEqual(len(raw.strip().splitlines()), 1, repr(raw))
+        obj = json.loads(raw)
+        self.assertIsNone(obj["results"][0]["error"])
+        self.assertEqual(obj["status"], "ok")
+
+        error = subprocess.run(cmd + ["-ProbeWorker", "-ProbeCase", "ipcerror"],
+                               capture_output=True, timeout=15)
+        self.assertEqual(error.returncode, 0, error.stderr.decode("utf-8", errors="replace"))
+        self.assertEqual(len(error.stdout.decode("utf-8-sig").strip().splitlines()), 1)
+        self.assertIn(b"ipc_expected_error", error.stderr)
+        self.assertEqual(json.loads(error.stdout)["results"][0]["error"], "chart_missing")
+
+        parent = subprocess.run(cmd + ["-IpcProbe", "-IpcCase", "next"],
+                                capture_output=True, timeout=45)
+        self.assertEqual(parent.returncode, 0, parent.stderr.decode("utf-8", errors="replace"))
+        rows = json.loads(parent.stdout.decode("utf-8-sig"))["results"]
+        self.assertEqual([r["case"] for r in rows],
+                         ["noise", "good", "error", "null", "bad", "timeout", "good"])
+        self.assertEqual([r["accepted"] for r in rows],
+                         [False, True, True, True, False, False, True])
+        self.assertEqual(rows[2]["error"], "chart_missing")
+        self.assertTrue(rows[2]["stderr_ok"])
+        self.assertIsNone(rows[3]["error"])
+        self.assertTrue(rows[5]["timeout"])
+        self.assertTrue(rows[6]["accepted"])
+
     def test_44_deadline_static_guards(self):
         """Require no old widened call budget or post-failure reconnection."""
         with open(CAPTURE_PS1, encoding="utf-8") as f:
