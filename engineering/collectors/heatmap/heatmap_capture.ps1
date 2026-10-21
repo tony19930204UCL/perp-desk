@@ -627,7 +627,7 @@ try {
                 }
             }
         }
-        if (hasUserButton) {
+        if (hasUserButton && !hasLogin) {
             userMenuConsecutive++;
             if (userMenuConsecutive >= 2) {
                 return JSON.stringify({ state: 'true', evidence: 'user_menu_button', waited_ms: Date.now() - start });
