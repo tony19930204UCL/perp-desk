@@ -1114,14 +1114,14 @@ function createEnv(width = 1400) {{
 async function runTests() {{
   const results = {{}};
 
-  // (i) Login BUTTON appears after 400ms -> false/login_leaf, waited_ms between 350 and 1400
+  // (i) Login BUTTON appears after 400ms -> false/login_leaf, waited_ms between 2300 and 3200
   {{
     const {{ doc, win }} = createEnv(1400);
     global.document = doc; global.window = win;
     setTimeout(() => {{
       doc.body.children.push(new FakeElement("button", "Login", []));
     }}, 400);
-    const res = JSON.parse(await loginPollJs(1500, 50));
+    const res = JSON.parse(await loginPollJs(4000, 50));
     results.case1 = res;
   }}
 
@@ -1213,7 +1213,7 @@ async function runTests() {{
     const btn = new FakeElement("button", "", [svg], {{ right: 1380, top: 47, bottom: 90 }});
     header.children.push(btn);
     doc.body.children.push(new FakeElement("button", "Login", []));
-    const res = JSON.parse(await loginPollJs(500, 50));
+    const res = JSON.parse(await loginPollJs(4000, 50));
     results.case6 = res;
   }}
 
@@ -1227,9 +1227,10 @@ runTests();
         data = json.loads(res.stdout.strip())
 
         # (i)
-        self.assertEqual(data["case1"]["state"], "unknown")
-        self.assertEqual(data["case1"]["evidence"], "timeout")
-        self.assertGreaterEqual(data["case1"]["waited_ms"], 1500)
+        self.assertEqual(data["case1"]["state"], "false")
+        self.assertEqual(data["case1"]["evidence"], "login_leaf")
+        self.assertGreaterEqual(data["case1"]["waited_ms"], 2300)
+        self.assertLessEqual(data["case1"]["waited_ms"], 3200)
 
         # (ii)
         self.assertEqual(data["case2"]["state"], "true")
@@ -1253,8 +1254,8 @@ runTests();
         self.assertEqual(data["case5"]["evidence"], "timeout")
 
         # (vi)
-        self.assertEqual(data["case6"]["state"], "true")
-        self.assertEqual(data["case6"]["evidence"], "user_menu_button")
+        self.assertEqual(data["case6"]["state"], "false")
+        self.assertEqual(data["case6"]["evidence"], "login_leaf")
 
     def test_31_ps1_focus_emulation_static(self):
         """Static test on ps1: focus emulation order, bringToFront inside hidden check, focusMode strings, SavePng param, output fields."""
@@ -2099,6 +2100,17 @@ global.setTimeout = fn => { tick += 500; sample++; fn(); };
         self.assertEqual(row["status"], "powershell_timeout")
         self.assertIn("PHASE combo 0 start t=7", row["stderr_tail"])
         self.assertLessEqual(len(row["stderr_tail"]), 300)
+
+    def test_50_login_and_menu(self):
+        steady, transient = self._login_node([
+            [["login", "menu"]],
+            [["login", "menu"], ["menu"], ["menu"]],
+        ])
+        self.assertEqual((steady["state"], steady["evidence"]),
+                         ("false", "login_leaf"))
+        self.assertGreaterEqual(steady["waited_ms"], 2000)
+        self.assertEqual((transient["state"], transient["evidence"]),
+                         ("true", "user_menu_button"))
 
 
 if __name__ == "__main__":
