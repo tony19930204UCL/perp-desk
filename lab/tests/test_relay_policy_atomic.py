@@ -340,5 +340,71 @@ class AtomicDispatchTests(unittest.TestCase):
 
 
 
+    def _check(self):
+        import approval_transaction as tx
+        return tx
+
+    def _write_op(self, content, mode="create_file", path="safe.txt"):
+        return {"path": "/connector_sanitized/link_sanitized/" + mode,
+                "args": {"repository_full_name": self.job["repository"],
+                         "branch": self.job["branch"], "path": path, "content": content}}
+
+    def test_bound_create(self):
+        tx = self._check()
+        job = dict(self.job, write_allowlist=["safe.txt"])
+        for n in (180, 200, 238, 600):
+            self.assertEqual(tx.changed_policy(self._write_op("x\n" * n), job)["changed_lines"], n)
+        with self.assertRaises(tx.PolicyRejected):
+            tx.changed_policy(self._write_op("x\n" * 601), job)
+        with self.assertRaises(tx.PolicyRejected):
+            tx.changed_policy(self._write_op("x\n"), job, 601)
+
+    def test_bound_update(self):
+        tx = self._check()
+        job = dict(self.job, write_allowlist=["safe.txt"])
+        for n in (180, 200, 238, 600):
+            op = self._write_op("x\n" * (n-1), "update_file")
+            self.assertEqual(tx.changed_policy(op, job, fetch_base=lambda *a:"old\n")["changed_lines"], n)
+        with self.assertRaises(tx.PolicyRejected):
+            tx.changed_policy(self._write_op("x\n"*600,"update_file"), job,
+                              fetch_base=lambda *a:"old\n")
+
+    def test_syntax_names(self):
+        tx = self._check()
+        job = dict(self.job, write_allowlist=["safe.py"])
+        name = "test_" + "meaningful_case_"*3
+        const = "DIAGNOSTIC_" + "NAME_PART_"*3
+        source = const + " = 1\n" + "def " + name + "():\n    return " + const + "\n"
+        self.assertTrue(tx.changed_policy(self._write_op(source, path="safe.py"), job))
+        for bad in ("x = " + repr(name), "# " + name,
+                    "x = " + repr(const), "def " + name + "(:\n    pass\n"):
+            with self.subTest(value=bad):
+                with self.assertRaises(tx.PolicyRejected):
+                    tx.changed_policy(self._write_op(bad, path="safe.py"), job)
+
+    def test_secret_first(self):
+        tx = self._check()
+        job = dict(self.job, write_allowlist=["safe.py", ".env"])
+        fragments = ["sk-"+"x"*22, "ghp_"+"z"*25, "-----BEGIN "+"PRIVATE KEY-----", ".env"]
+        for value in fragments:
+            with self.subTest(value=value[:6]):
+                with self.assertRaises(tx.PolicyRejected):
+                    tx.changed_policy(self._write_op("x = "+repr(value), path="safe.py"), job)
+        with self.assertRaises(tx.PolicyRejected):
+            tx.changed_policy(self._write_op("x\n", path=".env"), job)
+
+    def test_prompt_template(self):
+        template = (SOURCE.parent / "instruction-template.txt").read_text(encoding="utf-8")
+        filled = template.format(repository="synthetic/example", pr_number=123,
+                                 branch="test-branch", chat_url=self.job["dispatch_chat_url"],
+                                 instruction_id="one", write_allowlist="['synthetic.py']",
+                                 valid_until=self.job["valid_until"])
+        self.assertIn("<=180", filled)
+        self.assertIn("<=25", filled)
+        self.assertIn("600", filled)
+        runner = (SOURCE.parent / "profile_runner.py").read_text(encoding="utf-8")
+        self.assertIn("instruction-template.txt", runner)
+
+
 if __name__ == "__main__":
     unittest.main()
