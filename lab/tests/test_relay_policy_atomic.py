@@ -211,5 +211,37 @@ class AtomicDispatchTests(unittest.TestCase):
 
 
 
+    def test_permission_once_effect(self):
+        carrier = self._carrier()
+        call, sent, save = self._sent()
+        call()
+        self.assertEqual(sent, ["send"])
+        op = {"path": "mcp__GitHub__update_file",
+              "args": {"repository_full_name": self.job["repository"],
+                       "branch": self.job["branch"], "path": "synthetic.py",
+                       "content": "safe = 1"}}
+        approvals = []
+        def cdp(js):
+            if "JSON.stringify" in js:
+                return ["call_tool\n" + json.dumps(op)]
+            if "允許一次" in js:
+                approvals.append(True)
+            return True
+        params = dict(cdp_fn=cdp, snapshot_fn=lambda: {"text": ""},
+                      repo=self.job["repository"], branch=self.job["branch"],
+                      mailbox="synthetic.py", allowed={"synthetic.py"},
+                      pr_number=self.job["pr_number"], save_fn=save,
+                      dispatch_job=self.job, dispatch_dir=self.first,
+                      instruction_id="one")
+        self.assertTrue(carrier.permission(
+            {"text": "要允許 ChatGPT 使用 GitHub 嗎？"}, **params))
+        self.assertEqual(approvals, [True])
+        self.assertEqual(dispatch.inspect(self.job, self.first, "one")["phase"], "APPROVED")
+        with self.assertRaises(dispatch.DispatchBlocked):
+            carrier.permission({"text": "要允許 ChatGPT 使用 GitHub 嗎？"}, **params)
+        self.assertEqual(approvals, [True])
+
+
+
 if __name__ == "__main__":
     unittest.main()
