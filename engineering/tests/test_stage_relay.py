@@ -803,7 +803,7 @@ class RelayTests(unittest.TestCase):
         loader = importlib.util.spec_from_file_location("maker_stage_bridge",
                                                          MODULE.with_name("maker_stage_bridge.py"))
         bridge = importlib.util.module_from_spec(loader)
-        loader.exec_module(bridge)
+        loader.loader.exec_module(bridge)
         _, graph = self.maker_installed_fixture()
         maker = graph["maker_bridge"]
         original = list(maker["run_argv"])
