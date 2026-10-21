@@ -35,6 +35,6 @@ pd.approval_once(j, S, iid, fp, chat=j.get('dispatch_chat_url'))
 pd.approve_check(j, S, iid, fp, chat=j.get('dispatch_chat_url'))
 ev('(()=>{const b=[...document.querySelectorAll("button")].filter(e=>e.innerText.startsWith("允許一次"));if(b.length!==1)throw Error("Ambiguous approval");b[0].click();return true})()'); time.sleep(4)
 gone=CARD not in snap()['text']
-if gone: pd.reconcile(j, S, iid, receipt='APPROVED', chat=j.get('dispatch_chat_url'))
+if gone: pd.reconcile(j, S, iid, receipt='APPROVED', chat=j.get('dispatch_chat_url'), fingerprint=fp)
 open('%s/approved_once_diffclean_%d.json'%(S,int(time.time())),'w').write(json.dumps(dict(at=datetime.datetime.now(datetime.timezone.utc).isoformat(),file=a['path'],changed_lines=len(d),prompt_gone=gone,diff=[x[:400] for x in d]),indent=1,ensure_ascii=False))
 print('ALLOWED_ONCE',a['path'],'changed_lines',len(d),'prompt_gone',gone)
