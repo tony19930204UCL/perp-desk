@@ -1486,3 +1486,70 @@ The first two historical r14 fixture failures, original market
 `over-close` rc1, and all earlier financial/memory failure records
 are unchanged. New Python, actual-data forensic, mutations and CI
 are **NOT_RUN** at this GitHub-only source handback.
+
+
+## MAKER-V3-X2-ACCOUNTING-AUTH-1 — witnessed entry-risk producer
+
+Independent original historical forensic from immutable
+`91ec6eb834e62f45c73163562c885ee0be03f437` captured the
+**first genuine over-close**, at bar index 145272 (open UTC milliseconds
+1704834720000), cell ETHUSDT 1m, k=.25, TTL2, X1 baseline, strategy
+(not matched). The original producer emitted an exact
+`0.21922127435988758019877575879333720780837993677502` sell
+and a reduced-precision `0.2192212743598875801987757588` buy on
+the same entry-risk minute. Independent Decimal50 replay correctly
+rejected the over-close. The historical failure was an entry-risk
+producer, **not** proof of the previous X2 partial TP hypothesis.
+Original market results remain FAIL/no completed cells/no PnL.
+
+The limited producer repair changes `ShortEntry.process` to use
+Decimal50 during entry accumulation, so the immediate hard-SL's
+requested amount retains the exact original filled quantity.
+`reduce_execution` is an explicit **producer-only** reduce-only
+admission function: execute the available open amount, record
+requested/executed/cancelled with an outcome/reason, and cancel
+remaining intents if there is no open position. `ShortExit` routes
+its existing X1/X2/X3 risk and Maker requests through the same
+producer-only function and records excess cancellation. There is
+no quantization, tolerance, changed fee/slippage, funding order or
+relaxed external fill validation. `account_ledger.replay_account`
+and `accounting.replay` remain byte-identical and will still
+reject a malformed external buy or duplicate/sequence error.
+These reduce-only audit records are nonfinancial; only actual
+executed buy quantities enter the strict ledger.
+
+New standalone discoverable `tests/test_reduce_only.py` contains
+a specifically labeled synthetic bar derived from the *public
+witness quantities*, not a claim to reconstruct the raw market bar.
+It drives real OfflineAccount, ShortEntry and independent replay,
+plus an externally excessive buy negative and exact
+requested/executed/cancelled accounting. No private config or
+historical market bytes are embedded. Earlier r14 X2 synthetic
+fixture failed gross exact-literal reconciliation; it has not been
+reclassified as PASS.
+
+Finite acceptance from `engineering/maker_x2`:
+
+```sh
+python3 -m unittest discover -s tests -p test_reduce_only.py -v
+python3 -m unittest discover -s tests -p test_overclose_regression.py -v
+python3 -m unittest discover -s tests -v
+python3 backtest_entry.py --self-test
+python3 tests/test_reduce_only.py -v
+python3 tests/test_overclose_regression.py -v
+python3 tests/test_capacity.py --differential --base-dir PRE_R13_MAKER_X2_DIR
+python3 tests/test_capacity.py --resource --minutes 30000
+```
+
+Only when all controls pass run the previously documented exact
+20 negative mutations as separate subprocesses with a named
+AssertionError and actual rc1; then verify new exact-head push
+and pull_request CI. The operator has separate authorization
+to rerun the original full market after finite gates, but source
+delivery itself is not a market/strategy acceptance.
+
+**This GitHub-file-only delivery: Python tests, immutable base
+RED/candidate GREEN, financial differential, actual single-cell
+original witness replay, CI and historical runner all NOT_RUN.**
+The real market witness is operator-supplied observed evidence,
+not independent confirmation that this candidate passes it.
