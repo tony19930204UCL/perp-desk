@@ -1,0 +1,67 @@
+{
+  "port": 19301,
+  "data_root": "lab/data/heatmap-archive",
+  "retention_days": 60,
+  "max_total_bytes": 5368709120,
+  "viewport": [1400, 1200],
+  "settle_seconds": 4,
+  "png_every_n_runs": 4,
+  "combos": [
+    {
+      "coin": "BTC",
+      "mode": "pair",
+      "timeframe": "24 hour",
+      "model": 1,
+      "enabled": true
+    },
+    {
+      "coin": "ETH",
+      "mode": "pair",
+      "timeframe": "24 hour",
+      "model": 1,
+      "enabled": true
+    },
+    {
+      "coin": "SOL",
+      "mode": "pair",
+      "timeframe": "24 hour",
+      "model": 1,
+      "enabled": true
+    },
+    {
+      "coin": "XRP",
+      "mode": "pair",
+      "timeframe": "24 hour",
+      "model": 1,
+      "enabled": true
+    },
+    {
+      "coin": "BTC",
+      "mode": "pair",
+      "timeframe": "1 week",
+      "model": 1,
+      "enabled": true
+    },
+    {
+      "coin": "ETH",
+      "mode": "pair",
+      "timeframe": "1 week",
+      "model": 1,
+      "enabled": true
+    },
+    {
+      "coin": "BTC",
+      "mode": "pair",
+      "timeframe": "24 hour",
+      "model": 2,
+      "enabled": false
+    },
+    {
+      "coin": "ETH",
+      "mode": "pair",
+      "timeframe": "24 hour",
+      "model": 2,
+      "enabled": false
+    }
+  ]
+}
