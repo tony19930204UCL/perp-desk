@@ -107,6 +107,8 @@ class AtomicDispatchTests(unittest.TestCase):
     def _carrier(self):
         sys.path.insert(0, str(SOURCE.parent))
         import engineering_instruction_carrier as carrier
+        import approval_transaction as tx
+        tx._fetch_base = lambda job, path: 'old = 0\n'
         # Test admission on the public API before any lifecycle effect.
         positive = self._card("wire")
         negative = dict(positive, path="mcp__GitHub__update_file")
