@@ -29,6 +29,7 @@ import subprocess
 import sys
 import time
 import uuid
+import product_dispatch as pd
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -660,6 +661,10 @@ def cmd_send(a):
     if prompt.endswith("\n"):
         prompt = prompt.rstrip("\n")  # composer readback has no trailing newline
     job = Path(a.job_dir)
+    policy = json.loads((job / "job.json").read_text(encoding="utf-8"))
+    ticket = a.dispatch_ticket
+    pd.check(policy, job, a.instruction_id, phase="prepare",
+             chat=policy.get("dispatch_chat_url"), ticket=ticket)
     rpath = job / ("receipt-%s.json" % a.instruction_id)
     if rpath.exists():
         old = Receipt.load(rpath)
@@ -700,6 +705,8 @@ def cmd_send(a):
             rcpt.advance("PRESEND_FAILED", reason=str(e))
             emit({"status": "PRESEND_FAILED", "reason": str(e), "receipt": str(rpath)})
             return 2
+        pd.check(policy, job, a.instruction_id, phase="prepare",
+                 chat=policy.get("dispatch_chat_url"), ticket=ticket)
         env = {"target": target, "new": bool(a.new), "chat_url": a.chat_url, "prompt": prompt}
         r = node.run("prepare", dict(env, op="prepare"), timeout=90)
         if not ok_result(r) or not r["res"]["result"].get("ok") or not r["res"]["result"].get("draft_match"):
@@ -725,7 +732,11 @@ def cmd_send(a):
             emit({"status": "PRESEND_FAILED", "reason": "SEND_BUTTON", "send": prep["send"], "receipt": str(rpath)})
             return 2
         # ---- point of no return: intent is durable BEFORE the click
+        pd.phase(policy, job, a.instruction_id, "SEND_INTENT",
+                 chat=policy.get("dispatch_chat_url"), ticket=ticket)
         rcpt.advance("SEND_INTENT", target=target, url=prep["url"])
+        pd.phase(policy, job, a.instruction_id, "SEND_UNKNOWN",
+                 chat=policy.get("dispatch_chat_url"), ticket=ticket)
         r = node.run("click", dict(env, op="click"), timeout=45)
         clicked = ok_result(r) and r["res"]["result"].get("clicked")
         if not clicked:
@@ -746,6 +757,8 @@ def cmd_send(a):
             verdict = classify_readback(prompt, s["bubbles"], baseline)
             if verdict == "CONFIRMED":
                 rcpt.advance("CONFIRMED", url=s["url"], target=target, evidence="EXACT_RENDERED_USER_BUBBLE")
+                pd.phase(policy, job, a.instruction_id, "SENT_CONFIRMED",
+                         chat=policy.get("dispatch_chat_url"), ticket=ticket)
                 emit({"status": "CONFIRMED", "chat_url": s["url"], "target": target, "instruction_id": a.instruction_id,
                       "submit_count": rcpt.data["submit_count"], "receipt": str(rpath)})
                 return 0
@@ -872,6 +885,7 @@ def build_parser():
     g.add_argument("--chat-url")
     g.add_argument("--new", action="store_true")
     s.add_argument("--job-dir", required=True)
+    s.add_argument("--dispatch-ticket", required=True)
     s.add_argument("--instruction-id", required=True)
     s.add_argument("--prompt-file", required=True)
     s.add_argument("--dry-run", action="store_true", help="draft + verify + clear; never clicks send")
