@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import product_dispatch as pd
 from typing import Any, Callable, Dict, List, Optional, Set
 
 def now() -> str:
@@ -224,7 +225,8 @@ def send(
     snapshot_fn: Callable[[], Dict[str, Any]],
     save_fn: Callable[[str, Any], None],
     event_fn: Optional[Callable[..., None]] = None,
-    valid_until: Optional[str] = None
+    valid_until: Optional[str] = None,
+    dispatch_job: Optional[Dict[str, Any]] = None
 ) -> None:
     """Deliver instruction to chat and verify rendered user message bubble.
     
@@ -236,6 +238,10 @@ def send(
         if dt.datetime.now(dt.timezone.utc) >= deadline:
             raise RuntimeError('AUTHORIZATION_EXPIRED')
 
+    if dispatch_job is None:
+        raise RuntimeError("DISPATCH_JOB_REQUIRED")
+    pd.check(dispatch_job, root, key, phase="prepare",
+             chat=dispatch_job.get("dispatch_chat_url"))
     s = prepare_composer(
         s, root, chat_path,
         reconcile_fn=lambda k, snap, t: reconcile_send(k, snap, t, root=root, chat_path=chat_path, save_fn=save_fn, event_fn=event_fn),
@@ -265,12 +271,16 @@ def send(
         save_fn(intent.name, {'at': now(), 'status': 'COMPOSER_INTENT', 'text_hash': hashlib.sha256(text.encode()).hexdigest(), 'prompt': text})
 
     if need_fill:
+        pd.check(dispatch_job, root, key, phase="prepare",
+                 chat=dispatch_job.get("dispatch_chat_url"))
         js = '''(()=>{if(location.pathname!==%s)throw Error('Wrong chat');const candidates=[...document.querySelectorAll('#prompt-textarea,[contenteditable="true"][role="textbox"]')].filter(e=>e.getClientRects().length);if(candidates.length!==1)throw Error('Composer missing or ambiguous');const e=candidates[0];if(e.innerText.trim())throw Error('Composer occupied');e.focus();document.execCommand('insertText',false,%s);const norm=t=>t.replace(/\\r/g,'').replace(/\\n{2,}/g,'\\n').trim();if(norm(e.innerText)!==norm(%s))throw Error('Composer mismatch');return true})()''' % (json.dumps(chat_path), json.dumps(text), json.dumps(text))
         cdp_fn(js)
 
+    pd.phase(dispatch_job, root, key, 'SEND_INTENT')
     save_fn(intent.name, {'at': now(), 'status': 'SEND_INTENT', 'text_hash': hashlib.sha256(text.encode()).hexdigest(), 'prompt': text})
     save_fn(intent.name, {'at': now(), 'status': 'SEND_UNKNOWN_NO_RETRY', 'text_hash': hashlib.sha256(text.encode()).hexdigest(), 'prompt': text})
 
+    pd.phase(dispatch_job, root, key, 'SEND_UNKNOWN')
     cdp_fn('(()=>{const b=[...document.querySelectorAll("button[data-testid=send-button],button[aria-label=傳送提示詞],button[aria-label=傳送訊息],button[aria-label=傳送]")].filter(e=>e.getClientRects().length);if(b.length!==1||b[0].disabled)throw Error("Send button unavailable");b[0].click();return true})()')
     after = snapshot_fn()
     if chat_path == '/':  # URL changes asynchronously after first message
@@ -289,6 +299,8 @@ def send(
         'chat_url': after.get('url') if confirmed else None,
         'evidence_kind': 'EXACT_RENDERED_USER_BUBBLE' if confirmed else 'UNVERIFIED'
     })
+    if confirmed:
+        pd.phase(dispatch_job, root, key, 'SENT_CONFIRMED')
     if event_fn:
         event_fn('PROMPT_READBACK', key=key, status=json.loads(intent.read_text())['status'])
 
@@ -304,7 +316,10 @@ def permission(
     pr_number: int,
     save_fn: Callable[[str, Any], None],
     event_fn: Callable[..., None],
-    valid_until: Optional[str] = None
+    valid_until: Optional[str] = None,
+    dispatch_job: Optional[Dict[str, Any]] = None,
+    dispatch_dir: Optional[Path] = None,
+    instruction_id: Optional[str] = None
 ) -> bool:
     """Validate and approve GitHub tool usage within strictly scoped permissions."""
     if '要允許 ChatGPT 使用 GitHub 嗎？' not in s.get('text', ''):
@@ -341,6 +356,11 @@ def permission(
         raise RuntimeError('PERMISSION_SCOPE_BLOCKED')
 
     op = ops[0]
+    if dispatch_job is None or dispatch_dir is None or instruction_id is None:
+        raise RuntimeError("DISPATCH_DELEGATION_REQUIRED")
+    fingerprint = hashlib.sha256(json.dumps(op, sort_keys=True).encode()).hexdigest()
+    pd.approval_once(dispatch_job, dispatch_dir, instruction_id, fingerprint,
+                     chat=dispatch_job.get("dispatch_chat_url"))
     event_fn('APPROVAL_INTENT', operation=op['path'].rsplit('/', 1)[-1], file=op['args'].get('path'), content_hash=hashlib.sha256(op['args'].get('content', '').encode()).hexdigest())
     cdp_fn('(()=>{const b=[...document.querySelectorAll("button")].find(e=>e.innerText==="關閉對話框");if(b)b.click();return true})()')
     cdp_fn('(()=>{const b=[...document.querySelectorAll("button")].filter(e=>e.innerText.startsWith("允許一次"));if(b.length!==1)throw Error("Ambiguous approval");b[0].click();return true})()')
@@ -364,7 +384,8 @@ class InstructionCarrier:
         snapshot_fn: Callable[[], Dict[str, Any]],
         save_fn: Callable[[str, Any], None],
         event_fn: Callable[..., None],
-        valid_until: Optional[str] = None
+        valid_until: Optional[str] = None,
+        dispatch_job: Optional[Dict[str, Any]] = None
     ):
         self.root = Path(root)
         self.chat_path = chat_path
@@ -378,6 +399,7 @@ class InstructionCarrier:
         self.save = save_fn
         self.event = event_fn
         self.valid_until = valid_until
+        self.dispatch_job = dispatch_job
 
     def send_instruction(self, text: str, key: str, snapshot: Dict[str, Any]) -> None:
         send(
@@ -388,7 +410,8 @@ class InstructionCarrier:
             snapshot_fn=self.snapshot,
             save_fn=self.save,
             event_fn=self.event,
-            valid_until=self.valid_until
+            valid_until=self.valid_until,
+            dispatch_job=self.dispatch_job
         )
 
     def reconcile_pending(self, snapshot: Dict[str, Any]) -> None:
