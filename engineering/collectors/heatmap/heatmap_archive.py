@@ -608,8 +608,12 @@ def run_archive(args) -> int:
                 start_new_session=True,
             )
             stdout_data, stderr_data = proc.communicate(timeout=280)
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as exc:
             timed_out = True
+            partial_err = exc.stderr
+            if isinstance(partial_err, bytes):
+                partial_err = partial_err.decode('utf-8', errors='replace')
+            stderr_tail = (partial_err or '')[-300:]
             if proc is not None:
                 try:
                     os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
@@ -637,6 +641,7 @@ def run_archive(args) -> int:
                 "timestamp": now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "status": "powershell_timeout",
                 "error": err_msg,
+                "stderr_tail": stderr_tail,
                 "combos_total": 0,
                 "combos_ok": 0,
                 "combos_login_required": 0,
