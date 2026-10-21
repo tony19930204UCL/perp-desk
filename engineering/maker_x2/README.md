@@ -1677,3 +1677,74 @@ and historical market all NOT_RUN.** r1's exact one-FAIL outcome
 and every earlier failure remain historical. Another r2 failure
 requires architecture reassessment; no third correction is
 authorized.
+
+
+## MAKER-V3-X2-STALLFIX-1-r0 — incremental offline ledger candidate
+
+Observed real original 1,604,160-minute inputs hit the 6h hard timeout
+after ETHUSDT feature preparation and before a market cell completed.
+20k-bar profiling located cumulative per-bar full
+`replay_account` calls, about 5.7 per bar, plus repeated event-ID
+set rebuilding. The 15m feature preparation was not the bottleneck.
+No historical market result or PnL exists from that failed run.
+
+`OfflineAccount` now maintains one Decimal50 transition per newly
+appended event with a cursor, scalar ledger state, completed/open
+episodes, applied event IDs/settlements and cached emitted IDs.
+Ordinary `ledger()` calls no longer replay old events. Historical
+collections on the returned ledger view are materialized only when
+requested; this retains individual snapshot values when later
+events arrive. The original `account_ledger.replay_account` is
+**byte-identical**, independently called at checkpoint and restore
+and at the final `replay_cell` account reconciliation. True excess
+buys, duplicates, out-of-order timestamps, invalid funding or
+liquidation remain errors. Instrumentation on the account:
+`_applied_events` counts single-event transitions,
+`_full_replays` counts independent full verifications.
+The intended complexity is linear in appended events, rather than
+bars multiplied by all previous events.
+
+`execute_prepared` now prints flushed UTC PREPARING, FEATURES_START,
+FEATURES_DONE, REPLAY every 100,000 minute bars, CELL_DONE and
+COMPLETE stages with actual elapsed seconds. Every heartbeat also
+atomically replaces `output/progress.json` containing
+stage, symbol, cell_id, cell_done, cell_total=144, bar_i, bar_n,
+elapsed and updated_utc. This is an observational progress file:
+it is **not** included in `manifest.json` artifact hashes and
+does not constitute resumable checkpointing. A completed cell still
+persists its untouched raw events/ledger/episodes; the ordinary
+final manifest and `--verify` remain unchanged.
+
+Operator-local finite single-cell profiling, from
+`engineering/maker_x2` with the original explicit private
+config/input manifest, not uploaded:
+
+```sh
+python3 backtest_entry.py --profile-cell --bars 20000 --config LOCAL_CONFIG.json --input LOCAL_INPUT.json
+python3 backtest_entry.py --profile-cell --bars 40000 --config LOCAL_CONFIG.json --input LOCAL_INPUT.json
+```
+
+This executes genuine `replay_cell` with the original account
+and causal prepared decisions over a bounded contiguous prefix
+of the frozen evaluation window, not a mock/full matrix. Output
+contains true elapsed seconds and the number of resulting events
+and episodes, marked PROFILE_ONLY_NOT_MARKET_ACCEPTANCE.
+
+Independent Main CIO acceptance is still required: original 113
+positive controls without skips; existing 20 named AssertionError
+mutations only after positive PASS; exact event-by-event comparisons
+against unchanged strict `replay_account` for reserve/release,
+partial fills, funding, gap/LIQ, malformed events, and restore;
+counter-verified N/4N event-application linearity; 20k/40k
+time and maxRSS under both umask 0022 and 0002; then exact-head
+push and PR CI. The final Main Bounded Context for this instruction
+lists five permitted file paths and excludes `tests/`, despite the
+earlier prose requesting new tests. No new test file was written
+outside that final authorization; therefore the new dedicated
+differential/complexity tests are **NOT DELIVERED**. This is a
+material acceptance gap, not a claim of full completion.
+
+**This source-only handback does not claim any Python PASS, CI,
+full-history performance improvement, full market output or
+strategy approval.** No main merge, paper/live/trading or paid
+resource action was performed.
