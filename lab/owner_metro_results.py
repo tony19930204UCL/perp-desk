@@ -78,7 +78,7 @@ def read(root, base, attempt, expected=None):
         cid = row.get("cell_id") if isinstance(row, dict) else None
         if cid is not None and cid not in IDS:
             return {**result, "state": "invalid"}
-        if cid in seen:
+        if cid is not None and cid in seen:
             return {**result, "state": "duplicate"}
         if cid is not None:
             seen.add(cid)
@@ -96,15 +96,17 @@ def read(root, base, attempt, expected=None):
         except FileNotFoundError:
             continue
         except (OSError, ValueError, UnicodeDecodeError):
-            continue
+            return {**result, "state": "invalid", "count": None, "metrics": []}
         strategy, matched = artifact
         if not isinstance(strategy, dict) or not isinstance(strategy.get("episodes"), list):
-            continue
+            return {**result, "state": "invalid", "count": None, "metrics": []}
         native = f"{strategy.get('symbol')}:{strategy.get('framework')}m:{strategy.get('k')}:{strategy.get('ttl')}:{strategy.get('exit')}"
         if native not in IDS or (cid is not None and native != cid) or native in seen and cid is None:
-            continue
+            return {**result, "state": "duplicate" if native in seen else "invalid", "count": None, "metrics": []}
         if cid is None:
             seen.add(native)
+        if rows is not None and row is None:
+            return {**result, "state": "invalid", "count": None, "metrics": []}
         metrics = row.get("metrics") if isinstance(row, dict) else None
         def number(key):
             value = metrics.get(key) if isinstance(metrics, dict) else None
