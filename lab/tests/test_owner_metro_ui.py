@@ -84,6 +84,18 @@ class MetroUI(unittest.TestCase):
                 server.server_close()
                 thread.join(timeout=3)
 
+    def test_node_labels(self):
+        js = (LAB / "owner_activity.js").read_text(encoding="utf-8")
+        html = (LAB / "owner_activity.html").read_text(encoding="utf-8")
+        for marker in ("done:'已核驗'", "active:'運作中'",
+                       "waiting:'等待中'", "next:'下一站'",
+                       "retest:'失敗重測中'", "user:'待使用者核准'",
+                       "failed:'已失敗'", "cron 管理"):
+            self.assertIn(marker, js)
+        for marker in (".metro-stop.retest", ".metro-stop.user",
+                       ".metro-stop.failed", "prefers-reduced-motion"):
+            self.assertIn(marker, html)
+
     def test_safe_poll(self):
         code = (LAB / "owner_activity.js").read_text(encoding="utf-8")
         for value in ("setInterval(poll,3000)", "if(pending)return",
