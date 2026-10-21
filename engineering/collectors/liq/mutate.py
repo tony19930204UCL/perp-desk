@@ -225,7 +225,7 @@ def run_suite(tmp_dir, selector=None, umask=0o022):
     try:
         proc = subprocess.run(args, cwd=tmp_dir, capture_output=True,
                               text=True, timeout=45, preexec_fn=set_mask)
-        return proc.returncode, (proc.stdout or "") + "\\n" + (proc.stderr or "")
+        return proc.returncode, (proc.stdout or "") + "\n" + (proc.stderr or "")
     except subprocess.TimeoutExpired:
         return None, "TIMEOUT"
     except Exception as exc:
@@ -289,7 +289,7 @@ def run_mutation_tests():
                 state = "CAUGHT"
             else:
                 state = "SURVIVED"
-            evidence = result[1][-800:].replace("\\n", " ")
+            evidence = result[1][-800:].replace("\n", " ")
             print(f"[{idx:02d}/27] {state} {name} {selector}: "
                   f"rc={result[0]} {evidence}", flush=True)
             with open(os.path.join(tmp_dir, "liq_collector.py"), "w",
