@@ -1,0 +1,18 @@
+{
+  "symbol": "ETHUSDT",
+  "framework": 1,
+  "k": ".25",
+  "ttl": 2,
+  "exit": "X1",
+  "episodes": [],
+  "ledger": {},
+  "counts": {},
+  "metrics": {
+    "gross_bp": "12.5",
+    "net_bp": "8.5",
+    "profit_factor": "1.5",
+    "tp_over_tp_plus_sl": "0.4",
+    "tp_sl_sl_gap_denominator": 5,
+    "actual_time_close_rate": "NOT_APPLICABLE"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 79,
+  "branch": "feat/owner-metro-live-20261021",
+  "task_id": "OWNER-METRO-20261021",
+  "instruction_id": "owner-metro-001-r5d",
+  "status": "WAITING_CI",
+  "source_head_sha": "7aaf2eafb86ccfaa73fcc7fa5b4912150a7ffd00",
+  "summary": "Two-line JS patch preserves the read-only decision <details> open state across each 3-second KPI rebuild. One new real Chromium regression test uses the existing CDP harness, a synthetic user-blocked canonical ledger item, opens the summary, waits 7.1 real seconds across two scheduled refresh cycles and verifies open state and contents. No controls/POST/deploy/other files changed.",
+  "changed_files": [
+    "lab/owner_activity.js",
+    "lab/tests/test_owner_metro_ui.py",
+    ".relay/mailbox/owner-metro.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest -v tests.test_owner_metro_ui.MetroUI.test_list_stays_open",
+      "result": "NOT_RUN",
+      "evidence": "Test created in GitHub via update_file; no Chromium execution in this session. Browser missing causes an explicit SKIP, not acceptance."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p 'test_owner_metro*.py' -v",
+      "result": "NOT_RUN",
+      "evidence": "No r5d test process executed."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No full-suite execution in this session."
+    },
+    {
+      "command": "exact final r5d push and pull_request CI",
+      "result": "NOT_RUN",
+      "evidence": "No completed exact mailbox-final-head dual CI was available at handoff."
+    }
+  ],
+  "remaining_work": [
+    "Run the actual Chromium decision-expansion test and confirm a non-SKIP result with two full 3-second polling cycles.",
+    "Verify exact final HEAD both push and PR CI success; preserve all existing original regression assertions.",
+    "Operator performs original frozen private-source and immutable spare-port acceptance only after source and browser gates pass."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Check exact mailbox-final HEAD and actual CI outcomes; run MetroUI.test_list_stays_open with genuine Chromium and ensure expanded pending decisions survive at least two 3-second polls.",
+    "if_pass": "Proceed to frozen operator-only spare-port acceptance, no automatic deployment or merge.",
+    "if_fail": "Keep PR79 draft and uninstalled, report exact failure; do not weaken read-only guard.",
+    "blockers": [
+      "r5d real Chromium test NOT_RUN",
+      "exact final head CI unconfirmed",
+      "operator native staging acceptance pending"
+    ]
+  },
+  "uninstalled": true,
+  "deployed": false
+}

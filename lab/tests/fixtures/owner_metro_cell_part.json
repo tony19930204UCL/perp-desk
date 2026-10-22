@@ -1,0 +1,11 @@
+{
+  "symbol": "BTCUSDT",
+  "framework": 15,
+  "k": ".50",
+  "ttl": 5,
+  "exit": "X3",
+  "episodes": [],
+  "ledger": {},
+  "counts": {},
+  "metrics": {}
+}
