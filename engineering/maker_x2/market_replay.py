@@ -358,12 +358,26 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
         funnel["post_only_cross"] = tally["POST_ONLY_REJECT"]
         funnel["ttl_expired"] = tally["EXPIRED"]
         funnel["guard_rejected"] = tally["RISK_GUARD"] + tally["INSUFFICIENT_CASH_OR_MARGIN"]
-        funnel["filled_or_open"] = sum(
-            1 for sid in episode_starts
-            if sid not in terminals or terminals[sid] in
-            ("CLOSED", "CLOSED_SL", "LIQ_PROXY"))
-        funnel["pending_or_unresolved"] = max(
-            0, total - len(terminals) - funnel["filled_or_open"])
+        # Exactly one terminal class per signal, including truncated tails.
+        finished = {"CLOSED", "CLOSED_SL", "LIQ_PROXY"}
+        accepted = set(episode_starts)
+        for sid in accepted:
+            if sid not in terminals:
+                terminals[sid] = "FILLED_OR_OPEN" if any(
+                    e.get("episode") == sid for e in (
+                        ev for part in (b_archives if mode == "B" else
+                                       [{"events": account.events}])
+                        for ev in part["events"])) else "PENDING"
+            elif terminals[sid] in finished:
+                terminals[sid] = "FILLED_OR_OPEN"
+        tally = Counter(terminals.values())
+        funnel["terminal_counts"] = dict(tally)
+        funnel["filled_or_open"] = tally["FILLED_OR_OPEN"]
+        funnel["pending_or_unresolved"] = tally["PENDING"]
+        funnel["unprocessed"] = total - len(terminals)
+        if funnel["unprocessed"] < 0 or (
+                sum(tally.values()) + funnel["unprocessed"] != total):
+            raise X2Error("signal funnel accounting mismatch")
         output["research_mode"] = mode
         output["funnel"] = dict(funnel)
         output["funnel_denoms"] = {
