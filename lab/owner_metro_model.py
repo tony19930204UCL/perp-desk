@@ -116,8 +116,7 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576, proc_root=
                          "reason": str(x.get("text") or "")[:2000],
                          "created": x.get("created") if type(x.get("created")) in
                          (int, float) else None} for x in selected[:PENDING_LIMIT]]
-        if health.get("ledger", {}).get("state") == "available" or (
-                pending is None and health.get("directive", {}).get("state") == "stale"):
+        if pending is None and health.get("directive", {}).get("state") == "stale":
             pending = len(selected)
             pending_source = "ledger"
     recent = []
