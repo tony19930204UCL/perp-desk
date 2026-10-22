@@ -4,54 +4,57 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "RELAY-POLICY-ATOMIC",
-  "instruction_id": "RELAY-POLICY-ATOMIC-u3-r1",
+  "instruction_id": "RELAY-POLICY-ATOMIC-u3-r2",
   "status": "WAITING_CI",
-  "source_head_sha": "c734bb38f8bae33c4cf77126fe34720473e08704",
-  "summary": "One authorized U3-r1 worker production fix exactly as requested: receipt-rpath check moved before bounded prompt guard; existing bounded prompt WITH receipt is reused, without receipt BLOCKED; duplicate later rpath assignment removed. Original 27 test IDs/assertions retained. Added 6 tests (33 total): opt-in real disposable stdlib CDP Chromium fixture selector/effect using RELAY_CDP_BROWSER; live owner non-displacement; expired owner revival; duplicate confirmed completion; scope mutation before carrier effect; no-receipt bounded prompt denial. Existing real subprocess carrier sender/race/UNKNOWN tests preserved. No product_dispatch, stage_relay, PR75 or other production edits, and no real ChatGPT or GitHub test sends. Not yet compiled/executed in this file-only GitHub turn. New revival/dedup tests are fail-loud against read-only product_dispatch and may expose a genuine capability gap; no automatic further repair authorized.",
+  "source_head_sha": "386b04511d8840aef020ac6af6c1914c2485db38",
+  "summary": "One bounded test-only correction of the three newly introduced U3-r1 cases. test_expired_revive now asserts documented no-steal behavior after expiry: second jobdir PRODUCT_ALREADY_CLAIMED, original owner/generation/whole record unchanged, original jobdir OWNER_LEASE_EXPIRED. test_duplicate_finish now asserts second positive SEND_CONFIRMED reconciliation is RECONCILE_PHASE_INVALID, second real sender call blocked, owner and phase SENT_CONFIRMED unchanged, one external effect only. test_browser_cdp now accepts HTTP/1.0 or HTTP/1.1 status 101 and case-insensitive Upgrade: WebSocket header rather than specific reason phrase. All original 33 test IDs preserved. All production and other source untouched; no live/browser actions or deployment.",
   "changed_files": [
-    "engineering/relay/relay_dispatch_worker.py",
     "lab/tests/test_relay_policy_atomic.py",
     ".relay/mailbox/c0041-stage-relay.json"
   ],
   "tests": [
     {
-      "command": "python3 -m py_compile engineering/relay/relay_dispatch_worker.py lab/tests/test_relay_policy_atomic.py",
+      "command": "python3 -m py_compile lab/tests/test_relay_policy_atomic.py",
       "result": "NOT_RUN",
-      "evidence": "No local shell execution in this GitHub file-only delivery. Actual changed production and test sources must be compiled independently."
+      "evidence": "Only GitHub update_file operations in this turn; no local shell test execution."
     },
     {
-      "command": "python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v",
+      "command": "umask 0022; python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v",
       "result": "NOT_RUN",
-      "evidence": "33 authored methods (original27 unchanged +6). Main previously measured initial27 26PASS 1FAIL test_worker_restart_obs. New suite not executed by assistant."
+      "evidence": "Main independently reported U3-r1 33 methods with 3 failures/errors involving these three test contracts. New r2 exact-head suite not executed here."
+    },
+    {
+      "command": "umask 0002; python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v",
+      "result": "NOT_RUN",
+      "evidence": "Second umask run required independently; no r2 execution claim."
     },
     {
       "command": "RELAY_CDP_BROWSER=/absolute/path/to/chromium python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -k test_browser_cdp -v",
       "result": "NOT_RUN",
-      "evidence": "Opt-in isolated browser; unset env explicitly skips. CI without opt-in DOES NOT prove CDP. Test launches disposable browser with loopback ephemeral debugging port, local http.server fixture and stdlib masked WebSocket CDP; asserts one POST effect, kills process group and cleans temp profile."
+      "evidence": "Main reports actual Chromium used 'HTTP/1.1 101 WebSocket Protocol Handshake' and single local DOM effect; r2 updated to status+Upgrade header but opt-in test not run this turn. Unset variable yields explicit skip, not PASS."
     },
     {
-      "command": "New exact-head push and pull_request CI under umask 0022 and 0002",
+      "command": "Final exact-head push and pull_request CI",
       "result": "NOT_RUN",
-      "evidence": "No new final head CI conclusion observed or claimed. Parent must verify both exact-head CI runs, and execute tests under both umasks."
+      "evidence": "Neither r2 run conclusion observed. Prior U3-r1 CI and 33-method runs showed three new test contract failures per user."
     }
   ],
   "remaining_work": [
-    "Main compile changed Python and execute all 33 methods under umask 0022 and 0002. Preserve any reached failure from read-only product_dispatch owner expiry revival or duplicate confirmation.",
-    "Main opt in to disposable Chromium/CDP test using explicit RELAY_CDP_BROWSER absolute browser binary path and verify actual DOM click and one local fixture effect; no auth/no live ports19242/9222.",
-    "Review worker original failure repair: test_worker_restart_obs and test_prompt_no_receipt must both execute; never resend original instruction after CONFIRMED or UNKNOWN.",
-    "Main verify both new exact-head push and PR CI; CI browser skip is NOT CDP acceptance. Validate source hashes and installed sibling/importer/noarg stage adapter compatibility before any separately gated release.",
-    "No automatic additional U3 correction; any new genuine failure returns to parent decision. No deployment, paper/live, market or PR75 actions."
+    "Main compile test file, run all 33 under umask 0022 and 0002; confirm original assertions and security negatives retained, no production changes.",
+    "Main opt-in run isolated Chromium/CDP with actual browser override; 101 + Upgrade handshake, one DOM click, one fixture POST, full cleanup. Browser skip in CI does not prove browser behavior.",
+    "Verify both new exact-head push and PR CI and compare production bytes to prior accepted U3-r1 HEAD.",
+    "No additional authorized correction assumed; route any genuine new failure to Main for decision. No deployment/merge/trading/PR75 changes.",
+    "Whole product and Maker history/reflection remain NOT_PROVEN."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Verify exact PR76 final HEAD and pre-mailbox source SHA. Run python3 -m py_compile engineering/relay/relay_dispatch_worker.py lab/tests/test_relay_policy_atomic.py; run umask 0022 && python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v and same under umask 0002; run opt-in isolated Chromium test with RELAY_CDP_BROWSER absolute executable, and independently verify both exact-head push/PR CI. Preserve any real owner revival/dedup failure rather than weakening tests.",
-    "if_pass": "Only after all offline, opt-in browser, dual CI, importer/noarg checks, complete backup/sourcepin mapping and exact-byte installed readback should Main consider separate release authority. Do not treat CI skip as browser PASS.",
-    "if_fail": "Retain exact traceback/rc/HEAD, especially owner expiry/duplicate or actual worker restart evidence; stop and route to parent for decision. No automatic U3 r2 or unsafe resends.",
+    "verify_now": "Check source head 386b04511d8840aef020ac6af6c1914c2485db38, run py_compile and all 33 tests under umask 0022 and 0002, execute opt-in isolated Chromium test with explicit RELAY_CDP_BROWSER, verify exactly one POST and browser teardown, verify both final-head CI and all production blobs frozen.",
+    "if_pass": "Accept only scoped U3 r2 test-contract correction after independent tests and dual CI; separate whole-product installed browser/source-pin acceptance and release authority remain required.",
+    "if_fail": "Capture exact traceback/head and stop for parent decision; no test weakening, automatic next revision or actual send retry.",
     "blockers": [
-      "All U3-r1 tests and CI NOT_RUN by assistant",
-      "Browser opt-in must be explicitly run, CI skip is not PASS",
-      "Owner expiry revival and duplicate confirmation may be unsupported in read-only product_dispatch",
-      "Whole installed product and Maker history/reflection still NOT_PROVEN"
+      "r2 tests/browser and dual CI NOT_RUN in this chat",
+      "Whole installed atomic dispatch product not yet separately accepted",
+      "Maker research/reflection still NOT_PROVEN"
     ]
   }
 }
