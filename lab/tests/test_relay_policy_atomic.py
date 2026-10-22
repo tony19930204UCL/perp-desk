@@ -694,5 +694,60 @@ class AtomicDispatchTests(unittest.TestCase):
             self.assertEqual(len(hits), 1)
 
 
+    def test_owner_unexpired(self):
+        prior = dispatch.claim(self.job, self.first, "one", lease=60)
+        with self.assertRaises(dispatch.DispatchBlocked) as ctx:
+            dispatch.claim(self.job, self.second, "two")
+        self.assertEqual(ctx.exception.winner, prior["owner"])
+
+    def test_expired_revive(self):
+        import time
+        prior = dispatch.claim(self.job, self.first, "one", lease=1)
+        time.sleep(1.1)
+        revived = dispatch.claim(self.job, self.second, "two", lease=60)
+        self.assertNotEqual(prior["generation"], revived["generation"])
+        with self.assertRaises(dispatch.DispatchBlocked):
+            dispatch.claim(self.job, self.first, "one")
+
+    def test_duplicate_finish(self):
+        call, effects, _ = self._sent()
+        call()
+        self.assertEqual(effects, ["send"])
+        prior = dispatch.inspect(self.job, self.first, "one")
+        result = dispatch.reconcile(self.job, self.first, "one",
+                                    receipt="SEND_CONFIRMED")
+        self.assertEqual(prior["owner"], result["owner"])
+        self.assertEqual(effects, ["send"])
+
+    def test_scope_click_race(self):
+        carrier = self._carrier()
+        call, clicks, _ = self._sent()
+        original = carrier.prepare_composer
+        def mutate(*args, **kwargs):
+            job = dict(self.job, write_allowlist=["changed.py"])
+            (self.first / "job.json").write_text(json.dumps(job))
+            return original(*args, **kwargs)
+        carrier.prepare_composer = mutate
+        try:
+            with self.assertRaises(dispatch.DispatchBlocked):
+                call()
+        finally:
+            carrier.prepare_composer = original
+        self.assertEqual(clicks, [])
+
+    def test_prompt_no_receipt(self):
+        prompt = self.first / "prompt.txt"
+        prompt.write_text("SYNTHETIC_ONLY")
+        (self.first / "bounded_one.txt").write_text("existing")
+        args = [sys.executable, str(SOURCE.parent / "relay_dispatch_worker.py"),
+                "--job-dir", str(self.first), "--instruction-id", "one",
+                "--prompt-file", str(prompt), "--chat-url", self.job["dispatch_chat_url"],
+                "--repo", self.job["repository"], "--branch", self.job["branch"],
+                "--mailbox-path", "synthetic.py", "--deadline-min", "0"]
+        proc = subprocess.run(args, capture_output=True, text=True, timeout=12)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("BOUNDED_PROMPT_EXISTS", proc.stdout + proc.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
