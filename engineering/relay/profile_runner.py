@@ -20,11 +20,13 @@ def job_at(path):
     job=read(path)
     job.setdefault('conversation_mode','new')
     if job['conversation_mode'] not in ('new','reuse'): raise ValueError('CONVERSATION_MODE')
-    required=['repository','pr_number','branch','mailbox','task_id','state_dir','transport_command','write_allowlist','valid_until']+(['chat_url'] if job['conversation_mode']=='reuse' else [])
+    required=['repository','pr_number','branch','mailbox','task_id','state_dir','dispatch_lock_root','dispatch_chat_url','transport_command','write_allowlist','valid_until']+(['chat_url'] if job['conversation_mode']=='reuse' else [])
     if any(not job.get(k) for k in required): raise ValueError('JOB_REQUIRED_FIELDS')
     if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',job['repository']): raise ValueError('REPOSITORY_FORMAT')
     if type(job['pr_number']) is not int or job['pr_number']<=0: raise ValueError('PR_FORMAT')
     if not Path(job['state_dir']).is_absolute(): raise ValueError('ABSOLUTE_STATE_REQUIRED')
+    if not Path(job['dispatch_lock_root']).is_absolute(): raise ValueError('ABS_LOCK_ROOT_REQUIRED')
+    if not re.fullmatch(r'https://chatgpt[.]com/c/[A-Za-z0-9-]+',job['dispatch_chat_url']): raise ValueError('PINNED_DISPATCH_CHAT_REQ')
     if job['conversation_mode']=='reuse' and not re.fullmatch(r'https://chatgpt\.com/c/[A-Za-z0-9-]+',job['chat_url']): raise ValueError('PINNED_CHAT_REQUIRED')
     if job['mailbox'] not in job['write_allowlist']: raise ValueError('MAILBOX_NOT_AUTHORIZED')
     if not isinstance(job['transport_command'],list): raise ValueError('TRANSPORT_ARGV_REQUIRED')
@@ -51,9 +53,26 @@ class Relay:
             if not set(changed)<=allowed: raise RuntimeError('REPORTED_FILES_OUTSIDE_SCOPE')
         return result
     def dispatch(self,instruction_id,prompt):
-        if not re.fullmatch(r'[A-Za-z0-9_.-]{1,140}',instruction_id): raise ValueError('INSTRUCTION_ID_FORMAT')
+        if (not re.fullmatch(r'[A-Za-z0-9_.-]{1,140}',instruction_id)
+                or instruction_id in ('.', '..')): raise ValueError('INSTRUCTION_ID_FORMAT')
         j=self.job
-        pd.claim(j, self.root, instruction_id, chat=j.get('dispatch_chat_url'))
+        if not re.fullmatch(r'https://chatgpt[.]com/c/[A-Za-z0-9-]+',j.get('dispatch_chat_url','')):
+            raise ValueError('PINNED_DISPATCH_CHAT_REQ')
+        # Product claims are never stolen: distinct instructions use isolated
+        # units. Main's accepted verdict governs sequencing across these IDs.
+        units=self.root/'units'; units.mkdir(mode=0o700,parents=True,exist_ok=True)
+        unit=units/instruction_id
+        if unit.is_symlink(): raise ValueError('UNIT_SYMLINK')
+        unit.mkdir(mode=0o700,exist_ok=True)
+        if unit.resolve().parent!=units.resolve(): raise ValueError('UNIT_OUTSIDE_STATE')
+        unit.chmod(0o700)
+        effective=dict(j,dispatch_lock_root=str(Path(j['dispatch_lock_root'])/instruction_id))
+        pinned=unit/'job.json'
+        if pinned.exists():
+            if read(pinned)!=effective: raise ValueError('UNIT_SCOPE_CHANGED')
+        else:
+            atomic(pinned,effective)
+        pd.claim(effective, unit, instruction_id, chat=effective['dispatch_chat_url'])
         contract={'repository':j['repository'],'pr_number':j['pr_number'],'branch':j['branch'],'task_id':j['task_id'],'instruction_id':instruction_id,'mailbox':j['mailbox'],'write_allowlist':j['write_allowlist']}
         from pathlib import Path as _Path
         template = (_Path(__file__).with_name('instruction-template.txt')).read_text(encoding='utf-8')
@@ -67,9 +86,9 @@ class Relay:
         else:
             snapshot=self.transport({'op':'snapshot'})
             if snapshot.get('url')!=j['chat_url']: raise RuntimeError('PINNED_CHAT_CHANGED')
-        carrier=InstructionCarrier(root=self.root,chat_path='/' if new else urlparse(j['chat_url']).path,repo=j['repository'],branch=j['branch'],mailbox=j['mailbox'],allowed=set(j['write_allowlist']),pr_number=j['pr_number'],cdp_fn=lambda expression:self.transport({'op':'evaluate','expression':expression}),snapshot_fn=lambda:self.transport({'op':'snapshot'}),save_fn=lambda name,obj:atomic(self.root/name,obj),event_fn=lambda event,**kw:atomic(self.root/'transport_event_latest.json',{'event':event,**kw}),valid_until=j['valid_until'],dispatch_job=j)
+        carrier=InstructionCarrier(root=unit,chat_path=urlparse(effective['dispatch_chat_url']).path,repo=j['repository'],branch=j['branch'],mailbox=j['mailbox'],allowed=set(j['write_allowlist']),pr_number=j['pr_number'],cdp_fn=lambda expression:self.transport({'op':'evaluate','expression':expression}),snapshot_fn=lambda:self.transport({'op':'snapshot'}),save_fn=lambda name,obj:atomic(unit/name,obj),event_fn=lambda event,**kw:atomic(self.root/'transport_event_latest.json',{'event':event,**kw}),valid_until=j['valid_until'],dispatch_job=effective)
         carrier.send_instruction(text,instruction_id,snapshot)
-        path=self.root/('send_'+instruction_id+'.json')
+        path=unit/('send_'+instruction_id+'.json')
         receipt=read(path) if path.exists() else {'status':'BROWSER_BUSY_NOT_SENT'}
         if receipt.get('status')=='CONFIRMED':
             atomic(self.root/'active_instruction.json',{'task_id':j['task_id'],'instruction_id':instruction_id,'chat_url':receipt.get('chat_url') or j.get('chat_url')})
@@ -77,12 +96,13 @@ class Relay:
         return {'status':receipt['status'],'receipt':str(path)}
     def _fresh_chat(self):
         import time
-        self.transport({'op':'evaluate','expression':"(()=>{location.href='https://chatgpt.com/';return true})()"})
+        chat=self.job['dispatch_chat_url']
+        self.transport({'op':'evaluate','expression':"(()=>{location.href='"+chat+"';return true})()"})
         for _ in range(20):
             time.sleep(1)
             try: snap=self.transport({'op':'snapshot'})
             except Exception: continue
-            if snap.get('url')=='https://chatgpt.com/' and not snap.get('user_messages') and not snap.get('busy'): return snap
+            if snap.get('url')==chat and not snap.get('user_messages') and not snap.get('busy'): return snap
         raise RuntimeError('NEW_CHAT_NOT_READY')
     AUTH_PATTERNS={'CHATGPT_LOGIN':r'(Log in|Sign up|登入|註冊)\b.{0,40}(Log in|Sign up|登入|註冊)|Welcome back|歡迎回來|verify you are human|確認您是真人',
                    'GITHUB_CONNECTOR':r'(Connect|Authorize|Reconnect|連結|授權|重新連結).{0,30}GitHub|GitHub.{0,30}(authorization|not connected|未連結|需要授權|sign in)'}
