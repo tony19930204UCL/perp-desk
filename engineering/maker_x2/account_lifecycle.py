@@ -219,10 +219,14 @@ class OfflineAccount:
                      if k not in ("type", "id", "ts", "seq")}
             self._emit(kind, eid, event["ts"], source_id=event["id"], **extra)
             if kind == "fill" and event["side"] == "buy" and old_qty > Z:
-                fraction = number(event["qty"], "buy_qty", True) / (
-                    self.entry.qty_target)
-                release = min(self.ledger()["reserved"],
-                              self.allocation * fraction)
+                state = self.ledger()
+                with localcontext() as ctx:
+                    ctx.prec = 50
+                    # Keep the post-fill remaining margin at Decimal50.
+                    # Match liquidation's allocation * qty / original order.
+                    # The next LIQ writeoff then equals reserved by construction.
+                    keep = self.allocation * state["qty"] / self.entry.qty_target
+                    release = state["reserved"] - keep
                 if release > Z:
                     self._emit("release", "margin:"+eid, event["ts"],
                                amount=str(release))
