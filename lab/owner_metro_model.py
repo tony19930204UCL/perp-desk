@@ -1,5 +1,5 @@
 """Conservative per-source metro projection, no acceptance inference."""
-from owner_metro_sources import load, processes, processes_managed, parts
+from owner_metro_sources import load, processes, processes_managed, parts, SOURCE_AGE_MS
 from owner_metro_nodes import derive
 from owner_metro_results import read as read_results
 from owner_activity import read_activity, _read_source, _stamp
@@ -24,6 +24,13 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576, proc_root=
     docs, health, paths = load(root, now_ms, max_bytes)
     activity = read_activity(root, now_ms=now_ms, max_age_ms=max(max_age_ms, 86400000),
                              max_bytes=max_bytes)
+    for name, source in activity["sources"].items():
+        if source.get("state") != "available":
+            continue
+        updated = _stamp(source.get("updated_at"))
+        if updated is not None and now_ms - updated > SOURCE_AGE_MS.get(name, 900000):
+            source["state"] = "stale"
+            source["age_ms"] = now_ms - updated
     launch, adoption = docs.get("launch", {}), docs.get("adoption", {})
     proc = processes(launch, adoption, now_ms, proc_root=proc_root)
     managed = processes_managed(paths.get("managed", []), docs, health,
