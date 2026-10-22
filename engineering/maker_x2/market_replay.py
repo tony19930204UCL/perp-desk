@@ -46,7 +46,7 @@ def _funding_for_bar(events, cursor, bar_end, prev_close, close):
 def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                 account_config, evaluation_start, evaluation_end,
                 signal_times=None, delay_minutes=0, eligible=None, rates=None,
-                progress=None):
+                progress=None, mode="A", entry_filter=None):
     """Return actual event stream and account results for one isolated cell.
 
     signal_times=None means S1/S2; supplied times mean matched placebo.
@@ -86,7 +86,6 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
             if desired - present:
                 raise X2Error("matched timestamp not in causal eligible universe")
     account = _account(account_config, rates=rates, mode=mode)
-    b_archives = []
     funnel = Counter()
     events = []
     counts = Counter()
@@ -205,8 +204,6 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
             counts["signals"] += 1
             if mode == "B" and account.entry is None and account.exit is None:
                 account.reset_b()
-                if account.b_history:
-                    b_archives = list(account.b_history)
             if entry_filter is not None:
                 skip, code = entry_filter.skip(r["signal_time"])
                 funnel[code] += 1
@@ -215,6 +212,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
             funnel["intents"] += 1
             if account.snapshot()["slot"] or account.stale:
                 counts["slot_or_gap_blocked"] += 1
+                funnel["RISK_GUARD"] += 1
                 continue
             try:
                 with localcontext() as ctx:
@@ -274,7 +272,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
     snap = account.snapshot()
     ledger = account.verify_ledger()
     if mode == "B":
-        b_archives = list(account.b_history)
+        b_archives = account.b_history[:]
         if account.events:
             b_archives.append({"events": list(account.events),
                                "ledger": ledger, "snapshot": snap})
@@ -283,47 +281,53 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                               rates=account.rates) != archived["ledger"]:
                 raise X2Error("independent B episode ledger divergence")
     completed = []
-    for episode in ledger["episodes"]:
-        original = episode_starts.get(episode["id"], {})
-        entry_notional = sum((D(e["qty"]) * D(e["price"])
-                             for e in account.events
-                             if e["type"]=="fill" and e["side"]=="sell"
-                             and e["id"].startswith(episode["id"]+":")),
-                            D(0))
-        reserves = [i for i, ev in enumerate(account.events)
-                    if ev["type"]=="reserve" and
-                    ev.get("episode")==episode["id"]]
-        if len(reserves)!=1:
-            raise X2Error("episode reserve identity missing")
-        offset=reserves[0]+1
-        boundary=next((j for j in range(offset,len(account.events))
-                       if account.events[j]["type"]=="reserve"),
-                      len(account.events))
-        related=account.events[offset:boundary]
-        liquidated = any(ev["type"]=="liquidation" for ev in related)
-        buys = [ev for ev in related if ev["type"]=="fill"
-                and ev.get("side")=="buy"]
-        terminal = buys[-1] if buys else {}
-        source = terminal.get("source_id", terminal.get("id",""))
-        exit_type = ("LIQ" if liquidated else
-                     "SL_GAP" if "gap-risk" in source else
-                     "SL" if ("risk-" in source) else
-                     "TP" if "profit-" in source else
-                     "PASSIVE_X3" if "withdraw-" in source else
-                     "NO_FILL")
-        completed.append({**{key: str(val) if isinstance(val, D) else val
-                              for key, val in episode.items()},
-                          "entry_notional": str(entry_notional),
-                          "exit_type": exit_type, **original})
+    sources = ([(a["ledger"], a["events"]) for a in b_archives]
+               if mode == "B" else [(ledger, account.events)])
+    for ep_ledger, ep_events in sources:
+      for episode in ep_ledger["episodes"]:
+          original = episode_starts.get(episode["id"], {})
+          entry_notional = sum((D(e["qty"]) * D(e["price"])
+                               for e in ep_events
+                               if e["type"]=="fill" and e["side"]=="sell"
+                               and e["id"].startswith(episode["id"]+":")),
+                              D(0))
+          reserves = [i for i, ev in enumerate(account.events)
+                      if ev["type"]=="reserve" and
+                      ev.get("episode")==episode["id"]]
+          if len(reserves)!=1:
+              raise X2Error("episode reserve identity missing")
+          offset=reserves[0]+1
+          boundary=next((j for j in range(offset,len(ep_events))
+                         if ep_events[j]["type"]=="reserve"),
+                        len(ep_events))
+          related=ep_events[offset:boundary]
+          liquidated = any(ev["type"]=="liquidation" for ev in related)
+          buys = [ev for ev in related if ev["type"]=="fill"
+                  and ev.get("side")=="buy"]
+          terminal = buys[-1] if buys else {}
+          source = terminal.get("source_id", terminal.get("id",""))
+          exit_type = ("LIQ" if liquidated else
+                       "SL_GAP" if "gap-risk" in source else
+                       "SL" if ("risk-" in source) else
+                       "TP" if "profit-" in source else
+                       "PASSIVE_X3" if "withdraw-" in source else
+                       "NO_FILL")
+          completed.append({**{key: str(val) if isinstance(val, D) else val
+                                for key, val in episode.items()},
+                            "entry_notional": str(entry_notional),
+                            "exit_type": exit_type, **original})
     if "favorable_order_upper_bound_usd" in counts:
         counts["favorable_order_upper_bound_usd"] = str(
             counts["favorable_order_upper_bound_usd"])
     counts["complete_episodes"] = sum(
         1 for ep in completed if D(ep["entry_notional"]) > 0)
-    counts["open"] = int(ledger["qty"] > 0)
+    counts["open"] = (sum(int(x["ledger"]["qty"] > 0) for x in b_archives)
+                      if mode == "B" else int(ledger["qty"] > 0))
     counts["filled_episodes"] = counts["complete_episodes"] + counts["open"]
     raw = [{key: str(value) if isinstance(value, D) else value
-            for key,value in event.items()} for event in account.events]
+            for key,value in event.items()} for event in
+            (sum((x["events"] for x in b_archives), []) if mode == "B"
+             else account.events)]
     output = {"symbol": symbol, "framework": framework, "k": k, "ttl": ttl,
             "exit": exit_style, "delay_minutes": delay_minutes,
             "matched": signal_times is not None,
@@ -333,6 +337,27 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
             "ledger": _json_value(ledger), "episodes": completed,
             "events": raw, "other_events": events,
             "equity_path": equity_path}
+    if mode == "B" or entry_filter is not None:
+        total = output["signal_count"]
+        processed = counts["signals"]
+        funnel["unprocessed"] = total - processed
+        funnel["signals"] = total
+        funnel["filled_or_open"] = counts["filled_episodes"]
+        output["research_mode"] = mode
+        output["funnel"] = dict(funnel)
+        output["funnel_denoms"] = {
+            "signals": total, "arrived": processed,
+            "intents": funnel["intents"], "unprocessed": funnel["unprocessed"]}
+        if mode == "B":
+            output["independent_episodes"] = [
+                {"events": _json_value(x["events"]),
+                 "ledger": _json_value(x["ledger"]),
+                 "account": _json_value(x["snapshot"])}
+                for x in b_archives]
+            output["cash_curve_not_investable"] = True
+            output["equity_path"] = []
+            output["ledger"] = None
+    return output
 
 
 def _json_value(item):
