@@ -124,3 +124,5 @@ jobs:
         run: python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_43 -v
       - name: Native PowerShell strict worker IPC
         run: python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_45 -v
+      - name: Native PowerShell PHASE line
+        run: python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_51 -v
