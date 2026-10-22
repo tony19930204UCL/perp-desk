@@ -4,49 +4,50 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-X2-R4-1-r4",
+  "instruction_id": "MAKER-V3-X2-R4-2",
   "status": "WAITING_CI",
-  "source_head_sha": "829247516780ec040b57782fb9bc7d0f794ebbc7",
-  "summary": "Bounded U1 correction of independently measured r3 dual-umask discovery failures (141 executed/4 FAIL, all original122 PASS). In path_speed, separated H2 prior-window percentile speeds with end times strictly [t-7d,t) from current most recent completed speed end<=t, eliminating 10081-vs-10080 contradiction without reducing MIN_HIST=10080; use sliding sorted cache for monotone queries and direct out-of-order fallback, keeping full seven-day contiguous speed histories. In regime test fixture ONLY, d-8 day22 last close is now explicitly 100 rather than accidentally 101 from alternating parity, retaining genuine >+5% and <-5% trend boundary expectations; regime_split.py remains byte-identical. Added H2 current-spike versus forming future minute regression; kept 200k bars/20k queries <20s test unchanged. Original 6 surviving mutants remain historical uncovered cases, not hidden or relabeled. This was GitHub file-only source delivery; no r4 Python/performance/dual-umask/CI execution, and no U2/U3 or market/PnL results.",
+  "source_head_sha": "e4803710c0caff4ac70f2448508923c9041b5878",
+  "summary": "Bounded R4 U2 source candidate: default A OfflineAccount and replay_cell remain unchanged in mode default; added opt-in B mode with strictly flat/no-pending independent checkpointed episode archival, strict independent account_ledger replay and capital/day halt/loss streak reset prior to new episode (no reset with open quantity/pending). market_replay accepts mode='A' and entry_filter=SpeedFilter-like object, counts H2_SKIP/H2_WARMUP in an opt-in funnel with original signal and delivery timestamps; independently archived B raw episodes/events/fees/funding/LIQ ledger included as noninvestable research records, while default A output has no new keys. Added fictional test_fixed_notional.py covering default A unchanged entry, flat B reset, open/pending no reset, tail risk retention and matched/strategy filter. Original previously accepted U1 at ea0a5e17d72f72539de063b21c83281f36f74a70 with dual umask 142/142, CI push39836053569/PR39836058864 and 20k/40k ratio1.795 remain historical U1 evidence, NOT U2 PASS. GitHub-only session ran no Python/CI; full replay differential including B full-account risk/funding and output comparison remain required. U2 is not market/PnL acceptance.",
   "changed_files": [
-    "engineering/maker_x2/path_speed.py",
-    "engineering/maker_x2/tests/test_path_speed.py",
-    "engineering/maker_x2/tests/test_regime_split.py",
+    "engineering/maker_x2/account_lifecycle.py",
+    "engineering/maker_x2/market_replay.py",
+    "engineering/maker_x2/tests/test_fixed_notional.py",
     ".relay/mailbox/maker-v3-x2.json"
   ],
   "tests": [
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "This r4 GitHub connector session wrote source/tests only; 141 tests/4 FAIL belongs to Main's r3 checkout. No Python or controlled umask execution on this new commit."
+      "evidence": "Source-only GitHub connector, no Python/umask execution or genuine mutation subprocess. Historical U1 evidence not reused as U2 PASS."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_path_speed.py -v",
+      "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_fixed_notional.py -v",
       "result": "NOT_RUN",
-      "evidence": "This r4 GitHub connector session wrote source/tests only; 141 tests/4 FAIL belongs to Main's r3 checkout. No Python or controlled umask execution on this new commit."
+      "evidence": "Source-only GitHub connector, no Python/umask execution or genuine mutation subprocess. Historical U1 evidence not reused as U2 PASS."
     },
     {
-      "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_regime_split.py -v",
+      "command": "cd engineering/maker_x2 && python3 backtest_entry.py --self-test",
       "result": "NOT_RUN",
-      "evidence": "This r4 GitHub connector session wrote source/tests only; 141 tests/4 FAIL belongs to Main's r3 checkout. No Python or controlled umask execution on this new commit."
+      "evidence": "Source-only GitHub connector, no Python/umask execution or genuine mutation subprocess. Historical U1 evidence not reused as U2 PASS."
     }
   ],
   "remaining_work": [
-    "Main CIO pin exact source SHA and compare allowlist-only diffs against 03e0a172790e2ae088fb3a76f604d00d0c0f543c; regime_split product and original122 source tests unchanged.",
-    "Run both umask 0022 and 0002 discovery, standalone H2 and regime suites. Confirm 141 existing plus newly discovered H2 regression, with no skips; ensure true H2 historical [t-7d,t), current close<=t, contiguous 10080 values, no leakage from unfinished minute.",
-    "Run scale 200k synthetic bars/20k monotone queries <20s and compare actual 20k/40k throughput where available; ensure unordered query parity and no per-bar full history sort.",
-    "Validate strict +5%/-5% regime expected true d-1/d-8 endpoints and original A1 30day causal UNKNOWN semantics; preserve cancel funnel module byte-identical.",
-    "Run original behavioral mutations including prior 6 surviving cases (report survivors honestly), and obtain fresh exact-head push/pull_request CI. No broader U2/U3 implementation or market exploration authorized."
+    "Main CIO independently validate all original122 exact controls and default-A same-input byte-identical output, including raw accounting and timing, under both umask values.",
+    "Run new fixed-notional controls and independent scenario fixtures spanning two consecutive losing episodes, daily loss, LIQ, funding, pending/position prevention, full episode quantity/cash/fees/MTM reconciliation and open tail/gap; no B pseudo-investable cash curve.",
+    "Independently confirm 500 fictional per_trade_margin*leverage notional in actual B strategy account for each new flat-to-flat episode, no financial/kill carry; no reset while slot/pending and preservation of original event identities.",
+    "Check H2_SKIP and H2_WARMUP signal denominators, true original decision versus delayed arrival timing, same entry_filter behavior on matched strategy and randomized F1; quantify unprocessed/rejections/filled terminal states and no lost signals.",
+    "Run original mutation suite plus new B reset/H2 mutation probes and immutable 20k/40k performance, push and pull_request exact-head CI. Preserve six old surviving mutants as historical gaps.",
+    "No original full ETH/BTC market 48x3 result, R4 m96 multiple-testing work or real exchange performance accepted."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Pin full source_head_sha 829247516780ec040b57782fb9bc7d0f794ebbc7 and final head. Run dual-umask full discovery, H2/regime standalone, exact current vs strict prior-window tests and 200k/20k speed limit; check real 20k/40k timing and both exact-head CI. Confirm regime_split production and all engine/core unchanged.",
-    "if_pass": "Accept only bounded U1 correction if independent tests, performance and CI pass. U2/U3 and R4 exploration remain separately gated.",
-    "if_fail": "Preserve exact failing test ID, time-window or historical close arithmetic, and full SHA. Do not loosen original economics or approve broader source changes.",
+    "verify_now": "Pin exact source_head_sha e4803710c0caff4ac70f2448508923c9041b5878 and verify only account_lifecycle.py, market_replay.py, test_fixed_notional.py and mailbox changed. Run original full discovery, U2 controls under both umask, baseline A raw byte-output reference, real B multi-episode cash/fees/funding/LIQ/daily kill independent replay and H2 matched attribution. Then actual mutations, 20k/40k and both exact-head CI.",
+    "if_pass": "Accept bounded U2 engineering only after independent economic differential and tests; later U3 statistical m96 and real R4 historical work require separate authorization.",
+    "if_fail": "Report exact failing test/event/quantities/source SHA, preserve baseline A invariants and strict ledger; do not widen scope or claim product success.",
     "blockers": [
-      "r4 Python, dual umask, 200k/20k runtime and CI NOT_RUN",
-      "Prior r3 4-FAIL result remains historical and must be rechecked against r4",
-      "Six earlier surviving mutants still need independent gap assessment; no R4 market/strategy acceptance"
+      "U2 Python, mutation, umask, CI, performance NOT_RUN",
+      "B multi-episode production financial/daily-reset and terminal funnel not independently verified",
+      "No market R4 results, trading or deployment"
     ]
   }
 }
