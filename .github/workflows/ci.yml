@@ -126,3 +126,5 @@ jobs:
         run: python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_45 -v
       - name: Native PowerShell PHASE line
         run: python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_51 -v
+      - name: Native canvas wait tests
+        run: python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_52 -k test_53 -v
