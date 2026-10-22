@@ -35,6 +35,7 @@ class ReleaseTests(unittest.TestCase):
         self.instr = "r2"
         self.next_id = "r3"
         self._sync()
+        self._sync(self.second)
 
     def _sync(self, directory=None):
         (directory or self.first).joinpath("job.json").write_text(
