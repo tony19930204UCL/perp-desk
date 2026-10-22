@@ -574,5 +574,125 @@ class AtomicDispatchTests(unittest.TestCase):
         self.assertNotIn("BOUNDED_PROMPT_EXISTS", proc.stderr + proc.stdout)
         self.assertNotIn("SEND_INTENT", proc.stdout)
 
+    def test_browser_cdp(self):
+        """Opt-in isolated stdlib Chromium + real fixture selector click."""
+        import os, socket, struct, base64, signal, time, threading
+        import http.server, urllib.request, urllib.parse
+        browser = os.environ.get("RELAY_CDP_BROWSER")
+        if not browser:
+            self.skipTest("RELAY_CDP_BROWSER unset: isolated CDP NOT_RUN")
+        self.assertTrue(Path(browser).is_file())
+        hits = []
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                page = (b'<button data-testid="send-button" '
+                        b'onclick="fetch(\'/effect\',{method:\'POST\'})">Send</button>')
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(page)))
+                self.end_headers()
+                self.wfile.write(page)
+            def do_POST(self):
+                if self.path == "/effect":
+                    hits.append(1)
+                self.send_response(204)
+                self.end_headers()
+            def log_message(self, *unused):
+                pass
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(lambda: (server.shutdown(), server.server_close(),
+                                 thread.join(timeout=3)))
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        proc = subprocess.Popen(
+            [browser, "--headless=new", "--no-first-run", "--disable-gpu",
+             "--remote-allow-origins=*", "--user-data-dir=" + str(self.base / "cdp"),
+             "--remote-debugging-address=127.0.0.1",
+             "--remote-debugging-port=" + str(port), "about:blank"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True)
+        def stop():
+            if proc.poll() is None:
+                os.killpg(proc.pid, signal.SIGKILL)
+            proc.wait(timeout=5)
+        self.addCleanup(stop)
+        base = "http://127.0.0.1:%d" % port
+        deadline = time.monotonic() + 12
+        while True:
+            try:
+                with urllib.request.urlopen(base + "/json/version", timeout=1) as reply:
+                    json.load(reply)
+                break
+            except (OSError, ValueError):
+                if time.monotonic() >= deadline:
+                    self.fail("isolated Chromium startup timeout")
+                time.sleep(.1)
+        page = "http://127.0.0.1:%d/" % server.server_port
+        req = urllib.request.Request(base + "/json/new?" +
+                                     urllib.parse.quote(page, safe=":/"), method="PUT")
+        with urllib.request.urlopen(req, timeout=3) as reply:
+            target = json.load(reply)
+        url = urllib.parse.urlparse(target["webSocketDebuggerUrl"])
+        with socket.create_connection((url.hostname, url.port), timeout=4) as sock:
+            sock.settimeout(5)
+            nonce = base64.b64encode(os.urandom(16)).decode()
+            req = ("GET %s HTTP/1.1\r\nHost: %s:%s\r\nUpgrade: websocket\r\n"
+                   "Connection: Upgrade\r\nSec-WebSocket-Key: %s\r\n"
+                   "Sec-WebSocket-Version: 13\r\nOrigin: http://localhost\r\n\r\n") % (
+                       url.path, url.hostname, url.port, nonce)
+            sock.sendall(req.encode())
+            response = b""
+            while b"\r\n\r\n" not in response:
+                response += sock.recv(4096)
+            self.assertIn(b"101 Switching Protocols", response)
+            expected = base64.b64encode(hashlib.sha1(
+                (nonce + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest())
+            self.assertIn(b"Sec-WebSocket-Accept: " + expected, response)
+            def take(count):
+                data = b""
+                while len(data) < count:
+                    part = sock.recv(count-len(data))
+                    if not part:
+                        raise EOFError("CDP closed")
+                    data += part
+                return data
+            def evaluate(idx, expression):
+                payload = json.dumps({"id": idx, "method": "Runtime.evaluate",
+                    "params": {"expression": expression, "returnByValue": True}}).encode()
+                mask = os.urandom(4)
+                header = bytes([129, 128 | len(payload)]) if len(payload) < 126 else (
+                    bytes([129, 254]) + struct.pack("!H", len(payload)))
+                sock.sendall(header + mask + bytes(c ^ mask[i%4]
+                                                    for i,c in enumerate(payload)))
+                while True:
+                    first, n = take(2)
+                    size = n & 127
+                    if size == 126:
+                        size = struct.unpack("!H", take(2))[0]
+                    if size == 127:
+                        size = struct.unpack("!Q", take(8))[0]
+                    key = take(4) if n & 128 else None
+                    raw = take(size)
+                    if key:
+                        raw = bytes(c ^ key[i%4] for i,c in enumerate(raw))
+                    if first & 15 != 1:
+                        continue
+                    item = json.loads(raw)
+                    if item.get("id") == idx:
+                        return item["result"]["result"]["value"]
+            deadline = time.monotonic() + 5
+            while evaluate(1, "document.querySelectorAll('button[data-testid=send-button]').length") != 1:
+                if time.monotonic() >= deadline:
+                    self.fail("fixture DOM selector unavailable")
+                time.sleep(.1)
+            self.assertTrue(evaluate(2, "(()=>{document.querySelector('button[data-testid=send-button]').click();return true})()"))
+            deadline = time.monotonic() + 5
+            while len(hits) != 1 and time.monotonic() < deadline:
+                time.sleep(.05)
+            self.assertEqual(len(hits), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
