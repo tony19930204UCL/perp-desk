@@ -154,6 +154,25 @@ class Control(unittest.TestCase):
         self.assertEqual(len(final["episodes"]),1)
         self.assertEqual(getcontext().prec,ambient)
 
+    def test_liq_after_tp1(self):
+        q="0.25056903781042036088205670645792476038217147602613"
+        a=OfflineAccount("150","10","50","10",2,"24",".0145",".0005")
+        bar=lambda ts,o,h,l,c:{"ts":ts,"open":o,"high":h,"low":l,
+                               "close":c,"closed":True}
+        self.assertEqual(a.submit("FICTION","liq",0,"100","100","1",
+                                  ".25",2,q,"X2"),"PENDING")
+        self.assertEqual(a.bar(bar(0,"100","100.27005","99.9","100"),
+                               entry_qty=q),"FILLED")
+        self.assertEqual(a.bar(bar(60000,"100","100","99.5","99.8"),
+                               maker_fill=True),"OPEN")
+        check(a)
+        self.assertEqual(a.bar(bar(120000,"100","103","99.8","102")),
+                         "LIQ_PROXY")
+        done=check(a)
+        self.assertEqual(done["qty"],D(0))
+        self.assertEqual(done["reserved"],D(0))
+        self.assertEqual(len(done["episodes"]),1)
+
     def test_invalid_sequences(self):
         base=new()
         append(base,"reserve",amount="50",episode="s");check(base)
