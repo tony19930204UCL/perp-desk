@@ -91,14 +91,15 @@ def main(argv=None):
         valid_until=policy["valid_until"])
     body = Path(a.prompt_file).read_text(encoding="utf-8")
     prompt_path = job / ("bounded_" + a.instruction_id + ".txt")
-    if prompt_path.exists():
+    rpath = job / ("receipt-%s.json" % a.instruction_id)
+    if prompt_path.exists() and not rpath.exists():
         raise pd.DispatchBlocked("BOUNDED_PROMPT_EXISTS")
-    prompt_path.write_text(guidance + "\n\n" + body, encoding="utf-8")
+    if not prompt_path.exists():
+        prompt_path.write_text(guidance + "\n\n" + body, encoding="utf-8")
     owner = pd.claim(policy, job, a.instruction_id,
                      chat=policy.get("dispatch_chat_url"))
     deadline = time.monotonic() + a.deadline_min * 60
     st = {"instruction_id": a.instruction_id, "started": now(), "phase": "WAIT_LOGIN", "send": None, "handback": False, "cycles": 0}
-    rpath = job / ("receipt-%s.json" % a.instruction_id)
     sent_done = False
     while time.monotonic() < deadline:
         st["cycles"] += 1
