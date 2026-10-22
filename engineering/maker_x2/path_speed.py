@@ -62,14 +62,14 @@ class SpeedFilter:
         right = bisect_right(self.ends, t)
         left = bisect_left(self.ends, t - LOOK_DAYS * DAY_MS)
         values = [v for v in self.speeds[left:right] if v is not None]
-        return self._result(values, right, left)
+        return self._result(values, right, left, t)
 
-    def _result(self, values, right, left):
+    def _result(self, values, right, left, t):
         # Require the complete seven-day minute interval, with enough
         # prior bars to form all five-return speeds without any gaps.
         complete = (right - left == MIN_HIST
-                    and right > 0 and self.ends[right-1] == self._previous
-                    and self.ends[left] == self._previous - LOOK_DAYS * DAY_MS + MINUTE
+                    and right > 0 and self.ends[right-1] == t
+                    and self.ends[left] == t - LOOK_DAYS * DAY_MS + MINUTE
                     and self.gaps[right] == self.gaps[left]
                     and len(values) == MIN_HIST)
         if not complete or self.speeds[right-1] is None:
@@ -100,4 +100,4 @@ class SpeedFilter:
                 at = bisect_left(self._ordered, value)
                 self._ordered.pop(at)
             self._left += 1
-        return self._result(self._ordered, right, left)
+        return self._result(self._ordered, right, left, decision_ts)
