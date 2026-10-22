@@ -4,10 +4,10 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-X2-R4-1-r2-r1",
-  "status": "READY_FOR_REVIEW",
-  "source_head_sha": "b384f6bdbe9389faf5d860060cf1a22ffd5ffed4",
-  "summary": "New bounded U1 offline pure-functions: regime_split pct7 type7, UTC 1m within-day population vol, window-P75 and prior-day ret7; path_speed causal speed5 and seven-day Q90 with sorted incremental window and out-of-order fallback; cancel_diag original raw-reason categories preserving every unknown as OTHER. Six entirely new allowlisted files, original engine and 122 controls untouched. Raw reasons verified in original source: entry_lifecycle.py lines235 EXPIRED,258 POST_ONLY_REJECT,152/271 X1_ADMISSION_REJECTED,178 pending/position occupies single slot; account_lifecycle.py lines272 single slot occupied,275 gap/halt blocks entry,291 INSUFFICIENT_CASH_OR_MARGIN; market_replay.py lines225-226 ADMISSION_REJECTED. H2_SKIP originates in newly introduced path_speed.py skip output, not preexisting engine. Mutation targets: P75 changed to P70, >= vol changed to >, ret7 using current day, +/-5% strict changed inclusive, 5 speed returns changed to 4, closed-bar guard removed, Q90 change, threshold > changed >=, warmup count relaxed, out-of-order sorted-cache reuse, unknown OTHER silently dropped, cancel overflow ignored, share zero divide, missing 15m prehistory. No historical market experiment, external dependencies, strategy filtering or engine integration. All r4-1 U1 Python commands and CI NOT_RUN because GitHub file connector cannot execute code.",
+  "instruction_id": "MAKER-V3-X2-R4-1-r3",
+  "status": "WAITING_CI",
+  "source_head_sha": "43b5c651c5419bb836f64226cd10cc8bbab0c181",
+  "summary": "Main CIO U1 causal reassessment after earlier 122 original controls passed and 1/16 new float exact-equality test failed, with six surviving mutations unclosed. This is an explicitly revised exploratory preregistration, NOT new holdout and NOT an engine integration. regime_split now labels day d strictly from previous 30 UTC day vols, each with >=1000 1m bars, type7 P75 and prior d-1/d-8 closes; incomplete history gives UNKNOWN, future/current daily inputs cannot affect d label. path_speed now requires a contiguous, entirely closed 7-day/10080-value causal window with Q90; warms without trading, uses cached sorted sliding window initialized at first requested range and independent unordered lookup. cancel_diag preserves original raw mapping, adds signals/intents/unprocessed/filled_or_open conservation, category and stage denominators and signal shares. Changed only the six explicitly allowlisted U1 source/test files; fixed exactly the known pct7 floating test assertAlmostEqual places12. Raw original reasons and source evidence from prior U1: entry_lifecycle.py 235 EXPIRED,258 POST_ONLY_REJECT,152/271 X1_ADMISSION_REJECTED,178 pending/position occupies single slot; account_lifecycle.py 272 single slot occupied,275 gap/halt blocks entry,291 INSUFFICIENT_CASH_OR_MARGIN; market_replay.py 225-226 ADMISSION_REJECTED. New H2_SKIP is a new U1 label, not an invented existing engine reason. New controls target >= versus >, P75 window current/future leak, +/−0.05 strictness, missing 30d UNKNOWN, future signal inclusion, warmup10000 rather than10080, missing-minute gaps, 4 versus5 returns, Q90 percentile, sorted window vs unordered lookup, OTHER loss, signal funnel loss, invalid total and zero divide. Previously observed six surviving mutants remain accepted gaps, not renamed away. No historical R4 matrix, m96 U3, U2/U3 engine integration, PnL or product evidence. All current Python, performance, mutation and CI results NOT_RUN in GitHub-only execution.",
   "changed_files": [
     "engineering/maker_x2/regime_split.py",
     "engineering/maker_x2/path_speed.py",
@@ -21,41 +21,41 @@
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub source-file-only tool; no Python/dual-umask or mutation execution. Original 122 control status belongs to independent prior HEAD, not new U1 acceptance."
+      "evidence": "GitHub file API source delivery only; no local Python, isolated dual-umask, <20s performance, behavioral mutation or new CI executed. Earlier one floating test failure is Main's prior observation, not this revision's result."
     },
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_regime_split.py -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub source-file-only tool; no Python/dual-umask or mutation execution. Original 122 control status belongs to independent prior HEAD, not new U1 acceptance."
+      "evidence": "GitHub file API source delivery only; no local Python, isolated dual-umask, <20s performance, behavioral mutation or new CI executed. Earlier one floating test failure is Main's prior observation, not this revision's result."
     },
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_path_speed.py -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub source-file-only tool; no Python/dual-umask or mutation execution. Original 122 control status belongs to independent prior HEAD, not new U1 acceptance."
+      "evidence": "GitHub file API source delivery only; no local Python, isolated dual-umask, <20s performance, behavioral mutation or new CI executed. Earlier one floating test failure is Main's prior observation, not this revision's result."
     },
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_cancel_diag.py -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub source-file-only tool; no Python/dual-umask or mutation execution. Original 122 control status belongs to independent prior HEAD, not new U1 acceptance."
+      "evidence": "GitHub file API source delivery only; no local Python, isolated dual-umask, <20s performance, behavioral mutation or new CI executed. Earlier one floating test failure is Main's prior observation, not this revision's result."
     }
   ],
   "remaining_work": [
-    "Main CIO pin exact source/full mailbox ancestry and byte-compare every nonallowlisted product/test file with pre-U1 eeb1fa66e8fa6d60a521b5eee0281df398bec9b2.",
-    "Run all original 122 controls plus new discovered controls under both umask0022 and0002, standalone three modules and twenty-second 200k/20k path-speed performance threshold; capture executed names and rc.",
-    "Check regime trend strict +/-5%, ret7 d-1/d-8 with excluded historical days, vol population/P75 precedence and insufficient days; verify exact signatures and causal future invariance.",
-    "Check H2 warmup, strict > threshold, lookahead and both monotone/out-of-order results and large-window amortized operation; compare percentile with regime_split.pct7.",
-    "Check cancel RAW_MAP entries against original source line evidence above, other_raw conservation, invalid totals and zero shares; execute named behavioral mutations (at least listed 14) with real AssertionError and rc1.",
-    "Check new exact-head push and PR CI. U1 does not integrate R4 filters into strategy; later U2/U3 must be explicitly authorized. No market/strategy approval or deployment."
+    "Main CIO independently verify full source SHA ancestry and only the six named U1 file diffs; all prior 122 original test sources, engine, PREREG hash bc6a0c14bb47fbace2cf2edfbd2cd5377b568d8c43d0ad54bb0f79e3a9c37e8c untouched.",
+    "Execute normal unittest discovery and three standalone U1 modules with dual umask. Confirm revised tests pass without weakening original monetary or 122 controls.",
+    "Verify UNKNOWN warmup for incomplete previous 30 UTC days; volatility and ret7 both exclude current/future; trend strict +/-5% and previous 30day P75; H2 contiguous 10080 completed speed values and strict current>Q90; deterministic unordered behavior and performance at scale.",
+    "Validate extended cancellation funnel exact totals, six terminal category counts, unknown raw preservation and stage/signal shares. Retain original observed floating red and six surviving mutation cases as history; run genuine RED/GREEN mutants if available.",
+    "Obtain exact-head push and pull_request CI. U2/U3 not yet implemented; frozen later U3 planned BH/Bonferroni m96 is not computed here.",
+    "A full R4 historical 96-family exploration, out-of-sample holdout, paper/live or deploy is not accepted by source-only U1."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Pin pre-mailbox SHA b384f6bdbe9389faf5d860060cf1a22ffd5ffed4, verify scope six new files only, source provenance and original 122 byte invariants. Run discovery and three standalone tests under dual umask; use test_path_speed.test_scale_200k to measure <20s, plus mutation probes and two exact-head CI jobs.",
-    "if_pass": "Accept only pure-function U1 contract for later authorized U2/U3 integration. No engine run, 48x3 research, strategy or product PASS.",
-    "if_fail": "Preserve failing test ID, original literal behavior, exact commit/CI evidence. Repair only under separate measured instruction; do not weaken previously frozen engine.",
+    "verify_now": "Pin complete pre-mailbox source_head_sha 43b5c651c5419bb836f64226cd10cc8bbab0c181 and final PR75 head. Run dual umask discovery retaining 122 old controls and all new U1, test_path_speed 200k bars/20k calls <20 sec, causal prefix/future/30day/warmup and category-funnel controls, genuine mutation probes and both exact-head CI.",
+    "if_pass": "Accept bounded revised U1 functions only. Do not claim historical holdout, R4 market outcomes or engine integration; U2/U3 require separate authorization.",
+    "if_fail": "Preserve exact trace and full SHA; return finite defect evidence, do not modify original strategy/economics or approval policy.",
     "blockers": [
-      "U1 Python/dual umask/performance tests NOT_RUN",
-      "Behavioral mutations and new exact-head CI NOT_RUN",
-      "U2/U3 integration and real historical inference not authorized or completed"
+      "U1 r3 Python/umask/performance tests and both exact-head CI NOT_RUN",
+      "Original prior six surviving mutants require independent assessment",
+      "No U2/U3 implementation, R4 real market matrix or product/strategy acceptance"
     ]
   }
 }
