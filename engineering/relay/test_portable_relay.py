@@ -13,6 +13,8 @@ class PortableRelayTests(unittest.TestCase):
   self.payload={'schema_version':2,'repository':'example/repo','pr_number':7,'branch':'engineer','task_id':'task-alpha','instruction_id':'first','status':'READY_FOR_REVIEW','source_head_sha':'c'*40,'summary':'mocked test report','changed_files':['docs/HANDOFF.json'],'tests':[],'remaining_work':[],'next_step_reminder':{'to':'Main CIO','verify_now':'test','if_pass':'not automatically executed','if_fail':'not automatically executed','blockers':[]}}
   self.job['dispatch_lock_root']=str(self.root/'locks')
   self.job['dispatch_chat_url']=self.job['chat_url']
+  (Path(self.job['state_dir'])).mkdir(parents=True,exist_ok=True)
+  (Path(self.job['state_dir'])/'job.json').write_text(json.dumps(self.job))
   self.r=Relay(self.job,self.gh,self.transport)
  def tearDown(self):self.tmp.cleanup()
  def gh(self,api):
