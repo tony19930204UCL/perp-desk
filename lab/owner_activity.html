@@ -73,6 +73,11 @@ button,input,select{background:white;color:#0F172A;border-color:#CBD5E1}
 .metro-stop.failed .dot{color:#DC2626;background:#FEF2F2;border-color:#DC2626}
 .metro-stop.retest:not(:last-child):after,.metro-stop.failed:not(:last-child):after{border-top:3px dashed #D97706}
 .metro-stop.user:not(:last-child):after{border-top:3px dotted #7C3AED}
+#metroKpis details{width:100%;min-width:0}
+#metroKpis summary{cursor:pointer;list-style:revert;overflow-wrap:anywhere}
+#metroKpis details div{max-height:300px;overflow-y:auto;overflow-wrap:anywhere;font-size:.82rem;font-weight:400}
+#metroKpis time{color:#64748B;font-size:.75rem}
+#metroRecent{max-height:320px;overflow-y:auto}
 </style><script src="/owner_activity.js" defer></script></head><body><div class="shell">
 <nav aria-label="Observer sections"><span class="brand">◈ PAPER / OBSERVER</span><div class="tabs"><a href="/dashboard_v2.html">帳務 / Account</a><a href="/owner_activity.html" aria-current="page">Monitor / 工作活動</a></div><span class="meta">READ-ONLY · LOCAL</span></nav>
 <header class="heading"><div><span class="eyebrow">OWNER ACTIVITY / OBSERVATION</span><h1>工作活動總覽</h1><p class="subtle">執行證據、計畫與排程分開呈現。沒有資料並不代表一切正常。</p></div><button id="refresh" type="button">↻ 重新整理</button></header>
@@ -80,6 +85,7 @@ button,input,select{background:white;color:#0F172A;border-color:#CBD5E1}
 <div class="metrics" id="metrics" aria-label="Observed counts"></div>
 <section id="metro" aria-label="Owner Metro live observation">
 <div class="metrics" id="metroKpis" aria-label="Live verified product counts"></div>
+<section class="panel" aria-label="近況" style="margin-bottom:16px"><h2>近況</h2><div id="metroRecent" aria-live="polite"></div></section>
 <div class="layout"><div class="metro-routes" id="metroRoutes" aria-live="polite"></div>
 <aside class="stack"><section class="panel"><h2>Spotlight · Maker</h2><div id="metroSpot"></div></section>
 <section class="panel"><h2>來源狀態 / Verification</h2><div id="metroHealth"></div></section></aside></div>
