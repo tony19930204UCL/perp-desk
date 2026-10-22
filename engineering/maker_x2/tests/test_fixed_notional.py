@@ -13,7 +13,8 @@ def conf():
 
 def bar(i, high="100.27005", low="99", op="100", close="100"):
     return {"ts":i*60000,"open":op,"high":high,"low":low,
-            "close":close,"closed":True}
+            "close":close,"base_volume":"2",
+            "quote_volume":"200","closed":True}
 
 def acct(mode="B"):
     return OfflineAccount(**{k:conf()[k] for k in
