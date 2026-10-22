@@ -555,5 +555,24 @@ class AtomicDispatchTests(unittest.TestCase):
             proc.wait(timeout=10)
 
 
+    def test_worker_restart_obs(self):
+        """Existing confirmed receipt must be observable; no duplicate send."""
+        jobdir = self.first
+        prompt = jobdir / "instruction.txt"
+        prompt.write_text("SYNTHETIC_OFFLINE_ONLY")
+        (jobdir / "bounded_one.txt").write_text("PREVIOUS_BOUNDED_PROMPT")
+        (jobdir / "receipt-one.json").write_text(json.dumps({
+            "instruction_id": "one", "stage": "CONFIRMED"}))
+        worker = SOURCE.parent / "relay_dispatch_worker.py"
+        proc = subprocess.run([sys.executable, str(worker),
+            "--job-dir", str(jobdir), "--instruction-id", "one",
+            "--prompt-file", str(prompt), "--chat-url",
+            self.job["dispatch_chat_url"], "--repo", self.job["repository"],
+            "--branch", self.job["branch"], "--mailbox-path", "synthetic.py",
+            "--deadline-min", "0", "--poll-s", "0"],
+            capture_output=True, text=True, timeout=12)
+        self.assertNotIn("BOUNDED_PROMPT_EXISTS", proc.stderr + proc.stdout)
+        self.assertNotIn("SEND_INTENT", proc.stdout)
+
 if __name__ == "__main__":
     unittest.main()
