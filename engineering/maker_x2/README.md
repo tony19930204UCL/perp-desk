@@ -1806,3 +1806,57 @@ full-market result, new PnL or strategy approval.
 All r1 tests, mutation commands, 20k/40k measurements and
 new exact-head CI remain **NOT_RUN** in this GitHub file-only
 session; Main CIO owns isolated acceptance.
+
+
+## MAKER-V3-X2-STALLFIX-1-r2 — last precision-context repair
+
+Main's isolated r1 checkout at
+`d513078277105054ea99d8a94090bffe8fd51f39`
+executed 118 discovery tests: 117 passed and only
+`test_witness_entry_risk` failed. The one unequal ledger key was
+`available`: incremental `cash-reserved` evaluated outside its
+Decimal50 context, silently rounded at ambient precision28.
+Independent `replay_account` calculates this same expression
+inside precision50. Main separately confirmed the proposed
+context-only fix passes all118 earlier controls; that measured
+result is NOT a test run of this r2 source.
+
+Only `OfflineAccount.ledger()` now places the available-balance
+subtraction within `localcontext(prec=50)`. The strict
+`replay_account`, all original tests, event transitions,
+financial semantics, instrumentation, progress heartbeat,
+`progress.json`, 20K/40K `--profile-cell` and frozen research
+matrix remain unchanged. No rounding, quantization, comparison
+weakening or altered source filtering.
+
+`tests/test_incremental_diff.py` gains
+`test_available_prec50`: independent 50-digit quantity
+with Maker entry, Taker exit and complete margin release,
+full field/type comparison after **each** event, greater
+than 40 characters of preserved available precision, and
+unchanged ambient Decimal28. It is intended to fail on
+r1 and pass with r2; those RED/GREEN executions must be
+measured independently. `test_random_prec50` uses seed
+20261022, genuine 50-digit n/7 quantities/prices, actual
+funding, partial Maker exits, final Taker closure or remaining
+LIQ and release; it compares all fields against unchanged
+strict replay after every event and verifies context isolation.
+The existing `test_linear_cost.py` remains byte-identical.
+
+Main acceptance under both umask 0022 and 0002, from
+`engineering/maker_x2`:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s tests -p test_incremental_diff.py -v
+python3 -m unittest discover -s tests -p test_linear_cost.py -v
+python3 backtest_entry.py --self-test
+```
+
+Only after all positives pass, Main executes its 20 named
+mutations requiring actual AssertionError and rc1, exact-head
+push and pull_request CI, and 20K/40K profiling. A further r2
+failure requires stop and reassessment, not a third revision.
+This GitHub-file-only source handback reports all r2 tests,
+mutations and CI **NOT_RUN**; previous failures remain recorded.
+No market PnL, strategy acceptance, merge or deployment.
