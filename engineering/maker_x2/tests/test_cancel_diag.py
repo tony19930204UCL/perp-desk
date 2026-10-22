@@ -37,6 +37,26 @@ class Control(unittest.TestCase):
         self.assertEqual(share(full)["TTL_EXPIRED"],.5)
         self.assertEqual(share(full)["POST_ONLY_CROSS"],.5)
 
+
+    def test_full_funnel(self):
+        # Detects discarding signals without an intent or other terminal.
+        reasons=["EXPIRED","POST_ONLY_REJECT","UNSEEN"]
+        result=cancel_table(reasons,10,intents=8,unprocessed=2)
+        self.assertEqual(result["signals"],10)
+        self.assertEqual(result["intents"],8)
+        self.assertEqual(result["unprocessed"],2)
+        self.assertEqual(result["cancelled"],3)
+        self.assertEqual(result["filled_or_open"],5)
+        self.assertEqual(result["other_raw"],{"UNSEEN":1})
+        self.assertEqual(result["cancelled"]+result["filled_or_open"]+
+                         result["unprocessed"],result["total"])
+        self.assertAlmostEqual(result["signal_shares"]["OTHER"],.1)
+        self.assertEqual(result["stage_denoms"]["intents"],8)
+        with self.assertRaises(ValueError):
+            cancel_table(reasons,3,intents=2)
+        with self.assertRaises(ValueError):
+            cancel_table(reasons,3,unprocessed=1)
+
     def test_real_raw_only(self):
         # Kills fake keys replacing actual existing raw reason strings.
         expected={"EXPIRED","POST_ONLY_REJECT","ADMISSION_REJECTED",
