@@ -69,7 +69,7 @@ class Relay:
         effective=dict(j,dispatch_lock_root=str(Path(j['dispatch_lock_root'])/instruction_id))
         pinned=unit/'job.json'
         if pinned.exists():
-            if read(pinned)!=effective: raise ValueError('UNIT_SCOPE_CHANGED')
+            if read(pinned)!=effective: raise RuntimeError('UNIT_SCOPE_CHANGED')
         else:
             atomic(pinned,effective)
         pd.claim(effective, unit, instruction_id, chat=effective['dispatch_chat_url'])
