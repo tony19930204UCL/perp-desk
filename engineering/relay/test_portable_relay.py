@@ -11,6 +11,8 @@ class PortableRelayTests(unittest.TestCase):
   self.job={'repository':'example/repo','pr_number':7,'branch':'engineer','mailbox':'docs/HANDOFF.json','task_id':'task-alpha','state_dir':str(self.root/'profile-alpha'),'conversation_mode':'reuse','chat_url':'https://chatgpt.com/c/test-chat','transport_command':['false'],'write_allowlist':['docs/HANDOFF.json'],'valid_until':(datetime.now(timezone.utc)+timedelta(hours=1)).isoformat()}
   self.url='https://chatgpt.com/c/test-chat';self.page_text='';self.head='a'*40;self.blob='b'*40;self.users=[];self.composer='';self.sends=0
   self.payload={'schema_version':2,'repository':'example/repo','pr_number':7,'branch':'engineer','task_id':'task-alpha','instruction_id':'first','status':'READY_FOR_REVIEW','source_head_sha':'c'*40,'summary':'mocked test report','changed_files':['docs/HANDOFF.json'],'tests':[],'remaining_work':[],'next_step_reminder':{'to':'Main CIO','verify_now':'test','if_pass':'not automatically executed','if_fail':'not automatically executed','blockers':[]}}
+  self.job['dispatch_lock_root']=str(self.root/'locks')
+  self.job['dispatch_chat_url']=self.job['chat_url']
   self.r=Relay(self.job,self.gh,self.transport)
  def tearDown(self):self.tmp.cleanup()
  def gh(self,api):
@@ -22,14 +24,15 @@ class PortableRelayTests(unittest.TestCase):
  def transport(self,req):
   if req['op']=='snapshot':return {'url':self.url,'busy':False,'user_messages':list(self.users),'composer_text':self.composer,'text':self.page_text}
   x=req['expression']
-  if "location.href='https://chatgpt.com/'" in x:
-   self.url='https://chatgpt.com/';self.users=[];return True
+  if "location.href='https://chatgpt.com/c/" in x:
+   self.url=re.search(r"location.href='([^']+)'",x).group(1);self.users=[];return True
   if 'Allow once' in x:return json.dumps({'found':False})
   if 'insertText' in x:
    self.composer=json.loads(re.search(r"insertText',false,(.*?)\);const norm",x).group(1));return True
   if 'b[0].click()' in x:
    self.users.append(self.composer);self.composer='';self.sends+=1
-   if self.url=='https://chatgpt.com/':self.url='https://chatgpt.com/c/new-%d'%self.sends
+   if self.job.get('conversation_mode')=='new':
+    self.job['dispatch_chat_url']='https://chatgpt.com/c/new-%d'%(self.sends+1)
    return True
   raise AssertionError(x)
  def prepared(self,status='ACCEPTED_SCOPE',action='next bounded action'):
@@ -59,7 +62,7 @@ class PortableRelayTests(unittest.TestCase):
  def test_stale_head_cannot_reuse_previous_verdict(self):
   self.prepared();self.head='d'*40;self.assertRaises(FileNotFoundError,self.r.advance,'second');self.assertEqual(1,self.sends)
  def new_relay(self):
-  self.job['conversation_mode']='new';self.job.pop('chat_url');self.url='https://chatgpt.com/c/old-conversation'
+  self.job['conversation_mode']='new';self.job.pop('chat_url');self.job['dispatch_chat_url']='https://chatgpt.com/c/new-1';self.url='https://chatgpt.com/c/old-conversation'
   self.r=Relay(self.job,self.gh,self.transport);return self.r
  def test_new_mode_opens_fresh_chat_each_dispatch_and_records_url(self):
   import time;orig=time.sleep;time.sleep=lambda *_:None
