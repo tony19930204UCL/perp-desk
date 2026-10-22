@@ -1748,3 +1748,61 @@ material acceptance gap, not a claim of full completion.
 full-history performance improvement, full market output or
 strategy approval.** No main merge, paper/live/trading or paid
 resource action was performed.
+
+
+## MAKER-V3-X2-STALLFIX-1-r1 — independent reconciliation repair
+
+Independent verification of r0 at exact HEAD
+`edb89df36b9b063f2de7297ad7100f2f894e0bf0`,
+with both umask 0022/0002, found 113 discovery tests:
+one FAIL and six ERROR. The immutable base 113 passed.
+The primary defect was the lazy `_LedgerView` returning
+placeholder dictionary values for ids/settlements; native dict
+comparison (including reverse `==` or `!=`) could disagree
+with `replay_account`, causing six checkpoint and replay failures.
+Those historical r0 failures are preserved, not relabeled PASS.
+
+The returned `ledger()` view now provides the **exact** native
+dictionary key set: cash, reserved, available, qty, basis, gross,
+fees, funding_cost, writeoff, episodes, open_episode, ids and
+settlements. Collections are the incrementally maintained list/set
+objects rather than O(events) copies on each bar. Scalar amounts
+continue to use Decimal50; collection types and reverse dictionary
+equality match the unchanged independent strict `replay_account`.
+Callers that need a detached collection should explicitly
+`ledger().copy()`. Checkpoint/recover and every completed replay
+retain independent complete replays; they have not been weakened.
+
+Two newly authorized discoverable suites are:
+`tests/test_incremental_diff.py`, fixed and seeded event-by-event
+comparison with strict original raw replay, including reserve,
+release, partial buy/sell, funding, liquidation, invalid IDs,
+sequence, timestamp and excess close; and
+`tests/test_linear_cost.py`, count-only 1000/4000 interval
+comparison that checks exactly fourfold incremental transitions
+rather than invoking a wall-clock threshold. No original test was
+edited, and 20 original negative mutations still require
+independent execution. UTC feature, 100k-bar heartbeat,
+unhashed atomic `progress.json`, finite `--profile-cell`,
+48x3 matrix and frozen financial assumptions are unchanged.
+
+From `engineering/maker_x2` execute under **each** umask
+0022 and 0002 in an immutable checkout:
+
+```sh
+python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s tests -p test_incremental_diff.py -v
+python3 -m unittest discover -s tests -p test_linear_cost.py -v
+python3 backtest_entry.py --self-test
+python3 backtest_entry.py --profile-cell --bars 20000 --config LOCAL_CONFIG.json --input LOCAL_INPUT.json
+python3 backtest_entry.py --profile-cell --bars 40000 --config LOCAL_CONFIG.json --input LOCAL_INPUT.json
+```
+
+Only after every positive CONTROL passes run the 20 previously
+documented separate mutation subprocesses (each needs named
+AssertionError and rc1), then both exact-head CI triggers.
+Source delivery is not an accepted elapsed-time benchmark,
+full-market result, new PnL or strategy approval.
+All r1 tests, mutation commands, 20k/40k measurements and
+new exact-head CI remain **NOT_RUN** in this GitHub file-only
+session; Main CIO owns isolated acceptance.
