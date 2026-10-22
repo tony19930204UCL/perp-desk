@@ -1,7 +1,7 @@
 """Strict event-by-event parity with independent original replay."""
 import random
 import unittest
-from decimal import Decimal as D
+from decimal import Decimal as D, getcontext, localcontext
 from account_lifecycle import OfflineAccount
 from account_ledger import replay_account
 from maker_exit_lab import X2Error
@@ -120,6 +120,38 @@ class Control(unittest.TestCase):
                        margin_writeoff="25",fee=".03125",
                        reason="LIQ_PROXY")
             check(a)
+        self.assertEqual(getcontext().prec,ambient)
+
+
+    def test_x2_odd_half(self):
+        qty="0.27404438520735813089201545257989788518969205534561"
+        ambient=getcontext().prec
+        self.assertEqual(ambient,28)
+        a=new()
+        self.assertEqual(a.submit("FICTION","odd-half",0,"100","100",
+                                  "1",".25",2,qty,"X2"),"PENDING")
+        first={"ts":0,"open":"100","high":"100.27005",
+               "low":"99.9","close":"100","closed":True}
+        self.assertEqual(a.bar(first,entry_qty=qty),"FILLED")
+        check(a)
+        self.assertIsNotNone(a.exit)
+        tp1=a.exit.core.orders["tp1"]
+        tp2=a.exit.core.orders["tp2"]
+        with localcontext() as ctx:
+            ctx.prec=80
+            self.assertEqual(tp1+tp2,D(qty))
+            self.assertLessEqual(len(tp1.as_tuple().digits),50)
+        self.assertEqual(a.bar({"ts":60000,"open":"100","high":"100",
+                   "low":"99.5","close":"99.8","closed":True},
+                   maker_fill=True),"OPEN")
+        check(a)
+        self.assertEqual(a.bar({"ts":120000,"open":"99.4","high":"99.5",
+                   "low":"99","close":"99.2","closed":True},
+                   maker_fill=True),"CLOSED")
+        final=check(a)
+        self.assertEqual(final["qty"],D(0))
+        self.assertEqual(final["reserved"],D(0))
+        self.assertEqual(len(final["episodes"]),1)
         self.assertEqual(getcontext().prec,ambient)
 
     def test_invalid_sequences(self):
