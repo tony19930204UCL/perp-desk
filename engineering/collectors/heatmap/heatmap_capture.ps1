@@ -425,7 +425,23 @@ function Wait-CanvasReady {
     $probeJs = "(()=>{const c=document.querySelector('canvas');return !!(c&&c.width>0&&c.height>0)})()"
     while ($waitClock.ElapsedMilliseconds -lt $MaxMs) {
         $left = Get-ComboRemaining -Clock $Clock
-        $ready = Invoke-CdpEval -Sess $Sess -Expression $probeJs -TimeoutMs $left -Clock $Clock
+        $waitLeft = $MaxMs - [int]$waitClock.ElapsedMilliseconds
+        if ($waitLeft -le 0) { break }
+        $limit = [Math]::Min($left, $waitLeft)
+        try {
+            $ready = Invoke-CdpEval -Sess $Sess -Expression $probeJs -TimeoutMs $limit -Clock $Clock
+        } catch {
+            if ($_.Exception.Message -eq 'combo_timeout' -and
+                $waitClock.ElapsedMilliseconds -ge $MaxMs) {
+                [void](Get-ComboRemaining -Clock $Clock)
+                return $false
+            }
+            throw
+        }
+        if ($waitClock.ElapsedMilliseconds -ge $MaxMs) {
+            [void](Get-ComboRemaining -Clock $Clock)
+            return $false
+        }
         if ($ready -eq $true) {
             $streak++
             if ($streak -ge 2) { return $true }
@@ -440,11 +456,13 @@ function Wait-CanvasReady {
 }
 
 function Get-ChartCapture {
-    param($Sess, [System.Diagnostics.Stopwatch]$Clock, [string]$Js)
+    param($Sess, [System.Diagnostics.Stopwatch]$Clock, [string]$Js, [ref]$RetryUsed)
     $json = Invoke-CdpEval -Sess $Sess -Expression $Js -TimeoutMs (Get-ComboRemaining -Clock $Clock) -Clock $Clock
     $capture = $json | ConvertFrom-Json
-    if ($capture.err -eq 'no canvas') {
+    if ($capture.err -eq 'no canvas' -and
+        ($null -eq $RetryUsed -or -not $RetryUsed.Value)) {
         if (Wait-CanvasReady -Sess $Sess -Clock $Clock) {
+            if ($null -ne $RetryUsed) { $RetryUsed.Value = $true }
             $json = Invoke-CdpEval -Sess $Sess -Expression $Js -TimeoutMs (Get-ComboRemaining -Clock $Clock) -Clock $Clock
             $capture = $json | ConvertFrom-Json
         }
@@ -926,7 +944,8 @@ try {
         $chartSha256 = $null
         $chartDataOk = $false
 
-        # Single retry loop (max 1 retry)
+        # A single retry is shared by switch and canvas capture.
+        $retryUsed = $false
         for ($attempt = 0; $attempt -lt 2; $attempt++) {
             try {
                 $remMs = Get-ComboRemaining -Clock $sw
@@ -971,7 +990,8 @@ try {
                 }
                 if ($switchRes.err) {
                     $remMs = Get-ComboRemaining -Clock $sw
-                    if ($attempt -eq 0 -and $remMs -gt 9500) {
+                    if ($attempt -eq 0 -and -not $retryUsed -and $remMs -gt 9500) {
+                        $retryUsed = $true
                         Invoke-CdpCall -Sess $sess -Method 'Page.reload' -TimeoutMs 5000 -Clock $sw | Out-Null
                         Wait-Combo -Clock $sw -Ms 4000
                         continue
@@ -996,7 +1016,7 @@ try {
                 $callTimeout = $remMs
 
                 # Capture chart data and canvas
-                $chartRes = Get-ChartCapture -Sess $sess -Clock $sw -Js $captureChartJsCode
+                $chartRes = Get-ChartCapture -Sess $sess -Clock $sw -Js $captureChartJsCode -RetryUsed ([ref]$retryUsed)
 
                 if ($chartRes.err) {
                     $comboError = if ($sw.ElapsedMilliseconds -ge $comboTimeoutMs) { 'combo_timeout' } else { [string]$chartRes.err }
@@ -1069,7 +1089,8 @@ try {
                     break
                 }
                 $remMs = Get-ComboRemaining -Clock $sw
-                if ($attempt -eq 0 -and $remMs -gt 9500) {
+                if ($attempt -eq 0 -and -not $retryUsed -and $remMs -gt 9500) {
+                    $retryUsed = $true
                     try {
                         Invoke-CdpCall -Sess $sess -Method 'Page.reload' -TimeoutMs 5000 -Clock $sw | Out-Null
                         Wait-Combo -Clock $sw -Ms 4000
