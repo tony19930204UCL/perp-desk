@@ -2135,5 +2135,103 @@ global.setTimeout = fn => { tick += 500; sample++; fn(); };
                 self.assertIn("PHASE combo 0 end ok=" + expected, proc.stderr)
 
 
+    def _canvas_ps(self, case):
+        exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh")
+        self.assertIsNotNone(exe)
+        with open(CAPTURE_PS1, encoding="utf-8") as fh:
+            source = fh.read()
+        bodies = []
+        for name in ("Get-ComboRemaining", "Wait-Combo",
+                     "Wait-CanvasReady", "Get-ChartCapture"):
+            pattern = r"(?ms)^function " + name + r" \\{.*?^\\}"
+            match = re.search(pattern.replace("\\\\", "\\"), source)
+            self.assertIsNotNone(match, name)
+            bodies.append(match.group())
+        scenarios = {
+            "a": (['{"err":"no canvas"}', '{"ok":true}'], [False, True, True]),
+            "b": (['{"err":"no canvas"}', '{"ok":true}'], [True, False, True, True]),
+            "c": (['{"err":"no canvas"}', '{"err":"no canvas"}'], [True, True]),
+            "d": (['{"err":"no canvas"}'], [False] * 30),
+            "e": (['{"err":"login_required"}'], []),
+            "e2": (['{"err":"worker_error"}'], []),
+            "f": (['{"err":"no canvas"}'], []),
+        }
+        captures, samples = scenarios[case]
+        ps = "\n".join(bodies) + """
+$ErrorActionPreference = 'Stop'
+$script:caps = @(@CAPS@)
+$script:bools = @(@BOOLS@)
+$script:capN = 0
+$script:sampleN = 0
+function Invoke-CdpEval {
+    param($Sess, [string]$Expression, [int]$TimeoutMs, $Clock)
+    if ($Expression.Contains('toDataURL')) {
+        $result = $script:caps[$script:capN]
+        $script:capN++
+        return $result
+    }
+    if ($Expression.Contains('width>0')) {
+        $result = $script:bools[[Math]::Min($script:sampleN, $script:bools.Count - 1)]
+        $script:sampleN++
+        return $result
+    }
+    throw 'unexpected_expression'
+}
+$clock = [Diagnostics.Stopwatch]::StartNew()
+try {
+    if ('@CASE@' -eq 'd') {
+        $ready = Wait-CanvasReady -Sess $null -Clock $clock -MaxMs 1500 -StepMs 200
+        $result = @{ready=$ready}
+    } elseif ('@CASE@' -eq 'f') {
+        [void]$clock.ElapsedMilliseconds
+        Start-Sleep -Milliseconds 15
+        [void](Get-ComboRemaining -Clock $clock -LimitMs 1)
+        $result = @{err='not_timed_out'}
+    } else {
+        $result = Get-ChartCapture -Sess $null -Clock $clock -Js 'toDataURL'
+    }
+} catch {
+    $result = @{err=$_.Exception.Message}
+}
+@{result=$result; captures=$script:capN; samples=$script:sampleN; elapsed=$clock.ElapsedMilliseconds} | ConvertTo-Json -Depth 5 -Compress
+""".replace("@CAPS@", ",".join("'" + v + "'" for v in captures)).replace(
+            "@BOOLS@", ",".join("$true" if v else "$false" for v in samples)
+        ).replace("@CASE@", case)
+        proc = subprocess.run([exe, "-NoProfile", "-Command", ps],
+                              capture_output=True, text=True, timeout=25)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return json.loads(proc.stdout.strip().splitlines()[-1])
+
+    @unittest.skipUnless(
+        shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh"),
+        "PowerShell unavailable")
+    def test_52_canvas_wait_run(self):
+        a = self._canvas_ps("a")
+        self.assertTrue(a["result"]["ok"])
+        self.assertEqual((a["captures"], a["samples"]), (2, 3))
+        b = self._canvas_ps("b")
+        self.assertTrue(b["result"]["ok"])
+        self.assertEqual((b["captures"], b["samples"]), (2, 4))
+        d = self._canvas_ps("d")
+        self.assertFalse(d["result"]["ready"])
+        self.assertEqual(d["captures"], 0)
+        self.assertGreaterEqual(d["samples"], 2)
+        self.assertLess(d["elapsed"], 3500)
+
+    @unittest.skipUnless(
+        shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh"),
+        "PowerShell unavailable")
+    def test_53_no_canvas_retry(self):
+        c = self._canvas_ps("c")
+        self.assertEqual(c["result"]["err"], "no canvas")
+        self.assertEqual((c["captures"], c["samples"]), (2, 2))
+        for case, error in (("e", "login_required"), ("e2", "worker_error")):
+            row = self._canvas_ps(case)
+            self.assertEqual(row["result"]["err"], error)
+            self.assertEqual((row["captures"], row["samples"]), (1, 0))
+        f = self._canvas_ps("f")
+        self.assertIn("combo_timeout", f["result"]["err"])
+
+
 if __name__ == "__main__":
     unittest.main()
