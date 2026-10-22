@@ -59,22 +59,30 @@ class SpeedFilter:
         self._previous = None
 
     def _direct(self, t):
-        right = bisect_right(self.ends, t)
+        # Current close (end == t) is observable, but never in history.
+        right = bisect_left(self.ends, t)
         left = bisect_left(self.ends, t - LOOK_DAYS * DAY_MS)
-        values = [v for v in self.speeds[left:right] if v is not None]
-        return self._result(values, right, left, t)
+        values = sorted(v for v in self.speeds[left:right] if v is not None)
+        cur = bisect_right(self.ends, t) - 1
+        return self._result(values, right, left, cur, t)
 
-    def _result(self, values, right, left, t):
-        # Require the complete seven-day minute interval, with enough
-        # prior bars to form all five-return speeds without any gaps.
-        complete = (right - left == MIN_HIST
-                    and right > 0 and self.ends[right-1] == t
-                    and self.ends[left] == t - LOOK_DAYS * DAY_MS + MINUTE
-                    and self.gaps[right] == self.gaps[left]
-                    and len(values) == MIN_HIST)
-        if not complete or self.speeds[right-1] is None:
+    def _result(self, values, right, left, cur, t):
+        # History is [t-7d, t), excluding a current speed ending at t.
+        # Each speed needs five contiguous predecessor minutes.
+        complete = (left >= WIN_BARS and right-left == MIN_HIST
+                    and self.ends[left] == t - LOOK_DAYS * DAY_MS
+                    and self.ends[right-1] == t - MINUTE
+                    and self.gaps[right] == self.gaps[left-WIN_BARS+1]
+                    and len(values) == MIN_HIST
+                    and cur >= 0 and self.speeds[cur] is not None)
+        if not complete:
             return False, "H2_WARMUP"
-        return ((True, "H2_SKIP") if self.speeds[right - 1] > pct7(values, Q90)
+        # values is maintained sorted; never sort all 10080 on each query.
+        h = (len(values)-1) * Q90
+        lo = int(h)
+        hi = min(lo+1, len(values)-1)
+        threshold = values[lo] + (values[hi]-values[lo])*(h-lo)
+        return ((True, "H2_SKIP") if self.speeds[cur] > threshold
                 else (False, "H2_PASS"))
 
     def skip(self, decision_ts):
@@ -82,8 +90,9 @@ class SpeedFilter:
             raise ValueError("decision timestamp must be integer milliseconds")
         if self._previous is not None and decision_ts < self._previous:
             return self._direct(decision_ts)
-        right = bisect_right(self.ends, decision_ts)
+        right = bisect_left(self.ends, decision_ts)
         left = bisect_left(self.ends, decision_ts - LOOK_DAYS * DAY_MS)
+        cur = bisect_right(self.ends, decision_ts) - 1
         if self._previous is None:
             self._ordered = sorted(v for v in self.speeds[left:right]
                                    if v is not None)
@@ -100,4 +109,4 @@ class SpeedFilter:
                 at = bisect_left(self._ordered, value)
                 self._ordered.pop(at)
             self._left += 1
-        return self._result(self._ordered, right, left, decision_ts)
+        return self._result(self._ordered, right, left, cur, decision_ts)
