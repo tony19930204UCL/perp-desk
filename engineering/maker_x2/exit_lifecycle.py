@@ -76,7 +76,9 @@ class ShortExit:
             # Exact complementary quantities, never two separately rounded
             # halves whose sum can exceed a long-precision entry fill.
             with localcontext() as ctx:
-                ctx.prec = max(50, len(self.core.qty.as_tuple().digits) + 2)
+                # TP1 must fit the entry qty's precision: the Decimal50
+                # independent ledger must represent qty after TP1 exactly.
+                ctx.prec = max(50, len(self.core.qty.as_tuple().digits))
                 first = self.core.qty / D(2)
                 self.core.orders = {"tp1": first,
                                     "tp2": self.core.qty - first}
