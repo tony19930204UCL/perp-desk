@@ -44,7 +44,19 @@ class _LedgerView(dict):
         return [self[key] for key in self]
 
     def __eq__(self, other):
-        return dict(self.items()) == other
+        if not isinstance(other, dict):
+            return NotImplemented
+        return dict(self.items()) == dict(other.items())
+
+    def __ne__(self, other):
+        equal = self.__eq__(other)
+        return NotImplemented if equal is NotImplemented else not equal
+
+    def copy(self):
+        return dict(self.items())
+
+    def __repr__(self):
+        return repr(self.copy())
 
 
 class OfflineAccount:
