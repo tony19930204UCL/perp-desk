@@ -12,51 +12,14 @@ Z = D("0")
 
 
 class _LedgerView(dict):
-    """O(1) financial snapshot, historical collections materialized on demand."""
+    """Materialized scalar keys plus shared O(1) incremental collections."""
     def __init__(self, account, state, count):
         super().__init__(state)
         self._account, self._count = account, count
-        self._closed = len(state["episodes"])
-        self._open = (None if state["open_episode"] is None else
-                      dict(state["open_episode"]))
-
-    def __getitem__(self, key):
-        if key == "ids":
-            return {event["id"] for event in self._account.events[:self._count]}
-        if key == "settlements":
-            return {event["settlement_id"] for event in
-                    self._account.events[:self._count]
-                    if event["type"] == "funding"}
-        if key == "episodes":
-            return [dict(ep) for ep in
-                    self._account._ledger_state["episodes"][:self._closed]]
-        if key == "open_episode":
-            return None if self._open is None else dict(self._open)
-        return super().__getitem__(key)
-
-    def get(self, key, default=None):
-        return self[key] if key in self else default
-
-    def items(self):
-        return [(key, self[key]) for key in self]
-
-    def values(self):
-        return [self[key] for key in self]
-
-    def __eq__(self, other):
-        if not isinstance(other, dict):
-            return NotImplemented
-        return dict(self.items()) == dict(other.items())
-
-    def __ne__(self, other):
-        equal = self.__eq__(other)
-        return NotImplemented if equal is NotImplemented else not equal
 
     def copy(self):
-        return dict(self.items())
-
-    def __repr__(self):
-        return repr(self.copy())
+        return {k: (v.copy() if isinstance(v, (dict, set, list)) else v)
+                for k, v in self.items()}
 
 
 class OfflineAccount:
@@ -216,8 +179,8 @@ class OfflineAccount:
             self._apply_event(self.events[self._cursor])
         s = dict(self._ledger_state)
         s["available"] = s["cash"] - s["reserved"]
-        s["ids"] = None
-        s["settlements"] = None
+        s["ids"] = self._applied_ids
+        s["settlements"] = self._applied_settlements
         return _LedgerView(self, s, self._cursor)
 
     def verify_ledger(self):
