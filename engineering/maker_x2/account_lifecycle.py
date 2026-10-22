@@ -24,9 +24,14 @@ class _LedgerView(dict):
 
 class OfflineAccount:
     def __init__(self, capital, per_trade_margin, leverage, daily_loss_limit,
-                 loss_streak_limit, halt_hours, liq_pct, liq_fee_pct, rates=None):
+                 loss_streak_limit, halt_hours, liq_pct, liq_fee_pct, rates=None,
+                 mode="A"):
         from scenario_rates import resolve_rates
         self.rates = resolve_rates(rates)
+        if mode not in ("A", "B"):
+            raise X2Error("invalid account mode")
+        self.mode = mode
+        self.b_history = []
         self.capital = number(capital, "capital", True)
         self.margin = number(per_trade_margin, "margin", True)
         self.leverage = number(leverage, "leverage", True)
@@ -71,6 +76,34 @@ class OfflineAccount:
         self.last_equity = self.capital
         self.last_mark = None
         self.stale = False
+
+    def reset_b(self):
+        """Archive a verified flat account before the next independent episode."""
+        if self.mode != "B":
+            raise X2Error("B reset requires B mode")
+        state = self.ledger()
+        if (self.entry is not None or self.exit is not None or
+                state["qty"] != Z or state["reserved"] != Z or
+                state["open_episode"] is not None):
+            raise X2Error("cannot reset open or pending account")
+        if not self.events:
+            return
+        # No cross-episode cash/equity/kill carry. Keep the original ledger
+        # and actual events as separate immutable research episode evidence.
+        snapshot = self.snapshot()
+        archived = {"events": deepcopy(self.events),
+                    "ledger": deepcopy(self.verify_ledger()),
+                    "snapshot": deepcopy(snapshot)}
+        preserved = self.b_history + [archived]
+        signals = self.seen_signals.copy()
+        stale = self.stale
+        self.__init__(str(self.capital), str(self.margin), str(self.leverage),
+                      str(self.daily_limit), self.streak_limit, "24",
+                      str(self.liq_pct), str(self.liq_fee),
+                      rates=self.rates, mode="B")
+        self.b_history = preserved
+        self.seen_signals = signals
+        self.stale = stale
 
     def _apply_event(self, event):
         """One strict Decimal50 transition; replay_account stays independent."""
