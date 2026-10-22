@@ -4,119 +4,54 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "RELAY-POLICY-ATOMIC",
-  "instruction_id": "RELAY-POLICY-ATOMIC-u3-initial",
-  "status": "BLOCKED",
-  "source_head_sha": "afd91e55b4d41c41f3949a6924dc5a81cc4531d5",
-  "summary": "Original Unit3 source partial, fail-loud acceptance, NOT release-ready. Preserved all existing 22 test IDs/assertions. Added 5 real Python subprocess finite tests (27 methods): carrier.send production function in distinct jobdirs with shared product lock and O_EXCL synthetic local file external effect; different products parallel eligibility; restart loser; UNKNOWN after effect never resends; real relay_dispatch_worker confirmed-receipt restart observation expects no BOUNDED_PROMPT_EXISTS. Worker source was NOT repaired, and currently checks bounded prompt existence BEFORE product claim or receipt reconciliation, a real suspected blocker; tests NOT_RUN so runtime failure not asserted as proven. No stdlib installed isolated Chromium/CDP harness shipped in this unit; full browser acceptance and release remain BLOCKED. No production edits, no actual ChatGPT or GitHub effect, no deployment. Prior Unit1 accepted 16 and Unit2 scoped 22 PASS/CI SUCCESS evidence remains separate.",
+  "instruction_id": "RELAY-POLICY-ATOMIC-u3-r1",
+  "status": "WAITING_CI",
+  "source_head_sha": "c734bb38f8bae33c4cf77126fe34720473e08704",
+  "summary": "One authorized U3-r1 worker production fix exactly as requested: receipt-rpath check moved before bounded prompt guard; existing bounded prompt WITH receipt is reused, without receipt BLOCKED; duplicate later rpath assignment removed. Original 27 test IDs/assertions retained. Added 6 tests (33 total): opt-in real disposable stdlib CDP Chromium fixture selector/effect using RELAY_CDP_BROWSER; live owner non-displacement; expired owner revival; duplicate confirmed completion; scope mutation before carrier effect; no-receipt bounded prompt denial. Existing real subprocess carrier sender/race/UNKNOWN tests preserved. No product_dispatch, stage_relay, PR75 or other production edits, and no real ChatGPT or GitHub test sends. Not yet compiled/executed in this file-only GitHub turn. New revival/dedup tests are fail-loud against read-only product_dispatch and may expose a genuine capability gap; no automatic further repair authorized.",
   "changed_files": [
+    "engineering/relay/relay_dispatch_worker.py",
     "lab/tests/test_relay_policy_atomic.py",
     ".relay/mailbox/c0041-stage-relay.json"
   ],
   "tests": [
     {
-      "command": "python3 -m py_compile lab/tests/test_relay_policy_atomic.py",
+      "command": "python3 -m py_compile engineering/relay/relay_dispatch_worker.py lab/tests/test_relay_policy_atomic.py",
       "result": "NOT_RUN",
-      "evidence": "File-only GitHub update_file; no shell execution."
+      "evidence": "No local shell execution in this GitHub file-only delivery. Actual changed production and test sources must be compiled independently."
     },
     {
       "command": "python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v",
       "result": "NOT_RUN",
-      "evidence": "27 authored test methods, original22 preserved; new genuine child carrier.send/file effect tests and fail-loud worker confirmed-receipt restart test. No PASS claimed."
+      "evidence": "33 authored methods (original27 unchanged +6). Main previously measured initial27 26PASS 1FAIL test_worker_restart_obs. New suite not executed by assistant."
     },
     {
-      "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
+      "command": "RELAY_CDP_BROWSER=/absolute/path/to/chromium python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -k test_browser_cdp -v",
       "result": "NOT_RUN",
-      "evidence": "Existing 26 stage relay methods untouched; no rerun."
+      "evidence": "Opt-in isolated browser; unset env explicitly skips. CI without opt-in DOES NOT prove CDP. Test launches disposable browser with loopback ephemeral debugging port, local http.server fixture and stdlib masked WebSocket CDP; asserts one POST effect, kills process group and cleans temp profile."
     },
     {
-      "command": "Isolated installed Chromium/CDP actual DOM/selectors via disposable browser profile",
+      "command": "New exact-head push and pull_request CI under umask 0022 and 0002",
       "result": "NOT_RUN",
-      "evidence": "Runnable stdlib browser harness NOT DELIVERED; no browser executable launched, no port touched, no implicit skip counted PASS."
-    },
-    {
-      "command": "New Unit3 exact-head push and pull_request CI",
-      "result": "NOT_RUN",
-      "evidence": "New final-head runs not observed; prior U2 push39604983197 and PR39604990694 SUCCESS are not Unit3 evidence."
+      "evidence": "No new final head CI conclusion observed or claimed. Parent must verify both exact-head CI runs, and execute tests under both umasks."
     }
-  ],
-  "installation_map": [
-    {
-      "destination": "scripts/auto_allow.py",
-      "source": "engineering/relay/auto_allow.py",
-      "dependencies": "relay-backlog-operator sibling allow-card, diff-clean, approval_transaction, product_dispatch; same absolute lock root"
-    },
-    {
-      "destination": "scripts/stage_relay.py",
-      "source": "engineering/stage_relay.py",
-      "dependencies": "scripts/maker_stage_bridge.py sibling from engineering/maker_stage_bridge.py; profile stage-relay/C0041 graph/state/evidence"
-    },
-    {
-      "destination": "skills/chatgpt-engineering-relay/scripts/profile_runner.py",
-      "source": "engineering/relay/profile_runner.py",
-      "dependencies": "engineering_instruction_carrier.py, product_dispatch.py, instruction-template.txt, engineering_github_inbox.py, main_verdict.py"
-    },
-    {
-      "destination": "skills/chatgpt-engineering-relay/scripts/relay_dispatch_worker.py",
-      "source": "engineering/relay/relay_dispatch_worker.py",
-      "dependencies": "chatgpt_page_io.py, product_dispatch.py, instruction-template.txt; inherited gh CLI"
-    },
-    {
-      "destination": "skills/chatgpt-engineering-relay/scripts/chatgpt_page_io.py",
-      "source": "engineering/relay/chatgpt_page_io.py",
-      "dependencies": "product_dispatch.py; installed Node/CDP transport dependency requires separate installed check"
-    },
-    {
-      "destination": "skills/chatgpt-engineering-relay/scripts/engineering_instruction_carrier.py",
-      "source": "engineering/relay/engineering_instruction_carrier.py",
-      "dependencies": "product_dispatch.py, approval_transaction.py"
-    },
-    {
-      "destination": "skills/relay-backlog-operator/scripts/auto_allow.py",
-      "source": "engineering/relay/auto_allow.py",
-      "dependencies": "product_dispatch.py indirectly via strict/diff, shared auto_allow.lock"
-    },
-    {
-      "destination": "skills/relay-backlog-operator/scripts/relay-allow-if-diff-clean.py",
-      "source": "engineering/relay/relay-allow-if-diff-clean.py",
-      "dependencies": "approval_transaction.py, product_dispatch.py"
-    },
-    {
-      "destination": "skills/relay-backlog-operator/scripts/relay-allow-card.py",
-      "source": "engineering/relay/relay-allow-card.py",
-      "dependencies": "approval_transaction.py, product_dispatch.py"
-    },
-    {
-      "destination": "skills/relay-backlog-operator/scripts/relay-poll.py",
-      "source": "engineering/relay/relay-poll.py",
-      "dependencies": "relay-allow-card.py, relay-allow-if-diff-clean.py, gh CLI"
-    }
-  ],
-  "additional_install_requirements": [
-    "Copy product_dispatch.py and approval_transaction.py beside all consumers that import them; if duplicated under both skill scripts, byte-pin and verify every copy.",
-    "Copy instruction-template.txt beside profile_runner.py and relay_dispatch_worker.py, and engineering_handback_contract.py wherever original inbox/runner imports require it.",
-    "Check pre-existing queue_runner.py, engineering_github_inbox.py, main_verdict.py, actual carrier and pageIO transport and browser binary dependencies: no new source supplied for these.",
-    "Keep scripts/stage_relay.py no-arg namespace and maker bridge sibling mapping; verify exact immutable graph/state source pin and original bootstrap separately.",
-    "All ten entrypoints require Main-controlled backup, SHA256 source manifest, full exact installed byte readback and isolated browser tests before any deploy."
   ],
   "remaining_work": [
-    "BLOCKER: Run genuine 27-method offline test suite and capture reached worker restart result. Current worker preemptively raises BOUNDED_PROMPT_EXISTS before reading CONFIRMED receipt; do not silently change test/production or retry send.",
-    "BLOCKER: Isolated stdlib Chromium/CDP/browser-layout acceptance (explicit browser binary override, disposable local profile/fixture, one actual DOM effect, finite cleanup/timeout) not delivered; no claims of success.",
-    "Further acceptance matrix gaps still pending in this original Unit3: owner expiry/revival, duplicate completion, prepare-to-click scope mutation across external effect, cross-jobdir independent product parallel timing, and actual full worker/pageIO browser route; do not claim complete.",
-    "Main verifies both final exact-head CI after unit3 commits and original whole-product importer/noarg stage compatibility; no partial installation or candidate self-approval.",
-    "Parent decides whether/how to repair genuine observed invariant failures. User authorized no automatic Unit3 repair after first actual failure; no scope/reset invented.",
-    "Maker market/reflection chain remains NOT_PROVEN; no PR75, paper/live, accounts, leases or market jobs touched."
+    "Main compile changed Python and execute all 33 methods under umask 0022 and 0002. Preserve any reached failure from read-only product_dispatch owner expiry revival or duplicate confirmation.",
+    "Main opt in to disposable Chromium/CDP test using explicit RELAY_CDP_BROWSER absolute browser binary path and verify actual DOM click and one local fixture effect; no auth/no live ports19242/9222.",
+    "Review worker original failure repair: test_worker_restart_obs and test_prompt_no_receipt must both execute; never resend original instruction after CONFIRMED or UNKNOWN.",
+    "Main verify both new exact-head push and PR CI; CI browser skip is NOT CDP acceptance. Validate source hashes and installed sibling/importer/noarg stage adapter compatibility before any separately gated release.",
+    "No automatic additional U3 correction; any new genuine failure returns to parent decision. No deployment, paper/live, market or PR75 actions."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Treat U3 as BLOCKED partial source only. Compile test file then run python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v; isolate exact child race/effect, UNKNOWN and worker restart outputs. Review source-level early BOUNDED_PROMPT_EXISTS before receipt check; inspect both new exact-head CI. Validate ten-entrypoint mapping and missing installed stdlib CDP probe. No installation.",
-    "if_pass": "Even green component tests do NOT establish installed browser product acceptance; require remaining original U3 finite browser/owner-contract evidence plus full source-pinned install checks before any deployment.",
-    "if_fail": "Retain exact traceback/rc and source SHA; hand to parent for decision, no automatic repair or rerun of unknown sends.",
+    "verify_now": "Verify exact PR76 final HEAD and pre-mailbox source SHA. Run python3 -m py_compile engineering/relay/relay_dispatch_worker.py lab/tests/test_relay_policy_atomic.py; run umask 0022 && python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v and same under umask 0002; run opt-in isolated Chromium test with RELAY_CDP_BROWSER absolute executable, and independently verify both exact-head push/PR CI. Preserve any real owner revival/dedup failure rather than weakening tests.",
+    "if_pass": "Only after all offline, opt-in browser, dual CI, importer/noarg checks, complete backup/sourcepin mapping and exact-byte installed readback should Main consider separate release authority. Do not treat CI skip as browser PASS.",
+    "if_fail": "Retain exact traceback/rc/HEAD, especially owner expiry/duplicate or actual worker restart evidence; stop and route to parent for decision. No automatic U3 r2 or unsafe resends.",
     "blockers": [
-      "U3 tests and CI NOT_RUN by assistant",
-      "Current worker bounded prompt-before-receipt restart defect suspected; fail-loud test delivered",
-      "Required installed stdlib Chromium/CDP harness missing",
-      "Required Unit3 full finite owner/brower matrix incomplete",
-      "No production deploy or Maker results accepted"
+      "All U3-r1 tests and CI NOT_RUN by assistant",
+      "Browser opt-in must be explicitly run, CI skip is not PASS",
+      "Owner expiry revival and duplicate confirmation may be unsupported in read-only product_dispatch",
+      "Whole installed product and Maker history/reflection still NOT_PROVEN"
     ]
   }
 }
