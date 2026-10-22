@@ -102,6 +102,7 @@ let snapshot=null, pending=false, cycle=0, lastOk=0;
 function render(data) {
   if(!data||!Array.isArray(data.routes)||!data.kpis||!data.sources)throw Error('invalid metro');
   snapshot=data;lastOk=Date.now();
+  const wasOpen=!!document.querySelector('#metroKpis details')?.open;
   const k=clear('metroKpis');
   [['核驗中程序 / PIDs',data.kpis.processes],['Maker baseline',String(data.kpis.maker_cells??'NA')+'/48'],
    ['清算事件',data.kpis.liquidations],['待人工決策',data.kpis.pending_decisions]].forEach(([label,v])=>{
@@ -116,6 +117,7 @@ function render(data) {
     const label=decision.textContent;
     decision.replaceChildren();
     const details=add(decision,'details');
+    details.open=wasOpen;
     const summary=add(details,'summary',label+' · 展開唯讀清單');
     summary.setAttribute('role','button');
     const entries=data.kpis.pending_list;
