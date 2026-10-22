@@ -180,8 +180,12 @@ function render(data) {
   const health=clear('metroHealth');
   Object.entries(data.sources).forEach(([name,v])=>{
     const age=v.age_ms==null?'':(' · '+Math.floor(v.age_ms/60000)+' 分鐘');
-    add(health,'p',name+'：'+(v.state==='stale'?'稍早資料':' '+(v.state||'未知'))+age,'meta');
+    const label=v.basis==='ledger_match'?'與帳本一致':
+      v.state==='stale'?'稍早資料':(v.state||'未知');
+    add(health,'p',name+'：'+label+age,'meta');
   });
+  if((data.warnings||[]).includes('directive_mismatch'))
+    add(health,'p','directive_mismatch · 指令與帳本未能核對','meta');
   get('metroHistoryCount').textContent=String(data.history_count??'未知');
   const history=clear('metroHistoryRows');
   (data.history||[]).forEach(t=>add(history,'p',(t.id||'?')+' · '+(t.title||'未確認')+' · '+(t.state||'未知'),'meta'));
