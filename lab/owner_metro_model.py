@@ -20,6 +20,47 @@ ROUTES = (
 )
 
 
+def directive_matches(doc, health, ledger_state, ledger_health, rows, selected):
+    """Independently corroborate a stale directive without changing its KPI origin."""
+    if (health.get("state") != "stale" or
+            type(health.get("age_ms")) is not int or
+            not 300000 < health["age_ms"] <= 86400000 or
+            ledger_state != "available" or
+            ledger_health.get("state") != "available" or
+            not isinstance(rows, list) or not isinstance(doc, dict)):
+        return False
+    declared = doc.get("pending_decisions")
+    if type(declared) is int:
+        if declared < 0 or declared != len(selected):
+            return False
+    elif isinstance(declared, list):
+        if any(not isinstance(item, dict) or
+               not isinstance(item.get("id"), str) or
+               item.get("status") not in ("PENDING", "WAITING_HUMAN",
+                                           "RESOLVED", "CLOSED")
+               for item in declared):
+            return False
+        expected = {item["id"] for item in declared
+                    if item["status"] in ("PENDING", "WAITING_HUMAN")}
+        actual = {item.get("id") for item in selected
+                  if isinstance(item.get("id"), str)}
+        if expected != actual or len(actual) != len(selected):
+            return False
+    else:
+        return False
+    owners = doc.get("active_owners", [])
+    if not isinstance(owners, list):
+        return False
+    states = {item.get("id"): item.get("state") for item in rows
+              if isinstance(item, dict) and isinstance(item.get("id"), str)}
+    return all(isinstance(owner, dict) and
+               isinstance(owner.get("item"), str) and
+               owner["item"] in states and
+               states[owner["item"]] not in
+               ("VERIFIED", "DROPPED", "SUPERSEDED", "FROZEN")
+               for owner in owners)
+
+
 def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576, proc_root="/proc"):
     docs, health, paths = load(root, now_ms, max_bytes)
     activity = read_activity(root, now_ms=now_ms, max_age_ms=max(max_age_ms, 86400000),
@@ -108,7 +149,7 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576, proc_root=
     pending_source = "directive" if pending is not None else None
     if ledger_state == "available":
         selected = [x for x in raw_rows if isinstance(x, dict) and
-                    x.get("state") in ("OPEN", "DISPATCHED") and
+                    x.get("state") not in ("VERIFIED", "DROPPED") and
                     isinstance(x.get("blocked_by"), str) and
                     x["blocked_by"].startswith("user:")]
         pending_list = [{"id": str(x.get("id", ""))[:100],
@@ -119,6 +160,15 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576, proc_root=
         if pending is None and health.get("directive", {}).get("state") == "stale":
             pending = len(selected)
             pending_source = "ledger"
+    match_warnings = []
+    if health.get("directive", {}).get("state") == "stale":
+        if directive_matches(directive, health["directive"], ledger_state,
+                             activity["sources"].get("ledger", {}),
+                             raw_rows, selected if ledger_state == "available" else []):
+            health["directive"]["state"] = "available"
+            health["directive"]["basis"] = "ledger_match"
+        else:
+            match_warnings.append("directive_mismatch")
     recent = []
     if ledger_state == "available":
         for x in raw_rows:
@@ -169,4 +219,4 @@ def read_metro(root, *, now_ms, max_age_ms=300000, max_bytes=1048576, proc_root=
             "routes": routes, "recent": recent, "history": history[-4096:],
             "history_count": history_count,
             "source_totals": activity["totals"],
-            "warnings": activity["warnings"] + node_warnings}
+            "warnings": activity["warnings"] + node_warnings + match_warnings}
