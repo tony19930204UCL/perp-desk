@@ -4,12 +4,11 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-X2-R4-2-r2",
+  "instruction_id": "MAKER-V3-X2-R4-2-r3",
   "status": "WAITING_CI",
-  "source_head_sha": "4db3ef543c81572e354657b4540bf7b21ea0257e",
-  "summary": "Bounded U2 test and terminal-funnel correction. Main's isolated r1 execution ran 150 tests under each umask, with 149 PASS and one ERROR: test_replay_default_same lacked mandatory base_volume/quote_volume in fictional bars. Updated only that test helper to valid completed OHLCV, preserving real eligible_decisions generation and byte-identical default-vs-explicit A output assertion. Added test_two_funded_losses with two actual B short fills, each with original finalized nonzero funding before risk-close; independent replay_account equality of cash/fees/funding and notional500 per episode, two losses after automatic flat reset. Added test_funnel_exclusive using mixed real fill/exit, H2_SKIP, pending/guard and strategy/matched, asserting total exclusive terminal classifications plus unprocessed exactly equals signals. market_replay now assigns each signal one terminal class; it no longer clamps negative unresolved counts with max(0), instead throws X2Error on nonconservation. Existing A/F0 shape/financial economics, strict account_ledger/liquidation/accounting, previous U1 and original122 tests are unchanged. These are candidate source/tests; current GitHub-only session did NOT run Python, dual umask, mutations, CI or market. Historical r1 one ERROR preserved, old six surviving mutation gaps still open.",
+  "source_head_sha": "5a8bb26e78b62668fbb7a4f285c8f24eb9ae7330",
+  "summary": "Fixture-only correction for Main CIO's independently measured r2 checkout: under both umask values 152 executed tests, 151 PASS and only test_fixed_notional.Control.test_replay_default_same ERROR. Although valid OHLCV volume fields were added in r2, the original fixed closes gave sigma288=0 and unchanged signal_features.eligible_decisions properly returned no eligible decisions, so hardcoded matched timestamp failed the existing guard. Modified ONLY that test: synthetic 300 fully closed 1m bars now have nonconstant Decimal-based close history, with nonzero historical sample return variance. The real eligible_decisions(bars,1) API selects an actual decision timestamp from the evaluation window; assert nonempty eligibility and exactly one chosen matched signal. replay_cell still computes its own complete feature pathway (eligible not passed) for default A and explicit mode A, and original serialized json.dumps sort_keys equality plus no research_mode assertion remain. No empty matched list or mocked feature path, no production or other test changes. r2 nonzero two-episode B funding and exclusive signal funnel controls previously passed independently; that is historical r2 evidence, not an r3 test run. Current r3 Python, dual umask, mutations, CI and market NOT_RUN in GitHub file-only environment. Six earlier surviving mutations remain unclosed. No R4 market result, U3, merger, deploy or trading.",
   "changed_files": [
-    "engineering/maker_x2/market_replay.py",
     "engineering/maker_x2/tests/test_fixed_notional.py",
     ".relay/mailbox/maker-v3-x2.json"
   ],
@@ -17,35 +16,34 @@
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "No Python execution in current GitHub file-only environment. The historical r1 150 tests 149 PASS/1 ERROR belongs to independent Main checkout, not current r2."
+      "evidence": "No Python execution available through authorized GitHub file operations. Main's r2 independent 152-test results are historical and do not imply r3 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_fixed_notional.py -v",
       "result": "NOT_RUN",
-      "evidence": "No Python execution in current GitHub file-only environment. The historical r1 150 tests 149 PASS/1 ERROR belongs to independent Main checkout, not current r2."
+      "evidence": "No Python execution available through authorized GitHub file operations. Main's r2 independent 152-test results are historical and do not imply r3 PASS."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --self-test",
       "result": "NOT_RUN",
-      "evidence": "No Python execution in current GitHub file-only environment. The historical r1 150 tests 149 PASS/1 ERROR belongs to independent Main checkout, not current r2."
+      "evidence": "No Python execution available through authorized GitHub file operations. Main's r2 independent 152-test results are historical and do not imply r3 PASS."
     }
   ],
   "remaining_work": [
-    "Main CIO pin exact source_head_sha and mailbox ancestry, ensure only market_replay.py, tests/test_fixed_notional.py and mailbox changed relative to d94dca9adea5e01275f76e2f50c3752a33f75546.",
-    "Under both umask0022 and0002 execute full discovery preserving all 149 previously passing U2-r1 controls and the original122, including newly discovered two funded B episode and mixed terminal funnel tests; run standalone and --self-test.",
-    "Check nonzero funding actually settles when short qty>0 before risk exit in both independent B episodes. Verify 500 entry notional, net losing episodes, cash/fees/funding/LIQ from unchanged replay_account and no cross-episode investable equity.",
-    "Validate all mutually exclusive signal terminal outcomes, unprocessed tail counts, H2_SKIP/WARMUP, postonly/TTL/guard/filled/open across strategy and matched. No max-zero masking or double count; A/F0 entire JSON should match accepted pre-U2 source.",
-    "Only after positive tests PASS run original mutations, report six historical survivors, measure 20k/40k, collect exact-head push+pull_request CI. Full R4 U3 m96 and historical 48x3 are outside this unit."
+    "Main CIO pin exact full source SHA and final handback head; byte-compare every production module and other test file against ac0ca748ac95d9c36aada6d0223064037554b6cf; only test_fixed_notional.py and mailbox may differ.",
+    "Under umask0022 and0002 run full discoverable suite retaining original122 and all other 151 previously passing tests plus corrected default A complete replay control. Confirm a genuine nonzero-variance eligible_decisions time in window is selected and full feature generation runs without eligible= override.",
+    "Verify complete JSON default A vs explicit mode A still equal and no research_mode, without changing sigma guard or data chronology; separately preserve independent two B funded episodes and strict exclusive signal funnel positive controls.",
+    "Only if all positive gates PASS execute original mutations including six known survivors (report any survivors), exact-head push and pull_request CI, and required 20k/40k profiling. No U3 implementation or historical R4 market advancement as part of this fixture-only revision."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Pin full source HEAD 4db3ef543c81572e354657b4540bf7b21ea0257e and new final handback head. Run full discovery and fixed-notional tests under both umasks. Specifically prove two realized nonzero-funded B episodes with exact independent ledger equality and mixed strategy/matched funnel sum=signals, plus default A/F0 complete original bytes. Then mutations, 20k/40k, push/PR exact-head CI.",
-    "if_pass": "Accept only finite U2 engineering once all financial and causal checks independently pass; U3 and market strategy work separately authorized.",
-    "if_fail": "Preserve exact failing ID, traceback, source SHA and Decimal/event evidence; do not loosen ledger or change frozen risk assumptions.",
+    "verify_now": "Pin pre-mailbox source 5a8bb26e78b62668fbb7a4f285c8f24eb9ae7330 and final PR75 head. Run dual-umask full discovery and fixed-notional suite using immutable r3 source; confirm the corrected test retrieves a nonempty real eligible decision with sigma288 positive, executes unmocked replay_cell and preserves serialized A/default equality. Confirm original 151 controls including nonzero B funding and funnel stay green, then mutation/CI/performance gates.",
+    "if_pass": "Accept bounded U2 fixture-only r3 after independent all-positive green, appropriate mutants and exact-head CI; any U3/m96/statistics/market exploration separately authorized.",
+    "if_fail": "Preserve exact full SHA, test ID, traceback and original raw fixture values. Do not relax feature sigma, account ledger or expand file allowlist.",
     "blockers": [
-      "Current r2 Python/dual umask/mutations/resource/CI NOT_RUN",
-      "Historical r1 one genuine missing-volume fixture ERROR awaiting r2 independent GREEN",
-      "Six older mutation survivors remain unaddressed; no U3/R4 market acceptance"
+      "r3 tests/umask/mutations/CI/performance NOT_RUN in GitHub-file-only session",
+      "Prior r2 151 PASS / 1 ERROR still historical until r3 source independently checked",
+      "Six historical surviving mutants and full R4 market/product acceptance remain open"
     ]
   }
 }
