@@ -366,3 +366,80 @@ def approve_check(job, job_dir, instruction, fingerprint, *, chat=None):
                     "instruction_id": instruction, "chat": scope["chat"]}):
             raise DispatchBlocked("SEND_SOURCE_CHANGED", prior.get("owner"))
         return dict(prior)
+
+
+def release_revise(job, job_dir, instruction, verdict_path, *, chat=None):
+    """Release a confirmed instruction only on a bound, reviewed REVISE verdict."""
+    root, key, scope, directory = _scope(job, job_dir, instruction, chat)
+    with _record(root, key) as (live, prior):
+        if prior is None:
+            raise DispatchBlocked("RELEASE_NOTHING")
+        try:
+            raw = Path(verdict_path).read_bytes()
+            verdict = json.loads(raw)
+            fields = ("schema_version", "status", "reviewer", "repository",
+                      "pr_number", "branch", "released_instruction",
+                      "next_instruction", "released_generation", "evidence")
+            if (not isinstance(verdict, dict)
+                    or any(name not in verdict for name in fields)
+                    or type(verdict["schema_version"]) is not int
+                    or verdict["schema_version"] != 1
+                    or not isinstance(verdict["status"], str)
+                    or not isinstance(verdict["reviewer"], str)
+                    or not verdict["reviewer"].strip()
+                    or type(verdict["pr_number"]) is not int
+                    or not isinstance(verdict["evidence"], list)
+                    or not verdict["evidence"]
+                    or any(not isinstance(item, str) or not item.strip()
+                           for item in verdict["evidence"])):
+                raise ValueError("bad verdict fields")
+        except (OSError, UnicodeError, ValueError, TypeError) as exc:
+            raise DispatchBlocked("RELEASE_VERDICT_INVALID") from exc
+        if verdict["status"] != "REVISE":
+            raise DispatchBlocked("RELEASE_NOT_REVISE")
+        old_scope = prior.get("scope", {})
+        if (verdict["repository"] != scope["repo"]
+                or verdict["pr_number"] != scope["pr"]
+                or verdict["branch"] != scope["branch"]
+                or any(old_scope.get(name) != scope[name]
+                       for name in ("repo", "pr", "branch"))
+                or verdict["released_instruction"] != old_scope.get("instruction")
+                or verdict["released_generation"] != prior.get("generation")
+                or verdict["next_instruction"] != instruction
+                or instruction == old_scope.get("instruction")):
+            raise DispatchBlocked("RELEASE_INSTR_MISMATCH")
+        digest = hashlib.sha256(raw).hexdigest()
+        grant = {"verdict_sha256": digest,
+                 "released_generation": prior["generation"],
+                 "next_instruction": instruction}
+        if job.get("dispatch_release_grant") != grant:
+            raise DispatchBlocked("RELEASE_GRANT_MISMATCH")
+        if (prior.get("phase") != "SENT_CONFIRMED"
+                or prior.get("adopted_send")
+                or any(card.get("phase") == "APPROVE_INTENT"
+                       for card in prior.get("cards", {}).values())):
+            raise DispatchBlocked("RELEASE_CLAIM_ACTIVE")
+        archive_dir = root / "released"
+        archive_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        archive_dir.chmod(0o700)
+        for record_path in archive_dir.glob("*.json"):
+            try:
+                archived = json.loads(record_path.read_bytes())
+            except (OSError, ValueError, UnicodeError) as exc:
+                raise DispatchBlocked("RELEASE_ARCHIVE_INVALID") from exc
+            if archived.get("verdict_sha256") == digest:
+                raise DispatchBlocked("RELEASE_VERDICT_REUSED")
+        archive = archive_dir / (key + "-" + prior["generation"] + ".json")
+        if archive.exists():
+            raise DispatchBlocked("RELEASE_ARCHIVE_EXISTS")
+        result = dict(prior, released_at=time.time(), verdict_sha256=digest,
+                      verdict=verdict, next_instruction=instruction,
+                      releaser=_identity())
+        _write(archive, result)
+        os.unlink(live)
+        dfd = os.open(str(root), os.O_RDONLY)
+        try:
+            os.fsync(dfd)
+        finally:
+            os.close(dfd)
+        return result
