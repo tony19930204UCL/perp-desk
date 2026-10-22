@@ -4,59 +4,57 @@
   "pr_number": 78,
   "branch": "fix/heatmap-collector-contract-20261021",
   "task_id": "HEATMAP-LOGIN-TIMEOUT-FIX",
-  "instruction_id": "heatmap-fix-002",
+  "instruction_id": "heatmap-fix-003",
   "status": "WAITING_CI",
-  "source_head_sha": "7d29b824f8674145e3fcd42eeb9c8fdf772d479a",
-  "summary": "Corrected JS login eligibility: when hasLogin is true the user-menu path cannot increment; it resets the consecutive streak. Persistent Login still resolves false/login_leaf only after >=2000 ms, logout leaf still wins immediately, and transient Login followed by two menu samples resolves true/user_menu_button. Restored original test30 case1 and case6 state/evidence assertions with longer fake-DOM max wait, added case1 upper bound and new test50 concurrent Login/menu regression. Preserved tests46-49, archive Python, deadlines and diagnostics unchanged. No local execution or test PASS asserted.",
+  "source_head_sha": "4243cf992a37d25c46ccbee2439e4f847ac4723d",
+  "summary": "Corrected only heatmap_capture.ps1 line 184: call ToString() on bool before ToLowerInvariant() to emit lower-case PHASE combo status in Windows PowerShell 5.1. Added test_51_phase_line_run to extract and actually execute the production PHASE end line for true and false using native PowerShell -NoProfile -Command under inherited policy; new Windows CI step directly after test_45 runs -k test_51. No changes to previous test assertions, Python archive, login, deadlines, diagnostics or permissions. GitHub comparison from prior d28c537 showed exactly three source files, 25 added/1 deleted lines, 3 forward commits. Exact-source run 39750942222 queued when checked; no tests performed locally.",
   "changed_files": [
     "engineering/collectors/heatmap/heatmap_capture.ps1",
     "engineering/collectors/heatmap/tests/test_heatmap_archive.py",
+    ".github/workflows/ci.yml",
     ".relay/mailbox/heatmap-collector.json"
   ],
-  "changed_assertions": [
-    "test_30 case1 state: unknown -> false (restore original)",
-    "test_30 case1 evidence: timeout -> login_leaf (restore original)",
-    "test_30 case1 waited_ms lower bound: 1500 -> 2300",
-    "test_30 case1 waited_ms upper bound: <=3200 (restored bounded expectation, adjusted for 2000ms stability)",
-    "test_30 case6 state: true -> false (restore original)",
-    "test_30 case6 evidence: user_menu_button -> login_leaf (restore original)",
-    "test_50 adds steady concurrent Login/menu false/login_leaf and waited_ms >=2000, transient Login then menu true/user_menu_button"
-  ],
+  "changed_assertions": [],
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/collectors/heatmap/tests -v",
       "result": "not run",
-      "evidence": "Main CIO reported 49-test baseline execution before correction; no local run of this exact source head or test50."
+      "evidence": "No local checkout/execution performed; new test uses native PowerShell and skips only when unavailable."
     },
     {
       "command": "python3 engineering/collectors/heatmap/heatmap_archive.py --selftest",
       "result": "not run",
-      "evidence": "Unchanged source but exact-head selftest not executed."
+      "evidence": "Not executed in this instruction; heatmap_archive.py unchanged."
     },
     {
       "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_43 -v",
       "result": "not run",
-      "evidence": "Main CIO reports earlier Windows CI green, not evidence for updated source."
+      "evidence": "Windows CI step retained unchanged; new exact-source run queued."
     },
     {
       "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_45 -v",
       "result": "not run",
-      "evidence": "Main CIO reports earlier Windows CI green, not evidence for updated source."
+      "evidence": "Windows CI step retained unchanged; new exact-source run queued."
+    },
+    {
+      "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_51 -v",
+      "result": "not run",
+      "evidence": "New native CI step added after test_45; GitHub Actions run 39750942222 queued, result not yet available."
     }
   ],
   "remaining_work": [
-    "Clean-clone verification of all 50 tests including test30 and test46-50, plus Windows 43/45.",
-    "Verify updated push/PR exact-head CI green, mutation gate and umask 0022/0002.",
-    "No Windows native execution or live collector scheduling on new PS1 bytes without operator exact-version approval."
+    "Inspect exact-head PR and push CI after mailbox commit and confirm Windows native test_51 executes and passes both boolean cases.",
+    "Confirm existing tests 01-50 intact, Linux 51 discovery, Windows test43/test45 and selftest; independent clean-clone acceptance.",
+    "Full real six-combo capture under separately authorized Windows installation and original browser/session gates not proven by this change."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Verify source SHA 7d29b824f8674145e3fcd42eeb9c8fdf772d479a and mailbox successor, three-file scope, all test30 original state/evidence assertions restored, fake maxMs=4000 in cases1/6, concurrent Login/menu test50 and all 50 tests, Windows 43/45, exact-head CI and existing gates.",
-    "if_pass": "Mark candidate ready for review only after exact-head CI acceptance; separately approve any native Windows installation; do not merge/deploy automatically.",
-    "if_fail": "Record exact failure and smallest correction, keep branch history and no main mutations.",
+    "verify_now": "Review PR78 exact-head diff against d28c537: PowerShell production line184 is sole one-line change; tests 01-50 unchanged; new test51 actually executes exact line with true/false under inherited ExecutionPolicy; CI Windows job step after 45 must show discovered executed test51 and pass, along with Windows 43/45, Linux and selftest. GitHub source run 39750942222 was queued during handoff; recheck post-mailbox commit.",
+    "if_pass": "Move to READY_FOR_REVIEW only after exact-head green CI and independent acceptance; separately authorize any native installation. Do not merge/deploy/trade.",
+    "if_fail": "Record exact job and observed failing assertion or PS error, request minimal correction on this branch only.",
     "blockers": [
-      "Exact-head local and CI verification not completed.",
-      "Changed native PowerShell bytes not independently approved for host execution."
+      "No exact-head execution result yet; native Windows line not run in this assistant session.",
+      "Real six-combo capture remains separate operational acceptance."
     ]
   }
 }
