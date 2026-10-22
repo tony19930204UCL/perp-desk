@@ -1,0 +1,38 @@
+"""Categorize original offline entry cancellation/admission reason strings."""
+CATS = ("TTL_EXPIRED", "POST_ONLY_CROSS", "RISK_GUARD",
+        "X1_ADMISSION", "H2_SKIP", "OTHER")
+RAW_MAP = {
+    "EXPIRED": "TTL_EXPIRED",
+    "POST_ONLY_REJECT": "POST_ONLY_CROSS",
+    "ADMISSION_REJECTED": "RISK_GUARD",
+    "INSUFFICIENT_CASH_OR_MARGIN": "RISK_GUARD",
+    "single slot occupied": "RISK_GUARD",
+    "gap/halt blocks entry": "RISK_GUARD",
+    "pending/position occupies single slot": "RISK_GUARD",
+    "X1_ADMISSION_REJECTED": "X1_ADMISSION",
+    "H2_SKIP": "H2_SKIP",
+}
+
+
+def cancel_table(reasons, total_signals):
+    if type(total_signals) is not int or total_signals < 0:
+        raise ValueError("invalid total_signals")
+    counts = {key: 0 for key in CATS}
+    other_raw = {}
+    cancelled = 0
+    for raw in reasons:
+        cancelled += 1
+        if cancelled > total_signals:
+            raise ValueError("cancelled exceeds total_signals")
+        cat = RAW_MAP.get(raw, "OTHER")
+        counts[cat] += 1
+        if cat == "OTHER":
+            other_raw[raw] = other_raw.get(raw, 0) + 1
+    return {"total": total_signals, "cancelled": cancelled,
+            "counts": counts, "other_raw": other_raw,
+            "filled_or_open": total_signals - cancelled}
+
+
+def share(table):
+    n = table["cancelled"]
+    return {cat: table["counts"][cat] / n if n else 0.0 for cat in CATS}
