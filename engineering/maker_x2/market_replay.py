@@ -87,6 +87,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                 raise X2Error("matched timestamp not in causal eligible universe")
     account = _account(account_config, rates=rates, mode=mode)
     funnel = Counter()
+    terminals = {}
     events = []
     counts = Counter()
     funding_index = 0
@@ -174,8 +175,13 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                            limit*maker_qty*account.rates.maker_fee)
             counterfactual=max(D(0),stop_delta,liq_delta)
             counts["favorable_order_upper_bound_usd"] += counterfactual
+        active_signal = account.entry.signal_id if account.entry else None
         result = account.bar(bar, entry_qty=qty, maker_fill=maker,
                              settlements=finalized)
+        if active_signal is not None and result in (
+                "EXPIRED", "POST_ONLY_REJECT", "CLOSED", "CLOSED_SL",
+                "LIQ_PROXY"):
+            terminals[active_signal] = result
         if active_before is not None:
             additions = active_before.history[history_before:]
             counts["admin_4h_triggers"] += sum(
@@ -208,11 +214,13 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                 skip, code = entry_filter.skip(r["signal_time"])
                 funnel[code] += 1
                 if skip:
+                    terminals[r["signal_id"]] = code
                     continue
             funnel["intents"] += 1
             if account.snapshot()["slot"] or account.stale:
                 counts["slot_or_gap_blocked"] += 1
                 funnel["RISK_GUARD"] += 1
+                terminals[r["signal_id"]] = "RISK_GUARD"
                 continue
             try:
                 with localcontext() as ctx:
@@ -230,6 +238,8 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                 counts["attempts"] += 1
                 funnel[status] += 1
                 counts[status] += 1
+                if status != "PENDING":
+                    terminals[r["signal_id"]] = status
                 if status == "PENDING":
                     episode_starts[r["signal_id"]] = {
                         "decision_ts": r["signal_time"],
@@ -238,6 +248,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
             except X2Error as exc:
                 counts["admission_rejected"] += 1
                 funnel["ADMISSION_REJECTED"] += 1
+                terminals[r["signal_id"]] = "RISK_GUARD"
                 events.append({"type": "ADMISSION_REJECTED", "ts": end,
                                "signal_id": r["signal_id"],
                                "reason": str(exc)})
@@ -342,7 +353,17 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
         processed = counts["signals"]
         funnel["unprocessed"] = total - processed
         funnel["signals"] = total
-        funnel["filled_or_open"] = counts["filled_episodes"]
+        tally = Counter(terminals.values())
+        funnel["terminal_counts"] = dict(tally)
+        funnel["post_only_cross"] = tally["POST_ONLY_REJECT"]
+        funnel["ttl_expired"] = tally["EXPIRED"]
+        funnel["guard_rejected"] = tally["RISK_GUARD"] + tally["INSUFFICIENT_CASH_OR_MARGIN"]
+        funnel["filled_or_open"] = sum(
+            1 for sid in episode_starts
+            if sid not in terminals or terminals[sid] in
+            ("CLOSED", "CLOSED_SL", "LIQ_PROXY"))
+        funnel["pending_or_unresolved"] = max(
+            0, total - len(terminals) - funnel["filled_or_open"])
         output["research_mode"] = mode
         output["funnel"] = dict(funnel)
         output["funnel_denoms"] = {
