@@ -4,61 +4,51 @@
   "pr_number": 79,
   "branch": "feat/owner-metro-live-20261021",
   "task_id": "OWNER-METRO-20261021",
-  "instruction_id": "owner-metro-001-r5",
-  "status": "BLOCKED",
-  "source_head_sha": "dbd44929d4535326faee69202f3d6a1d54196f25",
-  "summary": "Bounded r5 implementation: read-only, keyboard-accessible decision details and Asia/Taipei times; canonical ledger pending_list capped to 64 and derived recent list capped to 12; source-specific freshness thresholds and muted aged source labels; ledger row node text and failed PID status; new focused tests. Existing tested five-minute heartbeat assumption conflicts with requested fifteen-minute threshold and may require owner acceptance; exact-head tests not run. No deployment or live state mutation.",
+  "instruction_id": "owner-metro-001-r5b",
+  "status": "WAITING_CI",
+  "source_head_sha": "e6460cf3cc581c3aa156df922f652521adf09524",
+  "summary": "Bounded r5b contract alignment: directive and heartbeat remain 300000 ms; ledger/cron/work retain 15 minutes, roadmap/journal 24 hours; fresh directive controls KPI, stale directive only falls back to ledger, missing/corrupt stays NA. Independently expose ledger pending_list and show its own length in read-only disclosure. Update only r5 synthetic assertions for count priority and roadmap age, preserving old tests unchanged.",
   "changed_files": [
     "lab/owner_metro_sources.py",
     "lab/owner_metro_model.py",
-    "lab/owner_metro_nodes.py",
-    "lab/owner_activity.js",
-    "lab/owner_activity.html",
     "lab/tests/test_owner_metro_r5.py",
-    "lab/tests/test_owner_metro_ui.py",
+    "lab/owner_activity.js",
     ".relay/mailbox/owner-metro.json"
   ],
   "tests": [
     {
-      "command": "cd lab && python3 -m unittest -v tests.test_owner_metro_r5 tests.test_owner_metro_ui",
+      "command": "cd lab && python3 -m unittest discover -s tests -p 'test_owner_metro*.py'",
       "result": "NOT_RUN",
-      "evidence": "GitHub file actions only; no Python interpreter executed."
+      "evidence": "Operator independently ran previous r5 HEAD 39 tests, six failures under two umasks; corrected source but no r5b execution."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "No executed full suite evidence. Older heartbeat test may expect stale after 300001 ms, conflicting with r5 fifteen-minute freshness."
+      "evidence": "No executed full r5b suite."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests -v",
       "result": "NOT_RUN",
-      "evidence": "Not executed at r5."
+      "evidence": "Not run in this turn."
     },
     {
-      "command": "Exact full-head push and pull_request CI",
+      "command": "exact r5b push and pull_request CI",
       "result": "NOT_RUN",
-      "evidence": "No completed exact r5 HEAD dual success observed."
-    },
-    {
-      "command": "Real Chromium 1280/390",
-      "result": "NOT_RUN",
-      "evidence": "Operator-only browser verification not performed."
+      "evidence": "No completed exact mailbox-final HEAD dual CI evidence."
     }
   ],
   "remaining_work": [
-    "Run old and new tests. Existing heartbeat expectation of stale at five minutes can conflict with requested fifteen-minute threshold; do not alter protected old assertions.",
-    "Validate UI browser behavior, ledger latest-node freshness, recent work events, and stale restoration on real authorized profile.",
-    "Resolve acceptance conflicts explicitly before claiming READY_FOR_REVIEW; no deployment, merging or permission changes."
+    "Independently run 39 focused owner_metro tests and full CI on exact head; report actual results.",
+    "Run real Chromium and private operator staged read-only acceptance; no deployment attempted."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review final exact-head CI and compare protected historical heartbeat five-minute test against newly required fifteen-minute contract; verify pending_list and count and read-only disclosure.",
-    "if_pass": "Proceed only to frozen private operator spare-port acceptance; no automatic install.",
-    "if_fail": "Keep PR79 draft uninstalled; preserve exact failure logs for owner decision.",
+    "verify_now": "Confirm exact mailbox-final HEAD dual CI, unchanged old owner_metro_bind/node/MetroUnit assertions, and r5 fixture contracts.",
+    "if_pass": "Proceed to existing operator-only immutable spare-port acceptance, not automatic deployment.",
+    "if_fail": "Keep PR79 draft/uninstalled and report exact failure; do not weaken old assertions.",
     "blockers": [
-      "Exact-head tests NOT_RUN",
-      "Historical heartbeat freshness test conflicts with new requested threshold",
-      "Private operator Chromium/HTTP acceptance outstanding"
+      "r5b exact-head tests not executed in this session",
+      "Operator browser and private binding acceptance outstanding"
     ]
   },
   "uninstalled": true,
