@@ -4,64 +4,63 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-X2-STALLFIX-1-r2",
+  "instruction_id": "MAKER-V3-X2-STALLFIX-1-r3",
   "status": "READY_FOR_REVIEW",
-  "source_head_sha": "21d667d191da03b4fd71b425967e6a2d755b46a6",
-  "summary": "Final bounded r2 correction after Main measured r1 head d513078277105054ea99d8a94090bffe8fd51f39: 118 discovered, one FAIL test_reduce_only.test_witness_entry_risk, sole ledger divergence available=28-digit rounded vs independent 50-digit. Original incrementally computed cash is already Decimal50, but ledger() computed available=cash-reserved under ambient Decimal28. Placed only that subtraction in localcontext(prec=50); no event, money, comparison, strategy or reference replay changes. Added discoverable test_available_prec50 using 50-digit witnessed fictional qty, Maker sell, Taker buy, release margin and exact every-event full dictionary/type comparison plus ambient28 restoration; added seeded test_random_prec50 with 50-digit n/7 qty/price, funded partial buy, remaining LIQ or flat complete exit and strict per-event reference differential. Existing 118 tests and test_linear_cost unmodified. Heartbeat/progress.json/profile-cell intact. Main previously confirmed a narrow context-only modification passes 118 older controls but that is not this candidate's executed test result. All r2 tests, mutation, umask, profiling, exact-head CI and market NOT_RUN from GitHub-only session. Historical r0/r1 FAIL preserved.",
+  "source_head_sha": "aae5ce66a2ac55e6e123dda11c6b464b2af5d572",
+  "summary": "Bounded r3 repair of observed genuine baseline ETHUSDT 1m k.25 TTL2 X2 first TP over-close: 50-digit original entry quantity with odd least-significant digit was divided under a 52-digit producer context, creating a 51-digit half that could not be subtracted exactly by the unchanged strict Decimal50 independent account ledger. Changed only X2 half-quantity context precision from max(50,qty_digits+2) to max(50,qty_digits) with explanatory comments; complementary TP2 uses original existing subtraction. No clamp, epsilon, quantize, external ledger guard, pricing or risk changes. Added discoverable test_x2_odd_half in existing incremental differential tests using exact witnessed 50-digit quantity and real OfflineAccount ShortExit X2 first/second maker bar, asserting TP1 <=50 digits, exact TP1+TP2 equality under precision80, strict replay parity after every step, closed qty0, reserved0, one complete episode, ambient Decimal28 unchanged. Main's r2 120 earlier tests and actual market first failure are historical evidence only. Current r3 Python/CI/red-green/market NOT_RUN because GitHub file connector is not a Python executor.",
   "changed_files": [
-    "engineering/maker_x2/account_lifecycle.py",
+    "engineering/maker_x2/exit_lifecycle.py",
     "engineering/maker_x2/tests/test_incremental_diff.py",
-    "engineering/maker_x2/README.md",
     ".relay/mailbox/maker-v3-x2.json"
   ],
   "tests": [
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub contents API only, no Python, umask or local historical data process executed in r2. Independent Main evidence pertains to prior r1 source, not r2 tests."
+      "evidence": "No Python, umask, independent baseline RED/candidate GREEN, resource or market process run in GitHub-only source editing environment."
     },
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_incremental_diff.py -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub contents API only, no Python, umask or local historical data process executed in r2. Independent Main evidence pertains to prior r1 source, not r2 tests."
+      "evidence": "No Python, umask, independent baseline RED/candidate GREEN, resource or market process run in GitHub-only source editing environment."
     },
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_linear_cost.py -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub contents API only, no Python, umask or local historical data process executed in r2. Independent Main evidence pertains to prior r1 source, not r2 tests."
+      "evidence": "No Python, umask, independent baseline RED/candidate GREEN, resource or market process run in GitHub-only source editing environment."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --self-test",
       "result": "NOT_RUN",
-      "evidence": "GitHub contents API only, no Python, umask or local historical data process executed in r2. Independent Main evidence pertains to prior r1 source, not r2 tests."
+      "evidence": "No Python, umask, independent baseline RED/candidate GREEN, resource or market process run in GitHub-only source editing environment."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --profile-cell --bars 20000 --config LOCAL_CONFIG.json --input LOCAL_INPUT.json",
       "result": "NOT_RUN",
-      "evidence": "GitHub contents API only, no Python, umask or local historical data process executed in r2. Independent Main evidence pertains to prior r1 source, not r2 tests."
+      "evidence": "No Python, umask, independent baseline RED/candidate GREEN, resource or market process run in GitHub-only source editing environment."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --profile-cell --bars 40000 --config LOCAL_CONFIG.json --input LOCAL_INPUT.json",
       "result": "NOT_RUN",
-      "evidence": "GitHub contents API only, no Python, umask or local historical data process executed in r2. Independent Main evidence pertains to prior r1 source, not r2 tests."
+      "evidence": "No Python, umask, independent baseline RED/candidate GREEN, resource or market process run in GitHub-only source editing environment."
     }
   ],
   "remaining_work": [
-    "Pin exact final r2 HEAD and verify only account_lifecycle.py, test_incremental_diff.py, README.md and mailbox changed; compare test_linear_cost.py and all other product/test files byte-identically with r1 d513078277105054ea99d8a94090bffe8fd51f39.",
-    "Run full discovery under umask 0022 and 0002; expect original 118 IDs plus two new discoverable high-precision cases, with no skips. Independently demonstrate new test_available_prec50 genuinely fails on r1 base and passes on r2, and context returns to 28.",
-    "Execute Main's 20 mutation controls only after all positive tests PASS, checking named genuine AssertionError and rc1, including available precision, cursor, IDs, settlements, funding sign, basis, episode, reservation, over-close and backwards time.",
-    "Run shipped --self-test and original 20K/40K profiling and new exact-head push/pull_request CI; independently verify linear behavior and progress/manifest exclusions. Existing full historical run remains not accepted.",
-    "If any r2 failure stop and reassess architecture: third revision not authorized. Only accepted finite tests may proceed to original unchanged full market and --verify, with no strategy/PnL claims until real output."
+    "Main CIO independently verify exact SHA ancestry and diff limited to two code/test files and mailbox; all other files byte-identical to r2 eec26d1aca78633fb100792a24b94dfe800669ea.",
+    "Run new test_x2_odd_half on isolated immutable r2 baseline to demonstrate genuine RED and on current r3 candidate for GREEN using exact 50-digit witness quantity and both TP maker bars.",
+    "Under both umask 0022 and 0002 run normal discovery preserving 120 earlier test IDs plus new discovered case, unchanged test_linear_cost and original self-test. No skipping or weakening economics.",
+    "Run 20 original mutation entries and Main's 20 additional variants only after positive controls pass; require genuine named AssertionError and nonzero status. Independently run unchanged 20K/40K profiling and exact-head push and PR CI.",
+    "Full historical BTC/ETH original 48x3 strategy/matched run at 5GiB with 6000 shared sample and 9999 bootstrap remains unexecuted on r3; operator may run only following accepted finite gates, then shipped --verify. No PnL/strategy/product PASS."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Pin r2 pre-mailbox source SHA 21d667d191da03b4fd71b425967e6a2d755b46a6 and check allowed three substantive paths and ancestry. Under both umask run python3 -m unittest discover -s tests -v, new incremental diff and linear tests, --self-test. Check exact 50-digit available and ambient28 return. Then 20 named mutations, source-bound push+PR CI and 20K/40K profiling.",
-    "if_pass": "Accept only infrastructure r2 finite engineering after independently verified controls and linear timing, then operator may run unchanged original full BTC/ETH 48x3 matched matrix under original5GiB/6000/9999 and --verify; no automatic market/strategy PASS.",
-    "if_fail": "Preserve exact failing test ID, trace, source SHA and original values; no third STALLFIX-1 correction permitted without architecture reassessment.",
+    "verify_now": "Pin source_head_sha aae5ce66a2ac55e6e123dda11c6b464b2af5d572 and final PR75 head; confirm only exit_lifecycle.py and tests/test_incremental_diff.py changed before mailbox. Run immutable r2 RED and r3 GREEN on test_x2_odd_half then complete discovery under umask0022 and0002 (120 previous tests plus one), --self-test, original mutations, 20K/40K profile and exact-head push/pull_request CI.",
+    "if_pass": "Accept only bounded engineering r3 after independent exact-quantity/red-green and full controls. Operator may run unchanged original historical research and shipped --verify before any market conclusions.",
+    "if_fail": "Preserve exact failing ID, source SHA and Decimal values. Do not loosen independent ledger or extend correction without separate authorization.",
     "blockers": [
-      "New r2 Python/umask/mutations/CI/20K/40K NOT_RUN in source-only GitHub session",
-      "Previous r1 had 1 genuine available precision FAIL; r2 actual independent acceptance pending",
-      "No verified full market research/PnL/deployment"
+      "r3 tests, baseline RED/candidate GREEN, dual-umask, mutations and CI all NOT_RUN",
+      "Actual original market X2 over-close failure remains historical; candidate not independently replayed",
+      "No full market or performance acceptance"
     ]
   }
 }
