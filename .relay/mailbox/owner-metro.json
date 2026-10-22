@@ -4,51 +4,51 @@
   "pr_number": 79,
   "branch": "feat/owner-metro-live-20261021",
   "task_id": "OWNER-METRO-20261021",
-  "instruction_id": "owner-metro-001-r5c",
+  "instruction_id": "owner-metro-001-r5d",
   "status": "WAITING_CI",
-  "source_head_sha": "e9644ff6a2b73458817ec9c95f1106fb353e829c",
-  "summary": "r5c restores r4 ledger pending selection for user-blocked non-VERIFIED/non-DROPPED items, preserving fresh directive priority, stale ledger fallback, and corrupt/missing NA. New stale directive corroboration requires fresh ledger, 24h age cap, identical pending IDs/count, and active owner items nonterminal; health may say available/ledger_match only after KPI source is decided. UI renders ledger-match and mismatch warning as read-only text; tests cover expiry, mismatches and matched list identities.",
+  "source_head_sha": "7aaf2eafb86ccfaa73fcc7fa5b4912150a7ffd00",
+  "summary": "Two-line JS patch preserves the read-only decision <details> open state across each 3-second KPI rebuild. One new real Chromium regression test uses the existing CDP harness, a synthetic user-blocked canonical ledger item, opens the summary, waits 7.1 real seconds across two scheduled refresh cycles and verifies open state and contents. No controls/POST/deploy/other files changed.",
   "changed_files": [
-    "lab/owner_metro_model.py",
-    "lab/tests/test_owner_metro_r5.py",
     "lab/owner_activity.js",
+    "lab/tests/test_owner_metro_ui.py",
     ".relay/mailbox/owner-metro.json"
   ],
   "tests": [
     {
-      "command": "cd lab && python3 -m unittest discover -s tests -p 'test_owner_metro*.py'",
+      "command": "cd lab && python3 -m unittest -v tests.test_owner_metro_ui.MetroUI.test_list_stays_open",
       "result": "NOT_RUN",
-      "evidence": "Operator observed 3 FAIL at previous r5b head in isolated clone under umasks 0022 and 0002. No exact r5c run performed."
+      "evidence": "Test created in GitHub via update_file; no Chromium execution in this session. Browser missing causes an explicit SKIP, not acceptance."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p 'test_owner_metro*.py' -v",
+      "result": "NOT_RUN",
+      "evidence": "No r5d test process executed."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "Not run at r5c."
+      "evidence": "No full-suite execution in this session."
     },
     {
-      "command": "python3 -m unittest discover -s automation/tests -v",
+      "command": "exact final r5d push and pull_request CI",
       "result": "NOT_RUN",
-      "evidence": "Not run at r5c."
-    },
-    {
-      "command": "exact full-head push and pull_request CI",
-      "result": "NOT_RUN",
-      "evidence": "Not yet verified as completed successfully for mailbox-final HEAD."
+      "evidence": "No completed exact mailbox-final-head dual CI was available at handoff."
     }
   ],
   "remaining_work": [
-    "Independently run unchanged old and new tests on exact full HEAD, including three previously failing assertions and ledger corroboration edge cases.",
-    "Confirm both exact-head CI events green, then operator-only read-only native browser and staging acceptance. No merge or deployment performed."
+    "Run the actual Chromium decision-expansion test and confirm a non-SKIP result with two full 3-second polling cycles.",
+    "Verify exact final HEAD both push and PR CI success; preserve all existing original regression assertions.",
+    "Operator performs original frozen private-source and immutable spare-port acceptance only after source and browser gates pass."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Check exact mailbox-final SHA, all focused owner_metro regressions, stale/matched health basis and original pending source semantics, then full dual CI.",
-    "if_pass": "Continue frozen private operator acceptance on spare port only; never infer install or approval.",
-    "if_fail": "Keep draft uninstalled; record exact new failure without weakening old test assertions.",
+    "verify_now": "Check exact mailbox-final HEAD and actual CI outcomes; run MetroUI.test_list_stays_open with genuine Chromium and ensure expanded pending decisions survive at least two 3-second polls.",
+    "if_pass": "Proceed to frozen operator-only spare-port acceptance, no automatic deployment or merge.",
+    "if_fail": "Keep PR79 draft and uninstalled, report exact failure; do not weaken read-only guard.",
     "blockers": [
-      "r5c tests not executed locally",
-      "Exact-head dual CI success unconfirmed",
-      "Operator native browser/private bindings acceptance outstanding"
+      "r5d real Chromium test NOT_RUN",
+      "exact final head CI unconfirmed",
+      "operator native staging acceptance pending"
     ]
   },
   "uninstalled": true,
