@@ -181,7 +181,7 @@ if (-not $ComboWorker -and -not $ProbeWorker -and -not $DryRun) {
             $results += @{coin=$c.coin; mode=$c.mode; timeframe=$c.timeframe; model=$c.model;
                 ok=$false; error=$err; login_required=$false; elapsed_ms=$w.elapsed_ms}
         }
-        [Console]::Error.WriteLine("PHASE combo $ix end ok=$([string]([bool]$results[-1].ok).ToLowerInvariant()) t=$([int]$runClock.ElapsedMilliseconds)")
+        [Console]::Error.WriteLine("PHASE combo $ix end ok=$(([bool]$results[-1].ok).ToString().ToLowerInvariant()) t=$([int]$runClock.ElapsedMilliseconds)")
     }
     $allOk = @($results | Where-Object { -not $_.ok }).Count -eq 0
     Send-JsonAndExit @{
