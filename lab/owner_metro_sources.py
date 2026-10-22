@@ -11,10 +11,10 @@ _PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$")
 _CACHE = {}
 SOURCE_AGE_MS = {
     "ledger": 900000, "cron": 900000, "work": 900000,
-    "directive": 900000, "heartbeat": 900000,
+    "directive": 300000, "heartbeat": 300000,
     "roadmap": 86400000, "journal": 86400000,
-    "stage": 900000, "launch": 900000, "adoption": 900000,
-    "results": 900000, "liquidations": 900000,
+    "stage": 300000, "launch": 300000, "adoption": 300000,
+    "results": 300000, "liquidations": 300000,
 }
 
 
