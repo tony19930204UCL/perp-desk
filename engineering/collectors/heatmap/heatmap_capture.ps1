@@ -418,6 +418,40 @@ function Invoke-CdpEval {
     return $resp.result.result.value
 }
 
+function Wait-CanvasReady {
+    param($Sess, [System.Diagnostics.Stopwatch]$Clock, [int]$MaxMs = 8000, [int]$StepMs = 500)
+    $waitClock = [System.Diagnostics.Stopwatch]::StartNew()
+    $streak = 0
+    $probeJs = "(()=>{const c=document.querySelector('canvas');return !!(c&&c.width>0&&c.height>0)})()"
+    while ($waitClock.ElapsedMilliseconds -lt $MaxMs) {
+        $left = Get-ComboRemaining -Clock $Clock
+        $ready = Invoke-CdpEval -Sess $Sess -Expression $probeJs -TimeoutMs $left -Clock $Clock
+        if ($ready -eq $true) {
+            $streak++
+            if ($streak -ge 2) { return $true }
+        } else {
+            $streak = 0
+        }
+        $waitLeft = $MaxMs - [int]$waitClock.ElapsedMilliseconds
+        if ($waitLeft -le 0) { break }
+        Wait-Combo -Clock $Clock -Ms ([Math]::Min($StepMs, $waitLeft))
+    }
+    return $false
+}
+
+function Get-ChartCapture {
+    param($Sess, [System.Diagnostics.Stopwatch]$Clock, [string]$Js)
+    $json = Invoke-CdpEval -Sess $Sess -Expression $Js -TimeoutMs (Get-ComboRemaining -Clock $Clock) -Clock $Clock
+    $capture = $json | ConvertFrom-Json
+    if ($capture.err -eq 'no canvas') {
+        if (Wait-CanvasReady -Sess $Sess -Clock $Clock) {
+            $json = Invoke-CdpEval -Sess $Sess -Expression $Js -TimeoutMs (Get-ComboRemaining -Clock $Clock) -Clock $Clock
+            $capture = $json | ConvertFrom-Json
+        }
+    }
+    return $capture
+}
+
 function Compress-GzipData {
     param([string]$Data, [string]$FilePath)
     if ($ProbeWorker -and $ProbeCase -eq 'output') { [void]([System.Threading.ManualResetEvent]::new($false).WaitOne()) }
@@ -962,8 +996,7 @@ try {
                 $callTimeout = $remMs
 
                 # Capture chart data and canvas
-                $chartResJson = Invoke-CdpEval -Sess $sess -Expression $captureChartJsCode -TimeoutMs $callTimeout -Clock $sw
-                $chartRes = $chartResJson | ConvertFrom-Json
+                $chartRes = Get-ChartCapture -Sess $sess -Clock $sw -Js $captureChartJsCode
 
                 if ($chartRes.err) {
                     $comboError = if ($sw.ElapsedMilliseconds -ge $comboTimeoutMs) { 'combo_timeout' } else { [string]$chartRes.err }
