@@ -1,0 +1,15 @@
+{
+  "repository": "OWNER/REPOSITORY",
+  "pr_number": 1,
+  "branch": "engineering-existing-branch",
+  "mailbox": "docs/engineering/HANDOFF.json",
+  "task_id": "unique-job-id",
+  "state_dir": "/ABSOLUTE/PROFILE/STATE/unique-job-id",
+  "conversation_mode": "new",
+  "chat_url": "OPTIONAL: only required when conversation_mode=reuse",
+  "transport_command": ["python3", "/ABSOLUTE/SKILL/scripts/legacy_cdp_bridge.py", "--adapter", "C:/ABSOLUTE/SKILL/scripts/dedicated-cdp.ps1", "--request-file", "/mnt/c/ABSOLUTE/STATE/cdp-request.json", "--request-file-windows", "C:/ABSOLUTE/STATE/cdp-request.json", "--chat-url", "https://chatgpt.com/", "--single-page", "--port", "19243", "--profile-dir", "C:/ABSOLUTE/DEDICATED-CHROME-PROFILE"],
+  "write_allowlist": ["docs/engineering/HANDOFF.json"],
+  "review_allowlist": [],
+  "valid_until": "2099-01-01T00:00:00+00:00",
+  "note": "EXAMPLE ONLY. Replace expiry with current authorized deadline. Each profile/job uses isolated state, chat and dedicated browser. Never copy credentials into this file."
+}
