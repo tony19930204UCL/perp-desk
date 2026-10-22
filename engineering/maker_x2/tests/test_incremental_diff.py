@@ -63,6 +63,65 @@ class Control(unittest.TestCase):
                            price="99",liquidity="taker");remaining-=q
                 check(a)
 
+
+    def test_available_prec50(self):
+        from decimal import getcontext, localcontext
+        qty="0.21922127435988758019877575879333720780837993677502"
+        a=new()
+        ambient=getcontext().prec
+        self.assertEqual(ambient,28)
+        append(a,"reserve",amount="50",episode="precision")
+        check(a)
+        append(a,"fill",side="sell",qty=qty,price="100.25",
+               liquidity="maker")
+        check(a)
+        append(a,"fill",side="buy",qty=qty,price="100.8716703",
+               liquidity="taker")
+        check(a)
+        append(a,"release",amount="50")
+        final=check(a)
+        self.assertGreater(len(str(final["available"])),40)
+        self.assertEqual(final["qty"],D(0))
+        self.assertEqual(getcontext().prec,ambient)
+
+    def test_random_prec50(self):
+        from decimal import getcontext, localcontext
+        rng=random.Random(20261022)
+        ambient=getcontext().prec
+        self.assertEqual(ambient,28)
+        for case in range(12):
+            a=new()
+            append(a,"reserve",amount="50",episode=str(case))
+            check(a)
+            with localcontext() as ctx:
+                ctx.prec=50
+                qty=D(rng.randrange(1,7))/D(7)
+                price=D(700+rng.randrange(40))/D(7)
+                part=qty/D(3)
+                rest=qty-part
+            append(a,"fill",side="sell",qty=str(qty),
+                   price=str(price),liquidity="maker")
+            check(a)
+            append(a,"funding",settlement_id="s"+str(case),
+                   mark=str(price),rate=".00012345678901234567890123456789")
+            check(a)
+            append(a,"fill",side="buy",qty=str(part),
+                   price=str(price),liquidity="maker")
+            check(a)
+            if case%2:
+                append(a,"fill",side="buy",qty=str(rest),
+                       price=str(price),liquidity="taker")
+                check(a)
+                append(a,"release",amount="50")
+            else:
+                append(a,"release",amount="25")
+                check(a)
+                append(a,"liquidation",qty=str(rest),
+                       margin_writeoff="25",fee=".03125",
+                       reason="LIQ_PROXY")
+            check(a)
+        self.assertEqual(getcontext().prec,ambient)
+
     def test_invalid_sequences(self):
         base=new()
         append(base,"reserve",amount="50",episode="s");check(base)
