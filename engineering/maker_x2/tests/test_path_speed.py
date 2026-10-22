@@ -75,6 +75,16 @@ class Control(unittest.TestCase):
         self.assertEqual(SpeedFilter(base).skip(t),
                          SpeedFilter(changed).skip(t))
 
+    def test_current_not_history(self):
+        # Fails if a just-closed current spike enters its own P90.
+        b=[{"ts":i*60000,"close":100} for i in range(10086)]
+        t=len(b)*60000
+        b[-1]["close"]=120
+        self.assertEqual(SpeedFilter(b).skip(t),(True,"H2_SKIP"))
+        # A forming minute, not yet closed at t, cannot alter the result.
+        future=b+[{"ts":t,"close":100000}]
+        self.assertEqual(SpeedFilter(future).skip(t),(True,"H2_SKIP"))
+
     def test_scale_200k(self):
         # Kills full sort per query: 200k bars, 20k incremental decisions.
         start=time.monotonic()
