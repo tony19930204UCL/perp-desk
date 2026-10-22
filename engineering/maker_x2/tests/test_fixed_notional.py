@@ -173,3 +173,68 @@ class Control(unittest.TestCase):
             self.assertEqual(out["funnel"]["H2_WARMUP"],1)
             self.assertEqual(out["funnel_denoms"]["signals"],2)
             self.assertEqual(out["funnel_denoms"]["intents"],1)
+
+
+    def test_two_funded_losses(self):
+        # Kills funding discarded at reset or fake zero-qty settlements.
+        data=[bar(i,high="100.1",low="99.9") for i in range(302)]
+        for i in (291,295):
+            data[i]=bar(i,high="100.55",low="99.9")
+        for i in (293,297):
+            data[i]=bar(i,high="101.2",low="98",op="101")
+        records=[{"signal_time":i*60000,"triggered":True,
+                  "signal_high":D(100),"signal_close":D(100),
+                  "atr14":D(1),"vwap60":D(99),
+                  "signal_id":"fund"+str(i),"signal_type":"S1"}
+                 for i in (290,294)]
+        funding=[{"ts":i*60000,"settlement_id":"funding"+str(i),
+                  "rate":".001","mark":"100"} for i in (293,297)]
+        out=replay_cell("FICTION",data,funding,1,".25",2,"X2",
+                        conf(),290*60000,301*60000,
+                        eligible=records,mode="B")
+        self.assertEqual(len(out["independent_episodes"]),2)
+        self.assertEqual(len(out["episodes"]),2)
+        self.assertTrue(out["cash_curve_not_investable"])
+        for item, ep in zip(out["independent_episodes"],out["episodes"]):
+            original=replay_account("150",item["events"])
+            self.assertEqual(D(item["ledger"]["cash"]),original["cash"])
+            self.assertEqual(D(item["ledger"]["fees"]),original["fees"])
+            self.assertEqual(D(item["ledger"]["funding_cost"]),
+                             original["funding_cost"])
+            self.assertNotEqual(original["funding_cost"],D(0))
+            self.assertEqual(original["qty"],D(0))
+            self.assertLess(D(ep["net"]),D(0))
+            sells=[e for e in item["events"]
+                   if e["type"]=="fill" and e["side"]=="sell"]
+            self.assertEqual(len(sells),1)
+            with __import__("decimal").localcontext() as ctx:
+                ctx.prec=50
+                self.assertEqual(D(sells[0]["qty"])*D(sells[0]["price"]),
+                                 D(500))
+
+    def test_funnel_exclusive(self):
+        # Kills duplicate closed terminals and max(0) concealment.
+        data=[bar(i,high="100.1") for i in range(302)]
+        data[291]=bar(291,high="100.55",low="99.9")
+        data[293]=bar(293,high="101.2",low="98",op="101")
+        signals=[290,294,295,296]
+        records=[{"signal_time":i*60000,"triggered":True,
+                  "signal_high":D(100),"signal_close":D(100),
+                  "atr14":D(1),"vwap60":D(99),"signal_id":"z"+str(i),
+                  "signal_type":"S1"} for i in signals]
+        class Filter:
+            def skip(self,t):
+                return (True,"H2_SKIP") if t==294*60000 else (
+                    False,"H2_PASS")
+        for matched in (None,[i*60000 for i in signals]):
+            out=replay_cell("FICTION",data,[],1,".25",2,"X2",
+                  conf(),290*60000,300*60000,eligible=records,
+                  signal_times=matched,entry_filter=Filter())
+            t=out["funnel"]
+            self.assertEqual(t["signals"],4)
+            self.assertEqual(t["H2_SKIP"],1)
+            self.assertEqual(sum(t["terminal_counts"].values())+
+                             t["unprocessed"],4)
+            self.assertEqual(t["filled_or_open"],
+                             t["terminal_counts"].get("FILLED_OR_OPEN",0))
+            self.assertGreaterEqual(t["pending_or_unresolved"],0)
