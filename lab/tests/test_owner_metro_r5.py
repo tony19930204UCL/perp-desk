@@ -57,7 +57,7 @@ class MetroR5(unittest.TestCase):
         self.assertEqual(len(k["pending_list"][0]["question"]),2000)
 
     def test_freshness(self):
-        self.directive.write_text(json.dumps({"updated_at":1792065000,
+        self.directive.write_text(json.dumps({"updated_at":1792065540,
                                                "pending_decisions":2}))
         self.assertEqual(load(str(self.root),self.now)[1]["directive"]["state"],
                          "available")
@@ -92,3 +92,53 @@ class MetroR5(unittest.TestCase):
         self.write([row])
         recent=self.model()["recent"]
         self.assertEqual(recent[0]["alive"],"已死")
+
+    def test_directive_match(self):
+        self.write([self.item(1),self.item(2,"DISPATCHED")])
+        old={"updated_at":1792065000,"pending_decisions":2,
+             "active_owners":[{"item":"C-1","actor":"SYNTHETIC"}]}
+        self.directive.write_text(json.dumps(old))
+        m=self.model()
+        self.assertEqual(m["sources"]["directive"]["state"],"available")
+        self.assertEqual(m["sources"]["directive"]["basis"],"ledger_match")
+        self.assertNotIn("directive_mismatch",m["warnings"])
+        self.assertEqual((m["kpis"]["pending_decisions"],m["kpis"]["pending_source"]),(2,"ledger"))
+        self.assertGreater(m["sources"]["directive"]["age_ms"],300000)
+        for change in ({"pending_decisions":1},
+                       {"pending_decisions":[{"id":"C-99","status":"PENDING"}]},
+                       {"active_owners":[{"item":"C-99"}]}):
+            self.directive.write_text(json.dumps({**old,**change}))
+            m=self.model()
+            self.assertEqual(m["sources"]["directive"]["state"],"stale")
+            self.assertIn("directive_mismatch",m["warnings"])
+        self.directive.write_text(json.dumps({**old,"active_owners":[{"item":"C-1"}]}))
+        self.write([self.item(1,"DROPPED"),self.item(2,"DISPATCHED")])
+        m=self.model()
+        self.assertEqual(m["sources"]["directive"]["state"],"stale")
+        self.assertIn("directive_mismatch",m["warnings"])
+
+    def test_directive_expiry(self):
+        self.write([self.item(1)])
+        for age in (86401,):
+            self.directive.write_text(json.dumps({
+                "updated_at":1792065600-age,"pending_decisions":1}))
+            m=self.model()
+            self.assertEqual(m["sources"]["directive"]["state"],"stale")
+            self.assertIn("directive_mismatch",m["warnings"])
+        self.directive.write_text(json.dumps({
+            "updated_at":1792065000,"pending_decisions":1}))
+        self.write([self.item(1,created=1792060000)])
+        m=self.model()
+        self.assertEqual(m["sources"]["directive"]["state"],"stale")
+        self.assertIn("directive_mismatch",m["warnings"])
+        self.ledger.write_text("{")
+        self.assertEqual(self.model()["sources"]["directive"]["state"],"stale")
+
+    def test_directive_ids(self):
+        self.write([self.item(1),self.item(2)])
+        self.directive.write_text(json.dumps({
+            "updated_at":1792065000,
+            "pending_decisions":[{"id":"C-1","status":"PENDING"},
+                                 {"id":"C-2","status":"WAITING_HUMAN"}],
+            "active_owners":[{"item":"C-1"}]}))
+        self.assertEqual(self.model()["sources"]["directive"]["basis"],"ledger_match")
