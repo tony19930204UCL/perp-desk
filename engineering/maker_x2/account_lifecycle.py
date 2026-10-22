@@ -90,12 +90,17 @@ class OfflineAccount:
             return
         # No cross-episode cash/equity/kill carry. Keep the original ledger
         # and actual events as separate immutable research episode evidence.
+        independent = self.verify_ledger()
         snapshot = self.snapshot()
+        # _LedgerView owns an account back-reference; archive only plain
+        # detached values so history never retains earlier account objects.
+        snapshot = {key: deepcopy(dict(value) if isinstance(
+            value, _LedgerView) else value) for key, value in snapshot.items()}
         archived = {"events": deepcopy(self.events),
-                    "ledger": deepcopy(self.verify_ledger()),
-                    "snapshot": deepcopy(snapshot)}
-        preserved = self.b_history + [archived]
-        signals = self.seen_signals.copy()
+                    "ledger": deepcopy(independent), "snapshot": snapshot}
+        preserved = self.b_history
+        preserved.append(archived)  # linear, no copying prior episodes
+        signals = self.seen_signals
         stale = self.stale
         self.__init__(str(self.capital), str(self.margin), str(self.leverage),
                       str(self.daily_limit), self.streak_limit, "24",
