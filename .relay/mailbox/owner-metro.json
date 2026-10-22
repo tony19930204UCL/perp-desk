@@ -4,12 +4,11 @@
   "pr_number": 79,
   "branch": "feat/owner-metro-live-20261021",
   "task_id": "OWNER-METRO-20261021",
-  "instruction_id": "owner-metro-001-r5b",
+  "instruction_id": "owner-metro-001-r5c",
   "status": "WAITING_CI",
-  "source_head_sha": "e6460cf3cc581c3aa156df922f652521adf09524",
-  "summary": "Bounded r5b contract alignment: directive and heartbeat remain 300000 ms; ledger/cron/work retain 15 minutes, roadmap/journal 24 hours; fresh directive controls KPI, stale directive only falls back to ledger, missing/corrupt stays NA. Independently expose ledger pending_list and show its own length in read-only disclosure. Update only r5 synthetic assertions for count priority and roadmap age, preserving old tests unchanged.",
+  "source_head_sha": "e9644ff6a2b73458817ec9c95f1106fb353e829c",
+  "summary": "r5c restores r4 ledger pending selection for user-blocked non-VERIFIED/non-DROPPED items, preserving fresh directive priority, stale ledger fallback, and corrupt/missing NA. New stale directive corroboration requires fresh ledger, 24h age cap, identical pending IDs/count, and active owner items nonterminal; health may say available/ledger_match only after KPI source is decided. UI renders ledger-match and mismatch warning as read-only text; tests cover expiry, mismatches and matched list identities.",
   "changed_files": [
-    "lab/owner_metro_sources.py",
     "lab/owner_metro_model.py",
     "lab/tests/test_owner_metro_r5.py",
     "lab/owner_activity.js",
@@ -19,36 +18,37 @@
     {
       "command": "cd lab && python3 -m unittest discover -s tests -p 'test_owner_metro*.py'",
       "result": "NOT_RUN",
-      "evidence": "Operator independently ran previous r5 HEAD 39 tests, six failures under two umasks; corrected source but no r5b execution."
+      "evidence": "Operator observed 3 FAIL at previous r5b head in isolated clone under umasks 0022 and 0002. No exact r5c run performed."
     },
     {
       "command": "cd lab && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "No executed full r5b suite."
+      "evidence": "Not run at r5c."
     },
     {
       "command": "python3 -m unittest discover -s automation/tests -v",
       "result": "NOT_RUN",
-      "evidence": "Not run in this turn."
+      "evidence": "Not run at r5c."
     },
     {
-      "command": "exact r5b push and pull_request CI",
+      "command": "exact full-head push and pull_request CI",
       "result": "NOT_RUN",
-      "evidence": "No completed exact mailbox-final HEAD dual CI evidence."
+      "evidence": "Not yet verified as completed successfully for mailbox-final HEAD."
     }
   ],
   "remaining_work": [
-    "Independently run 39 focused owner_metro tests and full CI on exact head; report actual results.",
-    "Run real Chromium and private operator staged read-only acceptance; no deployment attempted."
+    "Independently run unchanged old and new tests on exact full HEAD, including three previously failing assertions and ledger corroboration edge cases.",
+    "Confirm both exact-head CI events green, then operator-only read-only native browser and staging acceptance. No merge or deployment performed."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Confirm exact mailbox-final HEAD dual CI, unchanged old owner_metro_bind/node/MetroUnit assertions, and r5 fixture contracts.",
-    "if_pass": "Proceed to existing operator-only immutable spare-port acceptance, not automatic deployment.",
-    "if_fail": "Keep PR79 draft/uninstalled and report exact failure; do not weaken old assertions.",
+    "verify_now": "Check exact mailbox-final SHA, all focused owner_metro regressions, stale/matched health basis and original pending source semantics, then full dual CI.",
+    "if_pass": "Continue frozen private operator acceptance on spare port only; never infer install or approval.",
+    "if_fail": "Keep draft uninstalled; record exact new failure without weakening old test assertions.",
     "blockers": [
-      "r5b exact-head tests not executed in this session",
-      "Operator browser and private binding acceptance outstanding"
+      "r5c tests not executed locally",
+      "Exact-head dual CI success unconfirmed",
+      "Operator native browser/private bindings acceptance outstanding"
     ]
   },
   "uninstalled": true,
