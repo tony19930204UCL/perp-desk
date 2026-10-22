@@ -96,6 +96,19 @@ class MetroUI(unittest.TestCase):
                        ".metro-stop.failed", "prefers-reduced-motion"):
             self.assertIn(marker, html)
 
+    def test_readonly_disclosure(self):
+        html=(LAB/"owner_activity.html").read_text(encoding="utf-8")
+        js=(LAB/"owner_activity.js").read_text(encoding="utf-8")
+        for token in ("metroRecent", "metroKpis", "summary",
+                      "目前沒有需要你決定的事", "Asia/Taipei",
+                      "目前沒有近況", "pending_list"):
+            self.assertIn(token, html+js)
+        self.assertIn("add(decision,'details')", js)
+        self.assertNotIn("method:'POST'", js)
+        self.assertNotIn('method:"POST"', js)
+        self.assertNotIn("核准按鈕", html+js)
+        self.assertNotIn("<form", html)
+
     def test_safe_poll(self):
         code = (LAB / "owner_activity.js").read_text(encoding="utf-8")
         for value in ("setInterval(poll,3000)", "if(pending)return",
