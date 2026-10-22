@@ -14,9 +14,11 @@ RAW_MAP = {
 }
 
 
-def cancel_table(reasons, total_signals):
+def cancel_table(reasons, total_signals, intents=None, unprocessed=0):
     if type(total_signals) is not int or total_signals < 0:
         raise ValueError("invalid total_signals")
+    if type(unprocessed) is not int or unprocessed < 0:
+        raise ValueError("invalid unprocessed")
     counts = {key: 0 for key in CATS}
     other_raw = {}
     cancelled = 0
@@ -28,9 +30,21 @@ def cancel_table(reasons, total_signals):
         counts[cat] += 1
         if cat == "OTHER":
             other_raw[raw] = other_raw.get(raw, 0) + 1
-    return {"total": total_signals, "cancelled": cancelled,
-            "counts": counts, "other_raw": other_raw,
-            "filled_or_open": total_signals - cancelled}
+    if intents is None:
+        intents = total_signals - unprocessed
+    if type(intents) is not int or not 0 <= intents <= total_signals:
+        raise ValueError("invalid intents")
+    if cancelled > intents or intents + unprocessed > total_signals:
+        raise ValueError("funnel exceeds signals")
+    filled = total_signals - cancelled - unprocessed
+    return {"total": total_signals, "signals": total_signals,
+            "intents": intents, "unprocessed": unprocessed,
+            "cancelled": cancelled, "counts": counts,
+            "other_raw": other_raw, "filled_or_open": filled,
+            "stage_denoms": {"signals": total_signals, "intents": intents,
+                             "cancelled": cancelled},
+            "signal_shares": {cat: counts[cat] / total_signals
+                              if total_signals else 0.0 for cat in CATS}}
 
 
 def share(table):
