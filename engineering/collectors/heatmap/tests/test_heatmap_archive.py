@@ -2113,5 +2113,27 @@ global.setTimeout = fn => { tick += 500; sample++; fn(); };
                          ("true", "user_menu_button"))
 
 
+    @unittest.skipUnless(
+        shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh"),
+        "PowerShell unavailable")
+    def test_51_phase_line_run(self):
+        """Execute the actual PHASE end expression in PowerShell 5.1."""
+        exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh")
+        with open(CAPTURE_PS1, encoding="utf-8") as f:
+            lines = f.readlines()
+        phase = [line.strip() for line in lines
+                 if 'PHASE combo $ix end ok=$(' in line]
+        self.assertEqual(len(phase), 1, "Expected one production PHASE end line")
+        for expected, value in (("true", "$true"), ("false", "$false")):
+            with self.subTest(expected=expected):
+                script = ("$ErrorActionPreference='Stop'; "
+                          "$ix=0; $runClock=[Diagnostics.Stopwatch]::StartNew(); "
+                          "$results=@(@{ok=" + value + "}); " + phase[0])
+                proc = subprocess.run([exe, "-NoProfile", "-Command", script],
+                                      capture_output=True, text=True, timeout=20)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertIn("PHASE combo 0 end ok=" + expected, proc.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
