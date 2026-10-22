@@ -178,7 +178,11 @@ class OfflineAccount:
         while self._cursor < len(self.events):
             self._apply_event(self.events[self._cursor])
         s = dict(self._ledger_state)
-        s["available"] = s["cash"] - s["reserved"]
+        # replay_account computes cash-reserved inside Decimal50.
+        # Decimal arithmetic outside that context silently rounds to 28.
+        with localcontext() as ctx:
+            ctx.prec = 50
+            s["available"] = s["cash"] - s["reserved"]
         s["ids"] = self._applied_ids
         s["settlements"] = self._applied_settlements
         return _LedgerView(self, s, self._cursor)
