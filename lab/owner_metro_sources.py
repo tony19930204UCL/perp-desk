@@ -9,6 +9,13 @@ from owner_activity import _read_bytes, _source_meta, _stamp
 _NAMES = ("directive", "stage", "heartbeat", "launch", "adoption", "results", "liquidations")
 _PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$")
 _CACHE = {}
+SOURCE_AGE_MS = {
+    "ledger": 900000, "cron": 900000, "work": 900000,
+    "directive": 900000, "heartbeat": 900000,
+    "roadmap": 86400000, "journal": 86400000,
+    "stage": 900000, "launch": 900000, "adoption": 900000,
+    "results": 900000, "liquidations": 900000,
+}
 
 
 def parts(value):
@@ -100,7 +107,8 @@ def load(root, now_ms, limit=1048576):
             document[key] = obj
             at = _source_stamp(obj)
             age = None if at is None or at > now_ms + 5000 else max(0, now_ms - at)
-            health[key] = {"state": "stale" if age is not None and age > 300000 else
+            health[key] = {"state": "stale" if age is not None and
+                           age > SOURCE_AGE_MS[key] else
                            "available" if age is not None else "unverifiable",
                            "age_ms": age}
         except FileNotFoundError:
