@@ -16,12 +16,13 @@ D = Decimal
 BAR_PROGRESS = None
 
 
-def _account(config, rates=None):
+def _account(config, rates=None, mode="A"):
     required = ("capital", "per_trade_margin", "leverage", "daily_loss_limit",
                 "loss_streak_limit", "halt_hours", "liq_pct", "liq_fee_pct")
     if any(key not in config for key in required):
         raise X2Error("explicit offline account config missing required values")
-    return OfflineAccount(**{key: config[key] for key in required}, rates=rates)
+    return OfflineAccount(**{key: config[key] for key in required}, rates=rates,
+                          mode=mode)
 
 
 def _funding_for_bar(events, cursor, bar_end, prev_close, close):
@@ -53,6 +54,8 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
     Entry and passive fills use the frozen 2bp OHLC proxy and full posted
     quantity (OHLC has no partial depth or real queue observation).
     """
+    if mode not in ("A", "B"):
+        raise X2Error("invalid replay mode")
     if exit_style not in ("X1", "X2", "X3") or k not in (".25", ".50"):
         raise X2Error("invalid frozen grid cell")
     if ttl not in (2, 5) or delay_minutes not in (0, 2):
@@ -82,7 +85,9 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                        if evaluation_start <= r["signal_time"] < evaluation_end}
             if desired - present:
                 raise X2Error("matched timestamp not in causal eligible universe")
-    account = _account(account_config, rates=rates)
+    account = _account(account_config, rates=rates, mode=mode)
+    b_archives = []
+    funnel = Counter()
     events = []
     counts = Counter()
     funding_index = 0
@@ -198,6 +203,16 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
             current_arrivals = queue.get(end, ())
         for r in current_arrivals:
             counts["signals"] += 1
+            if mode == "B" and account.entry is None and account.exit is None:
+                account.reset_b()
+                if account.b_history:
+                    b_archives = list(account.b_history)
+            if entry_filter is not None:
+                skip, code = entry_filter.skip(r["signal_time"])
+                funnel[code] += 1
+                if skip:
+                    continue
+            funnel["intents"] += 1
             if account.snapshot()["slot"] or account.stale:
                 counts["slot_or_gap_blocked"] += 1
                 continue
@@ -215,6 +230,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                     str(quantity), exit_style,
                     signal_vwap=str(r["vwap60"]) if exit_style=="X1" else None)
                 counts["attempts"] += 1
+                funnel[status] += 1
                 counts[status] += 1
                 if status == "PENDING":
                     episode_starts[r["signal_id"]] = {
@@ -223,6 +239,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                         "framework": framework}
             except X2Error as exc:
                 counts["admission_rejected"] += 1
+                funnel["ADMISSION_REJECTED"] += 1
                 events.append({"type": "ADMISSION_REJECTED", "ts": end,
                                "signal_id": r["signal_id"],
                                "reason": str(exc)})
@@ -256,6 +273,15 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
     account.tail()
     snap = account.snapshot()
     ledger = account.verify_ledger()
+    if mode == "B":
+        b_archives = list(account.b_history)
+        if account.events:
+            b_archives.append({"events": list(account.events),
+                               "ledger": ledger, "snapshot": snap})
+        for archived in b_archives:
+            if replay_account(account.capital, archived["events"],
+                              rates=account.rates) != archived["ledger"]:
+                raise X2Error("independent B episode ledger divergence")
     completed = []
     for episode in ledger["episodes"]:
         original = episode_starts.get(episode["id"], {})
@@ -298,7 +324,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
     counts["filled_episodes"] = counts["complete_episodes"] + counts["open"]
     raw = [{key: str(value) if isinstance(value, D) else value
             for key,value in event.items()} for event in account.events]
-    return {"symbol": symbol, "framework": framework, "k": k, "ttl": ttl,
+    output = {"symbol": symbol, "framework": framework, "k": k, "ttl": ttl,
             "exit": exit_style, "delay_minutes": delay_minutes,
             "matched": signal_times is not None,
             "signal_count": signal_count if streamed else len(signals), "counts": dict(counts),
