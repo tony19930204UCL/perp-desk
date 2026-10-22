@@ -17,6 +17,8 @@ jobs:
         run: python3 --version && node --version
       - name: Exporter contract
         run: python3 -m unittest discover -s automation/tests -v
+      - name: C0041 stage relay offline subprocess and contract tests
+        run: python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v
       - name: PAPER isolated suite
         working-directory: lab
         run: python3 -m unittest discover -s tests -v

@@ -1,0 +1,768 @@
+"""Offline preliminary atomic dispatch contract tests, stdlib-only.
+
+Not a substitute for browser/CDP integration or installed producer acceptance.
+"""
+import datetime
+import importlib.util
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+
+SOURCE = Path(__file__).resolve().parents[2] / "engineering" / "relay" / "product_dispatch.py"
+spec = importlib.util.spec_from_file_location("product_dispatch", SOURCE)
+dispatch = importlib.util.module_from_spec(spec)
+sys.modules['product_dispatch'] = dispatch
+sys.path.insert(0, str(SOURCE.parent))
+spec.loader.exec_module(dispatch)
+
+
+class AtomicDispatchTests(unittest.TestCase):
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(self.scratch.cleanup)
+        self.base = Path(self.scratch.name)
+        self.job = {"repository": "synthetic/example", "branch": "test-branch",
+                    "pr_number": 123, "write_allowlist": ["synthetic.py"],
+                    "valid_until": (datetime.datetime.now(datetime.timezone.utc) +
+                                    datetime.timedelta(hours=1)).isoformat(),
+                    "dispatch_chat_url": "https://chatgpt.com/c/11111111-2222-3333-4444-555555555555",
+                    "dispatch_lock_root": str(self.base / "shared")}
+        self.first = self.base / "job-a"
+        self.second = self.base / "job-b"
+        for jobdir in (self.first, self.second):
+            jobdir.mkdir()
+            (jobdir / "job.json").write_text(json.dumps(self.job), encoding="utf-8")
+
+    def test_claim_winner(self):
+        owner = dispatch.claim(self.job, self.first, "one")
+        with self.assertRaises(dispatch.DispatchBlocked) as result:
+            dispatch.claim(self.job, self.second, "two")
+        self.assertEqual(result.exception.winner, owner["owner"])
+        self.assertEqual(dispatch.check(self.job, self.first, "one")["phase"], "PREPARED")
+
+    def test_distinct_products(self):
+        one = dispatch.claim(self.job, self.first, "one")
+        second = dict(self.job, pr_number=124)
+        (self.second / "job.json").write_text(json.dumps(second), encoding="utf-8")
+        two = dispatch.claim(second, self.second, "two")
+        self.assertNotEqual(one["generation"], two["generation"])
+
+    def test_scope_change_aborts(self):
+        dispatch.claim(self.job, self.first, "one")
+        changed = dict(self.job, write_allowlist=["other.py"])
+        (self.first / "job.json").write_text(json.dumps(changed), encoding="utf-8")
+        with self.assertRaises(dispatch.DispatchBlocked):
+            dispatch.check(self.job, self.first, "one", phase="send")
+
+    def test_unknown_hold(self):
+        dispatch.claim(self.job, self.first, "one")
+        dispatch.phase(self.job, self.first, "one", "SEND_INTENT")
+        dispatch.phase(self.job, self.first, "one", "SEND_UNKNOWN")
+        with self.assertRaises(dispatch.DispatchBlocked):
+            dispatch.claim(self.job, self.second, "two")
+        with self.assertRaises(dispatch.DispatchBlocked):
+            dispatch.check(self.job, self.first, "one", phase="send")
+
+    def test_no_default_root(self):
+        job = dict(self.job)
+        job.pop("dispatch_lock_root")
+        with self.assertRaisesRegex(dispatch.DispatchBlocked, "UNCONFIGURED"):
+            dispatch.claim(job, self.first, "one")
+
+    def test_two_proc_claim(self):
+        script = (
+            "import importlib.util,json,sys,time\n"
+            "s=importlib.util.spec_from_file_location('d',sys.argv[1]);"
+            "m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\n"
+            "j=json.loads(sys.argv[2])\n"
+            "try:\n"
+            " r=m.claim(j,sys.argv[3],sys.argv[4]);print(json.dumps({'ok':True,'owner':r['owner']}))\n"
+            "except m.DispatchBlocked as e:\n"
+            " print(json.dumps({'ok':False,'reason':str(e),'winner':e.winner}))\n")
+        processes = [
+            subprocess.Popen([sys.executable, "-c", script, str(SOURCE),
+                              json.dumps(self.job), str(jd), name],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            for jd, name in ((self.first, "one"), (self.second, "two"))]
+        values = []
+        try:
+            for process in processes:
+                out, err = process.communicate(timeout=10)
+                self.assertEqual(process.returncode, 0, err)
+                values.append(json.loads(out))
+        finally:
+            for process in processes:
+                if process.poll() is None:
+                    process.kill()
+                process.wait(timeout=10)
+        self.assertEqual(sum(value["ok"] for value in values), 1)
+        winner = next(value["owner"] for value in values if value["ok"])
+        self.assertEqual(next(value["winner"] for value in values if not value["ok"]), winner)
+
+
+    def _carrier(self):
+        sys.path.insert(0, str(SOURCE.parent))
+        import engineering_instruction_carrier as carrier
+        import approval_transaction as tx
+        tx._fetch_base = lambda job, path: 'old = 0\n'
+        # Test admission on the public API before any lifecycle effect.
+        positive = self._card("wire")
+        negative = dict(positive, path="mcp__GitHub__update_file")
+        args = (self.job["repository"], self.job["branch"],
+                "synthetic.py", {"synthetic.py"}, self.job["pr_number"])
+        self.assertTrue(carrier.approve_operation(positive, *args))
+        self.assertFalse(carrier.approve_operation(negative, *args))
+        return carrier
+
+    def test_wire_gate(self):
+        """Sanitized slash operation admitted; malformed MCP path refused."""
+        carrier = self._carrier()
+        operation = self._card("admit")
+        malformed = dict(operation, path="mcp__GitHub__update_file")
+        args = (self.job["repository"], self.job["branch"],
+                "synthetic.py", {"synthetic.py"}, self.job["pr_number"])
+        self.assertTrue(carrier.approve_operation(operation, *args))
+        self.assertFalse(carrier.approve_operation(malformed, *args))
+
+    def _sent(self, *, unknown=False):
+        """Real carrier.send, injected only offline browser effects."""
+        carrier = self._carrier()
+        key = "one"
+        text = "SYNTHETIC_OFFLINE_INSTRUCTION"
+        self.first.mkdir(exist_ok=True)
+        snap = {"url": self.job["dispatch_chat_url"],
+                "user_messages": [], "composer_text": "", "busy": False}
+        clicks = []
+        def cdp(js):
+            if "Send button unavailable" in js:
+                clicks.append("send")
+                if unknown:
+                    raise RuntimeError("OFFLINE_SEND_UNKNOWN")
+            return True
+        def save(name, obj):
+            (self.first / name).write_text(json.dumps(obj), encoding="utf-8")
+        def after():
+            return {"url": self.job["dispatch_chat_url"], "user_messages": [text],
+                    "composer_text": "", "busy": False}
+        dispatch.claim(self.job, self.first, key)
+        def call():
+            return carrier.send(text, key, snap, root=self.first,
+                 chat_path="/c/11111111-2222-3333-4444-555555555555",
+                 cdp_fn=cdp, snapshot_fn=after, save_fn=save,
+                 valid_until=self.job["valid_until"], dispatch_job=self.job)
+        return call, clicks, save
+
+    def test_carrier_once(self):
+        call, clicks, _ = self._sent()
+        call()
+        self.assertEqual(clicks, ["send"])
+        self.assertEqual(dispatch.inspect(self.job, self.first, "one")["phase"],
+                         "SENT_CONFIRMED")
+        with self.assertRaises(dispatch.DispatchBlocked):
+            call()
+        self.assertEqual(clicks, ["send"])
+
+    def test_unknown_no_retry(self):
+        call, clicks, _ = self._sent(unknown=True)
+        with self.assertRaises(RuntimeError):
+            call()
+        self.assertEqual(clicks, ["send"])
+        self.assertEqual(dispatch.inspect(self.job, self.first, "one")["phase"],
+                         "SEND_UNKNOWN")
+        with self.assertRaises(dispatch.DispatchBlocked):
+            call()
+        self.assertEqual(clicks, ["send"])
+
+    def test_scope_before_click(self):
+        carrier = self._carrier()
+        call, clicks, save = self._sent()
+        call()
+        op = {"path": "/connector_sanitized/link_sanitized/update_file",
+              "args": {"repository_full_name": self.job["repository"],
+                       "branch": self.job["branch"], "path": "synthetic.py",
+                       "content": "safe = 1"}}
+        effects = []
+        card = {"text": "要允許 ChatGPT 使用 GitHub 嗎？"}
+        def cdp(js):
+            if "JSON.stringify" in js:
+                return ["call_tool\n" + json.dumps(op)]
+            if "關閉對話框" in js:
+                changed = dict(self.job, write_allowlist=["changed.py"])
+                (self.first / "job.json").write_text(json.dumps(changed))
+            if "允許一次" in js:
+                effects.append("approval")
+            return True
+        with self.assertRaises(dispatch.DispatchBlocked):
+            carrier.permission(card, cdp_fn=cdp, snapshot_fn=lambda: {"text": ""},
+                repo=self.job["repository"], branch=self.job["branch"],
+                mailbox="synthetic.py", allowed={"synthetic.py"},
+                pr_number=self.job["pr_number"], save_fn=save,
+                dispatch_job=self.job, dispatch_dir=self.first, instruction_id="one",
+                event_fn=lambda *a,**kw: None)
+        self.assertEqual(effects, [])
+        self.assertEqual(dispatch.inspect(dict(self.job, write_allowlist=["changed.py"]),
+                                          self.first, "one")["phase"], "SENT_CONFIRMED")
+
+    def test_no_source_click(self):
+        carrier = self._carrier()
+        dispatch.claim(self.job, self.first, "one")
+        op = {"path": "/connector_sanitized/link_sanitized/update_file",
+              "args": {"repository_full_name": self.job["repository"],
+                       "branch": self.job["branch"], "path": "synthetic.py",
+                       "content": "value = 1"}}
+        clicked = []
+        def cdp(js):
+            if "JSON.stringify" in js:
+                return ["call_tool\n" + json.dumps(op)]
+            if "允許一次" in js:
+                clicked.append(True)
+            return True
+        with self.assertRaises(dispatch.DispatchBlocked):
+            carrier.permission({"text":"要允許 ChatGPT 使用 GitHub 嗎？"},
+                cdp_fn=cdp, snapshot_fn=lambda: {"text":""},
+                repo=self.job["repository"], branch=self.job["branch"],
+                mailbox="synthetic.py", allowed={"synthetic.py"},
+                pr_number=self.job["pr_number"],
+                save_fn=lambda name,obj:(self.first/name).write_text(json.dumps(obj)),
+                dispatch_job=self.job, dispatch_dir=self.first, instruction_id="one",
+                event_fn=lambda *a,**kw: None)
+        self.assertFalse(clicked)
+
+
+
+    def test_card_once(self):
+        carrier = self._carrier()
+        call, sent, save = self._sent()
+        call()
+        self.assertEqual(sent, ["send"])
+        op = {"path": "/connector_sanitized/link_sanitized/update_file",
+              "args": {"repository_full_name": self.job["repository"],
+                       "branch": self.job["branch"], "path": "synthetic.py",
+                       "content": "safe = 1"}}
+        approvals = []
+        def cdp(js):
+            if "JSON.stringify" in js:
+                return ["call_tool\n" + json.dumps(op)]
+            if "允許一次" in js:
+                approvals.append(True)
+            return True
+        params = dict(cdp_fn=cdp, snapshot_fn=lambda: {"text": ""},
+                      repo=self.job["repository"], branch=self.job["branch"],
+                      mailbox="synthetic.py", allowed={"synthetic.py"},
+                      pr_number=self.job["pr_number"], save_fn=save,
+                      dispatch_job=self.job, dispatch_dir=self.first,
+                      instruction_id="one", event_fn=lambda *a,**kw: None)
+        self.assertTrue(carrier.permission(
+            {"text": "要允許 ChatGPT 使用 GitHub 嗎？"}, **params))
+        self.assertEqual(approvals, [True])
+        self.assertEqual([x["phase"] for x in dispatch.inspect(self.job, self.first, "one")["cards"].values()], ["APPROVED"])
+        with self.assertRaises(dispatch.DispatchBlocked):
+            carrier.permission({"text": "要允許 ChatGPT 使用 GitHub 嗎？"}, **params)
+        self.assertEqual(approvals, [True])
+
+
+
+    def _permit_card(self, card, callback=None):
+        carrier = self._carrier()
+        clicks = []
+        def cdp(js):
+            if "JSON.stringify" in js:
+                return ["call_tool\n" + json.dumps(card)]
+            if "允許一次" in js:
+                clicks.append(True)
+                if callback:
+                    callback()
+            return True
+        return carrier.permission({"text": "要允許 ChatGPT 使用 GitHub 嗎？"},
+            cdp_fn=cdp, snapshot_fn=lambda: {"text": ""},
+            repo=self.job["repository"], branch=self.job["branch"],
+            mailbox="synthetic.py", allowed={"synthetic.py"},
+            pr_number=self.job["pr_number"],
+            save_fn=lambda name, data:(self.first / name).write_text(json.dumps(data)),
+            event_fn=lambda *a, **kw: None, dispatch_job=self.job,
+            dispatch_dir=self.first, instruction_id="one"), clicks
+
+    def _card(self, value):
+        return {"path":"/connector_sanitized/link_sanitized/update_file",
+                "args":{"repository_full_name":self.job["repository"],
+                        "branch":self.job["branch"],"path":"synthetic.py",
+                        "content":"value = " + value}}
+
+    def test_two_cards(self):
+        call, _, _ = self._sent()
+        call()
+        self.assertEqual(self._permit_card(self._card("1")), (True, [True]))
+        self.assertEqual(self._permit_card(self._card("2")), (True, [True]))
+        self.assertEqual(len(dispatch.inspect(self.job, self.first, "one")["cards"]), 2)
+        with self.assertRaisesRegex(dispatch.DispatchBlocked, "CARD_ALREADY_ATTEMPTED"):
+            self._permit_card(self._card("1"))
+
+    def test_card_unknown_hold(self):
+        call, _, _ = self._sent()
+        call()
+        effects = []
+        def unknown():
+            effects.append(True)
+            raise RuntimeError("SYNTHETIC_UNKNOWN")
+        with self.assertRaisesRegex(RuntimeError, "SYNTHETIC_UNKNOWN"):
+            self._permit_card(self._card("3"), unknown)
+        with self.assertRaises(dispatch.DispatchBlocked):
+            self._permit_card(self._card("3"), unknown)
+        self.assertEqual(effects, [True])
+
+    def test_adopt_send_source(self):
+        call, _, _ = self._sent()
+        call()
+        prior = dispatch.inspect(self.job, self.first, "one")
+        other = dict(self.job, dispatch_lock_root=str(self.base / "isolated-import"))
+        (self.first / "job.json").write_text(json.dumps(other))
+        scope = dispatch._scope(other, self.first, "one")[2]
+        proof = {"receipt_sha256":prior["send_receipt_sha256"],
+                 "repository":scope["repo"],"pr_number":scope["pr"],
+                 "branch":scope["branch"],"chat":scope["chat"],
+                 "instruction_id":"one","scope_sha256":dispatch._sha(scope)}
+        other["dispatch_adopt_source"] = proof
+        self.assertEqual(dispatch.adopt_send(other, self.first, "one")["phase"],
+                         "SENT_CONFIRMED")
+        self.job = other
+        self.assertEqual(self._permit_card(self._card("4")), (True, [True]))
+
+    def test_market_adopt_denied(self):
+        dispatch.adopt_existing(self.job, self.first, "one", dispatch._identity())
+        (self.first / "send_one.json").write_text(json.dumps({
+            "status":"CONFIRMED","instruction_id":"one",
+            "chat_url":self.job["dispatch_chat_url"],
+            "evidence_kind":"EXACT_RENDERED_USER_BUBBLE","text_hash":"a"*64}))
+        with self.assertRaises(dispatch.DispatchBlocked):
+            dispatch.approval_once(self.job, self.first, "one", "a"*64)
+
+
+
+    def _check(self):
+        import approval_transaction as tx
+        return tx
+
+    def _write_op(self, content, mode="create_file", path="safe.txt"):
+        return {"path": "/connector_sanitized/link_sanitized/" + mode,
+                "args": {"repository_full_name": self.job["repository"],
+                         "branch": self.job["branch"], "path": path, "content": content}}
+
+    def test_bound_create(self):
+        tx = self._check()
+        job = dict(self.job, write_allowlist=["safe.txt"])
+        for n in (180, 200, 238, 600):
+            self.assertEqual(tx.changed_policy(self._write_op("x\n" * n), job)["changed_lines"], n)
+        with self.assertRaises(tx.PolicyRejected):
+            tx.changed_policy(self._write_op("x\n" * 601), job)
+        with self.assertRaises(tx.PolicyRejected):
+            tx.changed_policy(self._write_op("x\n"), job, 601)
+
+    def test_bound_update(self):
+        tx = self._check()
+        job = dict(self.job, write_allowlist=["safe.txt"])
+        for n in (180, 200, 238, 600):
+            op = self._write_op("x\n" * (n-1), "update_file")
+            self.assertEqual(tx.changed_policy(op, job, fetch_base=lambda *a:"old\n")["changed_lines"], n)
+        with self.assertRaises(tx.PolicyRejected):
+            tx.changed_policy(self._write_op("x\n"*600,"update_file"), job,
+                              fetch_base=lambda *a:"old\n")
+
+    def test_syntax_names(self):
+        tx = self._check()
+        job = dict(self.job, write_allowlist=["safe.py"])
+        name = "test_" + "meaningful_case_"*3
+        const = "DIAGNOSTIC_" + "NAME_PART_"*3
+        source = const + " = 1\n" + "def " + name + "():\n    return " + const + "\n"
+        self.assertTrue(tx.changed_policy(self._write_op(source, path="safe.py"), job))
+        for bad in ("x = " + repr(name), "# " + name,
+                    "x = " + repr(const), "def " + name + "(:\n    pass\n"):
+            with self.subTest(value=bad):
+                with self.assertRaises(tx.PolicyRejected):
+                    tx.changed_policy(self._write_op(bad, path="safe.py"), job)
+
+    def test_secret_first(self):
+        tx = self._check()
+        job = dict(self.job, write_allowlist=["safe.py", ".env"])
+        fragments = ["sk-"+"x"*22, "ghp_"+"z"*25, "-----BEGIN "+"PRIVATE KEY-----", ".env"]
+        for value in fragments:
+            with self.subTest(value=value[:6]):
+                with self.assertRaises(tx.PolicyRejected):
+                    tx.changed_policy(self._write_op("x = "+repr(value), path="safe.py"), job)
+        with self.assertRaises(tx.PolicyRejected):
+            tx.changed_policy(self._write_op("x\n", path=".env"), job)
+
+    def test_prompt_template(self):
+        template = (SOURCE.parent / "instruction-template.txt").read_text(encoding="utf-8")
+        filled = template.format(repository="synthetic/example", pr_number=123,
+                                 branch="test-branch", chat_url=self.job["dispatch_chat_url"],
+                                 instruction_id="one", write_allowlist="['synthetic.py']",
+                                 valid_until=self.job["valid_until"])
+        self.assertIn("<=180", filled)
+        self.assertIn("<=25", filled)
+        self.assertIn("600", filled)
+        runner = (SOURCE.parent / "profile_runner.py").read_text(encoding="utf-8")
+        self.assertIn("instruction-template.txt", runner)
+
+
+    def test_public_boundaries(self):
+        carrier = self._carrier()
+        for mode in ("create_file", "update_file"):
+            for n in (180, 200, 238, 600, 601):
+                with self.subTest(mode=mode, n=n):
+                    content = "x\n" * (n if mode == "create_file" else n-1)
+                    op = self._write_op(content, mode=mode, path="safe.txt")
+                    ok = carrier.approve_operation(
+                        op, self.job["repository"], self.job["branch"],
+                        "safe.txt", {"safe.txt"}, 123,
+                        fetch_base=lambda *a: "old\n")
+                    self.assertEqual(ok, n <= 600)
+        self.assertFalse(carrier.approve_operation(
+            self._write_op("x\n"), self.job["repository"], self.job["branch"],
+            "safe.txt", {"safe.txt"}, 123, max_lines=601))
+        malformed = self._write_op("x\n")
+        malformed["path"] = "mcp__GitHub__create_file"
+        self.assertFalse(carrier.approve_operation(
+            malformed, self.job["repository"], self.job["branch"],
+            "safe.txt", {"safe.txt"}, 123))
+
+
+    def _send_child(self):
+        """Actual carrier.send in another Python process, local file-effect only."""
+        return (
+            "import datetime,json,os,pathlib,sys,time\n"
+            "sys.path.insert(0,sys.argv[1])\n"
+            "import product_dispatch as pd\n"
+            "import engineering_instruction_carrier as carrier\n"
+            "jobdir=pathlib.Path(sys.argv[2]); effect=pathlib.Path(sys.argv[3]); key=sys.argv[4]\n"
+            "job=json.loads((jobdir/'job.json').read_text())\n"
+            "start=pathlib.Path(sys.argv[5]); end=time.monotonic()+8\n"
+            "while not start.exists() and time.monotonic()<end: time.sleep(.01)\n"
+            "if not start.exists(): raise RuntimeError('START_BARRIER_TIMEOUT')\n"
+            "try:\n"
+            " claim=pd.claim(job,jobdir,key,chat=job['dispatch_chat_url'])\n"
+            " text='SYNTHETIC_EFFECT_ONLY'\n"
+            " snap={'url':job['dispatch_chat_url'],'user_messages':[],"
+            "'composer_text':'','busy':False}\n"
+            " def cdp(js):\n"
+            "  if 'Send button unavailable' in js:\n"
+            "   fd=os.open(effect,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)\n"
+            "   with os.fdopen(fd,'w') as output: output.write(str(os.getpid()))\n"
+            "   if os.environ.get('SYNTH_UNKNOWN')=='1': raise RuntimeError('SYNTH_UNKNOWN')\n"
+            "  return True\n"
+            " def save(name,obj): (jobdir/name).write_text(json.dumps(obj))\n"
+            " carrier.send(text,key,snap,root=jobdir,"
+            "chat_path='/c/11111111-2222-3333-4444-555555555555',"
+            "cdp_fn=cdp,snapshot_fn=lambda:{'url':job['dispatch_chat_url'],"
+            "'user_messages':[text],'composer_text':'','busy':False},"
+            "save_fn=save,valid_until=job['valid_until'],dispatch_job=job)\n"
+            " print(json.dumps({'status':'EFFECT','owner':claim['owner'],'phase':"
+            "pd.inspect(job,jobdir,key)['phase']}),flush=True)\n"
+            "except pd.DispatchBlocked as exc:\n"
+            " print(json.dumps({'status':'LOSER','reason':str(exc),'winner':exc.winner}),flush=True)\n"
+            "except RuntimeError as exc:\n"
+            " print(json.dumps({'status':'UNKNOWN','reason':str(exc),"
+            "'phase':pd.inspect(job,jobdir,key)['phase']}),flush=True)\n"
+        )
+
+    def _race(self, second_pr=None, unknown=False):
+        start = self.base / "start"
+        one = self.base / "effect-a"
+        two = one if second_pr is None else self.base / "effect-b"
+        other = dict(self.job, pr_number=second_pr) if second_pr else self.job
+        (self.second / "job.json").write_text(json.dumps(other))
+        names = [(self.first, one, "one"), (self.second, two, "two")]
+        procs = []
+        try:
+            for d, effect, key in names:
+                env = dict(__import__("os").environ)
+                if unknown and d == self.first:
+                    env["SYNTH_UNKNOWN"] = "1"
+                procs.append(subprocess.Popen(
+                    [sys.executable, "-c", self._send_child(), str(SOURCE.parent),
+                     str(d), str(effect), key, str(start)],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env))
+            start.write_text("GO")
+            answers = []
+            for child in procs:
+                stdout, stderr = child.communicate(timeout=15)
+                self.assertEqual(child.returncode, 0, stderr)
+                answers.append(json.loads(stdout.strip().splitlines()[-1]))
+            return answers, one, two
+        finally:
+            for child in procs:
+                if child.poll() is None:
+                    child.kill()
+                child.wait(timeout=10)
+
+    def test_real_sender_race(self):
+        answers, effect, _ = self._race()
+        self.assertEqual(sum(a["status"] == "EFFECT" for a in answers), 1)
+        self.assertEqual(sum(a["status"] == "LOSER" for a in answers), 1)
+        self.assertTrue(effect.is_file())
+        owner = next(a["owner"] for a in answers if a["status"] == "EFFECT")
+        self.assertEqual(next(a["winner"] for a in answers if a["status"] == "LOSER"), owner)
+        self.assertEqual(int(effect.read_text()), owner["pid"])
+
+    def test_real_other_products(self):
+        answers, a, b = self._race(second_pr=124)
+        self.assertEqual([x["status"] for x in answers], ["EFFECT", "EFFECT"])
+        self.assertNotEqual(a.read_text(), b.read_text())
+
+    def test_real_sender_restart(self):
+        answers, effect, _ = self._race()
+        self.assertEqual(sum(x["status"] == "EFFECT" for x in answers), 1)
+        self.assertTrue(effect.exists())
+        restart = self.base / "restart"
+        restart.write_text("GO")
+        proc = subprocess.run([sys.executable, "-c", self._send_child(),
+            str(SOURCE.parent), str(self.second), str(effect), "new", str(restart)],
+            capture_output=True, text=True, timeout=12)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        denied = json.loads(proc.stdout.strip().splitlines()[-1])
+        self.assertEqual(denied["status"], "LOSER")
+        self.assertEqual(int(effect.read_text()),
+            next(x["owner"]["pid"] for x in answers if x["status"] == "EFFECT"))
+
+    def test_live_unknown_hold(self):
+        # A true effectful sender fails after external effect; dead owner never
+        # authorizes resending from the other jobdir.
+        start = self.base / "go"
+        effect = self.base / "effect"
+        env = dict(__import__("os").environ, SYNTH_UNKNOWN="1")
+        proc = subprocess.Popen([sys.executable, "-c", self._send_child(),
+            str(SOURCE.parent), str(self.first), str(effect), "one", str(start)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+        try:
+            start.write_text("GO")
+            out, err = proc.communicate(timeout=12)
+            self.assertEqual(proc.returncode, 0, err)
+            answer = json.loads(out.strip().splitlines()[-1])
+            self.assertEqual(answer["status"], "UNKNOWN")
+            self.assertEqual(answer["phase"], "SEND_UNKNOWN")
+            self.assertTrue(effect.exists())
+            restart = self.base / "again"
+            restart.write_text("GO")
+            retry = subprocess.run([sys.executable, "-c", self._send_child(),
+                str(SOURCE.parent), str(self.second), str(effect), "two", str(restart)],
+                capture_output=True, text=True, timeout=12)
+            self.assertEqual(json.loads(retry.stdout.strip())["status"], "LOSER")
+        finally:
+            if proc.poll() is None: proc.kill()
+            proc.wait(timeout=10)
+
+
+    def test_worker_restart_obs(self):
+        """Existing confirmed receipt must be observable; no duplicate send."""
+        jobdir = self.first
+        prompt = jobdir / "instruction.txt"
+        prompt.write_text("SYNTHETIC_OFFLINE_ONLY")
+        (jobdir / "bounded_one.txt").write_text("PREVIOUS_BOUNDED_PROMPT")
+        (jobdir / "receipt-one.json").write_text(json.dumps({
+            "instruction_id": "one", "stage": "CONFIRMED"}))
+        worker = SOURCE.parent / "relay_dispatch_worker.py"
+        proc = subprocess.run([sys.executable, str(worker),
+            "--job-dir", str(jobdir), "--instruction-id", "one",
+            "--prompt-file", str(prompt), "--chat-url",
+            self.job["dispatch_chat_url"], "--repo", self.job["repository"],
+            "--branch", self.job["branch"], "--mailbox-path", "synthetic.py",
+            "--deadline-min", "0", "--poll-s", "0"],
+            capture_output=True, text=True, timeout=12)
+        self.assertNotIn("BOUNDED_PROMPT_EXISTS", proc.stderr + proc.stdout)
+        self.assertNotIn("SEND_INTENT", proc.stdout)
+
+    def test_browser_cdp(self):
+        """Opt-in isolated stdlib Chromium + real fixture selector click."""
+        import os, socket, struct, base64, signal, time, threading
+        import http.server, urllib.request, urllib.parse
+        browser = os.environ.get("RELAY_CDP_BROWSER")
+        if not browser:
+            self.skipTest("RELAY_CDP_BROWSER unset: isolated CDP NOT_RUN")
+        self.assertTrue(Path(browser).is_file())
+        hits = []
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                page = (b'<button data-testid="send-button" '
+                        b'onclick="fetch(\'/effect\',{method:\'POST\'})">Send</button>')
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(page)))
+                self.end_headers()
+                self.wfile.write(page)
+            def do_POST(self):
+                if self.path == "/effect":
+                    hits.append(1)
+                self.send_response(204)
+                self.end_headers()
+            def log_message(self, *unused):
+                pass
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(lambda: (server.shutdown(), server.server_close(),
+                                 thread.join(timeout=3)))
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        proc = subprocess.Popen(
+            [browser, "--headless=new", "--no-first-run", "--disable-gpu",
+             "--remote-allow-origins=*", "--user-data-dir=" + str(self.base / "cdp"),
+             "--remote-debugging-address=127.0.0.1",
+             "--remote-debugging-port=" + str(port), "about:blank"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True)
+        def stop():
+            if proc.poll() is None:
+                os.killpg(proc.pid, signal.SIGKILL)
+            proc.wait(timeout=5)
+        self.addCleanup(stop)
+        base = "http://127.0.0.1:%d" % port
+        deadline = time.monotonic() + 12
+        while True:
+            try:
+                with urllib.request.urlopen(base + "/json/version", timeout=1) as reply:
+                    json.load(reply)
+                break
+            except (OSError, ValueError):
+                if time.monotonic() >= deadline:
+                    self.fail("isolated Chromium startup timeout")
+                time.sleep(.1)
+        page = "http://127.0.0.1:%d/" % server.server_port
+        req = urllib.request.Request(base + "/json/new?" +
+                                     urllib.parse.quote(page, safe=":/"), method="PUT")
+        with urllib.request.urlopen(req, timeout=3) as reply:
+            target = json.load(reply)
+        url = urllib.parse.urlparse(target["webSocketDebuggerUrl"])
+        with socket.create_connection((url.hostname, url.port), timeout=4) as sock:
+            sock.settimeout(5)
+            nonce = base64.b64encode(os.urandom(16)).decode()
+            req = ("GET %s HTTP/1.1\r\nHost: %s:%s\r\nUpgrade: websocket\r\n"
+                   "Connection: Upgrade\r\nSec-WebSocket-Key: %s\r\n"
+                   "Sec-WebSocket-Version: 13\r\nOrigin: http://localhost\r\n\r\n") % (
+                       url.path, url.hostname, url.port, nonce)
+            sock.sendall(req.encode())
+            response = b""
+            while b"\r\n\r\n" not in response:
+                response += sock.recv(4096)
+            headers = response.lower().split(b"\r\n")
+            self.assertRegex(headers[0], rb"^http/1\.[01] 101(?: |$)")
+            self.assertIn(b"upgrade: websocket", headers)
+            expected = base64.b64encode(hashlib.sha1(
+                (nonce + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest())
+            self.assertIn(b"Sec-WebSocket-Accept: " + expected, response)
+            def take(count):
+                data = b""
+                while len(data) < count:
+                    part = sock.recv(count-len(data))
+                    if not part:
+                        raise EOFError("CDP closed")
+                    data += part
+                return data
+            def evaluate(idx, expression):
+                payload = json.dumps({"id": idx, "method": "Runtime.evaluate",
+                    "params": {"expression": expression, "returnByValue": True}}).encode()
+                mask = os.urandom(4)
+                header = bytes([129, 128 | len(payload)]) if len(payload) < 126 else (
+                    bytes([129, 254]) + struct.pack("!H", len(payload)))
+                sock.sendall(header + mask + bytes(c ^ mask[i%4]
+                                                    for i,c in enumerate(payload)))
+                while True:
+                    first, n = take(2)
+                    size = n & 127
+                    if size == 126:
+                        size = struct.unpack("!H", take(2))[0]
+                    if size == 127:
+                        size = struct.unpack("!Q", take(8))[0]
+                    key = take(4) if n & 128 else None
+                    raw = take(size)
+                    if key:
+                        raw = bytes(c ^ key[i%4] for i,c in enumerate(raw))
+                    if first & 15 != 1:
+                        continue
+                    item = json.loads(raw)
+                    if item.get("id") == idx:
+                        return item["result"]["result"]["value"]
+            deadline = time.monotonic() + 5
+            while evaluate(1, "document.querySelectorAll('button[data-testid=send-button]').length") != 1:
+                if time.monotonic() >= deadline:
+                    self.fail("fixture DOM selector unavailable")
+                time.sleep(.1)
+            self.assertTrue(evaluate(2, "(()=>{document.querySelector('button[data-testid=send-button]').click();return true})()"))
+            deadline = time.monotonic() + 5
+            while len(hits) != 1 and time.monotonic() < deadline:
+                time.sleep(.05)
+            self.assertEqual(len(hits), 1)
+
+
+    def test_owner_unexpired(self):
+        prior = dispatch.claim(self.job, self.first, "one", lease=60)
+        with self.assertRaises(dispatch.DispatchBlocked) as ctx:
+            dispatch.claim(self.job, self.second, "two")
+        self.assertEqual(ctx.exception.winner, prior["owner"])
+
+    def test_expired_revive(self):
+        import time
+        prior = dispatch.claim(self.job, self.first, "one", lease=1)
+        time.sleep(1.1)
+        with self.assertRaises(dispatch.DispatchBlocked) as blocked:
+            dispatch.claim(self.job, self.second, "two", lease=60)
+        self.assertEqual(blocked.exception.args[0], "PRODUCT_ALREADY_CLAIMED")
+        self.assertEqual(blocked.exception.winner, prior["owner"])
+        self.assertEqual(dispatch.inspect(self.job, self.first, "one"), prior)
+        with self.assertRaises(dispatch.DispatchBlocked) as expired:
+            dispatch.claim(self.job, self.first, "one")
+        self.assertEqual(expired.exception.args[0], "OWNER_LEASE_EXPIRED")
+        self.assertEqual(dispatch.inspect(self.job, self.first, "one"), prior)
+
+    def test_duplicate_finish(self):
+        call, effects, _ = self._sent()
+        call()
+        self.assertEqual(effects, ["send"])
+        prior = dispatch.inspect(self.job, self.first, "one")
+        self.assertEqual(prior["phase"], "SENT_CONFIRMED")
+        with self.assertRaises(dispatch.DispatchBlocked) as duplicate:
+            dispatch.reconcile(self.job, self.first, "one",
+                               receipt="SEND_CONFIRMED")
+        self.assertEqual(duplicate.exception.args[0], "RECONCILE_PHASE_INVALID")
+        with self.assertRaises(dispatch.DispatchBlocked):
+            call()
+        recorded = dispatch.inspect(self.job, self.first, "one")
+        self.assertEqual(recorded, prior)
+        self.assertEqual(recorded["owner"], prior["owner"])
+        self.assertEqual(recorded["phase"], "SENT_CONFIRMED")
+        self.assertEqual(effects, ["send"])
+
+    def test_scope_click_race(self):
+        carrier = self._carrier()
+        call, clicks, _ = self._sent()
+        original = carrier.prepare_composer
+        def mutate(*args, **kwargs):
+            job = dict(self.job, write_allowlist=["changed.py"])
+            (self.first / "job.json").write_text(json.dumps(job))
+            return original(*args, **kwargs)
+        carrier.prepare_composer = mutate
+        try:
+            with self.assertRaises(dispatch.DispatchBlocked):
+                call()
+        finally:
+            carrier.prepare_composer = original
+        self.assertEqual(clicks, [])
+
+    def test_prompt_no_receipt(self):
+        prompt = self.first / "prompt.txt"
+        prompt.write_text("SYNTHETIC_ONLY")
+        (self.first / "bounded_one.txt").write_text("existing")
+        args = [sys.executable, str(SOURCE.parent / "relay_dispatch_worker.py"),
+                "--job-dir", str(self.first), "--instruction-id", "one",
+                "--prompt-file", str(prompt), "--chat-url", self.job["dispatch_chat_url"],
+                "--repo", self.job["repository"], "--branch", self.job["branch"],
+                "--mailbox-path", "synthetic.py", "--deadline-min", "0"]
+        proc = subprocess.run(args, capture_output=True, text=True, timeout=12)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("BOUNDED_PROMPT_EXISTS", proc.stdout + proc.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()

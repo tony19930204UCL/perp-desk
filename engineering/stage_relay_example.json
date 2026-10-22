@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "kind": "stage_relay",
+  "evidence_root": "/ABSOLUTE/ACTIVE_PROFILE/stage-relay/C0041/evidence",
+  "bootstrap": {
+    "acceptance_path": "upstream/r11-acceptance.json",
+    "stage_id": "r11-signal-placebo-frame",
+    "source_head": "4c4120f28eaa42ff3228fd293f80a9d6308acdc4",
+    "input_sha256": "REPLACE_64_HEX"
+  },
+  "stages": [
+    {
+      "id": "r12-entrypoint",
+      "mode": "adopt",
+      "source_head": "REPLACE_VERIFIED_40_HEX",
+      "input_sha256": "REPLACE_64_HEX",
+      "reports": [
+        {
+          "path": "reports/r12.json",
+          "rows": 1
+        }
+      ]
+    },
+    {
+      "id": "matched-account-replay",
+      "mode": "exec",
+      "source_head": "REPLACE_VERIFIED_40_HEX",
+      "input_sha256": "REPLACE_64_HEX",
+      "lease_seconds": 900,
+      "command": [
+        "/ABSOLUTE/AUTHORIZED_PYTHON",
+        "/ABSOLUTE/CONFIGURED_MATCHED_ACCOUNT_REPLAY"
+      ],
+      "reports": [
+        {
+          "path": "reports/matched.json",
+          "rows": 1
+        }
+      ]
+    },
+    {
+      "id": "historical-48-cell",
+      "mode": "adopt",
+      "source_head": "REPLACE_VERIFIED_40_HEX",
+      "input_sha256": "REPLACE_64_HEX",
+      "reports": [
+        {
+          "path": "reports/history.json",
+          "rows": 48,
+          "symbol_cells": {
+            "BTCUSDT": 24,
+            "ETHUSDT": 24
+          }
+        }
+      ]
+    },
+    {
+      "id": "operator-reflection",
+      "mode": "adopt",
+      "source_head": "REPLACE_VERIFIED_40_HEX",
+      "input_sha256": "REPLACE_64_HEX",
+      "reports": [
+        {
+          "path": "reports/reflection.json",
+          "rows": 1
+        }
+      ]
+    }
+  ],
+  "maker_bridge": {
+    "historical_stage": "historical-48-cell",
+    "reflection_stage": "operator-reflection",
+    "producer": {
+      "item": "C-1062",
+      "job": "sa-0-b5902643",
+      "instruction": "MAKER-V3-GH-CAPACITY-r13-VWAP-CORRECTION"
+    },
+    "capacity_acceptance_path": "acceptance/capacity-source.json",
+    "source_sha256": {
+      "backtest_entry.py": "REPLACE_REAL_64_HEX_BUSINESS_SOURCE_SHA",
+      "backtest_reports.py": "REPLACE_REAL_64_HEX_BUSINESS_SOURCE_SHA"
+    },
+    "input_manifest_sha256": "REPLACE_REAL_64_HEX_INPUT_MANIFEST_SHA",
+    "config_sha256": "REPLACE_REAL_64_HEX_CONFIG_SHA",
+    "symbol_hashes": {
+      "BTCUSDT": {
+        "bars_sha256": "REPLACE_REAL_64_HEX",
+        "funding_sha256": "REPLACE_REAL_64_HEX"
+      },
+      "ETHUSDT": {
+        "bars_sha256": "REPLACE_REAL_64_HEX",
+        "funding_sha256": "REPLACE_REAL_64_HEX"
+      }
+    },
+    "cwd": "/ABSOLUTE/VERIFIED_OFFLINE_MAKER_DIRECTORY",
+    "config_path": "/ABSOLUTE/VERIFIED_OFFLINE_ACCOUNT_CONFIG.json",
+    "input_path": "/ABSOLUTE/VERIFIED_OFFLINE_INPUT_MANIFEST.json",
+    "output_dir": "/ABSOLUTE/VERIFIED_NEW_OR_EXISTING_OUTPUT_DIRECTORY",
+    "run_argv": [
+      "python3",
+      "-u",
+      "backtest_entry.py",
+      "--run",
+      "--config",
+      "/ABSOLUTE/VERIFIED_OFFLINE_ACCOUNT_CONFIG.json",
+      "--input",
+      "/ABSOLUTE/VERIFIED_OFFLINE_INPUT_MANIFEST.json",
+      "--output",
+      "/ABSOLUTE/VERIFIED_NEW_OR_EXISTING_OUTPUT_DIRECTORY"
+    ],
+    "verify_argv": [
+      "/ABSOLUTE/CAPTURED/PYTHON_CHILD_EXECUTABLE",
+      "/ABSOLUTE/VERIFIED_OFFLINE_MAKER_DIRECTORY/backtest_entry.py",
+      "--verify",
+      "--config",
+      "/ABSOLUTE/VERIFIED_OFFLINE_ACCOUNT_CONFIG.json",
+      "--input",
+      "/ABSOLUTE/VERIFIED_OFFLINE_INPUT_MANIFEST.json",
+      "--output",
+      "/ABSOLUTE/VERIFIED_NEW_OR_EXISTING_OUTPUT_DIRECTORY"
+    ],
+    "child_executable": "/ABSOLUTE/CAPTURED/PYTHON_CHILD_EXECUTABLE"
+  }
+}
