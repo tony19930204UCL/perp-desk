@@ -59,7 +59,6 @@ class SpeedFilter:
         self._previous = None
 
     def _direct(self, t):
-        self._previous = t
         right = bisect_right(self.ends, t)
         left = bisect_left(self.ends, t - LOOK_DAYS * DAY_MS)
         values = [v for v in self.speeds[left:right] if v is not None]
@@ -83,9 +82,13 @@ class SpeedFilter:
             raise ValueError("decision timestamp must be integer milliseconds")
         if self._previous is not None and decision_ts < self._previous:
             return self._direct(decision_ts)
-        self._previous = decision_ts
         right = bisect_right(self.ends, decision_ts)
         left = bisect_left(self.ends, decision_ts - LOOK_DAYS * DAY_MS)
+        if self._previous is None:
+            self._ordered = sorted(v for v in self.speeds[left:right]
+                                   if v is not None)
+            self._left, self._right = left, right
+        self._previous = decision_ts
         while self._right < right:
             value = self.speeds[self._right]
             if value is not None:
