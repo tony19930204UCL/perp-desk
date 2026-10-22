@@ -109,6 +109,39 @@ function render(data) {
     add(box,'strong',v===null||v===undefined?'NA':v);
     add(box,'span',label);
   });
+  // Accessible read-only disclosure: no action or approval endpoint.
+  const tiles=k.children;
+  if(tiles.length===4){
+    const decision=tiles[3];
+    const label=decision.textContent;
+    decision.replaceChildren();
+    const details=add(decision,'details');
+    const summary=add(details,'summary',label+' · 展開唯讀清單');
+    summary.setAttribute('role','button');
+    const entries=data.kpis.pending_list;
+    const list=add(details,'div');
+    const taipei=sec=>{
+      if(typeof sec!=='number'||!Number.isFinite(sec))return 'NA';
+      return new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',
+        dateStyle:'medium',timeStyle:'short'}).format(new Date(sec*1000));
+    };
+    if(!Array.isArray(entries))add(list,'p','資料無法確認（NA）');
+    else if(!entries.length)add(list,'p','目前沒有需要你決定的事');
+    else entries.forEach(item=>{
+      const line=add(list,'p');
+      add(line,'strong',item.id+' · '+item.question+' · ');
+      add(line,'span',item.reason+' · ');
+      const stamp=add(line,'time',taipei(item.created));
+      if(typeof item.created==='number')
+        stamp.title=new Date(item.created*1000).toISOString();
+    });
+  }
+  const recent=clear('metroRecent');
+  const fmt=ms=>new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',
+    dateStyle:'medium',timeStyle:'short'}).format(new Date(ms));
+  (data.recent||[]).forEach(e=>add(recent,'p',fmt(e.at)+' · '+e.kind+
+    ' · '+e.id+' · '+e.text+(e.alive?' · '+e.alive:''),'meta'));
+  if(!(data.recent||[]).length)add(recent,'p','目前沒有近況','meta');
   const routes=clear('metroRoutes');
   data.routes.forEach(route=>{
     const card=add(routes,'section',undefined,'metro-route '+route.color);
@@ -144,7 +177,10 @@ function render(data) {
       (m.conditional_win_rate??'NA')+' (n='+m.risk_denominator+') · TIME '+(m.actual_time_share??'NA'),'meta');
   });
   const health=clear('metroHealth');
-  Object.entries(data.sources).forEach(([name,v])=>add(health,'p',name+'：'+(v.state||'未知'),'meta'));
+  Object.entries(data.sources).forEach(([name,v])=>{
+    const age=v.age_ms==null?'':(' · '+Math.floor(v.age_ms/60000)+' 分鐘');
+    add(health,'p',name+'：'+(v.state==='stale'?'稍早資料':' '+(v.state||'未知'))+age,'meta');
+  });
   get('metroHistoryCount').textContent=String(data.history_count??'未知');
   const history=clear('metroHistoryRows');
   (data.history||[]).forEach(t=>add(history,'p',(t.id||'?')+' · '+(t.title||'未確認')+' · '+(t.state||'未知'),'meta'));
