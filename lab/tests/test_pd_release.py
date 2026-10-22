@@ -176,3 +176,83 @@ class ReleaseTests(unittest.TestCase):
             pd.claim(self.job, self.second, self.next_id)
         with self.assertRaisesRegex(pd.DispatchBlocked, "SEND_ALREADY_INTENDED_NO_RETRY"):
             pd.claim(self.job, self.first, self.instr)
+
+
+    def test_verdict_reuse(self):
+        original = self._claim()
+        verdict = self._verdict(original)
+        self._grant(original, verdict)
+        root, key, _, _ = pd._scope(self.job, self.first, self.next_id)
+        archive = root / "released"
+        archive.mkdir(parents=True)
+        pd._write(archive / "existing.json", {
+            "verdict_sha256": hashlib.sha256(verdict.read_bytes()).hexdigest()})
+        with self.assertRaisesRegex(pd.DispatchBlocked, "RELEASE_VERDICT_REUSED"):
+            pd.release_revise(self.job, self.first, self.next_id, verdict)
+        self.assertEqual(pd.inspect(self.job, self.first, self.instr), original)
+
+    def _children(self, operation, verdict=None):
+        """Real process contention under the production flock."""
+        gate = self.root / ("start-" + operation)
+        code = (
+            "import importlib.util,json,sys,time,pathlib\n"
+            "spec=importlib.util.spec_from_file_location('pd',sys.argv[1])\n"
+            "pd=importlib.util.module_from_spec(spec)\n"
+            "spec.loader.exec_module(pd)\n"
+            "job=json.loads(pathlib.Path(sys.argv[2]).read_text())\n"
+            "directory=pathlib.Path(sys.argv[3]); gate=pathlib.Path(sys.argv[4])\n"
+            "deadline=time.monotonic()+8\n"
+            "while not gate.exists() and time.monotonic()<deadline: time.sleep(.01)\n"
+            "try:\n"
+            " if sys.argv[5]=='release':\n"
+            "  value=pd.release_revise(job,directory,'r3',sys.argv[6])\n"
+            " else:\n"
+            "  value=pd.claim(job,directory,'r3')\n"
+            " print(json.dumps({'status':'CLAIMED' if sys.argv[5]=='claim' else 'RELEASED',"
+            "'generation':value['generation']}),flush=True)\n"
+            "except pd.DispatchBlocked as exc:\n"
+            " print(json.dumps({'status':'BLOCKED','reason':exc.args[0]}),flush=True)\n")
+        children = []
+        for directory in (self.first, self.second):
+            args = [sys.executable, "-c", code, str(SOURCE),
+                    str(directory / "job.json"), str(directory), str(gate),
+                    operation, str(verdict or "")]
+            children.append(subprocess.Popen(
+                args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True))
+        try:
+            gate.write_text("GO")
+            results = []
+            for child in children:
+                stdout, stderr = child.communicate(timeout=12)
+                self.assertEqual(child.returncode, 0, stderr)
+                results.append(json.loads(stdout.strip()))
+            return results
+        finally:
+            for child in children:
+                if child.poll() is None:
+                    child.kill()
+                child.wait(timeout=5)
+
+    def test_release_race(self):
+        original = self._claim()
+        verdict = self._verdict(original)
+        self._grant(original, verdict)
+        self._sync(self.second)
+        result = self._children("release", verdict)
+        self.assertEqual(sum(x["status"] == "RELEASED" for x in result), 1)
+        rejected = [x for x in result if x["status"] == "BLOCKED"]
+        self.assertEqual(len(rejected), 1)
+        self.assertIn(rejected[0]["reason"],
+                      ("RELEASE_NOTHING", "RELEASE_VERDICT_REUSED"))
+        archive = Path(self.job["dispatch_lock_root"]) / "released"
+        self.assertEqual(len(list(archive.glob("*.json"))), 1)
+
+    def test_claim_after_race(self):
+        original = self._claim()
+        self._release(original)
+        self._sync(self.second)
+        result = self._children("claim")
+        self.assertEqual(sum(x["status"] == "CLAIMED" for x in result), 1)
+        self.assertEqual(sum(x["status"] == "BLOCKED" for x in result), 1)
+        self.assertEqual(next(x["reason"] for x in result if x["status"] == "BLOCKED"),
+                         "PRODUCT_ALREADY_CLAIMED")
