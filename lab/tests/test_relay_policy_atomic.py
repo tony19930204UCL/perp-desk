@@ -646,7 +646,9 @@ class AtomicDispatchTests(unittest.TestCase):
             response = b""
             while b"\r\n\r\n" not in response:
                 response += sock.recv(4096)
-            self.assertIn(b"101 Switching Protocols", response)
+            headers = response.lower().split(b"\r\n")
+            self.assertRegex(headers[0], rb"^http/1\.[01] 101(?: |$)")
+            self.assertIn(b"upgrade: websocket", headers)
             expected = base64.b64encode(hashlib.sha1(
                 (nonce + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest())
             self.assertIn(b"Sec-WebSocket-Accept: " + expected, response)
@@ -704,19 +706,32 @@ class AtomicDispatchTests(unittest.TestCase):
         import time
         prior = dispatch.claim(self.job, self.first, "one", lease=1)
         time.sleep(1.1)
-        revived = dispatch.claim(self.job, self.second, "two", lease=60)
-        self.assertNotEqual(prior["generation"], revived["generation"])
-        with self.assertRaises(dispatch.DispatchBlocked):
+        with self.assertRaises(dispatch.DispatchBlocked) as blocked:
+            dispatch.claim(self.job, self.second, "two", lease=60)
+        self.assertEqual(blocked.exception.args[0], "PRODUCT_ALREADY_CLAIMED")
+        self.assertEqual(blocked.exception.winner, prior["owner"])
+        self.assertEqual(dispatch.inspect(self.job, self.first, "one"), prior)
+        with self.assertRaises(dispatch.DispatchBlocked) as expired:
             dispatch.claim(self.job, self.first, "one")
+        self.assertEqual(expired.exception.args[0], "OWNER_LEASE_EXPIRED")
+        self.assertEqual(dispatch.inspect(self.job, self.first, "one"), prior)
 
     def test_duplicate_finish(self):
         call, effects, _ = self._sent()
         call()
         self.assertEqual(effects, ["send"])
         prior = dispatch.inspect(self.job, self.first, "one")
-        result = dispatch.reconcile(self.job, self.first, "one",
-                                    receipt="SEND_CONFIRMED")
-        self.assertEqual(prior["owner"], result["owner"])
+        self.assertEqual(prior["phase"], "SENT_CONFIRMED")
+        with self.assertRaises(dispatch.DispatchBlocked) as duplicate:
+            dispatch.reconcile(self.job, self.first, "one",
+                               receipt="SEND_CONFIRMED")
+        self.assertEqual(duplicate.exception.args[0], "RECONCILE_PHASE_INVALID")
+        with self.assertRaises(dispatch.DispatchBlocked):
+            call()
+        recorded = dispatch.inspect(self.job, self.first, "one")
+        self.assertEqual(recorded, prior)
+        self.assertEqual(recorded["owner"], prior["owner"])
+        self.assertEqual(recorded["phase"], "SENT_CONFIRMED")
         self.assertEqual(effects, ["send"])
 
     def test_scope_click_race(self):
