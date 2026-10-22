@@ -430,5 +430,130 @@ class AtomicDispatchTests(unittest.TestCase):
             "safe.txt", {"safe.txt"}, 123))
 
 
+    def _send_child(self):
+        """Actual carrier.send in another Python process, local file-effect only."""
+        return (
+            "import datetime,json,os,pathlib,sys,time\n"
+            "sys.path.insert(0,sys.argv[1])\n"
+            "import product_dispatch as pd\n"
+            "import engineering_instruction_carrier as carrier\n"
+            "jobdir=pathlib.Path(sys.argv[2]); effect=pathlib.Path(sys.argv[3]); key=sys.argv[4]\n"
+            "job=json.loads((jobdir/'job.json').read_text())\n"
+            "start=pathlib.Path(sys.argv[5]); end=time.monotonic()+8\n"
+            "while not start.exists() and time.monotonic()<end: time.sleep(.01)\n"
+            "if not start.exists(): raise RuntimeError('START_BARRIER_TIMEOUT')\n"
+            "try:\n"
+            " claim=pd.claim(job,jobdir,key,chat=job['dispatch_chat_url'])\n"
+            " text='SYNTHETIC_EFFECT_ONLY'\n"
+            " snap={'url':job['dispatch_chat_url'],'user_messages':[],"
+            "'composer_text':'','busy':False}\n"
+            " def cdp(js):\n"
+            "  if 'Send button unavailable' in js:\n"
+            "   fd=os.open(effect,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)\n"
+            "   with os.fdopen(fd,'w') as output: output.write(str(os.getpid()))\n"
+            "   if os.environ.get('SYNTH_UNKNOWN')=='1': raise RuntimeError('SYNTH_UNKNOWN')\n"
+            "  return True\n"
+            " def save(name,obj): (jobdir/name).write_text(json.dumps(obj))\n"
+            " carrier.send(text,key,snap,root=jobdir,"
+            "chat_path='/c/11111111-2222-3333-4444-555555555555',"
+            "cdp_fn=cdp,snapshot_fn=lambda:{'url':job['dispatch_chat_url'],"
+            "'user_messages':[text],'composer_text':'','busy':False},"
+            "save_fn=save,valid_until=job['valid_until'],dispatch_job=job)\n"
+            " print(json.dumps({'status':'EFFECT','owner':claim['owner'],'phase':"
+            "pd.inspect(job,jobdir,key)['phase']}),flush=True)\n"
+            "except pd.DispatchBlocked as exc:\n"
+            " print(json.dumps({'status':'LOSER','reason':str(exc),'winner':exc.winner}),flush=True)\n"
+            "except RuntimeError as exc:\n"
+            " print(json.dumps({'status':'UNKNOWN','reason':str(exc),"
+            "'phase':pd.inspect(job,jobdir,key)['phase']}),flush=True)\n"
+        )
+
+    def _race(self, second_pr=None, unknown=False):
+        start = self.base / "start"
+        one = self.base / "effect-a"
+        two = one if second_pr is None else self.base / "effect-b"
+        other = dict(self.job, pr_number=second_pr) if second_pr else self.job
+        (self.second / "job.json").write_text(json.dumps(other))
+        names = [(self.first, one, "one"), (self.second, two, "two")]
+        procs = []
+        try:
+            for d, effect, key in names:
+                env = dict(__import__("os").environ)
+                if unknown and d == self.first:
+                    env["SYNTH_UNKNOWN"] = "1"
+                procs.append(subprocess.Popen(
+                    [sys.executable, "-c", self._send_child(), str(SOURCE.parent),
+                     str(d), str(effect), key, str(start)],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env))
+            start.write_text("GO")
+            answers = []
+            for child in procs:
+                stdout, stderr = child.communicate(timeout=15)
+                self.assertEqual(child.returncode, 0, stderr)
+                answers.append(json.loads(stdout.strip().splitlines()[-1]))
+            return answers, one, two
+        finally:
+            for child in procs:
+                if child.poll() is None:
+                    child.kill()
+                child.wait(timeout=10)
+
+    def test_real_sender_race(self):
+        answers, effect, _ = self._race()
+        self.assertEqual(sum(a["status"] == "EFFECT" for a in answers), 1)
+        self.assertEqual(sum(a["status"] == "LOSER" for a in answers), 1)
+        self.assertTrue(effect.is_file())
+        owner = next(a["owner"] for a in answers if a["status"] == "EFFECT")
+        self.assertEqual(next(a["winner"] for a in answers if a["status"] == "LOSER"), owner)
+        self.assertEqual(int(effect.read_text()), owner["pid"])
+
+    def test_real_other_products(self):
+        answers, a, b = self._race(second_pr=124)
+        self.assertEqual([x["status"] for x in answers], ["EFFECT", "EFFECT"])
+        self.assertNotEqual(a.read_text(), b.read_text())
+
+    def test_real_sender_restart(self):
+        answers, effect, _ = self._race()
+        self.assertEqual(sum(x["status"] == "EFFECT" for x in answers), 1)
+        self.assertTrue(effect.exists())
+        restart = self.base / "restart"
+        restart.write_text("GO")
+        proc = subprocess.run([sys.executable, "-c", self._send_child(),
+            str(SOURCE.parent), str(self.second), str(effect), "new", str(restart)],
+            capture_output=True, text=True, timeout=12)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        denied = json.loads(proc.stdout.strip().splitlines()[-1])
+        self.assertEqual(denied["status"], "LOSER")
+        self.assertEqual(int(effect.read_text()),
+            next(x["owner"]["pid"] for x in answers if x["status"] == "EFFECT"))
+
+    def test_live_unknown_hold(self):
+        # A true effectful sender fails after external effect; dead owner never
+        # authorizes resending from the other jobdir.
+        start = self.base / "go"
+        effect = self.base / "effect"
+        env = dict(__import__("os").environ, SYNTH_UNKNOWN="1")
+        proc = subprocess.Popen([sys.executable, "-c", self._send_child(),
+            str(SOURCE.parent), str(self.first), str(effect), "one", str(start)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+        try:
+            start.write_text("GO")
+            out, err = proc.communicate(timeout=12)
+            self.assertEqual(proc.returncode, 0, err)
+            answer = json.loads(out.strip().splitlines()[-1])
+            self.assertEqual(answer["status"], "UNKNOWN")
+            self.assertEqual(answer["phase"], "SEND_UNKNOWN")
+            self.assertTrue(effect.exists())
+            restart = self.base / "again"
+            restart.write_text("GO")
+            retry = subprocess.run([sys.executable, "-c", self._send_child(),
+                str(SOURCE.parent), str(self.second), str(effect), "two", str(restart)],
+                capture_output=True, text=True, timeout=12)
+            self.assertEqual(json.loads(retry.stdout.strip())["status"], "LOSER")
+        finally:
+            if proc.poll() is None: proc.kill()
+            proc.wait(timeout=10)
+
+
 if __name__ == "__main__":
     unittest.main()
