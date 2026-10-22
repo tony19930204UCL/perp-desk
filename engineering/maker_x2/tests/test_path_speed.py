@@ -32,7 +32,7 @@ class Control(unittest.TestCase):
 
     def test_strict_equal(self):
         # Kills >= instead of > and false exclusion on flat history.
-        b=[{"ts":i*60000,"close":100} for i in range(MIN_HIST+10)]
+        b=[{"ts":i*60000,"close":100} for i in range(MIN_HIST+6)]
         f=SpeedFilter(b)
         self.assertEqual(f.skip(len(b)*60000),(False,"H2_PASS"))
         burst=b+[{"ts":len(b)*60000,"close":120}]
@@ -51,7 +51,29 @@ class Control(unittest.TestCase):
         self.assertEqual([f.skip(t) for t in reversed(times)],
                          list(reversed(expected)))
         values=[.01,.03,.05,.09]
-        self.assertEqual(pct7(values,.9),.078)
+        self.assertAlmostEqual(pct7(values,.9),.078,places=12)
+
+
+    def test_full_seven_days(self):
+        # Detects accepting 10000 rather than 10080 completed minutes.
+        short=bars(10084)
+        self.assertEqual(SpeedFilter(short).skip(10084*60000),
+                         (False,"H2_WARMUP"))
+        full=bars(10086)
+        self.assertNotEqual(SpeedFilter(full).skip(10086*60000)[1],
+                            "H2_WARMUP")
+        missing=full[:4000]+full[4001:]
+        self.assertEqual(SpeedFilter(missing).skip(10086*60000),
+                         (False,"H2_WARMUP"))
+
+    def test_unclosed_future(self):
+        # Detects inclusion of the signal minute before its close.
+        base=bars(10100)
+        t=10099*60000
+        changed=[dict(v) for v in base]
+        changed[-1]["close"]=100000
+        self.assertEqual(SpeedFilter(base).skip(t),
+                         SpeedFilter(changed).skip(t))
 
     def test_scale_200k(self):
         # Kills full sort per query: 200k bars, 20k incremental decisions.
