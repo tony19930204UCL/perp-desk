@@ -4,14 +4,13 @@
   "pr_number": 75,
   "branch": "research/maker-v3-x2-20261020",
   "task_id": "MAKER-V3-X2",
-  "instruction_id": "MAKER-V3-X2-STALLFIX-1-r1",
+  "instruction_id": "MAKER-V3-X2-STALLFIX-1-r2",
   "status": "READY_FOR_REVIEW",
-  "source_head_sha": "63f28446e90221ea2a285eadcbf0c4108aa70a20",
-  "summary": "r1 corrected independently measured r0 lazy ledger dictionary view mismatch: native dict comparison viewed placeholder ids/settlements and produced one FAIL plus six ERROR among 113 original discovery tests under both umasks, although 113 original base controls passed. Replaced lazy placeholders with exact incremental ids/settlements sets, existing episode list and full scalar keys; ledger native and reverse dict equality preserves key set, Decimal50 values and collection types. Strict original account_ledger.replay_account remains unchanged and checkpoint/recover and completed cell independently reconcile. Added discoverable tests/test_incremental_diff.py with fixed and deterministic randomized reserve/fill/funding/release/LIQ and malformed event comparison, and tests/test_linear_cost.py asserting 1000-to-4000 event application ratio exactly four and zero full replay on bar reads. Existing heartbeat/progress.json and --profile-cell preserved. All new r1 tests/CI/mutation/profiling NOT_RUN in GitHub-file-only session; source ready for independent Main CIO acceptance, not claimed PASS. Original r0 FAIL preserved.",
+  "source_head_sha": "21d667d191da03b4fd71b425967e6a2d755b46a6",
+  "summary": "Final bounded r2 correction after Main measured r1 head d513078277105054ea99d8a94090bffe8fd51f39: 118 discovered, one FAIL test_reduce_only.test_witness_entry_risk, sole ledger divergence available=28-digit rounded vs independent 50-digit. Original incrementally computed cash is already Decimal50, but ledger() computed available=cash-reserved under ambient Decimal28. Placed only that subtraction in localcontext(prec=50); no event, money, comparison, strategy or reference replay changes. Added discoverable test_available_prec50 using 50-digit witnessed fictional qty, Maker sell, Taker buy, release margin and exact every-event full dictionary/type comparison plus ambient28 restoration; added seeded test_random_prec50 with 50-digit n/7 qty/price, funded partial buy, remaining LIQ or flat complete exit and strict per-event reference differential. Existing 118 tests and test_linear_cost unmodified. Heartbeat/progress.json/profile-cell intact. Main previously confirmed a narrow context-only modification passes 118 older controls but that is not this candidate's executed test result. All r2 tests, mutation, umask, profiling, exact-head CI and market NOT_RUN from GitHub-only session. Historical r0/r1 FAIL preserved.",
   "changed_files": [
     "engineering/maker_x2/account_lifecycle.py",
     "engineering/maker_x2/tests/test_incremental_diff.py",
-    "engineering/maker_x2/tests/test_linear_cost.py",
     "engineering/maker_x2/README.md",
     ".relay/mailbox/maker-v3-x2.json"
   ],
@@ -19,50 +18,50 @@
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub connector source changes only. No Python/umask/CI/private historical data run in this session; r0 measured one FAIL six ERROR remains history."
+      "evidence": "GitHub contents API only, no Python, umask or local historical data process executed in r2. Independent Main evidence pertains to prior r1 source, not r2 tests."
     },
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_incremental_diff.py -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub connector source changes only. No Python/umask/CI/private historical data run in this session; r0 measured one FAIL six ERROR remains history."
+      "evidence": "GitHub contents API only, no Python, umask or local historical data process executed in r2. Independent Main evidence pertains to prior r1 source, not r2 tests."
     },
     {
       "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_linear_cost.py -v",
       "result": "NOT_RUN",
-      "evidence": "GitHub connector source changes only. No Python/umask/CI/private historical data run in this session; r0 measured one FAIL six ERROR remains history."
+      "evidence": "GitHub contents API only, no Python, umask or local historical data process executed in r2. Independent Main evidence pertains to prior r1 source, not r2 tests."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --self-test",
       "result": "NOT_RUN",
-      "evidence": "GitHub connector source changes only. No Python/umask/CI/private historical data run in this session; r0 measured one FAIL six ERROR remains history."
+      "evidence": "GitHub contents API only, no Python, umask or local historical data process executed in r2. Independent Main evidence pertains to prior r1 source, not r2 tests."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --profile-cell --bars 20000 --config LOCAL_CONFIG.json --input LOCAL_INPUT.json",
       "result": "NOT_RUN",
-      "evidence": "GitHub connector source changes only. No Python/umask/CI/private historical data run in this session; r0 measured one FAIL six ERROR remains history."
+      "evidence": "GitHub contents API only, no Python, umask or local historical data process executed in r2. Independent Main evidence pertains to prior r1 source, not r2 tests."
     },
     {
       "command": "cd engineering/maker_x2 && python3 backtest_entry.py --profile-cell --bars 40000 --config LOCAL_CONFIG.json --input LOCAL_INPUT.json",
       "result": "NOT_RUN",
-      "evidence": "GitHub connector source changes only. No Python/umask/CI/private historical data run in this session; r0 measured one FAIL six ERROR remains history."
+      "evidence": "GitHub contents API only, no Python, umask or local historical data process executed in r2. Independent Main evidence pertains to prior r1 source, not r2 tests."
     }
   ],
   "remaining_work": [
-    "Main CIO pin exact final head and source_head_sha; verify only allowlisted four source/test/docs files plus mailbox changed, account_ledger and original 113 tests unchanged.",
-    "Under both umask 0022 and 0002 run full discovery including new tests, strict event-by-event and N/4N counter suites, plus --self-test. Inspect all keys, reverse dict equality and Decimal50 values.",
-    "If all positives pass execute original 20 negative mutation entrypoints, require genuine named AssertionError rc1, and obtain new exact-head push plus PR CI.",
-    "Main independently run 20k/40k bounded single-cell profiling and maxRSS; validate heartbeat/progress JSON and complete account event/episode/raw verification. Do not accept source as performance evidence.",
-    "Only after finite gates pass may Main authorize unchanged whole historical 48x3 BTC/ETH run and --verify. No PnL/market/trading acceptance available."
+    "Pin exact final r2 HEAD and verify only account_lifecycle.py, test_incremental_diff.py, README.md and mailbox changed; compare test_linear_cost.py and all other product/test files byte-identically with r1 d513078277105054ea99d8a94090bffe8fd51f39.",
+    "Run full discovery under umask 0022 and 0002; expect original 118 IDs plus two new discoverable high-precision cases, with no skips. Independently demonstrate new test_available_prec50 genuinely fails on r1 base and passes on r2, and context returns to 28.",
+    "Execute Main's 20 mutation controls only after all positive tests PASS, checking named genuine AssertionError and rc1, including available precision, cursor, IDs, settlements, funding sign, basis, episode, reservation, over-close and backwards time.",
+    "Run shipped --self-test and original 20K/40K profiling and new exact-head push/pull_request CI; independently verify linear behavior and progress/manifest exclusions. Existing full historical run remains not accepted.",
+    "If any r2 failure stop and reassess architecture: third revision not authorized. Only accepted finite tests may proceed to original unchanged full market and --verify, with no strategy/PnL claims until real output."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Pin full pre-mailbox source commit 63f28446e90221ea2a285eadcbf0c4108aa70a20 and verify ancestry and four authorized files. Run python3 -m unittest discover -s tests -v under umask 0022 and 0002 (original 113 IDs plus newly discoverable tests), test_incremental_diff.py and test_linear_cost.py, self-test, then 20 old mutations, exact-head push/PR CI and 20K/40K profile. Confirm strict original replay_account byte-identical.",
-    "if_pass": "Accept bounded r1 infrastructure only when independently tested full field/type/value equivalence, linear counters and original positive/mutation gates; next separately run unchanged full original market and --verify before strategy conclusions.",
-    "if_fail": "Preserve exact SHA, failing executed ID, original source events/Decimal values and traceback; do not relax strict ledger or skip tests.",
+    "verify_now": "Pin r2 pre-mailbox source SHA 21d667d191da03b4fd71b425967e6a2d755b46a6 and check allowed three substantive paths and ancestry. Under both umask run python3 -m unittest discover -s tests -v, new incremental diff and linear tests, --self-test. Check exact 50-digit available and ambient28 return. Then 20 named mutations, source-bound push+PR CI and 20K/40K profiling.",
+    "if_pass": "Accept only infrastructure r2 finite engineering after independently verified controls and linear timing, then operator may run unchanged original full BTC/ETH 48x3 matched matrix under original5GiB/6000/9999 and --verify; no automatic market/strategy PASS.",
+    "if_fail": "Preserve exact failing test ID, trace, source SHA and original values; no third STALLFIX-1 correction permitted without architecture reassessment.",
     "blockers": [
-      "r1 Python, dual umask, mutation, profiling and CI all NOT_RUN in source-only session",
-      "r0 independent one FAIL six ERROR historical regression not yet independently reverified on r1",
-      "Whole historical run previously hard timed out, no complete cells or PnL"
+      "New r2 Python/umask/mutations/CI/20K/40K NOT_RUN in source-only GitHub session",
+      "Previous r1 had 1 genuine available precision FAIL; r2 actual independent acceptance pending",
+      "No verified full market research/PnL/deployment"
     ]
   }
 }
