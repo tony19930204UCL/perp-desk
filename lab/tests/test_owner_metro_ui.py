@@ -109,6 +109,86 @@ class MetroUI(unittest.TestCase):
         self.assertNotIn("核准按鈕", html+js)
         self.assertNotIn("<form", html)
 
+
+    def test_list_stays_open(self):
+        import glob
+        import json
+        import os
+        import tempfile
+        import threading
+        import time
+        from dashboard_v2_server import create_server
+        from browser_issue3_acceptance import CdpSession, chrome_binary
+        js = (LAB / "owner_activity.js").read_text(encoding="utf-8")
+        self.assertIn("wasOpen", js)
+        self.assertIn("details.open=wasOpen", js)
+        try:
+            candidates = [os.environ.get("OWNER_METRO_CHROME"),
+                          os.environ.get("CHROMIUM_PATH")]
+            candidates += sorted(glob.glob(str(Path.home() /
+                ".cache/ms-playwright/chromium-*/chrome-linux/chrome")))
+            candidates += sorted(glob.glob(str(Path.home() /
+                ".cache/ms-playwright/chromium-*/chrome-linux64/chrome")))
+            chrome = next((x for x in candidates if x and Path(x).is_file()
+                           and os.access(x, os.X_OK)), None) or chrome_binary()
+        except RuntimeError:
+            self.skipTest("native Chromium missing: two-cycle gate NOT_RUN")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "owner_metro").mkdir()
+            (root / "commitments").mkdir()
+            (root / "owner_metro/bindings.json").write_text(json.dumps({
+                "schema_version": 1, "sources": {}}))
+            (root / "commitments/ledger.json").write_text(json.dumps({
+                "next": 2, "items": [{
+                    "id": "C-1", "state": "OPEN", "blocked_by": "user:ITEM_A",
+                    "text": "Synthetic decision", "created": 1792065500,
+                    "updated": 1792065500}]}))
+            # Use a fixed synthetic clock to preserve the complete ledger
+            # contract across both real three-second browser polls.
+            server = create_server(scorecard_path=str(root/"a"),
+                journal_path=str(root/"b"), ledger_path=str(root/"c"),
+                port=0, clock_ms=lambda: 1792065600000)
+            server.configure_monitor(profile_root=str(root))
+            thread = threading.Thread(target=server.serve_forever,
+                                      kwargs={"poll_interval": .01}, daemon=True)
+            thread.start()
+            session = None
+            try:
+                session = CdpSession(chrome, root / "chrome")
+                session.call("Page.enable")
+                session.call("Runtime.enable")
+                session.navigate("http://127.0.0.1:%d/owner_activity.html"
+                                 % server.server_port)
+                query = "document.querySelector('#metroKpis details')"
+                deadline = time.monotonic() + 10
+                while time.monotonic() < deadline:
+                    if session.evaluate(query + "?.querySelector('summary') !== undefined"):
+                        break
+                    time.sleep(.1)
+                else:
+                    self.fail("Metro decision disclosure not rendered")
+                initial = session.evaluate(
+                    "document.querySelector('#metroKpis details')?.textContent")
+                self.assertIn("ITEM_A", initial)
+                opened = session.evaluate("""(()=>{
+                    const d=document.querySelector('#metroKpis details');
+                    d.querySelector('summary').click();
+                    return d.open;
+                })()""")
+                self.assertTrue(opened)
+                # Actual wall-clock time, not virtual-time or fake fetch cycles.
+                time.sleep(7.1)
+                self.assertTrue(session.evaluate(query + "?.open"))
+                self.assertIn("ITEM_A", session.evaluate(
+                    query + "?.textContent"))
+            finally:
+                if session is not None:
+                    session.close()
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=3)
+
     def test_safe_poll(self):
         code = (LAB / "owner_activity.js").read_text(encoding="utf-8")
         for value in ("setInterval(poll,3000)", "if(pending)return",
