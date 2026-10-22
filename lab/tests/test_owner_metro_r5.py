@@ -38,7 +38,7 @@ class MetroR5(unittest.TestCase):
               self.item(3,"DROPPED"),self.item(4,"OPEN","item:C-5")]
         self.write(rows)
         k=self.model()["kpis"]
-        self.assertEqual((k["pending_decisions"],k["pending_source"]),(2,"ledger"))
+        self.assertEqual((k["pending_decisions"],k["pending_source"]),(9,"directive"))
         self.assertEqual(len(k["pending_list"]),2)
         self.assertEqual(k["pending_list"][0]["question"],"Question")
         self.assertEqual(k["pending_list"][0]["reason"],"Needs a human")
@@ -52,7 +52,7 @@ class MetroR5(unittest.TestCase):
         self.write([self.item(i,blocked="user:"+("Q"*2000))
                     for i in range(1,70)])
         k=self.model()["kpis"]
-        self.assertEqual(k["pending_decisions"],69)
+        self.assertEqual((k["pending_decisions"],k["pending_source"]),(9,"directive"))
         self.assertEqual(len(k["pending_list"]),64)
         self.assertEqual(len(k["pending_list"][0]["question"]),2000)
 
@@ -66,11 +66,14 @@ class MetroR5(unittest.TestCase):
         self.assertEqual(load(str(self.root),self.now)[1]["directive"]["state"],
                          "stale")
         roadmap=self.root/"lab/journal/roadmap.json"
-        roadmap.write_text(json.dumps({"updated":"2026-10-15T00:00:00Z",
+        roadmap.write_text(json.dumps({"updated":"2026-10-15T10:00:00Z",
                                         "items":[]}))
         self.write([self.item(1,created=1792065000)])
         self.assertEqual(self.model()["sources"]["ledger"]["state"],"available")
         # Roadmap's age is checked against its own 24-hour budget.
+        self.assertEqual(self.model()["sources"]["roadmap"]["state"],"available")
+        roadmap.write_text(json.dumps({"updated":"2026-10-13T12:00:00Z",
+                                        "items":[]}))
         self.assertEqual(self.model()["sources"]["roadmap"]["state"],"stale")
 
     def test_recent(self):
