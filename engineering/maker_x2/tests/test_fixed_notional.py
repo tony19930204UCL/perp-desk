@@ -112,14 +112,24 @@ class Control(unittest.TestCase):
 
     def test_replay_default_same(self):
         # Default A must have byte-identical complete serialized output.
+        # Nonconstant closes keep sigma288 positive; feature API, not a
+        # guessed clock time, supplies the real eligible matched decision.
         import json
-        data=[bar(i,high="100.1") for i in range(300)]
+        from signal_features import eligible_decisions
+        data=[bar(i,high="100.1",close=str(D(100)+D(i%7)/100))
+              for i in range(300)]
+        start,end=290*60000,300*60000
+        known=[r["signal_time"] for r in eligible_decisions(data,1)
+               if start <= r["signal_time"] < end]
+        self.assertTrue(known)
+        selected=known[0]
         base=dict(symbol="FICTION",bars=data,funding=[],framework=1,
                   k=".25",ttl=2,exit_style="X2",account_config=conf(),
-                  evaluation_start=290*60000,evaluation_end=300*60000,
-                  signal_times=[290*60000])
+                  evaluation_start=start,evaluation_end=end,
+                  signal_times=[selected])
         one=replay_cell(**base)
         two=replay_cell(**base,mode="A",entry_filter=None)
+        self.assertEqual(one["signal_count"],1)
         self.assertEqual(json.dumps(one,sort_keys=True),
                          json.dumps(two,sort_keys=True))
         self.assertNotIn("research_mode",one)
