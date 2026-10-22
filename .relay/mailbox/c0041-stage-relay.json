@@ -4,57 +4,58 @@
   "pr_number": 76,
   "branch": "fix/c0041-stage-relay-20261020",
   "task_id": "RELAY-POLICY-ATOMIC",
-  "instruction_id": "RELAY-POLICY-ATOMIC-u3-r2",
+  "instruction_id": "RELAY-POLICY-ATOMIC-u5-release",
   "status": "WAITING_CI",
-  "source_head_sha": "386b04511d8840aef020ac6af6c1914c2485db38",
-  "summary": "One bounded test-only correction of the three newly introduced U3-r1 cases. test_expired_revive now asserts documented no-steal behavior after expiry: second jobdir PRODUCT_ALREADY_CLAIMED, original owner/generation/whole record unchanged, original jobdir OWNER_LEASE_EXPIRED. test_duplicate_finish now asserts second positive SEND_CONFIRMED reconciliation is RECONCILE_PHASE_INVALID, second real sender call blocked, owner and phase SENT_CONFIRMED unchanged, one external effect only. test_browser_cdp now accepts HTTP/1.0 or HTTP/1.1 status 101 and case-insensitive Upgrade: WebSocket header rather than specific reason phrase. All original 33 test IDs preserved. All production and other source untouched; no live/browser actions or deployment.",
+  "source_head_sha": "8b1e19457b5ee66cd61646164814feb2b6381018",
+  "summary": "Bounded U5 source delivery: appended only release_revise to engineering/relay/product_dispatch.py (75 lines), preserving all existing claim/check/phase/adopt/approval/reconcile definitions. Within the original product flock it reads and validates structured REVISE verdict, exact old instruction/generation and next instruction, independent operator-bound SHA256 grant, terminal SENT_CONFIRMED without pending cards or adopted external no-send, and archive verdict uniqueness. Durably writes original claim plus released_at/verdict digest/verdict/next instruction/releaser to mode0700 released directory, then removes live claim and fsyncs root. Caller must separately claim revise; unknown/dead/expired owner still cannot self-release. Added 11 real-file/real-subprocess stdlib tests in new test_pd_release.py (both job dirs have persisted job.json; verdict and checksums generated at runtime), including terminal positive, status/scope/grant negatives, claimed-inflight/card guard, archive replay, and independent two-process release/claim races. NOT_RUN: no shell or CI result in this GitHub file-only turn. No actual dispatch, install, PR75 changes or deployment.",
   "changed_files": [
-    "lab/tests/test_relay_policy_atomic.py",
+    "engineering/relay/product_dispatch.py",
+    "lab/tests/test_pd_release.py",
     ".relay/mailbox/c0041-stage-relay.json"
   ],
   "tests": [
     {
-      "command": "python3 -m py_compile lab/tests/test_relay_policy_atomic.py",
+      "command": "python3 -m py_compile engineering/relay/product_dispatch.py lab/tests/test_pd_release.py",
       "result": "NOT_RUN",
-      "evidence": "Only GitHub update_file operations in this turn; no local shell test execution."
+      "evidence": "Source-only GitHub create_file/update_file operations; no local test process was executed."
     },
     {
-      "command": "umask 0022; python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v",
+      "command": "(umask 0022; python3 -m unittest discover -s lab/tests -p test_pd_release.py -v)",
       "result": "NOT_RUN",
-      "evidence": "Main independently reported U3-r1 33 methods with 3 failures/errors involving these three test contracts. New r2 exact-head suite not executed here."
+      "evidence": "11 new methods authored including two genuine subprocess flock races; not executed in this assistant turn."
     },
     {
-      "command": "umask 0002; python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v",
+      "command": "(umask 0002; python3 -m unittest discover -s lab/tests -p test_pd_release.py -v)",
       "result": "NOT_RUN",
-      "evidence": "Second umask run required independently; no r2 execution claim."
+      "evidence": "Separate restrictive group-umask check required; no outcome observed."
     },
     {
-      "command": "RELAY_CDP_BROWSER=/absolute/path/to/chromium python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -k test_browser_cdp -v",
+      "command": "(umask 0022; python3 -m unittest discover -s lab/tests -p test_relay_policy_atomic.py -v)",
       "result": "NOT_RUN",
-      "evidence": "Main reports actual Chromium used 'HTTP/1.1 101 WebSocket Protocol Handshake' and single local DOM effect; r2 updated to status+Upgrade header but opt-in test not run this turn. Unset variable yields explicit skip, not PASS."
+      "evidence": "33 existing relay policy tests remain unmodified and require independent regression."
     },
     {
-      "command": "Final exact-head push and pull_request CI",
+      "command": "Exact final HEAD push and pull_request CI",
       "result": "NOT_RUN",
-      "evidence": "Neither r2 run conclusion observed. Prior U3-r1 CI and 33-method runs showed three new test contract failures per user."
+      "evidence": "No new exact-head CI run ID or conclusion observed; Main independently verifies both."
     }
   ],
   "remaining_work": [
-    "Main compile test file, run all 33 under umask 0022 and 0002; confirm original assertions and security negatives retained, no production changes.",
-    "Main opt-in run isolated Chromium/CDP with actual browser override; 101 + Upgrade handshake, one DOM click, one fixture POST, full cleanup. Browser skip in CI does not prove browser behavior.",
-    "Verify both new exact-head push and PR CI and compare production bytes to prior accepted U3-r1 HEAD.",
-    "No additional authorized correction assumed; route any genuine new failure to Main for decision. No deployment/merge/trading/PR75 changes.",
-    "Whole product and Maker history/reflection remain NOT_PROVEN."
+    "Main compile changed sources and run all 11 release tests under both umasks, plus all 33 existing policy cases and exact-head dual CI. Treat any observed failure as a new actionable contract gap, not as permission to relax the send guard.",
+    "Review archive 0600 file and 0700 directory permissions, durability under fsync, old claim preservation, dual release race and follow-on exact revise claim race.",
+    "Main confirms schema1 REVISE verdict has separate independent reviewer/provenance and operator-controlled dispatch_release_grant matching its byte digest and exact previous generation; release_revise itself does not cryptographically verify a signature.",
+    "Release is never automatic on timeout/death, missing verdict, PASS/FAIL/BLOCKED, SEND_UNKNOWN, unconfirmed cards or market ADOPTED_EXTERNAL_NO_SEND. No live release or resend occurred.",
+    "Whole installation/market/reflection acceptance remains separate; original product_dispatch importer and live profile mapping must be validated before backups and any deployment."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Check source head 386b04511d8840aef020ac6af6c1914c2485db38, run py_compile and all 33 tests under umask 0022 and 0002, execute opt-in isolated Chromium test with explicit RELAY_CDP_BROWSER, verify exactly one POST and browser teardown, verify both final-head CI and all production blobs frozen.",
-    "if_pass": "Accept only scoped U3 r2 test-contract correction after independent tests and dual CI; separate whole-product installed browser/source-pin acceptance and release authority remain required.",
-    "if_fail": "Capture exact traceback/head and stop for parent decision; no test weakening, automatic next revision or actual send retry.",
+    "verify_now": "Verify new function only added to product_dispatch.py without altered legacy definitions; run py_compile then 11 new release tests under umask 0022 and 0002 plus existing 33 relay tests and both new exact-head push/pull_request CI. Inspect archived original claim/generation, old verdict reuse, two real concurrent release contenders and two concurrent revise claim contenders.",
+    "if_pass": "Accept only bounded U5 verdict-release source after independent checks; integrate only through separately authorized operator binding of signed REVISE verdict and exact SHA256 grant, with complete install/backups/readback gates.",
+    "if_fail": "Preserve exact error and HEAD; no automatic replay, no product claim deletion or other tool fallback.",
     "blockers": [
-      "r2 tests/browser and dual CI NOT_RUN in this chat",
-      "Whole installed atomic dispatch product not yet separately accepted",
-      "Maker research/reflection still NOT_PROVEN"
+      "U5 tests and CI NOT_RUN in this file-only turn",
+      "Independent cryptographic verdict signature verification and release invocation integration remain operator-controlled",
+      "Whole-product installation and Maker market/reflection still NOT_PROVEN"
     ]
   }
 }
