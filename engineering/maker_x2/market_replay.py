@@ -291,7 +291,7 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
                                if e["type"]=="fill" and e["side"]=="sell"
                                and e["id"].startswith(episode["id"]+":")),
                               D(0))
-          reserves = [i for i, ev in enumerate(account.events)
+          reserves = [i for i, ev in enumerate(ep_events)
                       if ev["type"]=="reserve" and
                       ev.get("episode")==episode["id"]]
           if len(reserves)!=1:
@@ -324,10 +324,10 @@ def replay_cell(symbol, bars, funding, framework, k, ttl, exit_style,
     counts["open"] = (sum(int(x["ledger"]["qty"] > 0) for x in b_archives)
                       if mode == "B" else int(ledger["qty"] > 0))
     counts["filled_episodes"] = counts["complete_episodes"] + counts["open"]
+    all_events = ((ev for section in b_archives for ev in section["events"])
+                  if mode == "B" else iter(account.events))
     raw = [{key: str(value) if isinstance(value, D) else value
-            for key,value in event.items()} for event in
-            (sum((x["events"] for x in b_archives), []) if mode == "B"
-             else account.events)]
+            for key,value in event.items()} for event in all_events]
     output = {"symbol": symbol, "framework": framework, "k": k, "ttl": ttl,
             "exit": exit_style, "delay_minutes": delay_minutes,
             "matched": signal_times is not None,
