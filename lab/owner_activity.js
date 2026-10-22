@@ -119,6 +119,7 @@ function render(data) {
     const summary=add(details,'summary',label+' · 展開唯讀清單');
     summary.setAttribute('role','button');
     const entries=data.kpis.pending_list;
+    if(Array.isArray(entries))add(summary,'span',' · 清單 '+entries.length+' 項');
     const list=add(details,'div');
     const taipei=sec=>{
       if(typeof sec!=='number'||!Number.isFinite(sec))return 'NA';
