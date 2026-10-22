@@ -3,11 +3,11 @@
   "repository": "tony19930204UCL/perp-desk",
   "pr_number": 78,
   "branch": "fix/heatmap-collector-contract-20261021",
-  "task_id": "HEATMAP-LOGIN-TIMEOUT-FIX",
-  "instruction_id": "heatmap-fix-003",
+  "task_id": "HEATMAP-CANVAS-RETRY",
+  "instruction_id": "heatmap-fix-004",
   "status": "WAITING_CI",
-  "source_head_sha": "4243cf992a37d25c46ccbee2439e4f847ac4723d",
-  "summary": "Corrected only heatmap_capture.ps1 line 184: call ToString() on bool before ToLowerInvariant() to emit lower-case PHASE combo status in Windows PowerShell 5.1. Added test_51_phase_line_run to extract and actually execute the production PHASE end line for true and false using native PowerShell -NoProfile -Command under inherited policy; new Windows CI step directly after test_45 runs -k test_51. No changes to previous test assertions, Python archive, login, deadlines, diagnostics or permissions. GitHub comparison from prior d28c537 showed exactly three source files, 25 added/1 deleted lines, 3 forward commits. Exact-source run 39750942222 queued when checked; no tests performed locally.",
+  "source_head_sha": "93fe4a1b2e40c6ad863085d36b8156f5dbaf1ba9",
+  "summary": "Added Wait-CanvasReady bounded by the original 60000ms per-combo Clock with 8000ms max observation, 500ms steps and two consecutive positive canvas-size samples; false resets the count. Added Get-ChartCapture: one initial eval, waits only on 'no canvas', then at most one recapture if ready; all other errors returned immediately. Replaced two capture lines; original 4000ms settling, subsequent error handling, login/freshness/deadline and heatmap_archive.py unchanged. Added tests52/53 extracting and executing actual PowerShell function bodies in mock-CDP wrappers for six cases; additional Windows CI step added after test51. Source diff versus previous HEAD: 37 changed lines PS1, 98 test additions, 2 CI additions (137 lines total). Exact-head CI not yet completed.",
   "changed_files": [
     "engineering/collectors/heatmap/heatmap_capture.ps1",
     "engineering/collectors/heatmap/tests/test_heatmap_archive.py",
@@ -18,43 +18,43 @@
   "tests": [
     {
       "command": "python3 -m unittest discover -s engineering/collectors/heatmap/tests -v",
-      "result": "not run",
-      "evidence": "No local checkout/execution performed; new test uses native PowerShell and skips only when unavailable."
+      "result": "NOT_RUN",
+      "evidence": "No local test execution; source-head GitHub Actions run 39816956658 queued during inspection."
     },
     {
       "command": "python3 engineering/collectors/heatmap/heatmap_archive.py --selftest",
-      "result": "not run",
-      "evidence": "Not executed in this instruction; heatmap_archive.py unchanged."
+      "result": "NOT_RUN",
+      "evidence": "heatmap_archive.py unchanged; not executed."
     },
     {
-      "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_43 -v",
-      "result": "not run",
-      "evidence": "Windows CI step retained unchanged; new exact-source run queued."
+      "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_52 -k test_53 -v",
+      "result": "NOT_RUN",
+      "evidence": "Native Windows PowerShell required; test invokes extracted shipped function bodies with mock CDP. CI step added but run not yet completed."
     },
     {
-      "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_45 -v",
-      "result": "not run",
-      "evidence": "Windows CI step retained unchanged; new exact-source run queued."
+      "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_43 -k test_45 -k test_51 -v",
+      "result": "NOT_RUN",
+      "evidence": "Existing Windows gates unchanged, not executed this turn."
     },
     {
-      "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_51 -v",
-      "result": "not run",
-      "evidence": "New native CI step added after test_45; GitHub Actions run 39750942222 queued, result not yet available."
+      "command": "python3 engineering/collectors/heatmap/mutation_check.py",
+      "result": "NOT_RUN",
+      "evidence": "No mutation source edits; gate not executed."
     }
   ],
   "remaining_work": [
-    "Inspect exact-head PR and push CI after mailbox commit and confirm Windows native test_51 executes and passes both boolean cases.",
-    "Confirm existing tests 01-50 intact, Linux 51 discovery, Windows test43/test45 and selftest; independent clean-clone acceptance.",
-    "Full real six-combo capture under separately authorized Windows installation and original browser/session gates not proven by this change."
+    "Check exact-head Linux 53-test discovery, Windows test43/45/51/52/53 and both workflows green with native tests52/53 actually listed.",
+    "Verify cases (a)-(f) in native Windows PowerShell 5.1 and both umasks; confirm no hidden PS success-stream output.",
+    "Independent real six-combo capture and login/freshness acceptance remain operator-controlled."
   ],
   "next_step_reminder": {
     "to": "Main CIO",
-    "verify_now": "Review PR78 exact-head diff against d28c537: PowerShell production line184 is sole one-line change; tests 01-50 unchanged; new test51 actually executes exact line with true/false under inherited ExecutionPolicy; CI Windows job step after 45 must show discovered executed test51 and pass, along with Windows 43/45, Linux and selftest. GitHub source run 39750942222 was queued during handoff; recheck post-mailbox commit.",
-    "if_pass": "Move to READY_FOR_REVIEW only after exact-head green CI and independent acceptance; separately authorize any native installation. Do not merge/deploy/trade.",
-    "if_fail": "Record exact job and observed failing assertion or PS error, request minimal correction on this branch only.",
+    "verify_now": "Check head 93fe4a1b2e40c6ad863085d36b8156f5dbaf1ba9, mailbox successor, four-file allowlist and <=180 lines. Confirm tests01-51 unchanged; real functions tested by -k test_52 -k test_53 in Windows CI; check no-canvas-only one retry, two consecutive ready, non-canvas direct return and combo_timeout propagation. Check CI run 39816956658 and exact final mailbox HEAD.",
+    "if_pass": "Move to READY_FOR_REVIEW after exact-head independent acceptance only; no merge/deploy/trading or credential access.",
+    "if_fail": "Record exact failing job/test and minimal bounded repair without history rewrite.",
     "blockers": [
-      "No exact-head execution result yet; native Windows line not run in this assistant session.",
-      "Real six-combo capture remains separate operational acceptance."
+      "Native Windows exact-head acceptance not executed or observed complete.",
+      "Real scheduled six-combo validation remains pending."
     ]
   }
 }
