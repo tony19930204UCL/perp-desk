@@ -7,7 +7,7 @@ from regime_split import pct7
 WIN_BARS = 5
 LOOK_DAYS = 7
 Q90 = 0.90
-MIN_HIST = 10000
+MIN_HIST = 10080
 MINUTE = 60000
 DAY_MS = 86400000
 
@@ -31,6 +31,7 @@ class SpeedFilter:
     def __init__(self, bars):
         self.bars = list(bars)
         self.ends, self.speeds = [], []
+        self.gaps = [0]
         last = None
         close = []
         times = []
@@ -38,6 +39,7 @@ class SpeedFilter:
             ts = bar["ts"]
             if type(ts) is not int or (last is not None and ts <= last):
                 raise ValueError("bar timestamps must strictly increase")
+            self.gaps.append(self.gaps[-1] + int(last is not None and ts-last != MINUTE))
             last = ts
             price = Decimal(str(bar["close"]))
             if not price.is_finite() or price <= 0:
@@ -57,13 +59,21 @@ class SpeedFilter:
         self._previous = None
 
     def _direct(self, t):
+        self._previous = t
         right = bisect_right(self.ends, t)
         left = bisect_left(self.ends, t - LOOK_DAYS * DAY_MS)
         values = [v for v in self.speeds[left:right] if v is not None]
-        return self._result(values, right)
+        return self._result(values, right, left)
 
-    def _result(self, values, right):
-        if right == 0 or self.speeds[right - 1] is None or len(values) < MIN_HIST:
+    def _result(self, values, right, left):
+        # Require the complete seven-day minute interval, with enough
+        # prior bars to form all five-return speeds without any gaps.
+        complete = (right - left == MIN_HIST
+                    and right > 0 and self.ends[right-1] == self._previous
+                    and self.ends[left] == self._previous - LOOK_DAYS * DAY_MS + MINUTE
+                    and self.gaps[right] == self.gaps[left]
+                    and len(values) == MIN_HIST)
+        if not complete or self.speeds[right-1] is None:
             return False, "H2_WARMUP"
         return ((True, "H2_SKIP") if self.speeds[right - 1] > pct7(values, Q90)
                 else (False, "H2_PASS"))
@@ -87,4 +97,4 @@ class SpeedFilter:
                 at = bisect_left(self._ordered, value)
                 self._ordered.pop(at)
             self._left += 1
-        return self._result(self._ordered, right)
+        return self._result(self._ordered, right, left)
