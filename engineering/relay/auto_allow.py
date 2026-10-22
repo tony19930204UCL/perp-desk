@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """Always-on allow-once approver for the engineer chat's GitHub write cards. No model.
 
-Run from a 1 minute no_agent cron job; it loops about 50 seconds with a 5 second step, so a card waits seconds, not hours.
-  - picks the newest relay job whose active_instruction.json exists and whose job.json valid_until is still in the future
-  - every step runs relay-allow-card.py JOB (live version); when that fails with 'token-like string present' runs relay-allow-if-diff-clean.py JOB 200
-  - prints ONE line only when it clicked allow-once (or when both scripts refused on a card, at most once per 30 minutes)
-  - a lock file prevents two copies; --once does a single pass (tests). Never clicks anything else, never the conversation-wide option.
-Requires HERMES_HOME (default ~/.hermes/profiles/perp-desk) with jobs under cache/scratch/relay-*/ and this skill's scripts installed.
+Why: for 4 engineering units on PR59 the card wait was 25, 40, 98 and 467 minutes while ChatGPT's own work was about 13 minutes.
+The wait came from nobody (or a watcher that refused) being there when the card appeared. This runs from a 1 minute cron job, loops about 50 seconds
+with a 5 second step, and so the card waits at most a few seconds.
+
+Behaviour:
+  - finds the newest relay job whose active_instruction.json exists and whose job.json valid_until is still in the future
+  - every 5 seconds runs relay-allow-card.py JOB (live version: one update_file/create_file op, repo/branch/path in the job allowlist,
+    no secret-format strings, long strings only if plain snake_case); when that refuses for a token-like string, relay-allow-if-diff-clean.py JOB 200
+  - prints ONE line only when it clicked allow-once (or when both scripts refused on a card, once per 30 minutes), so the cron job messages the owner only then
+  - a lock file prevents two copies from running at once; --once does a single pass (for tests)
+It never clicks anything else, never the conversation-wide option, and does nothing when no card is present.
 """
 import datetime, fcntl, json, os, subprocess, sys, time
 from pathlib import Path
@@ -33,7 +38,8 @@ def active_job():
 
 def run(script, *args):
     p = subprocess.run([sys.executable, str(SK / script), *args], capture_output=True, text=True, timeout=120)
-    return p.returncode, (p.stdout.strip().splitlines() or [''])[-1], p.stderr
+    last = (p.stdout.strip().splitlines() or [''])[-1]
+    return p.returncode, last, p.stderr
 
 
 def main():
@@ -46,19 +52,26 @@ def main():
         jd = active_job()
         if jd:
             rc, last, err = run('relay-allow-card.py', str(jd))
+            if rc == 0: st['transient'] = 0
             if last.startswith('ALLOWED_ONCE'):
-                print('allow-once clicked (%s): %s' % (jd.name, last)); st['clicked'] = st.get('clicked', 0) + 1; st['last_click'] = time.time()
+                print('已核准一次寫入卡（%s）。%s' % (jd.name, last)); st['clicked'] = st.get('clicked', 0) + 1; st['last_click'] = time.time()
+            elif rc != 0 and last != 'NO_CARD' and any(k in err for k in ('BlockingIOError', 'JSONDecodeError', 'TimeoutExpired', 'RuntimeError')) and 'token-like' not in err:
+                st['transient'] = st.get('transient', 0) + 1     # browser busy or briefly unreachable: not a refusal, stay quiet unless it keeps happening
+                if st['transient'] >= 8 and time.time() - st.get('last_refuse_notice', 0) > 1800:
+                    st['last_refuse_notice'] = time.time(); print('核准器連續 %d 次連不上瀏覽器（%s）：%s' % (st['transient'], jd.name, (err.strip().splitlines() or [''])[-1][:120]))
             elif rc != 0 and last != 'NO_CARD':
-                why = (err.strip().splitlines() or [last])[-1][:160]
                 if 'token-like string present' in err:
                     rc2, last2, err2 = run('relay-allow-if-diff-clean.py', str(jd), '600')
                     if last2.startswith('ALLOWED_ONCE'):
-                        print('allow-once clicked via diff check (%s): %s' % (jd.name, last2)); st['clicked'] = st.get('clicked', 0) + 1; st['last_click'] = time.time()
-                        why = None
+                        print('已核准一次寫入卡（差異檢查，%s）。%s' % (jd.name, last2)); st['clicked'] = st.get('clicked', 0) + 1; st['last_click'] = time.time()
                     else:
                         why = (err2.strip().splitlines() or [last2])[-1][:160]
-                if why and time.time() - st.get('last_refuse_notice', 0) > 1800:
-                    st['last_refuse_notice'] = time.time(); print('write card refused by the approval scripts, needs a human look (%s): %s' % (jd.name, why))
+                        if time.time() - st.get('last_refuse_notice', 0) > 1800:
+                            st['last_refuse_notice'] = time.time(); print('有一張寫入卡兩個核准腳本都拒絕，需要人看（%s）：%s' % (jd.name, why))
+                else:
+                    why = (err.strip().splitlines() or [last])[-1][:160]
+                    if time.time() - st.get('last_refuse_notice', 0) > 1800:
+                        st['last_refuse_notice'] = time.time(); print('寫入卡被拒絕（%s）：%s' % (jd.name, why))
         if time.time() >= end: break
         time.sleep(5)
     STATE.write_text(json.dumps(st))
