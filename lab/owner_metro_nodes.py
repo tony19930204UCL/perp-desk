@@ -58,7 +58,7 @@ def derive(root, ledger_items, bindings_nodes, now_ms, proc_root="/proc"):
             blocker = row.get("blocked_by")
             return isinstance(blocker, str) and blocker.startswith("user:")
         state = None
-        note = None
+        note = str(current.get("text") or current.get("reason") or "")[:80]
         chosen = current
         gate_row = by_id.get(gate) if gate is not None else None
         if gate is not None and gate_row is None:
