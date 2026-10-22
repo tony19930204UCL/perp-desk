@@ -15,7 +15,8 @@ def history(last=106, prior="1", tail="0"):
     bars=[]
     for d in range(31):
         price=100 if d != 29 else last
-        amp=tail if d==29 else prior
+        # Day 22 is d-8 for day 30: last close must be exactly 100.
+        amp="0" if d==22 else tail if d==29 else prior
         bars.extend(day(d,price,amp))
     return bars
 
