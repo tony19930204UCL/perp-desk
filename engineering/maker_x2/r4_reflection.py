@@ -11,7 +11,8 @@ from r4_entry import git_head, stage_args, receipt
 from r4_report import audit_matrix, REG, PREREG
 
 
-def reflect(root, config, input_path, stage_config, receipt_path, out):
+def reflect(root, config, input_path, stage_config, receipt_path, out,
+            acceptance_path=None):
     root=Path(root)
     manifest=json.loads((root/"manifest.json").read_text())
     matrix=json.loads((root/"reports/r4-matrix.json").read_text())
@@ -30,8 +31,10 @@ def reflect(root, config, input_path, stage_config, receipt_path, out):
     if regime["prereg_sha256"]!=PREREG or len(regime["family_m96"])!=96:
         raise X2Error("reflection family/prereg missing")
     prior=sha256_file(root/"reports/r4-verify.json")
-    rsha=receipt(receipt_path,"r4-verify",head,inp,
-                 audit["graph_sha256"],prior)
+    if not acceptance_path:
+        raise X2Error("reflection requires independent acceptance")
+    chain=receipt(receipt_path,acceptance_path,"r4-verify",head,inp,
+                  graph,root/"reports/r4-verify.json")
     accepted=[]
     for row in rows:
         if row["mode"]!="B" or row["scenario"]!="baseline":
@@ -58,7 +61,7 @@ def reflect(root, config, input_path, stage_config, receipt_path, out):
               "next_data":"Point-in-time independent holdout and queue/mark microstructure"}
     report={"stage":"r4-reflection","source_head":head,
             "input_sha256":inp,"graph_sha256":graph,
-            "verify_report_sha256":prior,"receipt_sha256":rsha,
+            "verify_report_sha256":prior,**chain,
             "rows":[{"symbol":"ALL","cell_id":"REFLECTION","decision":decision}]}
     target=Path(out)
     if target.exists():
@@ -69,12 +72,12 @@ def reflect(root, config, input_path, stage_config, receipt_path, out):
 
 def main(argv=None):
     parser=argparse.ArgumentParser()
-    for name in ("config","input","output","stage-config","receipt","report"):
+    for name in ("config","input","output","stage-config","receipt","acceptance","report"):
         parser.add_argument("--"+name,required=True)
     args=parser.parse_args(argv)
     try:
         result=reflect(args.output,args.config,args.input,args.stage_config,
-                       args.receipt,args.report)
+                       args.receipt,args.report,args.acceptance)
         print(json.dumps(result,sort_keys=True),flush=True)
         return 0
     except (OSError,ValueError,KeyError,X2Error) as exc:
