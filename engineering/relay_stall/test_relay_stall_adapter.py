@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from unittest.mock import patch
 
 import relay_stall_adapter as rsa
@@ -221,6 +222,143 @@ class TestRelayStallAdapter(unittest.TestCase):
         res = rsa.adapt_job_entry(raw_entry, [], 1000.0)
         self.assertIsNone(res["policy_refusal"])
 
+    def test_no_policy_ev_null(self):
+        raw_entry = {
+            "job": {
+                "pr_number": 75,
+                "repository": "repo",
+                "branch": "main",
+                "dispatch_release_grant": {"next_instruction": "same-inst"},
+            },
+            "files": {
+                "active_instruction.json": {"instruction_id": "same-inst"},
+            },
+        }
+        res = rsa.adapt_job_entry(raw_entry, [], 1000.0)
+        self.assertIsNone(res["policy_refusal"])
+
+    def test_unrelated_safe_null(self):
+        raw_entry = {
+            "job": {"pr_number": 75, "repository": "r", "branch": "b", "dispatch_release_grant": {"next_instruction": "inst-1"}},
+            "files": {
+                "active_instruction.json": {"instruction_id": "inst-1"},
+                "SAFETY_STOP.json": {"unrelated": "value"},
+            },
+        }
+        res = rsa.adapt_job_entry(raw_entry, [], 1000.0)
+        self.assertIsNone(res["policy_refusal"])
+
+    def test_unrelated_chk_null(self):
+        raw_entry = {
+            "job": {"pr_number": 75, "repository": "r", "branch": "b", "dispatch_release_grant": {"next_instruction": "inst-1"}},
+            "files": {
+                "active_instruction.json": {"instruction_id": "inst-1"},
+                "NORMAL_CHECKER_RESULT.json": {"unrelated": "value"},
+            },
+        }
+        res = rsa.adapt_job_entry(raw_entry, [], 1000.0)
+        self.assertIsNone(res["policy_refusal"])
+
+    def test_wrong_repo_reg_null(self):
+        synth_job_dir = os.path.join(self.temp_dir.name, "tuple_repo")
+        os.makedirs(synth_job_dir, exist_ok=True)
+        job_json = os.path.join(synth_job_dir, "job.json")
+        with open(job_json, "w") as f:
+            json.dump({
+                "pr_number": 99,
+                "repository": "actual-repo",
+                "branch": "test-branch",
+                "dispatch_release_grant": {"next_instruction": "inst-1"}
+            }, f)
+        reg_file = os.path.join(self.temp_dir.name, "reg_tuple_repo.json")
+        with open(reg_file, "w") as f:
+            json.dump({
+                "profile_home": self.temp_dir.name,
+                "jobs": [{
+                    "job_path": job_json,
+                    "repository": "wrong-repo",
+                    "branch": "test-branch",
+                    "instruction_id": "inst-1",
+                    "governing_item_id": "C-9001",
+                }]
+            }, f)
+        led = [{"id": "C-9001", "state": "BLOCKED", "text": "PROVIDER_REFUSAL_REPORTED"}]
+        snap = rsa.collect_live_snapshot(reg_file, 1000.0, explicit_profile_home=self.temp_dir.name)
+        res = rsa.adapt_job_entry(snap["jobs"][0], led, 1000.0)
+        self.assertIsNone(res["policy_refusal"])
+
+    def test_wrong_inst_reg_null(self):
+        synth_job_dir = os.path.join(self.temp_dir.name, "tuple_inst")
+        os.makedirs(synth_job_dir, exist_ok=True)
+        job_json = os.path.join(synth_job_dir, "job.json")
+        with open(job_json, "w") as f:
+            json.dump({
+                "pr_number": 99,
+                "repository": "actual-repo",
+                "branch": "test-branch",
+                "dispatch_release_grant": {"next_instruction": "actual-inst"}
+            }, f)
+        reg_file = os.path.join(self.temp_dir.name, "reg_tuple_inst.json")
+        with open(reg_file, "w") as f:
+            json.dump({
+                "profile_home": self.temp_dir.name,
+                "jobs": [{
+                    "job_path": job_json,
+                    "repository": "actual-repo",
+                    "branch": "test-branch",
+                    "instruction_id": "wrong-inst",
+                    "governing_item_id": "C-9001",
+                }]
+            }, f)
+        led = [{"id": "C-9001", "state": "BLOCKED", "text": "PROVIDER_REFUSAL_REPORTED"}]
+        snap = rsa.collect_live_snapshot(reg_file, 1000.0, explicit_profile_home=self.temp_dir.name)
+        res = rsa.adapt_job_entry(snap["jobs"][0], led, 1000.0)
+        self.assertIsNone(res["policy_refusal"])
+
+    def test_empty_tuple_reg_null(self):
+        synth_job_dir = os.path.join(self.temp_dir.name, "tuple_empty")
+        os.makedirs(synth_job_dir, exist_ok=True)
+        job_json = os.path.join(synth_job_dir, "job.json")
+        with open(job_json, "w") as f:
+            json.dump({
+                "pr_number": 99,
+                "repository": "actual-repo",
+                "branch": "test-branch",
+                "dispatch_release_grant": {"next_instruction": "inst-1"}
+            }, f)
+        act_json = os.path.join(synth_job_dir, "active_instruction.json")
+        with open(act_json, "w") as f:
+            json.dump({"instruction_id": "inst-1"}, f)
+
+        cases = [
+            ("empty_repo", "", "test-branch", "inst-1"),
+            ("empty_branch", "actual-repo", "", "inst-1"),
+            ("empty_inst", "actual-repo", "test-branch", ""),
+            ("whitespace_repo", "actual-repo ", "test-branch", "inst-1"),
+            ("whitespace_branch", "actual-repo", " test-branch", "inst-1"),
+            ("whitespace_inst", "actual-repo", "test-branch", "inst-1 "),
+            ("type_int_repo", 12345, "test-branch", "inst-1"),
+            ("type_none_inst", "actual-repo", "test-branch", None),
+        ]
+        led = [{"id": "C-9001", "state": "BLOCKED", "text": "PROVIDER_REFUSAL_REPORTED"}]
+        for name, r_repo, r_branch, r_inst in cases:
+            with self.subTest(name=name):
+                reg_file = os.path.join(self.temp_dir.name, f"reg_{name}.json")
+                with open(reg_file, "w") as f:
+                    json.dump({
+                        "profile_home": self.temp_dir.name,
+                        "jobs": [{
+                            "job_path": job_json,
+                            "repository": r_repo,
+                            "branch": r_branch,
+                            "instruction_id": r_inst,
+                            "governing_item_id": "C-9001",
+                        }]
+                    }, f)
+                snap = rsa.collect_live_snapshot(reg_file, 1000.0, explicit_profile_home=self.temp_dir.name)
+                res = rsa.adapt_job_entry(snap["jobs"][0], led, 1000.0)
+                self.assertIsNone(res["policy_refusal"])
+
     def test_cron_wrapper(self):
         cfg_path = os.path.join(self.temp_dir.name, "cron_config.json")
         with open(cfg_path, "w") as f:
@@ -289,12 +427,17 @@ class TestRelayStallAdapter(unittest.TestCase):
                 "mailbox": ".relay/mailbox.json",
                 "dispatch_release_grant": {"next_instruction": "inst-1"}
             }, f)
+        with open(os.path.join(synth_job_dir, "active_instruction.json"), "w") as f:
+            json.dump({"instruction_id": "inst-1"}, f)
         reg_file = os.path.join(self.temp_dir.name, "synthetic_registry.json")
         with open(reg_file, "w") as f:
             json.dump({
                 "profile_home": self.temp_dir.name,
                 "jobs": [{
                     "job_path": job_json,
+                    "repository": "mock-org/mock-repo",
+                    "branch": "main",
+                    "instruction_id": "inst-1",
                     "transfer_files": [],
                     "policy_files": [],
                 }]

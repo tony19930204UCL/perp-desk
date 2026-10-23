@@ -213,27 +213,43 @@ def adapt_job_entry(raw_entry: dict, ledger_items: list[dict], now: float) -> di
     valid_transfer = transfer_data if (inst_id and bound_inst and inst_id == bound_inst) else None
     gov_item_id = raw_entry.get("governing_item_id")
 
+    # If registry tuple mismatch was flagged, do not apply canonical pointer or transfer
+    if raw_entry.get("tuple_matched") is False:
+        gov_item_id = None
+        valid_transfer = None
+
     # Policy refusal evaluation
     gov_item = match_governing_item(pr_num, inst_id, ledger_items, valid_transfer, gov_item_id)
     policy_refusal = None  # Default None (UNKNOWN) if no evidence or unverified instruction
 
-    if inst_id and bound_inst and inst_id == bound_inst:
-        policy_refusal = False
+    if inst_id and bound_inst and inst_id == bound_inst and raw_entry.get("tuple_matched") is not False:
+        is_refused = False
+
         if gov_item:
-            text = gov_item.get("text", "")
+            text = str(gov_item.get("text", ""))
             blocked = str(gov_item.get("blocked_by", ""))
             if "PROVIDER_REFUSAL_REPORTED" in text or "PROVIDER_NORMAL_REVIEW" in blocked or "安全封鎖" in text:
-                policy_refusal = True
+                is_refused = True
             elif "TOKEN_LIKE" in text or "TOKEN_LIKE" in blocked or "明確拒絕" in text:
-                policy_refusal = True
+                is_refused = True
 
-        safety_stop = files.get("SAFETY_STOP.json", {})
-        if safety_stop.get("status") == "PROVIDER_REFUSAL_REPORTED_BY_RECIPIENT":
-            policy_refusal = True
+        safety_stop = files.get("SAFETY_STOP.json")
+        if isinstance(safety_stop, dict):
+            s_status = str(safety_stop.get("status") or "")
+            if s_status == "PROVIDER_REFUSAL_REPORTED_BY_RECIPIENT":
+                is_refused = True
 
-        chk_res = files.get("NORMAL_CHECKER_RESULT.json", {})
-        if chk_res.get("result") == "STOPPED" and "token-like" in str(chk_res.get("error", "")).lower():
+        chk_res = files.get("NORMAL_CHECKER_RESULT.json")
+        if isinstance(chk_res, dict):
+            c_res = chk_res.get("result")
+            c_err = chk_res.get("error")
+            if c_res == "STOPPED" and "token-like" in str(c_err or "").lower():
+                is_refused = True
+
+        if is_refused:
             policy_refusal = True
+        else:
+            policy_refusal = None
 
     job_data = {
         "repository": repo,
@@ -528,21 +544,12 @@ def collect_live_snapshot(
 
         job_dir = os.path.dirname(os.path.abspath(job_path))
         files = {}
-        for raw_fp in job_spec.get("transfer_files", []) + job_spec.get("policy_files", []):
-            try:
-                resolved_fp = os.path.realpath(os.path.abspath(raw_fp if os.path.isabs(raw_fp) else os.path.join(profile_home, raw_fp)))
-                if os.path.commonpath([resolved_fp, profile_home]) != profile_home:
-                    continue
-                if os.path.isfile(resolved_fp):
-                    fname = os.path.basename(resolved_fp)
-                    with open(resolved_fp, "r", encoding="utf-8") as f:
-                        files[fname] = json.load(f)
-            except Exception:
-                pass
 
+        # Read standard job directory files first
         for std_name in [
             "active_instruction.json", "worker-launch.json", "worker-state.json",
-            "send-process.json", "POSITIVE_CLAIM_RECONCILE.json"
+            "send-process.json", "POSITIVE_CLAIM_RECONCILE.json", "SAFETY_STOP.json",
+            "NORMAL_CHECKER_RESULT.json"
         ]:
             std_path = os.path.join(job_dir, std_name)
             if os.path.isfile(std_path) and std_name not in files:
@@ -552,10 +559,42 @@ def collect_live_snapshot(
                 except Exception:
                     pass
 
-        next_inst = (
-            job_cfg.get("dispatch_release_grant", {}).get("next_instruction")
-            or files.get("active_instruction.json", {}).get("instruction_id")
+        fresh_repo = job_cfg.get("repository")
+        fresh_branch = job_cfg.get("branch")
+        act_inst_obj = files.get("active_instruction.json")
+        fresh_inst = act_inst_obj.get("instruction_id") if isinstance(act_inst_obj, dict) else None
+
+        reg_repo = job_spec.get("repository")
+        reg_branch = job_spec.get("branch")
+        reg_inst = job_spec.get("instruction_id")
+
+        def _is_exact_tuple_match(a, b) -> bool:
+            return (type(a) is str) and (type(b) is str) and bool(a) and (a == b)
+
+        # Registry tuple guard: repository, branch, instruction_id must be non-empty strings and exact matches (no strip/normalization)
+        tuple_matched = bool(
+            _is_exact_tuple_match(reg_repo, fresh_repo)
+            and _is_exact_tuple_match(reg_branch, fresh_branch)
+            and _is_exact_tuple_match(reg_inst, fresh_inst)
         )
+
+        applicable_gov_id = gov_item_id if tuple_matched else None
+
+        # Only apply registry transfer and policy evidence when tuple matches
+        if tuple_matched:
+            for raw_fp in job_spec.get("transfer_files", []) + job_spec.get("policy_files", []):
+                try:
+                    resolved_fp = os.path.realpath(os.path.abspath(raw_fp if os.path.isabs(raw_fp) else os.path.join(profile_home, raw_fp)))
+                    if os.path.commonpath([resolved_fp, profile_home]) != profile_home:
+                        continue
+                    if os.path.isfile(resolved_fp):
+                        fname = os.path.basename(resolved_fp)
+                        with open(resolved_fp, "r", encoding="utf-8") as f:
+                            files[fname] = json.load(f)
+                except Exception:
+                    pass
+
+        next_inst = fresh_inst
         if next_inst:
             for pat in [f"send_{next_inst}.json", f"receipt-{next_inst}.json"]:
                 p = os.path.join(job_dir, pat)
@@ -570,8 +609,11 @@ def collect_live_snapshot(
             "source_job": job_path,
             "job": job_cfg,
             "files": files,
-            "governing_item_id": gov_item_id,
+            "governing_item_id": applicable_gov_id,
+            "tuple_matched": tuple_matched,
         }
+        if not tuple_matched:
+            job_entry["source_error"] = "REGISTRY_TUPLE_MISMATCH"
 
         # 1. HEAD readback via gh api
         j_repo = job_cfg.get("repository") or repo
