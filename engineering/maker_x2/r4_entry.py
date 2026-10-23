@@ -34,29 +34,54 @@ def git_head():
 
 
 def stage_args(path, expected, head, input_sha):
+    """Validate one stage from the SAME installed stage_relay graph bytes."""
     if not path:
         return None
     raw=Path(path).read_bytes()
     graph=json.loads(raw)
-    if (graph.get("stage")!=expected or
-            graph.get("source_head")!=head or
-            graph.get("input_sha256")!=input_sha):
+    if (graph.get("schema_version")!=1 or graph.get("kind")!="stage_relay"
+            or not Path(graph["evidence_root"]).is_absolute()
+            or not isinstance(graph.get("stages"),list)):
+        raise X2Error("invalid stage_relay graph")
+    ids=[x["id"] for x in graph["stages"]]
+    if len(ids)!=len(set(ids)) or not set(STAGES).issubset(ids):
+        raise X2Error("missing/duplicate R4 stage")
+    entry=next(x for x in graph["stages"] if x["id"]==expected)
+    if (entry.get("mode")!="exec" or entry.get("source_head")!=head
+            or entry.get("input_sha256")!=input_sha
+            or not isinstance(entry.get("argv"),list)
+            or not Path(entry["cwd"]).is_absolute()
+            or not entry.get("reports")):
         raise X2Error("stage graph/source/input identity mismatch")
     return hashlib.sha256(raw).hexdigest()
 
 
-def receipt(path, stage, head, inp, graph, report_sha):
+def receipt(path, acceptance, stage, head, inp, graph, report):
+    """Verify actual completed controller receipt PLUS separate acceptance."""
     value=json.loads(Path(path).read_text(encoding="utf-8"))
-    for key, expected in (("stage",stage),("source_head",head),
-                          ("input_sha256",inp),("graph_sha256",graph),
-                          ("report_sha256",report_sha)):
-        if value.get(key)!=expected:
-            raise X2Error("previous receipt identity/hash mismatch: "+key)
-    if value.get("accepted") is not True or not all(
-            key in value for key in ("owner_pid","owner_start",
-                                    "owner_boot","owner_token")):
-        raise X2Error("previous stage acceptance/owner proof missing")
-    return sha256_file(path)
+    expected={"stage":stage,"source_head":head,"input_sha256":inp,
+              "graph_sha256":graph}
+    if any(value.get(k)!=v for k,v in expected.items()):
+        raise X2Error("previous receipt identity mismatch")
+    owner=value.get("owner")
+    if (not isinstance(owner,dict) or not all(
+            owner.get(k) is not None for k in
+            ("pid","start_ticks","boot_id","token"))
+            or value.get("exit_code")!=0 or value.get("outcome")!="SUCCEEDED"):
+        raise X2Error("previous receipt not genuine successful executor")
+    rows=144 if stage=="r4-run" else 1
+    reports=value.get("reports",[])
+    if not any(r.get("path")==report.name and
+               r.get("sha256")==sha256_file(report) and
+               r.get("rows")==rows for r in reports):
+        raise X2Error("previous receipt report identity mismatch")
+    accepted=json.loads(Path(acceptance).read_text(encoding="utf-8"))
+    expected["receipt_sha256"]=sha256_file(path)
+    if (any(accepted.get(k)!=v for k,v in expected.items()) or
+        accepted.get("decision")!="ACCEPTED" or not accepted.get("reviewer")):
+        raise X2Error("missing independent prior acceptance")
+    return {"receipt_sha256":sha256_file(path),
+            "acceptance_sha256":sha256_file(acceptance)}
 
 
 def read_sources(path):
@@ -198,11 +223,12 @@ def verify(args):
     inp=sha256_file(args.input)
     graph=stage_args(args.stage_config,"r4-verify",head,inp)
     if args.stage_config:
-        if not args.receipt:
-            raise X2Error("r4-verify requires accepted r4-run receipt")
-        receipt(args.receipt,"r4-run",head,inp,doc["graph_sha256"],
-                sha256_file(root/"manifest.json"))
+        if not args.receipt or not args.acceptance:
+            raise X2Error("r4-verify requires receipt and acceptance")
+        receipt(args.receipt,args.acceptance,"r4-run",head,inp,graph,
+                root/"reports/r4-matrix.json")
     if (doc["source_head"]!=head or doc["input_sha256"]!=inp or
+        doc["graph_sha256"]!=graph or
         doc["config_sha256"]!=sha256_file(args.config) or
         doc["source_sha256"]!=hash_source(Path(__file__).resolve().parent)):
         raise X2Error("R4 manifest source/input/config/graph changed")
@@ -238,7 +264,8 @@ def main(argv=None):
     modes=parser.add_mutually_exclusive_group(required=True)
     for name in ("run","verify","diag15"):
         modes.add_argument("--"+name,action="store_true")
-    for name in ("config","input","output","stage-config","receipt"):
+    for name in ("config","input","output","stage-config","receipt",
+                 "acceptance"):
         parser.add_argument("--"+name,required=name in ("config","input","output"))
     args=parser.parse_args(argv)
     try:
