@@ -47,7 +47,8 @@ class MetroUnit(unittest.TestCase):
                 "updated_at": 1792065600}))
             model = read_metro(str(root), now_ms=1792065600000)
             self.assertEqual(model["source_totals"]["ledger"], 1202)
-            self.assertEqual(model["kpis"]["pending_decisions"], 7)
+            self.assertEqual(model["kpis"]["pending_decisions"], 0)
+            self.assertEqual(model["kpis"]["pending_source"], "ledger")
             self.assertEqual(len(model["routes"]), 3)
             self.assertEqual(model["kpis"]["processes"], 0)
             self.assertIsNone(model["kpis"]["maker_cells"])
@@ -64,8 +65,12 @@ class MetroUnit(unittest.TestCase):
             self.assertEqual(updated["source_totals"]["ledger"], 1202)
             self.assertEqual(updated["source_totals"]["union"], 1202)
             (root / "owner_metro/directive.json").write_text("{")
-            self.assertIsNone(read_metro(str(root), now_ms=1792065600000)
-                              ["kpis"]["pending_decisions"])
+            m_bad_dir = read_metro(str(root), now_ms=1792065600000)
+            self.assertEqual(m_bad_dir["sources"]["directive"]["state"], "invalid")
+            self.assertEqual(m_bad_dir["kpis"]["pending_decisions"], 0)
+            self.assertEqual(m_bad_dir["kpis"]["pending_source"], "ledger")
+            (root / "commitments/ledger.json").write_text("{")
+            self.assertIsNone(read_metro(str(root), now_ms=1792065600000)["kpis"]["pending_decisions"])
 
 
 if __name__ == "__main__":

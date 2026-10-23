@@ -6,7 +6,7 @@ import stat
 import time
 from owner_activity import _read_bytes, _source_meta, _stamp
 
-_NAMES = ("directive", "stage", "heartbeat", "launch", "adoption", "results", "liquidations")
+_NAMES = ("directive", "stage", "heartbeat", "launch", "adoption", "results", "liquidations", "decision_policy", "frozen_manifest")
 _PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$")
 _CACHE = {}
 SOURCE_AGE_MS = {
@@ -15,6 +15,7 @@ SOURCE_AGE_MS = {
     "roadmap": 86400000, "journal": 86400000,
     "stage": 300000, "launch": 300000, "adoption": 300000,
     "results": 300000, "liquidations": 300000,
+    "decision_policy": 86400000, "frozen_manifest": 86400000,
 }
 
 
@@ -31,7 +32,7 @@ def parts(value):
 
 def _source_stamp(doc):
     """Use the documented source clocks; ts_ms is an integer millisecond epoch."""
-    for name in ("updated_at", "at", "ts_iso"):
+    for name in ("updated_at", "at", "ts_iso", "completed_at"):
         stamp = _stamp(doc.get(name))
         if stamp is not None:
             return stamp
@@ -107,14 +108,14 @@ def load(root, now_ms, limit=1048576):
             document[key] = obj
             at = _source_stamp(obj)
             age = None if at is None or at > now_ms + 5000 else max(0, now_ms - at)
-            health[key] = {"state": "stale" if age is not None and
-                           age > SOURCE_AGE_MS[key] else
-                           "available" if age is not None else "unverifiable",
-                           "age_ms": age}
+            health[key] = {"state": "stale" if age is not None and age > SOURCE_AGE_MS[key] else (
+                           "available" if age is not None else "unverifiable"),
+                           "age_ms": age,
+                           "completed": False}
         except FileNotFoundError:
-            health[key] = {"state": "missing"}
+            health[key] = {"state": "missing", "completed": False}
         except (OSError, ValueError, TypeError, UnicodeDecodeError):
-            health[key] = {"state": "invalid"}
+            health[key] = {"state": "invalid", "completed": False}
     return document, health, paths
 
 

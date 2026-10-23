@@ -75,7 +75,7 @@ def derive(root, ledger_items, bindings_nodes, now_ms, proc_root="/proc"):
             if previous:
                 note = str(previous[-1].get("reason") or "")[:80]
                 note = str(len(previous)) + " · " + note
-        elif current.get("state") in ("DISPATCHED", "BLOCKED", "DROPPED"):
+        elif current.get("state") in ("DISPATCHED", "BLOCKED"):
             state = "failed"
             note = str(current.get("reason") or "")[:80]
         if state is not None:

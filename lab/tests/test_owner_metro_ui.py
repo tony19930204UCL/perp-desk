@@ -139,11 +139,20 @@ class MetroUI(unittest.TestCase):
             (root / "commitments").mkdir()
             (root / "owner_metro/bindings.json").write_text(json.dumps({
                 "schema_version": 1, "sources": {}}))
+            ledger_items = [
+                {"id": "C-D1", "state": "DISPATCHED", "handle": {"kind": "pid", "ref": "worker_proc_42", "actor": "bot_alpha", "product": "maker"}},
+                {"id": "C-1", "state": "OPEN", "blocked_by": "user:ITEM_A",
+                 "text": "Synthetic decision", "created": 1792065500,
+                 "updated": 1792065500},
+            ]
+            ledger_items += [
+                {"id": f"C-P{i}", "state": "OPEN", "blocked_by": f"user:ITEM_P{i}",
+                 "text": f"Synthetic decision {i}", "created": 1792065500,
+                 "updated": 1792065500}
+                for i in range(2, 70)
+            ]
             (root / "commitments/ledger.json").write_text(json.dumps({
-                "next": 2, "items": [{
-                    "id": "C-1", "state": "OPEN", "blocked_by": "user:ITEM_A",
-                    "text": "Synthetic decision", "created": 1792065500,
-                    "updated": 1792065500}]}))
+                "next": len(ledger_items) + 1, "items": ledger_items}))
             # Use a fixed synthetic clock to preserve the complete ledger
             # contract across both real three-second browser polls.
             server = create_server(scorecard_path=str(root/"a"),
@@ -171,6 +180,13 @@ class MetroUI(unittest.TestCase):
                 initial = session.evaluate(
                     "document.querySelector('#metroKpis details')?.textContent")
                 self.assertIn("ITEM_A", initial)
+                summary = session.evaluate(query + "?.querySelector('summary')?.textContent")
+                self.assertIn("清單 64 項（總計 69 項，已截斷）", summary)
+                spot = session.evaluate("document.querySelector('#metroSpot')?.textContent")
+                self.assertIn("時鐘：觀察", spot)
+                self.assertIn("帳本派送持有人（DISPATCHED，不代表PID/產品接受）", spot)
+                self.assertIn("worker_proc_42", spot)
+                self.assertIn("bot_alpha", spot)
                 opened = session.evaluate("""(()=>{
                     const d=document.querySelector('#metroKpis details');
                     d.querySelector('summary').click();

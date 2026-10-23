@@ -38,22 +38,26 @@ class MetroR5(unittest.TestCase):
               self.item(3,"DROPPED"),self.item(4,"OPEN","item:C-5")]
         self.write(rows)
         k=self.model()["kpis"]
-        self.assertEqual((k["pending_decisions"],k["pending_source"]),(9,"directive"))
+        self.assertEqual((k["pending_decisions"],k["pending_source"]),(2,"ledger"))
         self.assertEqual(len(k["pending_list"]),2)
         self.assertEqual(k["pending_list"][0]["question"],"Question")
         self.assertEqual(k["pending_list"][0]["reason"],"Needs a human")
         self.assertEqual(k["pending_list"][0]["created"],1792065500)
         self.write([])
         self.assertEqual(self.model()["kpis"]["pending_list"],[])
+        self.assertEqual(self.model()["kpis"]["pending_decisions"],0)
         self.ledger.write_text("{")
         self.assertIsNone(self.model()["kpis"]["pending_list"])
+        self.assertEqual((self.model()["kpis"]["pending_decisions"],self.model()["kpis"]["pending_source"]),(9,"directive"))
 
     def test_bounds(self):
         self.write([self.item(i,blocked="user:"+("Q"*2000))
                     for i in range(1,70)])
         k=self.model()["kpis"]
-        self.assertEqual((k["pending_decisions"],k["pending_source"]),(9,"directive"))
+        self.assertEqual((k["pending_decisions"],k["pending_source"]),(64,"ledger"))
         self.assertEqual(len(k["pending_list"]),64)
+        self.assertEqual(k["pending_total"],69)
+        self.assertTrue(k["pending_truncated"])
         self.assertEqual(len(k["pending_list"][0]["question"]),2000)
 
     def test_freshness(self):

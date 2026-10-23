@@ -105,7 +105,7 @@ function render(data) {
   const wasOpen=!!document.querySelector('#metroKpis details')?.open;
   const k=clear('metroKpis');
   [['核驗中程序 / PIDs',data.kpis.processes],['Maker baseline',String(data.kpis.maker_cells??'NA')+'/48'],
-   ['清算事件',data.kpis.liquidations],['待人工決策',data.kpis.pending_decisions]].forEach(([label,v])=>{
+   ['清算事件（本程序）',data.kpis.liquidations],['待人工決策',data.kpis.pending_decisions]].forEach(([label,v])=>{
     const box=add(k,'div',undefined,'metric');
     add(box,'strong',v===null||v===undefined?'NA':v);
     add(box,'span',label);
@@ -121,7 +121,10 @@ function render(data) {
     const summary=add(details,'summary',label+' · 展開唯讀清單');
     summary.setAttribute('role','button');
     const entries=data.kpis.pending_list;
-    if(Array.isArray(entries))add(summary,'span',' · 清單 '+entries.length+' 項');
+    if(Array.isArray(entries)){
+      const capText=data.kpis.pending_truncated?(' · 清單 '+entries.length+' 項（總計 '+data.kpis.pending_total+' 項，已截斷）'):(' · 清單 '+entries.length+' 項');
+      add(summary,'span',capText);
+    }
     const list=add(details,'div');
     const taipei=sec=>{
       if(typeof sec!=='number'||!Number.isFinite(sec))return 'NA';
@@ -168,9 +171,36 @@ function render(data) {
     .map(p=>p.kind+(p.identity==='managed'?' · cron 管理':'')+' PID '+p.pid+' · '+(p.elapsed_s??'NA')+' s · RSS '+(p.rss_bytes??'NA')+' bytes').join('；') || '沒有核實的程序');
   add(spot,'p','清算 heartbeat：'+(data.heartbeat?.at||'NA')+
     ' · age '+(data.heartbeat?.age_ms??'NA')+' ms');
-  add(spot,'p',results.count>0?'初步結果 '+results.count+'/48，尚未全局驗收':'尚無有效 baseline cell');
+  const isDerived=results.completed_at||results.head||results.classification==='EXPLORATORY_NOT_ACCEPTED';
+  add(spot,'p',results.count>0?
+    (isDerived?'歷史計算結果 '+results.count+'/48（DERIVED_VIEW · 唯讀投影，策略 EXPLORATORY_NOT_ACCEPTED 未接受）':
+     '初步結果 '+results.count+'/48，尚未全局驗收'):'尚無有效 baseline cell');
   add(spot,'p','租約：'+(maker.lease||'未知')+' · 輸出：'+(maker.output||'未知'));
   add(spot,'p','研究結果：'+(results.state||'未知')+'；未推論策略 PASS');
+  const clocks=data.clocks||{};
+  const obsTime=clocks.observed_ms?new Date(clocks.observed_ms).toISOString():'NA';
+  const histTime=clocks.historical_completed_at?String(clocks.historical_completed_at):'NA';
+  const dirTime=clocks.directive_updated_at?String(clocks.directive_updated_at):'NA';
+  const progTime=clocks.progress_at?String(clocks.progress_at):'NA';
+  add(spot,'p','時鐘：觀察 '+obsTime+' · 歷史完成 '+histTime+' · 指令 '+dirTime+' · 進度 '+progTime,'meta');
+  const canOwners=data.canonical_owners||[];
+  const dirOwners=data.directive?.owners||[];
+  const ledgerState=data.sources?.ledger?.state;
+  if(canOwners.length){
+    const canText=canOwners.map(o=>o.item+' · '+(o.actor||'無指派人')+' · '+(o.product||'無產品')+(o.kind?' ('+o.kind+(o.ref?' '+o.ref:'')+')':'')).join('；');
+    add(spot,'p','帳本派送持有人（DISPATCHED，不代表PID/產品接受）：'+canText,'meta');
+  } else if(ledgerState==='available'){
+    add(spot,'p','帳本派送持有人：無活派送項','meta');
+  } else {
+    add(spot,'p','帳本派送持有人：NA（來源'+(ledgerState||'未就緒')+'）','meta');
+  }
+  if(dirOwners.length){
+    const dirText=dirOwners.map(o=>{
+      const match=canOwners.some(c=>c.item===o.item);
+      return o.item+' · '+(o.actor||'未知')+' · '+(o.product||'未知')+(match?'':' [指令與帳本不一致]');
+    }).join('；');
+    add(spot,'p','指令回報持有人（僅作報告）：'+dirText,'meta');
+  }
   const rows=Array.isArray(results.metrics)?results.metrics:[];
   add(spot,'p','X1 / X2 / X3 有效格數：'+['X1','X2','X3'].map(
     x=>x+' '+(results.by_exit?.[x]??'NA')).join(' · '));

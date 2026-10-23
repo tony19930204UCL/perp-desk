@@ -99,7 +99,7 @@ class NodeProof(unittest.TestCase):
             "sources":{"directive":"owner_metro/directive.json"}}))
         for label,value,count,source in (
             ("stale",{"updated_at":1792624000,"pending_decisions":8},1,"ledger"),
-            ("fresh",{"updated_at":1792625361,"pending_decisions":8},8,"directive")):
+            ("fresh",{"updated_at":1792625361,"pending_decisions":8},1,"ledger")):
             with self.subTest(label=label):
                 target.write_text(json.dumps(value))
                 k=read_metro(str(self.root),now_ms=1792625361639,
@@ -107,12 +107,16 @@ class NodeProof(unittest.TestCase):
                 self.assertEqual(k["pending_decisions"],count)
                 self.assertEqual(k["pending_source"],source)
         target.write_text("{")
-        k=read_metro(str(self.root),now_ms=1792625361639,
-                     proc_root=str(self.proc))["kpis"]
-        self.assertIsNone(k["pending_decisions"])
-        self.assertIsNone(k["pending_source"])
+        m=read_metro(str(self.root),now_ms=1792625361639,proc_root=str(self.proc))
+        self.assertEqual(m["sources"]["directive"]["state"],"invalid")
+        self.assertEqual(m["kpis"]["pending_decisions"],1)
+        self.assertEqual(m["kpis"]["pending_source"],"ledger")
         target.unlink()
-        k=read_metro(str(self.root),now_ms=1792625361639,
-                     proc_root=str(self.proc))["kpis"]
+        m=read_metro(str(self.root),now_ms=1792625361639,proc_root=str(self.proc))
+        self.assertEqual(m["sources"]["directive"]["state"],"missing")
+        self.assertEqual(m["kpis"]["pending_decisions"],1)
+        self.assertEqual(m["kpis"]["pending_source"],"ledger")
+        (self.root / "commitments/ledger.json").write_text("{")
+        k=read_metro(str(self.root),now_ms=1792625361639,proc_root=str(self.proc))["kpis"]
         self.assertIsNone(k["pending_decisions"])
         self.assertIsNone(k["pending_source"])
