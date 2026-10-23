@@ -197,6 +197,11 @@ def verify(args):
     head=git_head()
     inp=sha256_file(args.input)
     graph=stage_args(args.stage_config,"r4-verify",head,inp)
+    if args.stage_config:
+        if not args.receipt:
+            raise X2Error("r4-verify requires accepted r4-run receipt")
+        receipt(args.receipt,"r4-run",head,inp,doc["graph_sha256"],
+                sha256_file(root/"manifest.json"))
     if (doc["source_head"]!=head or doc["input_sha256"]!=inp or
         doc["config_sha256"]!=sha256_file(args.config) or
         doc["source_sha256"]!=hash_source(Path(__file__).resolve().parent)):
@@ -222,6 +227,8 @@ def verify(args):
             "graph_sha256":graph,"run_graph_sha256":doc["graph_sha256"],
             "rows":[{"symbol":"ALL","cell_id":"AUDIT",
             "verified":len(rows),"manifest_sha256":sha256_file(root/"manifest.json")}]}
+    if (root/"reports/r4-verify.json").exists():
+        raise X2Error("verify report already exists; no overwrite")
     atomic_json(root/"reports/r4-verify.json",report)
     return report
 
@@ -231,7 +238,7 @@ def main(argv=None):
     modes=parser.add_mutually_exclusive_group(required=True)
     for name in ("run","verify","diag15"):
         modes.add_argument("--"+name,action="store_true")
-    for name in ("config","input","output","stage-config"):
+    for name in ("config","input","output","stage-config","receipt"):
         parser.add_argument("--"+name,required=name in ("config","input","output"))
     args=parser.parse_args(argv)
     try:
