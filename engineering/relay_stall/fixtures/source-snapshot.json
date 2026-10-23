@@ -1,0 +1,131 @@
+{
+  "observed_at": 1700000000.0,
+  "consumer": {
+    "enabled": true,
+    "last_receipt_at": 1699999900.0
+  },
+  "jobs": [
+    {
+      "source_job": "jobs/job75.json",
+      "job": {
+        "repository": "example-org/sample-repo",
+        "pr_number": 75,
+        "branch": "feature/maker-sample",
+        "mailbox": ".relay/mailbox.json",
+        "valid_until": "2023-11-14T23:00:00+00:00",
+        "dispatch_release_grant": {
+          "next_instruction": "SAMPLE-INST-001"
+        }
+      },
+      "files": {
+        "active_instruction.json": {
+          "instruction_id": "SAMPLE-INST-001"
+        },
+        "worker-launch.json": {
+          "pid": 12345,
+          "start": "100001"
+        },
+        "worker-state.json": {
+          "instruction_id": "SAMPLE-INST-001"
+        },
+        "PARENT_PROVIDER_BLOCK_SCOPE_TRANSFER.json": {
+          "successor": {
+            "id": "C-9001",
+            "text": "PR75 sample refusal"
+          }
+        },
+        "SAFETY_STOP.json": {
+          "status": "PROVIDER_REFUSAL_REPORTED_BY_RECIPIENT"
+        },
+        "send_SAMPLE-INST-001.json": {
+          "status": "CONFIRMED",
+          "reconciliation_artifact": "receipt-001.json"
+        }
+      },
+      "head_rc": 0,
+      "head": {
+        "sha": "0123456789abcdef0123456789abcdef01234567"
+      },
+      "mailbox_rc": 0,
+      "mailbox": {
+        "schema_version": 2,
+        "instruction_id": "SAMPLE-INST-001",
+        "source_head_sha": "0123456789abcdef0123456789abcdef01234567",
+        "status": "READY_FOR_REVIEW"
+      },
+      "chat_rc": 0,
+      "chat_observed_at": 1700000000.0,
+      "chat_snapshot": {
+        "busy": false,
+        "pending_card": false
+      }
+    },
+    {
+      "source_job": "jobs/job78.json",
+      "job": {
+        "repository": "example-org/sample-repo",
+        "pr_number": 78,
+        "branch": "feature/heatmap-sample",
+        "mailbox": ".relay/mailbox-heatmap.json",
+        "valid_until": "2023-11-14T23:00:00+00:00"
+      },
+      "files": {
+        "active_instruction.json": {
+          "instruction_id": "HEATMAP-SAMPLE-002"
+        },
+        "POSITIVE_CLAIM_RECONCILE.json": {
+          "approval_grant": {
+            "instruction_id": "HEATMAP-SAMPLE-002"
+          },
+          "owner": {
+            "pid": 12346,
+            "start_ticks": "100002"
+          }
+        },
+        "PARENT_OWNER_TRANSFER.json": {
+          "successor": {
+            "id": "C-9002",
+            "text": "PR78 sample refusal"
+          }
+        },
+        "NORMAL_CHECKER_RESULT.json": {
+          "result": "STOPPED",
+          "error": "token-like string present"
+        },
+        "send_HEATMAP-SAMPLE-002.json": {
+          "status": "CONFIRMED",
+          "reconciliation_artifact": "receipt-002.json"
+        }
+      },
+      "head_rc": 0,
+      "head": {
+        "sha": "abcdef0123456789abcdef0123456789abcdef01"
+      },
+      "mailbox_rc": 0,
+      "mailbox": {
+        "schema_version": 2,
+        "instruction_id": "HEATMAP-SAMPLE-002",
+        "source_head_sha": "abcdef0123456789abcdef0123456789abcdef01",
+        "status": "READY_FOR_REVIEW"
+      },
+      "chat_rc": 0,
+      "chat_observed_at": 1700000000.0,
+      "chat_snapshot": {
+        "busy": false,
+        "pending_card": false
+      }
+    }
+  ],
+  "ledger_items": [
+    {
+      "id": "C-9001",
+      "state": "OPEN",
+      "text": "PR75 sample refusal PROVIDER_REFUSAL_REPORTED"
+    },
+    {
+      "id": "C-9002",
+      "state": "OPEN",
+      "text": "PR78 sample refusal TOKEN_LIKE"
+    }
+  ]
+}

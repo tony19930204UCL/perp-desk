@@ -1,0 +1,46 @@
+name: Relay Stall Observer CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: engineering/relay_stall
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run Core Tests (umask 0022)
+        run: |
+          mkdir -p test-tmp-0022
+          (umask 0022; TMPDIR="$PWD/test-tmp-0022" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v test_relay_stall_watch.py)
+
+      - name: Run Core Tests (umask 0002)
+        run: |
+          mkdir -p test-tmp-0002
+          (umask 0002; TMPDIR="$PWD/test-tmp-0002" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v test_relay_stall_watch.py)
+
+      - name: Run Adapter Tests (umask 0022)
+        run: |
+          mkdir -p test-tmp-adapter-0022
+          (umask 0022; TMPDIR="$PWD/test-tmp-adapter-0022" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v test_relay_stall_adapter.py)
+
+      - name: Run Adapter Tests (umask 0002)
+        run: |
+          mkdir -p test-tmp-adapter-0002
+          (umask 0002; TMPDIR="$PWD/test-tmp-adapter-0002" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v test_relay_stall_adapter.py)
