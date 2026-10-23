@@ -232,10 +232,20 @@ def verify(args):
         doc["config_sha256"]!=sha256_file(args.config) or
         doc["source_sha256"]!=hash_source(Path(__file__).resolve().parent)):
         raise X2Error("R4 manifest source/input/config/graph changed")
+    sources=read_sources(args.input)
+    for symbol in SYMS:
+        actual=doc["inputs"][symbol]
+        for kind,field in (("bars","bars_sha256"),
+                           ("funding","funding_sha256")):
+            if sha256_file(sources[symbol][kind])!=actual[field]:
+                raise X2Error("original underlying market data hash mismatch")
     for name,sha in doc["artifacts"].items():
         if not (name.startswith("cells/") or name.startswith("reports/")):
             raise X2Error("unexpected R4 artifact path")
-        if sha256_file(root/name)!=sha:
+        target=(root/name).resolve()
+        if not target.is_relative_to(root.resolve()) or not target.is_file():
+            raise X2Error("R4 artifact escapes output")
+        if sha256_file(target)!=sha:
             raise X2Error("R4 artifact hash mismatch")
     matrix=json.loads((root/"reports/r4-matrix.json").read_text())
     rows=matrix["rows"]
@@ -243,9 +253,13 @@ def verify(args):
     cfg=load_config(args.config)
     for row in rows:
         rates=SENSITIVITY if row["scenario"]=="cost1_5x" else None
+        pair=[]
         for side in ("strategy","matched"):
             raw=json.loads((root/row[side+"_path"]).read_text())
             audit_result(raw,cfg["capital"],rates)
+            pair.append(raw)
+        if money(*pair)!=row["metrics"]:
+            raise X2Error("R4 metrics do not match original episodes")
     regime=json.loads((root/"reports/r4-regime.json").read_text())
     if len(regime["family_m96"])!=96 or regime["prereg_sha256"]!=PREREG:
         raise X2Error("missing original prereg family")
