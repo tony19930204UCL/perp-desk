@@ -2233,5 +2233,111 @@ try {
         self.assertIn("combo_timeout", f["result"]["err"])
 
 
+    def _native_retry(self, mode):
+        exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh")
+        self.assertIsNotNone(exe)
+        with open(CAPTURE_PS1, encoding="utf-8") as fh:
+            src = fh.read()
+        names = ("Get-ComboRemaining", "Wait-Combo", "Wait-CanvasReady", "Get-ChartCapture")
+        parts = []
+        for name in names:
+            match = re.search(r"(?ms)^function " + name + r" \{.*?^\}", src)
+            self.assertIsNotNone(match, name)
+            parts.append(match.group())
+        outer = src.split("        # A single retry is shared by switch and canvas capture.\n", 1)
+        self.assertEqual(len(outer), 2)
+        loop = outer[1].split("        # A failed or overdue combo publishes", 1)[0]
+        ps = "\n".join(parts) + """
+$ErrorActionPreference = 'Stop'
+$script:mode = '@MODE@'
+$script:capN = 0; $script:sampleN = 0; $script:switchN = 0; $script:reloadN = 0
+function Invoke-CdpEval {
+    param($Sess,[string]$Expression,[int]$TimeoutMs,$Clock,[switch]$AwaitPromise)
+    if ($Expression.Contains('width>0')) {
+        $script:sampleN++
+        if ($script:mode -in @('slow','fast')) {
+            Start-Sleep -Milliseconds ([Math]::Min(9000, $TimeoutMs))
+            return $true
+        }
+        if ($script:mode -eq 'reset') { return @($true,$false,$true,$true)[$script:sampleN-1] }
+        if ($script:mode -eq 'no_ready') { return $false }
+        return $true
+    }
+    if ($Expression.Contains('toDataURL')) {
+        $script:capN++
+        if ($script:mode -eq 'switch' -or $script:mode -eq 'no_ready') { return '{"err":"no canvas"}' }
+        if ($script:capN -eq 1) { return '{"err":"no canvas"}' }
+        if ($script:mode -eq 'recap_err') { throw 'cdp_transient' }
+        if ($script:mode -eq 'recap_timeout') { throw 'combo_timeout' }
+        if ($script:mode -eq 'after_ok') { return '{"chart_data_ok":false,"w":"not_integer","h":1}' }
+        return '{"chart_data_ok":false,"w":1,"h":1}'
+    }
+    $script:switchN++
+    if ($script:mode -eq 'switch' -and $script:switchN -eq 1) { return '{"err":"switch_transient"}' }
+    return '{"head":"BTC"}'
+}
+function Invoke-CdpCall { param($Sess,[string]$Method,$Params,[int]$TimeoutMs,$Clock)
+    if ($Method -eq 'Page.reload') { $script:reloadN++ }
+}
+$sw = [Diagnostics.Stopwatch]::StartNew()
+$sess=$null; $coin='BTC'; $model=1; $timeframe='24 hour'; $mode='pair'
+$driverJsCode='driver'; $captureChartJsCode='toDataURL'; $comboTimeoutMs=60000
+$OutDir=$null; $SavePng=0; $comboOk=$false; $comboError=$null
+$loginRequired=$false; $loggedIn=$true; $chartDataOk=$false
+if ($script:mode -in @('slow','fast','reset','no_ready')) {
+    $capClock = [Diagnostics.Stopwatch]::StartNew()
+    if ($script:mode -eq 'fast') { $ready = Wait-CanvasReady -Sess $null -Clock $sw -MaxMs 250 -StepMs 50 }
+    else { $ready = Wait-CanvasReady -Sess $null -Clock $sw }
+    $result = @{ready=$ready; elapsed=$capClock.ElapsedMilliseconds}
+} else {
+    # Exercise the exact production outer loop. Only the settling delay is mocked.
+    function Wait-Combo {param($Clock,[int]$Ms); [void](Get-ComboRemaining -Clock $Clock)}
+@LOOP@
+    $result = @{ok=$comboOk; error=$comboError}
+}
+@{result=$result; captures=$script:capN; samples=$script:sampleN;
+  reloads=$script:reloadN; switches=$script:switchN} | ConvertTo-Json -Depth 5 -Compress
+""".replace("@MODE@", mode).replace("@LOOP@", loop)
+        proc = subprocess.run([exe, "-NoProfile", "-Command", ps],
+                              capture_output=True, text=True, timeout=22)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return json.loads(proc.stdout.strip().splitlines()[-1])
+
+    @unittest.skipUnless(
+        shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh"),
+        "PowerShell unavailable")
+    def test_54_canvas_cap(self):
+        slow = self._native_retry("slow")
+        self.assertFalse(slow["result"]["ready"])
+        self.assertEqual(slow["samples"], 1)
+        self.assertLess(slow["result"]["elapsed"], 8700)
+        fast = self._native_retry("fast")
+        self.assertFalse(fast["result"]["ready"])
+        self.assertLess(fast["result"]["elapsed"], 1000)
+        reset = self._native_retry("reset")
+        self.assertTrue(reset["result"]["ready"])
+        self.assertEqual(reset["samples"], 4)
+
+    @unittest.skipUnless(
+        shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh"),
+        "PowerShell unavailable")
+    def test_55_outer_retry(self):
+        for mode, error, caps, reloads in (
+            ("recap_err", "cdp_transient", 2, 0),
+            ("recap_timeout", "combo_timeout", 2, 0),
+            ("switch", "no canvas", 1, 1),
+            ("after_ok", "not_integer", 2, 0),
+        ):
+            with self.subTest(mode=mode):
+                row = self._native_retry(mode)
+                self.assertFalse(row["result"]["ok"])
+                self.assertIn(error, row["result"]["error"])
+                self.assertEqual(row["captures"], caps)
+                self.assertEqual(row["reloads"], reloads)
+        no_ready = self._native_retry("no_ready")
+        self.assertEqual(no_ready["captures"], 1)
+        self.assertEqual(no_ready["result"]["error"], "no canvas")
+
+
 if __name__ == "__main__":
     unittest.main()
