@@ -197,11 +197,14 @@ def run(args):
     audit_matrix(rows,items)
     family=report_family(rows,start,end)
     matrix=[{k:v for k,v in r.items() if k!="regime_episodes"} for r in rows]
-    docs={"reports/r4-matrix.json":{"stage":"r4-run","rows":matrix},
+    docs={"reports/r4-matrix.json":{
+              "stage":"r4-run","source_head":head,"input_sha256":input_sha,
+              "graph_sha256":graph,"rows":matrix},
           "reports/r4-regime.json":{"family_m96":family,
                "daily":regimes,"prereg_sha256":PREREG,
                "status":"EXPLORATORY_NO_HOLDOUT"},
-          "reports/r4-diag15.json":{"stage":"r4-run","rows":diag,
+          "reports/r4-diag15.json":{"stage":"r4-run","source_head":head,
+              "input_sha256":input_sha,"graph_sha256":graph,"rows":diag,
                                    "family_member":False}}
     for name,doc in docs.items():
         items[name]=atomic_json(root/name,doc)
