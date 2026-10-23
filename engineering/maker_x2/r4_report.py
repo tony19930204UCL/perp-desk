@@ -2,7 +2,7 @@
 import json
 import hashlib
 from pathlib import Path
-from decimal import Decimal as D
+from decimal import Decimal as D, localcontext
 from datetime import datetime, timezone
 from itertools import product
 from backtest_reports import atomic_json, sha256_file, canon
@@ -29,33 +29,35 @@ def required():
 
 def money(result, matched):
     """Flat-to-flat bp; B does not synthesize an investable cash curve."""
-    ep = [e for e in result["episodes"] if D(e["entry_notional"]) > 0]
-    gross = sum((D(e["gross"]) for e in ep), D(0))
-    net = sum((D(e["net"]) for e in ep), D(0))
-    notion = sum((D(e["entry_notional"]) for e in ep), D(0))
-    wins = sum((D(e["net"]) for e in ep if D(e["net"]) > 0), D(0))
-    losses = -sum((D(e["net"]) for e in ep if D(e["net"]) < 0), D(0))
-    def bp(other):
-        arr = [e for e in other["episodes"] if D(e["entry_notional"]) > 0]
-        den = sum((D(e["entry_notional"]) for e in arr), D(0))
-        return (sum((D(e["net"]) for e in arr),D(0))/den*10000
-                if den else None)
-    matched_bp = bp(matched)
-    net_bp = net/notion*10000 if notion else None
-    types = {k:sum(e["exit_type"]==k for e in ep)
-             for k in ("TP","SL","SL_GAP","PASSIVE_X3","LIQ","NO_FILL")}
-    return {"n":len(ep),"signals":result["signal_count"],
-            "gross_bp":str(gross/notion*10000) if notion else None,
-            "net_bp":str(net_bp) if net_bp is not None else None,
-            "matched_net_bp":str(matched_bp) if matched_bp is not None else None,
-            "net_alpha_bp":str(net_bp-matched_bp)
-            if net_bp is not None and matched_bp is not None else None,
-            "pf":str(wins/losses) if losses else None,
-            "exits":types,"liq":types["LIQ"],
-            "admin_4h":result["counts"].get("admin_4h_triggers",0),
-            "open":result["counts"].get("open",0),
-            "funnel":result.get("funnel"),
-            "funnel_denoms":result.get("funnel_denoms")}
+    with localcontext() as ctx:
+        ctx.prec=50
+        ep = [e for e in result["episodes"] if D(e["entry_notional"]) > 0]
+        gross = sum((D(e["gross"]) for e in ep), D(0))
+        net = sum((D(e["net"]) for e in ep), D(0))
+        notion = sum((D(e["entry_notional"]) for e in ep), D(0))
+        wins = sum((D(e["net"]) for e in ep if D(e["net"]) > 0), D(0))
+        losses = -sum((D(e["net"]) for e in ep if D(e["net"]) < 0), D(0))
+        def bp(other):
+            arr = [e for e in other["episodes"] if D(e["entry_notional"]) > 0]
+            den = sum((D(e["entry_notional"]) for e in arr), D(0))
+            return (sum((D(e["net"]) for e in arr),D(0))/den*10000
+                    if den else None)
+        matched_bp = bp(matched)
+        net_bp = net/notion*10000 if notion else None
+        types = {k:sum(e["exit_type"]==k for e in ep)
+                 for k in ("TP","SL","SL_GAP","PASSIVE_X3","LIQ","NO_FILL")}
+        return {"n":len(ep),"signals":result["signal_count"],
+                "gross_bp":str(gross/notion*10000) if notion else None,
+                "net_bp":str(net_bp) if net_bp is not None else None,
+                "matched_net_bp":str(matched_bp) if matched_bp is not None else None,
+                "net_alpha_bp":str(net_bp-matched_bp)
+                if net_bp is not None and matched_bp is not None else None,
+                "pf":str(wins/losses) if losses else None,
+                "exits":types,"liq":types["LIQ"],
+                "admin_4h":result["counts"].get("admin_4h_triggers",0),
+                "open":result["counts"].get("open",0),
+                "funnel":result.get("funnel"),
+                "funnel_denoms":result.get("funnel_denoms")}
 
 
 def audit_result(result, capital, rates):
