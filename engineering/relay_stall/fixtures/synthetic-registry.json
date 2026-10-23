@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "jobs": [
+    {
+      "job_path": "fixtures/jobs/sample_job75.json",
+      "repository": "example-org/sample-repo",
+      "branch": "feature/maker-sample",
+      "instruction_id": "SAMPLE-INST-001",
+      "job_id": "PR75_SAMPLE-INST-001",
+      "pr_number": 75,
+      "governing_item_id": "C-9001",
+      "transfer_files": [],
+      "policy_files": []
+    },
+    {
+      "job_path": "fixtures/jobs/sample_job78.json",
+      "repository": "example-org/sample-repo",
+      "branch": "feature/heatmap-sample",
+      "instruction_id": "HEATMAP-SAMPLE-002",
+      "job_id": "PR78_HEATMAP-SAMPLE-002",
+      "pr_number": 78,
+      "governing_item_id": "C-9002",
+      "transfer_files": [],
+      "policy_files": []
+    }
+  ]
+}
