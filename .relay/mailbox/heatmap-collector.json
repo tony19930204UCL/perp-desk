@@ -1,0 +1,50 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 78,
+  "branch": "fix/heatmap-collector-contract-20261021",
+  "task_id": "HEATMAP-CANVAS-RETRY",
+  "instruction_id": "heatmap-fix-005-r2",
+  "status": "WAITING_CI",
+  "source_head_sha": "d69016c15ad6bd8772c7263bce893efec4fe478c",
+  "summary": "Bounded r2 repair of native test55 process stdout encoding only. Set [Console]::OutputEncoding to explicit UTF8 without BOM in the temporary PowerShell wrapper and write its single JSON line via [Console]::Out.WriteLine, while subprocess.run uses encoding='utf-8' and errors='strict'. This retains the real after_ok native cast diagnostic, every existing test assertion, production PS1 source, native inherited ExecutionPolicy, and all test injection routes. Appended Windows test_54/test_55 step after existing native tests. GitHub compare shows only test file 5 additions/2 deletions and CI 2 additions; candidate workflow queued as run 39983011866 when inspected. Native tests were not executed by assistant.",
+  "changed_files": [
+    "engineering/collectors/heatmap/tests/test_heatmap_archive.py",
+    ".github/workflows/ci.yml",
+    ".relay/mailbox/heatmap-collector.json"
+  ],
+  "changed_assertions": [],
+  "tests": [
+    {
+      "command": "python -m unittest discover -s engineering/collectors/heatmap/tests -p test_heatmap_archive.py -k test_54 -k test_55 -v",
+      "result": "NOT_RUN",
+      "evidence": "Assistant did not execute native Windows PowerShell. Windows CI step added; source-run 39983011866 was queued."
+    },
+    {
+      "command": "python3 -m unittest discover -s engineering/collectors/heatmap/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No full local suite; previously refused UNC test43/45 were not retried."
+    },
+    {
+      "command": "python3 engineering/collectors/heatmap/heatmap_archive.py --selftest",
+      "result": "NOT_RUN",
+      "evidence": "Not executed; archive source unchanged."
+    }
+  ],
+  "remaining_work": [
+    "Independent clean-source Windows native test54/55 exact head, including after_ok cast diagnostic decoded strictly under explicit UTF8.",
+    "Check push and PR workflows for final mailbox head, including 43/45/51/52/53 retained steps, verify verbose IDs 54/55 and both umasks.",
+    "Next dependent revision: remaining full case-injection/order/exact-diagnostics/real-combo-exhaustion matrix and eight specified assertion-only mutants. Not accepted under this r2 milestone.",
+    "Original cron W2c and real capture/product acceptance remain separate."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Verify source commit d69016c15ad6bd8772c7263bce893efec4fe478c and mailbox successor. Inspect UTF8 strict encoding without replacement/ignore, preservation of after_ok native failure, no changed assertions, additive native 54/55 job after old steps, Windows CI log listing both tests, Linux workflow results and both umasks. Source-run 39983011866 was queued on inspection.",
+    "if_pass": "Review only the r2 encoding/CI milestone; schedule a separate bounded follow-up for remaining matrix and 8 assertion-only mutants. Do not merge or deploy.",
+    "if_fail": "Record exact failing native testcase, exception bytes and CI run ID; request the smallest bounded correction without changing product budgets.",
+    "blockers": [
+      "No locally executed native results for new bytes; exact-head CI not verified green.",
+      "Full matrix and eight assertion-only mutants remain outside r2 milestone."
+    ]
+  }
+}
