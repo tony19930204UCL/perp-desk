@@ -2278,7 +2278,8 @@ function Invoke-CdpEval {
         if ($script:probeScenario -eq 'worker') { return '{"err":"worker_error"}' }
         if ($script:probeScenario -eq 'switch_throw') { return '{"chart_data_ok":false,"w":1,"h":1}' }
         if ($script:capN -eq 1) { return '{"err":"no canvas"}' }
-        if ($script:probeScenario -eq 'recap_err') { throw 'cdp_transient' }
+        if ($script:probeScenario -eq 'recap_err' -and $script:capN -eq 2) { throw 'cdp_transient' }
+        if ($script:probeScenario -eq 'recap_err' -and $script:capN -eq 3) { return '{"err":"no canvas"}' }
         if ($script:probeScenario -in @('recap_timeout','exhaust')) { throw 'combo_timeout' }
         if ($script:probeScenario -eq 'after_ok') { return '{"chart_data_ok":false,"w":"not_integer","h":1}' }
         return '{"chart_data_ok":false,"w":1,"h":1}'
@@ -2358,6 +2359,29 @@ if ($script:probeScenario -in @('slow','slow_throw','fast','reset','always_false
         reset = self._native_retry("reset")
         self.assertTrue(reset["result"]["ready"])
         self.assertEqual(reset["samples"], 4)
+        self.assertEqual(reset["clock_bad"], 0)
+        self.assertEqual(reset["events"], ["sample"] * 4)
+        for case in ("slow", "slow_throw"):
+            row = slow if case == "slow" else self._native_retry(case)
+            self.assertFalse(row["result"]["ready"])
+            self.assertEqual(row["samples"], 1)
+            self.assertLess(row["result"]["elapsed"], 8700)
+            self.assertLessEqual(row["limits"][0], 8000)
+            self.assertGreater(row["limits"][0], 7500)
+            self.assertEqual(row["clock_bad"], 0)
+        never = self._native_retry("always_false")
+        self.assertFalse(never["result"]["ready"])
+        self.assertGreater(never["samples"], 2)
+        self.assertLess(never["result"]["elapsed"], 8700)
+        self.assertLessEqual(never["limits"][0], 8000)
+        self.assertGreater(never["limits"][0], never["limits"][-1])
+        self.assertEqual(never["events"], ["sample"] * never["samples"])
+        for case, error in (("wait_timeout", "combo_timeout"),
+                            ("transport", "cdp_transport")):
+            row = self._native_retry(case)
+            self.assertEqual(row["result"]["error"], error)
+            self.assertEqual(row["samples"], 1)
+            self.assertEqual(row["captures"], 0)
 
     @unittest.skipUnless(
         shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh"),
@@ -2378,6 +2402,35 @@ if ($script:probeScenario -in @('slow','slow_throw','fast','reset','always_false
         no_ready = self._native_retry("no_ready")
         self.assertEqual(no_ready["captures"], 1)
         self.assertEqual(no_ready["result"]["error"], "no canvas")
+        self.assertEqual(no_ready["reloads"], 0)
+        self.assertGreater(no_ready["samples"], 2)
+        self.assertFalse(no_ready["result"]["ok"])
+        for mode, good, err, caps, reloads, samples in (
+            ("success", True, None, 2, 0, 2),
+            ("persistent", False, "no canvas", 2, 0, 2),
+            ("switch_throw", True, None, 1, 1, 0),
+            ("login", False, "login_required", 1, 0, 0),
+            ("worker", False, "worker_error", 1, 0, 0),
+        ):
+            with self.subTest(mode=mode):
+                row = self._native_retry(mode)
+                self.assertEqual(row["result"]["ok"], good)
+                self.assertEqual(row["result"]["error"], err)
+                self.assertEqual((row["captures"], row["reloads"], row["samples"]),
+                                 (caps, reloads, samples))
+                self.assertLessEqual(row["captures"], 2)
+                self.assertLessEqual(row["reloads"], 1)
+                self.assertEqual(row["clock_bad"], 0)
+                self.assertLess(row["elapsed"], 60000)
+        bad = self._native_retry("recap_err")
+        self.assertEqual(bad["events"], ["switch", "capture", "sample",
+                                         "sample", "capture"])
+        self.assertEqual((bad["captures"], bad["reloads"]), (2, 0))
+        switched = self._native_retry("switch")
+        self.assertEqual(switched["events"],
+                         ["switch", "reload", "switch", "capture"])
+        self.assertEqual(switched["samples"], 0)
+        self.assertLess(switched["elapsed"], 60000)
 
 
 if __name__ == "__main__":
