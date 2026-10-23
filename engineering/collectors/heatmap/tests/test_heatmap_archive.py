@@ -2249,6 +2249,7 @@ try {
         loop = outer[1].split("        # A failed or overdue combo publishes", 1)[0]
         ps = "\n".join(parts) + """
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $script:probeScenario = '@MODE@'
 $script:capN = 0; $script:sampleN = 0; $script:switchN = 0; $script:reloadN = 0
 $script:events = @(); $script:limits = @(); $script:clockBad = 0
@@ -2315,13 +2316,15 @@ if ($script:probeScenario -in @('slow','slow_throw','fast','reset','always_false
 @LOOP@
     $result = @{ok=$comboOk; error=$comboError; png=$pngFile; chart=$chartFile}
 }
-@{scenario=$script:probeScenario; result=$result; captures=$script:capN; samples=$script:sampleN;
+$nativeJson = @{scenario=$script:probeScenario; result=$result; captures=$script:capN; samples=$script:sampleN;
   reloads=$script:reloadN; switches=$script:switchN; limits=@($script:limits);
   events=@($script:events); clock_bad=$script:clockBad; elapsed=$sw.ElapsedMilliseconds
 } | ConvertTo-Json -Depth 5 -Compress
+[Console]::Out.WriteLine($nativeJson)
 """.replace("@MODE@", mode).replace("@LOOP@", loop)
         proc = subprocess.run([exe, "-NoProfile", "-Command", ps],
-                              capture_output=True, text=True, timeout=22)
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="strict", timeout=22)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         rows = proc.stdout.strip().splitlines()
         self.assertEqual(len(rows), 1, (proc.stdout, proc.stderr))
