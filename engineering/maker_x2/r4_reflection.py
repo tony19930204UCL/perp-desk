@@ -35,30 +35,84 @@ def reflect(root, config, input_path, stage_config, receipt_path, out,
         raise X2Error("reflection requires independent acceptance")
     chain=receipt(receipt_path,acceptance_path,"r4-verify",head,inp,
                   graph,root/"reports/r4-verify.json")
-    accepted=[]
+    from decimal import localcontext
+    family=regime["family_m96"]
+    baseline={}
+    computed=[]
     for row in rows:
-        if row["mode"]!="B" or row["scenario"]!="baseline":
+        if row["mode"]!="B":
             continue
-        metric=row["metrics"]
-        accepted.append({"cell_id":row["cell_id"],"symbol":row["symbol"],
-                         "filter":row["filter"],"net_bp":metric["net_bp"],
-                         "gross_bp":metric["gross_bp"],
-                         "alpha_bp":metric["net_alpha_bp"],
-                         "liq":metric["liq"],
-                         "open":metric["open"],
-                         "n":metric["n"]})
-    if len(accepted)!=24:
-        raise X2Error("missing B baseline comparison rows")
+        raw={}
+        for side in ("strategy","matched"):
+            raw[side]=json.loads((root/row[side+"_path"]).read_text())
+        for label in REG:
+            ep={}
+            for side in ("strategy","matched"):
+                ep[side]=[
+                    e for e in raw[side]["episodes"]
+                    if e.get("arrival_ts") is not None
+                    and e["arrival_ts"]>=1714521600000
+                    and regime["daily"][row["symbol"]].get(
+                        str(e["arrival_ts"]//86400000),{}).get("regime")==label
+                    and D(e["entry_notional"])>0]
+            def facts(series):
+                with localcontext() as ctx:
+                    ctx.prec=50
+                    notional=sum((D(e["entry_notional"]) for e in series),D(0))
+                    gross=sum((D(e["gross"]) for e in series),D(0))
+                    net=sum((D(e["net"]) for e in series),D(0))
+                    pos=sum((D(e["net"]) for e in series if D(e["net"])>0),D(0))
+                    neg=-sum((D(e["net"]) for e in series if D(e["net"])<0),D(0))
+                    return {"n":len(series),"gross_bp":str(gross/notional*10000)
+                            if notional else None,
+                            "net_bp":str(net/notional*10000) if notional else None,
+                            "pf":str(pos/neg) if neg else None,
+                            "liq":sum(e["exit_type"]=="LIQ" for e in series)}
+            a,b=facts(ep["strategy"]),facts(ep["matched"])
+            with localcontext() as ctx:
+                ctx.prec=50
+                alpha=(str(D(a["net_bp"])-D(b["net_bp"]))
+                       if a["net_bp"] is not None and b["net_bp"] is not None
+                       else None)
+            key=":".join((row["symbol"],row["filter"],row["k"],row["exit"],label))
+            fam=family[key]
+            good=(a["n"]>=100 and a["net_bp"] is not None and
+                  D(a["net_bp"])>0 and fam["bh96"] and alpha is not None and
+                  D(alpha)>5 and a["pf"] is not None and D(a["pf"])>D("1.30"))
+            item={"cell_id":row["cell_id"],"regime":label,
+                  "strategy":a,"matched":b,"net_alpha_bp":alpha,
+                  "bh96":fam["bh96"],"bonf96":fam["bonf96"],
+                  "candidate_base":bool(good)}
+            computed.append(item)
+            if row["scenario"]=="baseline":
+                baseline[key]=item
+    candidates=[]
+    for key,item in baseline.items():
+        if not item["candidate_base"]:
+            continue
+        stress=[r for r in computed if r["regime"]==item["regime"]
+                and all(t in r["cell_id"] for t in key.split(":")[:1])
+                and r["cell_id"].split(":")[1] == "B"
+                and r["cell_id"].split(":")[2] == key.split(":")[1]
+                and r["cell_id"].split(":")[4] == key.split(":")[2]
+                and r["cell_id"].split(":")[-1] == key.split(":")[3]
+                and r["cell_id"].split(":")[3] in ("delay2","cost1_5x")]
+        if len(stress)==2 and all(r["strategy"]["net_bp"] is not None
+                and D(r["strategy"]["net_bp"])>0
+                and r["net_alpha_bp"] is not None and D(r["net_alpha_bp"])>5
+                and r["strategy"]["pf"] is not None
+                and D(r["strategy"]["pf"])>D("1.30") for r in stress):
+            candidates.append(key)
     decision={"status":"EXPLORATORY_NO_HOLDOUT_NOT_DEPLOYABLE",
-              "candidates":[],"prior_b_baseline":accepted,
-              "h1":"Assess post-2024-05 gross bp by causal regime; zero count is insufficient",
-              "h2":"Compare F1/F0 net, LIQ, retained signal exposure; do not presume LIQ falls",
+              "candidates":candidates,"regime_measures":computed,
+              "h1":"B post-2024-05 by regime: gross_bp and n in regime_measures",
+              "h2":"F0/F1 net, LIQ and exposed signal counts; no guaranteed reduction",
               "limitations":["Historical exploration contaminated; no new holdout",
                              "Six earlier surviving mutants are unresolved",
-                             "OHLC fills do not model true maker queue or mark LIQ",
-                             "B independent resets are not an investable curve",
-                             "Data gaps, incomplete and open tail must remain visible"],
-              "next_data":"Point-in-time independent holdout and queue/mark microstructure"}
+                             "OHLC queue and mark-price liquidation unverified",
+                             "B reset research accounts are not an investment curve",
+                             "UNKNOWN/gap/open-tail coverage not a protective PASS"],
+              "next_data":"Point-in-time holdout and queue/mark microstructure"}
     report={"stage":"r4-reflection","source_head":head,
             "input_sha256":inp,"graph_sha256":graph,
             "verify_report_sha256":prior,**chain,
