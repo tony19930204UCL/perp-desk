@@ -5,6 +5,19 @@ from pathlib import Path
 LAB = Path(__file__).resolve().parents[1]
 
 
+def _close_session(session):
+    """Graceful CDP browser close and bounded wait for process exit."""
+    if session is None:
+        return
+    try:
+        session.call("Browser.close")
+        proc = getattr(session, "proc", None)
+        if proc is not None and proc.poll() is None:
+            proc.wait(timeout=5)
+    finally:
+        session.close()
+
+
 class MetroUI(unittest.TestCase):
     def test_white_and_routes(self):
         html = (LAB / "owner_activity.html").read_text(encoding="utf-8")
@@ -78,8 +91,7 @@ class MetroUI(unittest.TestCase):
                         self.assertTrue(data["closed"])
                         self.assertLessEqual(data["scroll"], data["client"], data)
             finally:
-                if session is not None:
-                    session.close()
+                _close_session(session)
                 server.shutdown()
                 server.server_close()
                 thread.join(timeout=3)
@@ -199,8 +211,7 @@ class MetroUI(unittest.TestCase):
                 self.assertIn("ITEM_A", session.evaluate(
                     query + "?.textContent"))
             finally:
-                if session is not None:
-                    session.close()
+                _close_session(session)
                 server.shutdown()
                 server.server_close()
                 thread.join(timeout=3)
