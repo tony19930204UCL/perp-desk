@@ -64,11 +64,19 @@ class Control(unittest.TestCase):
         # Detect arbitrary graph stage/source/input substitutions.
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/"graph.json"
-            p.write_text(json.dumps({"stage":"r4-run",
-                "source_head":"0"*40,"input_sha256":"a"*64}))
-            self.assertEqual(len(stage_args(p,"r4-run","0"*40,"a"*64)),64)
+            stages=[{"id":name,"source_head":"0"*40,
+                     "input_sha256":"a"*64,"mode":"exec","argv":["python3"],
+                     "cwd":d,"reports":[{"path":"reports/file.json","rows":1}]}
+                    for name in ("r4-run","r4-verify","r4-reflection")]
+            graph={"schema_version":1,"kind":"stage_relay",
+                   "evidence_root":d,"bootstrap":{},"stages":stages}
+            p.write_text(json.dumps(graph))
+            digest=stage_args(p,"r4-run","0"*40,"a"*64)
+            self.assertEqual(len(digest),64)
+            self.assertEqual(stage_args(p,"r4-verify","0"*40,"a"*64),
+                             digest)
             with self.assertRaisesRegex(X2Error,"mismatch"):
-                stage_args(p,"r4-verify","0"*40,"a"*64)
+                stage_args(p,"r4-verify","1"*40,"a"*64)
 
     def test_cli_nonzero(self):
         # Missing original data cannot produce fake complete 144 rows.
