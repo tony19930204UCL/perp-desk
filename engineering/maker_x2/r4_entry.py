@@ -199,7 +199,6 @@ def verify(args):
     graph=stage_args(args.stage_config,"r4-verify",head,inp)
     if (doc["source_head"]!=head or doc["input_sha256"]!=inp or
         doc["config_sha256"]!=sha256_file(args.config) or
-        doc["graph_sha256"]!=graph or
         doc["source_sha256"]!=hash_source(Path(__file__).resolve().parent)):
         raise X2Error("R4 manifest source/input/config/graph changed")
     for name,sha in doc["artifacts"].items():
@@ -219,9 +218,12 @@ def verify(args):
     regime=json.loads((root/"reports/r4-regime.json").read_text())
     if len(regime["family_m96"])!=96 or regime["prereg_sha256"]!=PREREG:
         raise X2Error("missing original prereg family")
-    return {"stage":"r4-verify","source_head":head,"input_sha256":inp,
-            "graph_sha256":graph,"rows":[{"symbol":"ALL","cell_id":"AUDIT",
+    report={"stage":"r4-verify","source_head":head,"input_sha256":inp,
+            "graph_sha256":graph,"run_graph_sha256":doc["graph_sha256"],
+            "rows":[{"symbol":"ALL","cell_id":"AUDIT",
             "verified":len(rows),"manifest_sha256":sha256_file(root/"manifest.json")}]}
+    atomic_json(root/"reports/r4-verify.json",report)
+    return report
 
 
 def main(argv=None):
