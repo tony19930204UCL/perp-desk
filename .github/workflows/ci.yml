@@ -17,9 +17,17 @@ jobs:
         run: python3 --version && node --version
       - name: Exporter contract
         run: python3 -m unittest discover -s automation/tests -v
+      - name: Workspace test tmp setup
+        run: mkdir -p .test-tmp
       - name: PAPER isolated suite
         working-directory: lab
         run: python3 -m unittest discover -s tests -v
+      - name: Owner metro truth regression suite
+        run: |
+          mkdir -p .test-tmp
+          TMPDIR="${PWD}/.test-tmp" python3 -m unittest -v lab/tests/test_owner_metro_truth.py
+        env:
+          PYTHONPATH: lab
       - name: Issue 23 isolated discovery pipeline
         run: |
           mkdir -p artifacts/issue-23-discovery

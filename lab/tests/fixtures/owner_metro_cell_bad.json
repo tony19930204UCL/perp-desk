@@ -1,0 +1,13 @@
+{
+  "symbol": "ETHUSDT",
+  "framework": 1,
+  "k": ".25",
+  "ttl": 2,
+  "exit": "X1",
+  "episodes": "not-a-list",
+  "ledger": {},
+  "counts": {},
+  "metrics": {
+    "net_bp": "NaN"
+  }
+}

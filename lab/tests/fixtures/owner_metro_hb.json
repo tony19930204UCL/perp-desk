@@ -1,0 +1,13 @@
+{
+  "type": "heartbeat",
+  "version": "1",
+  "pid": 1234,
+  "ts_iso": "2026-10-21T23:29:21.639Z",
+  "ts_ms": 1792625361639,
+  "started_ms": 1792617741197,
+  "events_total": 2806,
+  "events_today": 2806,
+  "connected": true,
+  "last_recv_age_s": 2.4,
+  "synthetic": true
+}

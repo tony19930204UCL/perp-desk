@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "sources": {
+    "directive": "owner_metro/directive.json",
+    "stage": "owner_metro/stage.json",
+    "heartbeat": "owner_metro/heartbeat.json",
+    "launch": "owner_metro/launch.json",
+    "adoption": "owner_metro/adoption.json",
+    "results": "owner_metro/results.json",
+    "liquidations": "owner_metro/liq.json"
+  },
+  "directive": {
+    "active_owners": [
+      {
+        "item": "C-SYNTH-NEW",
+        "actor": "SYNTHETIC_CONSUMER",
+        "scope": "notification",
+        "product": "collectors"
+      }
+    ],
+    "pending_decisions": [
+      {
+        "status": "PENDING",
+        "kind": "operator_review"
+      },
+      {
+        "status": "WAITING_HUMAN",
+        "kind": "approval"
+      }
+    ]
+  },
+  "stage": {
+    "maker_phase": "synthetic research",
+    "lease_status": "unknown",
+    "output_status": "pending",
+    "products": {
+      "maker": {
+        "active_step": 1,
+        "current": "research",
+        "next": "witness",
+        "verified_steps": [],
+        "evidence": {}
+      },
+      "collectors": {
+        "active_step": 1,
+        "current": "collection",
+        "next": "coverage",
+        "verified_steps": [],
+        "evidence": {}
+      },
+      "relay": {
+        "active_step": 2,
+        "current": "packet",
+        "next": "acceptance",
+        "verified_steps": [],
+        "evidence": {}
+      }
+    },
+    "updated_at": "2026-10-21T12:00:00Z"
+  },
+  "heartbeat": {
+    "at": "2026-10-21T12:00:00Z",
+    "status": "observed",
+    "updated_at": "2026-10-21T12:00:00Z"
+  },
+  "liquidations": {
+    "event_count": 3,
+    "updated_at": "2026-10-21T12:00:00Z"
+  },
+  "launch": {
+    "processes": [
+      {
+        "id": "synthetic-consumer",
+        "pid": 999999,
+        "start_ticks": 123456,
+        "kind": "coordination",
+        "product": "collectors",
+        "boot_id": "00000000-0000-0000-0000-000000000000",
+        "argv_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "cwd": "/synthetic"
+      }
+    ]
+  },
+  "adoption": {
+    "processes": [
+      {
+        "id": "synthetic-consumer",
+        "pid": 999999,
+        "start_ticks": 123456
+      }
+    ]
+  },
+  "results": {
+    "root": "owner_metro/research_outputs",
+    "attempt": "SYNTHETIC_ATTEMPT",
+    "expected": {
+      "input_manifest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "config_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_sha256": {
+        "backtest_entry.py": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    }
+  }
+}

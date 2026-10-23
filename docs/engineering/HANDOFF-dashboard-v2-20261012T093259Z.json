@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 52,
+  "branch": "feat/dashboard-v2-20261012T093259Z",
+  "task_id": "dashboard-v2-20261012T093259Z",
+  "instruction_id": "D2-U1-r1",
+  "status": "WAITING_CI",
+  "source_head_sha": "61a549a97bbee42d7204f2eca91b6972a0348252",
+  "summary": "Small D2-U1 r1 repair: days_in and days_left now accept finite nonnegative int, float, and decimal-string values without rounding or coercion, using the same validation as stale_min; invalid day values become null with field-specific reasons. Seven true count fields retain strict nonnegative integer-only validation. Added four synthetic regression tests and adjusted the former days_in='1' invalid-count assertion to use open_positions='1'. All unrelated projection logic is unchanged. Tests and exact-head push/pull_request CI need verification.",
+  "changed_files": [
+    "lab/dashboard_v2_model.py",
+    "lab/tests/test_dashboard_v2_model.py",
+    "docs/engineering/HANDOFF-dashboard-v2-20261012T093259Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p test_dashboard_v2_model.py -v",
+      "result": "not run",
+      "evidence": "The execution container has no checked-out repository or test tree; the connected GitHub tool can read/write files but cannot execute Python. Four synthetic regression test methods committed; no PASS claimed."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "not run",
+      "evidence": "No local repository checkout is present; previous full-suite execution was interrupted, so no local complete-suite PASS claimed."
+    },
+    {
+      "command": "PR 52 changed-file scope and source HEAD inspection",
+      "result": "verified",
+      "evidence": "GitHub list_pr_changed_filenames returned exactly the three allowlisted paths, and fetch_pr showed source HEAD 61a549a97bbee42d7204f2eca91b6972a0348252 before mailbox update."
+    },
+    {
+      "command": "Exact-head GitHub Actions CI inspection",
+      "result": "pending",
+      "evidence": "fetch_commit_workflow_runs returned zero pull-request-triggered runs for pre-mailbox source SHA at inspection time; no push or pull_request PASS claimed."
+    }
+  ],
+  "remaining_work": [
+    "Main CIO: run focused test and full lab unittest discovery on the final head, and independently probe 1.07/19.93 and invalid boundary types.",
+    "Main CIO: verify both push and pull_request CI runs are green at the final post-mailbox PR head.",
+    "D2-U2 reader/server remains outside this unit.",
+    "D2-U3 UI remains outside this unit."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Check PR 52 final head and both exact-head push/pull_request CI events. Run the focused and full discovery commands; independently test preserved fractional days, zero/int/decimal strings, invalid day values and strict integer counts while checking unrelated behaviour.",
+    "if_pass": "Accept bounded D2-U1-r1 repair only; schedule D2-U2 reader/server and D2-U3 UI separately.",
+    "if_fail": "Keep PR draft and report the failing exact-head test or CI evidence; repair only files on the stated allowlist.",
+    "blockers": []
+  }
+}
