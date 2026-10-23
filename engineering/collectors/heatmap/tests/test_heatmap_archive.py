@@ -2249,59 +2249,100 @@ try {
         loop = outer[1].split("        # A failed or overdue combo publishes", 1)[0]
         ps = "\n".join(parts) + """
 $ErrorActionPreference = 'Stop'
-$script:mode = '@MODE@'
+$script:probeScenario = '@MODE@'
 $script:capN = 0; $script:sampleN = 0; $script:switchN = 0; $script:reloadN = 0
+$script:events = @(); $script:limits = @(); $script:clockBad = 0
 function Invoke-CdpEval {
     param($Sess,[string]$Expression,[int]$TimeoutMs,$Clock,[switch]$AwaitPromise)
+    if (-not [object]::ReferenceEquals($Clock,$script:outerClock)) { $script:clockBad++ }
     if ($Expression.Contains('width>0')) {
         $script:sampleN++
-        if ($script:mode -in @('slow','fast')) {
+        $script:events += 'sample'
+        $script:limits += $TimeoutMs
+        if ($script:probeScenario -in @('slow','slow_throw','fast')) {
             Start-Sleep -Milliseconds ([Math]::Min(9000, $TimeoutMs))
+            if ($script:probeScenario -eq 'slow_throw') { throw 'combo_timeout' }
             return $true
         }
-        if ($script:mode -eq 'reset') { return @($true,$false,$true,$true)[$script:sampleN-1] }
-        if ($script:mode -eq 'no_ready') { return $false }
+        if ($script:probeScenario -eq 'wait_timeout') { throw 'combo_timeout' }
+        if ($script:probeScenario -eq 'transport') { throw 'cdp_transport' }
+        if ($script:probeScenario -eq 'reset') { return @($true,$false,$true,$true)[$script:sampleN-1] }
+        if ($script:probeScenario -in @('no_ready','always_false')) { return $false }
         return $true
     }
     if ($Expression.Contains('toDataURL')) {
         $script:capN++
-        if ($script:mode -eq 'switch' -or $script:mode -eq 'no_ready') { return '{"err":"no canvas"}' }
+        $script:events += 'capture'
+        if ($script:probeScenario -in @('switch','no_ready','persistent')) { return '{"err":"no canvas"}' }
+        if ($script:probeScenario -eq 'login') { return '{"err":"login_required"}' }
+        if ($script:probeScenario -eq 'worker') { return '{"err":"worker_error"}' }
+        if ($script:probeScenario -eq 'switch_throw') { return '{"chart_data_ok":false,"w":1,"h":1}' }
         if ($script:capN -eq 1) { return '{"err":"no canvas"}' }
-        if ($script:mode -eq 'recap_err') { throw 'cdp_transient' }
-        if ($script:mode -eq 'recap_timeout') { throw 'combo_timeout' }
-        if ($script:mode -eq 'after_ok') { return '{"chart_data_ok":false,"w":"not_integer","h":1}' }
+        if ($script:probeScenario -eq 'recap_err') { throw 'cdp_transient' }
+        if ($script:probeScenario -in @('recap_timeout','exhaust')) { throw 'combo_timeout' }
+        if ($script:probeScenario -eq 'after_ok') { return '{"chart_data_ok":false,"w":"not_integer","h":1}' }
         return '{"chart_data_ok":false,"w":1,"h":1}'
     }
     $script:switchN++
-    if ($script:mode -eq 'switch' -and $script:switchN -eq 1) { return '{"err":"switch_transient"}' }
+    $script:events += 'switch'
+    if ($script:probeScenario -eq 'switch' -and $script:switchN -eq 1) { return '{"err":"switch_transient"}' }
+    if ($script:probeScenario -eq 'switch_throw' -and $script:switchN -eq 1) { throw 'cdp_transient' }
     return '{"head":"BTC"}'
 }
 function Invoke-CdpCall { param($Sess,[string]$Method,$Params,[int]$TimeoutMs,$Clock)
-    if ($Method -eq 'Page.reload') { $script:reloadN++ }
+    if ($Method -eq 'Page.reload') { $script:reloadN++; $script:events += 'reload' }
 }
 $sw = [Diagnostics.Stopwatch]::StartNew()
+$script:outerClock = $sw
 $sess=$null; $coin='BTC'; $model=1; $timeframe='24 hour'; $mode='pair'
 $driverJsCode='driver'; $captureChartJsCode='toDataURL'; $comboTimeoutMs=60000
 $OutDir=$null; $SavePng=0; $comboOk=$false; $comboError=$null
 $loginRequired=$false; $loggedIn=$true; $chartDataOk=$false
-if ($script:mode -in @('slow','fast','reset','no_ready')) {
+if ($script:probeScenario -in @('slow','slow_throw','fast','reset','always_false','wait_timeout','transport')) {
     $capClock = [Diagnostics.Stopwatch]::StartNew()
-    if ($script:mode -eq 'fast') { $ready = Wait-CanvasReady -Sess $null -Clock $sw -MaxMs 250 -StepMs 50 }
-    else { $ready = Wait-CanvasReady -Sess $null -Clock $sw }
-    $result = @{ready=$ready; elapsed=$capClock.ElapsedMilliseconds}
+    try {
+        if ($script:probeScenario -eq 'fast') { $ready = Wait-CanvasReady -Sess $null -Clock $sw -MaxMs 250 -StepMs 50 }
+        elseif ($script:probeScenario -eq 'wait_timeout' -or $script:probeScenario -eq 'transport') {
+            $ready = Wait-CanvasReady -Sess $null -Clock $sw -MaxMs 1500 -StepMs 200
+        } else { $ready = Wait-CanvasReady -Sess $null -Clock $sw }
+        $result = @{ready=$ready; elapsed=$capClock.ElapsedMilliseconds}
+    } catch {
+        $result = @{ready=$false; elapsed=$capClock.ElapsedMilliseconds; error=$_.Exception.Message}
+    }
 } else {
-    # Exercise the exact production outer loop. Only the settling delay is mocked.
-    function Wait-Combo {param($Clock,[int]$Ms); [void](Get-ComboRemaining -Clock $Clock)}
+    # Execute the extracted production outer retry loop with its real helper.
 @LOOP@
-    $result = @{ok=$comboOk; error=$comboError}
+    $result = @{ok=$comboOk; error=$comboError; png=$pngFile; chart=$chartFile}
 }
-@{result=$result; captures=$script:capN; samples=$script:sampleN;
-  reloads=$script:reloadN; switches=$script:switchN} | ConvertTo-Json -Depth 5 -Compress
+@{scenario=$script:probeScenario; result=$result; captures=$script:capN; samples=$script:sampleN;
+  reloads=$script:reloadN; switches=$script:switchN; limits=@($script:limits);
+  events=@($script:events); clock_bad=$script:clockBad; elapsed=$sw.ElapsedMilliseconds
+} | ConvertTo-Json -Depth 5 -Compress
 """.replace("@MODE@", mode).replace("@LOOP@", loop)
         proc = subprocess.run([exe, "-NoProfile", "-Command", ps],
                               capture_output=True, text=True, timeout=22)
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        return json.loads(proc.stdout.strip().splitlines()[-1])
+        rows = proc.stdout.strip().splitlines()
+        self.assertEqual(len(rows), 1, (proc.stdout, proc.stderr))
+        row = json.loads(rows[0])
+        required = ("scenario", "result", "captures", "samples", "reloads",
+                    "switches", "limits", "events", "clock_bad", "elapsed")
+        for key in required:
+            self.assertIn(key, row, "harness ERROR: missing " + key)
+        self.assertEqual(row["scenario"], mode, "harness ERROR: wrong scenario")
+        self.assertEqual(row["clock_bad"], 0, "harness ERROR: stopwatch changed")
+        for key in ("captures", "samples", "reloads", "switches"):
+            self.assertIsInstance(row[key], int)
+        if mode in ("slow", "slow_throw", "fast", "reset", "always_false",
+                    "wait_timeout", "transport"):
+            for key in ("ready", "elapsed"):
+                self.assertIn(key, row["result"], "harness ERROR: " + key)
+        else:
+            for key in ("ok", "error", "png", "chart"):
+                self.assertIn(key, row["result"], "harness ERROR: " + key)
+            self.assertIsNone(row["result"]["png"])
+            self.assertIsNone(row["result"]["chart"])
+        return row
 
     @unittest.skipUnless(
         shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh"),
