@@ -41,10 +41,11 @@ class Control(unittest.TestCase):
                     "sha256":sha256_file(path),"gaps":[]}
         with ExitStack() as stack:
             mocks={"prepare_bars":prepared,
+                   "cap_memory":lambda:None,
                    "read_funding":lambda p:{"events":[],"count":0,
                                              "sha256":sha256_file(p)},
                    "prepare_decisions":lambda *a:[],
-                   "select_matched":lambda *a:{"selected_timestamps":[42]},
+                   "select_matched":lambda *a:{"status":"READY","selected_timestamps":[42]},
                    "classify":lambda *a:[], "SpeedFilter":lambda *a:None,
                    "replay":lambda *a:(blank,blank),
                    "replay_cell":lambda *a,**kw:dict(blank,signal_count=
@@ -78,7 +79,9 @@ class Control(unittest.TestCase):
             self.assertEqual(len(result["rows"]),144)
             path=Path(args.output)/"reports/r4-diag15.json"
             original=path.read_bytes()
-            self.assertEqual(json.loads(original)["rows"],expected)
+            saved=json.loads(original)["rows"]
+            self.assertEqual([{k:v for k,v in r.items() if not
+                (k.endswith("_path") or k.endswith("_sha256"))} for r in saved],expected)
             argv=["--diag15","--config",args.config,"--input",args.input,
                   "--output",str(Path(d)/"standalone")]
             with patch("r4_entry.replay",side_effect=AssertionError("1m replay")):
@@ -187,3 +190,29 @@ class Control(unittest.TestCase):
             with self.assertRaises((OSError,X2Error,KeyError)):
                 reflect(d,"missing.json","missing.json","missing.json",
                         "missing.json",str(Path(d)/"reflect.json"))
+
+    def test_public_cap(self):
+        from unittest.mock import Mock
+        import sys
+        fake=SimpleNamespace(RLIMIT_AS=9,RLIM_INFINITY=-1,
+            getrlimit=Mock(return_value=(-1,-1)),setrlimit=Mock())
+        from r4_entry import cap_memory
+        with patch.dict(sys.modules,{"resource":fake}):
+            cap_memory()
+        fake.setrlimit.assert_called_once_with(9,(5*1024**3,5*1024**3))
+
+    def test_stats_boundary(self):
+        from decimal import localcontext
+        from r4_report import REG
+        from itertools import product
+        rows=[]
+        for s,f,k,x in product(SYMS,("F0","F1"),(".25",".50"),("X1","X2","X3")):
+            tests={r:{"n":100,"p":".00052083332","placeholder":False,
+                       "ci95":["1","2"],"status":"EXPLORATORY"} for r in REG}
+            rows.append({"symbol":s,"mode":"B","filter":f,"k":k,"exit":x,
+                         "scenario":"baseline","regime_tests":tests})
+        with localcontext() as ctx:
+            ctx.prec=6
+            result=report_family(rows,0,86400000*40)
+            self.assertTrue(all(r["bonf96"] for r in result.values()))
+            self.assertEqual(ctx.prec,6)

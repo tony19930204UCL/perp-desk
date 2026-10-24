@@ -1,4 +1,14 @@
-"""Full offline R4 run/verify/15m diagnostics; no trading or network."""
+"""Full offline R4 run/verify/15m diagnostics; no trading or network.
+
+--config: frozen account/window JSON; --input: both symbols' bars/funding paths;
+--output: new run directory (existing run for verify/diag15);
+--stage-config: the ONE installed stage_relay graph, unchanged between stages;
+--receipt / --acceptance: controller's successful prior-stage receipt and
+independent ACCEPTED JSON, respectively. They are read only, never generated.
+Reports are reports/r4-matrix.json (144 rows), r4-verify.json (one row),
+and r4-diag15.json (12 diagnostic rows, outside the family).
+CLI execution requires POSIX RLIMIT_AS and enforces a hard 5 GiB ceiling.
+"""
 import argparse
 import hashlib
 import json
@@ -19,9 +29,27 @@ from regime_split import classify, regime_of, DAY_MS
 from scenario_rates import SENSITIVITY
 from maker_exit_lab import X2Error
 from r4_report import (SYMS, SCEN, STRUCT, PREREG, money, audit_result,
-                       audit_matrix, hash_source, report_family, write_manifest)
+                       audit_matrix, hash_source, report_family, write_manifest,
+                       regime_tests, entry_notionals)
 
 STAGES = ("r4-run", "r4-verify", "r4-reflection")
+
+
+def cap_memory():
+    try:
+        import resource
+    except ImportError as exc:
+        raise X2Error("POSIX RLIMIT_AS required for hard 5GiB cap") from exc
+    cap=5*1024**3
+    soft,hard=resource.getrlimit(resource.RLIMIT_AS)
+    limit=min(cap,hard) if hard!=resource.RLIM_INFINITY else cap
+    resource.setrlimit(resource.RLIMIT_AS,
+        (min(soft,limit) if soft!=resource.RLIM_INFINITY else limit,limit))
+
+
+class DiagFilter:
+    def skip(self, ts):
+        return False,"DIAG_PASS"
 
 
 def git_head():
@@ -47,10 +75,12 @@ def stage_args(path, expected, head, input_sha):
     if len(ids)!=len(set(ids)) or not set(STAGES).issubset(ids):
         raise X2Error("missing/duplicate R4 stage")
     entry=next(x for x in graph["stages"] if x["id"]==expected)
+    command=entry.get("command",entry.get("argv"))
     if (entry.get("mode")!="exec" or entry.get("source_head")!=head
             or entry.get("input_sha256")!=input_sha
-            or not isinstance(entry.get("argv"),list)
-            or not Path(entry["cwd"]).is_absolute()
+            or not isinstance(command,list)
+            or ("cwd" in entry and (not isinstance(entry["cwd"],str)
+                or not Path(entry["cwd"]).is_absolute()))
             or not entry.get("reports")):
         raise X2Error("stage graph/source/input identity mismatch")
     return hashlib.sha256(raw).hexdigest()
@@ -71,7 +101,7 @@ def receipt(path, acceptance, stage, head, inp, graph, report):
         raise X2Error("previous receipt not genuine successful executor")
     rows=144 if stage=="r4-run" else 1
     reports=value.get("reports",[])
-    if not any(r.get("path")==report.name and
+    if not any(r.get("path") in (report.name,"reports/"+report.name) and
                r.get("sha256")==sha256_file(report) and
                r.get("rows")==rows for r in reports):
         raise X2Error("previous receipt report identity mismatch")
@@ -113,31 +143,43 @@ def replay(symbol, bars, funding, eligible, selection, config, start, end,
     matched=replay_cell(symbol,bars,funding,1,k,2,exit_style,config,
         start,end,signal_times=selection["selected_timestamps"],**kwargs)
     for result in (strategy,matched):
+        entry_notionals(result)
         audit_result(result,config["capital"],rates)
     return strategy,matched
 
 
-def generate_diag15(symbol, bars, funding_events, config, start, end, workdir):
+def generate_diag15(symbol, bars, funding_events, config, start, end, workdir,
+                    output=None):
     """Original 15m A/F0 baseline; never an additional family member."""
     diag=[]
     eligible15=prepare_decisions(bars,15,Path(workdir)/"15m.db")
     placebo15=select_matched(eligible15,15,start,end)
+    if placebo15.get("status")!="READY":
+        raise X2Error("15m matched universe cannot supply frozen 6000")
     for k,exit_style in STRUCT:
         a=replay_cell(symbol,bars,funding_events,15,k,2,exit_style,
-             config,start,end,eligible=eligible15)
+             config,start,end,eligible=eligible15,entry_filter=DiagFilter())
         b=replay_cell(symbol,bars,funding_events,15,k,2,exit_style,
              config,start,end,eligible=eligible15,
-             signal_times=placebo15["selected_timestamps"])
-        audit_result(a,config["capital"],None)
-        audit_result(b,config["capital"],None)
-        diag.append({"symbol":symbol,"cell_id":
+             signal_times=placebo15["selected_timestamps"],entry_filter=DiagFilter())
+        audit_result(entry_notionals(a),config["capital"],None)
+        audit_result(entry_notionals(b),config["capital"],None)
+        row={"symbol":symbol,"cell_id":
             f"{symbol}:15m:A:F0:baseline:{k}:2:{exit_style}",
-            "metrics":money(a,b),"diagnostic_only":True})
+            "metrics":money(a,b),"diagnostic_only":True}
+        if output is not None:
+            for side,raw in (("strategy",a),("matched",b)):
+                name="cells/"+row["cell_id"].replace(":","_")+"_"+side+".json"
+                row[side+"_path"]=name
+                row[side+"_sha256"]=atomic_json(Path(output)/name,raw)
+        diag.append(row)
     return diag
 
 
 def diag15(args):
     config=load_config(args.config)
+    if str(config["capital"])!="150":
+        raise X2Error("R4 A capital must remain 150")
     head=git_head()
     inp=sha256_file(args.input)
     sources=read_sources(args.input)
@@ -161,7 +203,7 @@ def diag15(args):
                 raise X2Error("full historical coverage/bar count incorrect")
             fund=read_funding(src["funding"])
             rows.extend(generate_diag15(symbol,prepared["bars"],
-                        fund["events"],config,start,end,sub))
+                        fund["events"],config,start,end,sub,Path(args.output)))
     if (sha256_file(args.input)!=inp or any(
             sha256_file(path)!=digest for path,digest in hashes.items())):
         raise X2Error("15m diagnostic input changed during run")
@@ -175,11 +217,14 @@ def diag15(args):
 
 def run(args):
     config=load_config(args.config)  # Enforces original frozen dates.
+    if str(config["capital"])!="150":
+        raise X2Error("R4 A capital must remain 150")
     sources=read_sources(args.input)
     start,end=int(config["evaluation_start"]),int(config["evaluation_end"])
     head=git_head()
     input_sha=sha256_file(args.input)
     graph=stage_args(args.stage_config,"r4-run",head,input_sha)
+    before={p:sha256_file(p) for src in sources.values() for p in src.values()}
     root=Path(args.output)
     if root.exists():
         raise X2Error("R4 output root exists: never overwrite")
@@ -232,15 +277,22 @@ def run(args):
                                 items[name]=atomic_json(root/name,result)
                                 entry[side+"_path"]=name
                                 entry[side+"_sha256"]=items[name]
-                            entry["regime_episodes"]=collect(a,table)
+                            if mode=="B" and scenario=="baseline":
+                                entry["regime_tests"]=regime_tests(collect(a,table),start,end)
                             rows.append(entry)
                             # No matrix raw is held after each cell write.
                             del a,b
             diag.extend(generate_diag15(symbol,bars,fund["events"],
-                                        config,start,end,sub))
+                                        config,start,end,sub,root))
+    for row in diag:
+        for side in ("strategy","matched"):
+            items[row[side+"_path"]]=row[side+"_sha256"]
     audit_matrix(rows,items)
+    if sha256_file(args.input)!=input_sha or any(
+            sha256_file(p)!=sha for p,sha in before.items()):
+        raise X2Error("R4 input changed during run")
     family=report_family(rows,start,end)
-    matrix=[{k:v for k,v in r.items() if k!="regime_episodes"} for r in rows]
+    matrix=rows
     docs={"reports/r4-matrix.json":{
               "stage":"r4-run","source_head":head,"input_sha256":input_sha,
               "graph_sha256":graph,"rows":matrix},
@@ -263,16 +315,17 @@ def run(args):
             "graph_sha256":graph,"rows":matrix,"manifest_sha256":manifest}
 
 
-def verify(args):
+def verify(args, write=True):
     root=Path(args.output)
     doc=json.loads((root/"manifest.json").read_text(encoding="utf-8"))
     head=git_head()
     inp=sha256_file(args.input)
     graph=stage_args(args.stage_config,"r4-verify",head,inp)
-    if args.stage_config:
+    chain={}
+    if args.stage_config and write:
         if not args.receipt or not args.acceptance:
             raise X2Error("r4-verify requires receipt and acceptance")
-        receipt(args.receipt,args.acceptance,"r4-run",head,inp,graph,
+        chain=receipt(args.receipt,args.acceptance,"r4-run",head,inp,graph,
                 root/"reports/r4-matrix.json")
     if (doc["source_head"]!=head or doc["input_sha256"]!=inp or
         doc["graph_sha256"]!=graph or
@@ -286,6 +339,9 @@ def verify(args):
                            ("funding","funding_sha256")):
             if sha256_file(sources[symbol][kind])!=actual[field]:
                 raise X2Error("original underlying market data hash mismatch")
+    needed={"reports/r4-matrix.json","reports/r4-regime.json","reports/r4-diag15.json"}
+    if not needed.issubset(doc["artifacts"]) or doc["rows"]!=144:
+        raise X2Error("missing required R4 reports")
     for name,sha in doc["artifacts"].items():
         if not (name.startswith("cells/") or name.startswith("reports/")):
             raise X2Error("unexpected R4 artifact path")
@@ -296,24 +352,64 @@ def verify(args):
             raise X2Error("R4 artifact hash mismatch")
     matrix=json.loads((root/"reports/r4-matrix.json").read_text())
     rows=matrix["rows"]
+    for name,value in {"stage":"r4-run","source_head":head,
+                       "input_sha256":inp,"graph_sha256":graph}.items():
+        if matrix.get(name)!=value:
+            raise X2Error("matrix identity mismatch")
     audit_matrix(rows,doc["artifacts"])
     cfg=load_config(args.config)
+    if str(cfg["capital"])!="150":
+        raise X2Error("R4 A capital must remain 150")
+    regime=json.loads((root/"reports/r4-regime.json").read_text())
+    tests=[]
+    diag=json.loads((root/"reports/r4-diag15.json").read_text())
+    expected={f"{s}:15m:A:F0:baseline:{k}:2:{x}" for s in SYMS for k,x in STRUCT}
+    if (diag.get("family_member") is not False or
+            len(diag["rows"])!=12 or {r["cell_id"] for r in diag["rows"]}!=expected):
+        raise X2Error("diagnostic coverage mismatch")
+    for row in diag["rows"]:
+        pair=[]
+        for side in ("strategy","matched"):
+            name=row[side+"_path"]
+            if doc["artifacts"].get(name)!=row[side+"_sha256"]:
+                raise X2Error("diagnostic raw artifact missing")
+            raw=json.loads((root/name).read_text())
+            audit_result(raw,cfg["capital"],None)
+            pair.append(raw)
+        if money(*pair)!=row["metrics"]:
+            raise X2Error("diagnostic metrics mismatch")
     for row in rows:
         rates=SENSITIVITY if row["scenario"]=="cost1_5x" else None
         pair=[]
         for side in ("strategy","matched"):
             raw=json.loads((root/row[side+"_path"]).read_text())
+            fields={"symbol":row["symbol"],"framework":1,"k":row["k"],
+                    "ttl":2,"exit":row["exit"],"matched":side=="matched",
+                    "delay_minutes":2 if row["scenario"]=="delay2" else 0}
+            if (any(raw.get(k)!=v for k,v in fields.items()) or
+                    raw.get("research_mode","A")!=row["mode"] or
+                    doc["inputs"][row["symbol"]]["bars"]!=1604160):
+                raise X2Error("raw cell identity/coverage mismatch")
             audit_result(raw,cfg["capital"],rates)
             pair.append(raw)
         if money(*pair)!=row["metrics"]:
             raise X2Error("R4 metrics do not match original episodes")
-    regime=json.loads((root/"reports/r4-regime.json").read_text())
-    if len(regime["family_m96"])!=96 or regime["prereg_sha256"]!=PREREG:
+        if row["mode"]=="B" and row["scenario"]=="baseline":
+            table={int(k):v for k,v in regime["daily"][row["symbol"]].items()}
+            computed=regime_tests(collect(pair[0],table),
+                                 int(cfg["evaluation_start"]),int(cfg["evaluation_end"]))
+            if row.get("regime_tests")!=computed:
+                raise X2Error("regime statistics mismatch")
+            tests.append(dict(row,regime_tests=computed))
+    family=report_family(tests,int(cfg["evaluation_start"]),int(cfg["evaluation_end"]))
+    if regime["family_m96"]!=family or regime["prereg_sha256"]!=PREREG:
         raise X2Error("missing original prereg family")
     report={"stage":"r4-verify","source_head":head,"input_sha256":inp,
-            "graph_sha256":graph,"run_graph_sha256":doc["graph_sha256"],
+            "graph_sha256":graph,"run_graph_sha256":doc["graph_sha256"],**chain,
             "rows":[{"symbol":"ALL","cell_id":"AUDIT",
             "verified":len(rows),"manifest_sha256":sha256_file(root/"manifest.json")}]}
+    if not write:
+        return report
     if (root/"reports/r4-verify.json").exists():
         raise X2Error("verify report already exists; no overwrite")
     atomic_json(root/"reports/r4-verify.json",report)
@@ -330,6 +426,7 @@ def main(argv=None):
         parser.add_argument("--"+name,required=name in ("config","input","output"))
     args=parser.parse_args(argv)
     try:
+        cap_memory()
         if args.diag15:
             result=diag15(args)
         else:

@@ -10,6 +10,16 @@ from backtest_stats import calendar_bootstrap, bh_flags
 from account_ledger import replay_account
 from scenario_rates import SENSITIVITY
 from maker_exit_lab import X2Error
+from functools import wraps
+
+
+def decimal50(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        with localcontext() as ctx:
+            ctx.prec=50
+            return fn(*args, **kwargs)
+    return wrapped
 
 SYMS = ("ETHUSDT", "BTCUSDT")
 SCEN = ("baseline", "delay2", "cost1_5x")
@@ -60,24 +70,128 @@ def money(result, matched):
                 "funnel_denoms":result.get("funnel_denoms")}
 
 
+@decimal50
+def regime_measures(root, rows, daily, since=0):
+    """Both sides use identical causal day labels and time boundaries."""
+    output=[]
+    for row in rows:
+        if row["mode"]!="B":
+            continue
+        raw={s:json.loads((Path(root)/row[s+"_path"]).read_text())
+             for s in ("strategy","matched")}
+        for label in (*REG,"UNKNOWN","UNCLASSIFIED"):
+            pair=[]
+            facts={}
+            for side,result in raw.items():
+                eps=[e for e in result["episodes"]
+                     if e.get("arrival_ts") is not None and e["arrival_ts"]>=since
+                     and daily[row["symbol"]].get(str(e["arrival_ts"]//86400000),
+                         {}).get("regime","UNCLASSIFIED")==label]
+                view=dict(result,episodes=eps)
+                pair.append(view)
+                facts[side]=money(view,view)
+                facts[side]["entry_notional"]=str(sum(
+                    (D(e["entry_notional"]) for e in eps),D(0)))
+                facts[side]["gaps"]=sum(e.get("type")=="DATA_GAP"
+                    and e.get("ts",0)>=since for e in result.get("other_events",[]))
+            alpha=money(*pair)["net_alpha_bp"]
+            a,b=facts["strategy"],facts["matched"]
+            output.append({"cell_id":row["cell_id"],"regime":label,
+                "strategy":a,"matched":b,"net_alpha_bp":alpha,
+                "judgement":("INSUFFICIENT" if min(a["n"],b["n"])<100 else
+                    "DESCRIPTIVE_POSITIVE_ALPHA" if D(alpha)>0 else "NO_POSITIVE_ALPHA")})
+    return output
+
+
+@decimal50
+def filter_effects(measures):
+    output=[]
+    index={(x["cell_id"],x["regime"]):x for x in measures}
+    for (cid,label),f0 in index.items():
+        if cid.split(":")[2]!="F0":
+            continue
+        f1=index[(cid.replace(":F0:",":F1:"),label)]
+        effect={"cell_id":cid,"regime":label}
+        for side in ("strategy","matched"):
+            a,b=f0[side],f1[side]
+            effect[side]={"f0_net_bp":a["net_bp"],"f1_net_bp":b["net_bp"],
+                "f0_liq":a["liq"],"f1_liq":b["liq"],"trade_decrease":a["n"]-b["n"],
+                "retained_exposure":str(D(b["entry_notional"])/D(a["entry_notional"]))
+                    if D(a["entry_notional"]) else None,
+                "f0_gaps":a["gaps"],"f1_gaps":b["gaps"],
+                "status":"INSUFFICIENT" if min(a["n"],b["n"])<100 else "DESCRIPTIVE"}
+        output.append(effect)
+    return output
+
+
+@decimal50
+def entry_notionals(result):
+    """Derive new report denominators without changing replay/ledger context."""
+    sections=(result["independent_episodes"] if result.get("research_mode")=="B"
+              else [{"events":result["events"]}])
+    notionals={}
+    for section in sections:
+        current=None
+        for event in section["events"]:
+            if event["type"]=="reserve":
+                current=event["episode"]
+                notionals[current]=D(0)
+            elif event["type"]=="fill" and event["side"]=="sell":
+                notionals[current]+=D(event["qty"])*D(event["price"])
+    for ep in result["episodes"]:
+        ep["entry_notional"]=str(notionals[ep["id"]])
+    return result
+
+
+@decimal50
 def audit_result(result, capital, rates):
     """Recheck every actual event, including all reset B accounts."""
     if result.get("research_mode")=="B":
         if result.get("ledger") is not None or not result.get("cash_curve_not_investable"):
             raise X2Error("B investment-curve conflation")
         sections=result["independent_episodes"]
-        if not sections or sum(len(x["events"]) for x in sections)!=len(result["events"]):
+        if not sections or [e for x in sections for e in x["events"]]!=result["events"]:
             raise X2Error("missing B raw episode events")
     else:
         sections=[{"events":result["events"],"ledger":result["ledger"]}]
     from backtest_reports import canon
+    episodes=[]
     for section in sections:
         actual=replay_account(str(capital),section["events"],rates=rates)
         if canon(actual)!=section["ledger"]:
             raise X2Error("independent R4 ledger divergence")
+        for ep in canon(actual)["episodes"]:
+            reserves=[i for i,e in enumerate(section["events"])
+                      if e["type"]=="reserve" and e.get("episode")==ep["id"]]
+            if len(reserves)!=1:
+                raise X2Error("episode reserve mismatch")
+            offset=reserves[0]+1
+            stop=next((i for i in range(offset,len(section["events"]))
+                       if section["events"][i]["type"]=="reserve"),
+                      len(section["events"]))
+            events=section["events"][offset:stop]
+            notion=sum((D(e["qty"])*D(e["price"]) for e in events
+                        if e["type"]=="fill" and e["side"]=="sell"),D(0))
+            buys=[e for e in events if e["type"]=="fill" and e["side"]=="buy"]
+            last=buys[-1] if buys else {}
+            src=last.get("source_id",last.get("id",""))
+            kind=("LIQ" if any(e["type"]=="liquidation" for e in events) else
+                  "SL_GAP" if "gap-risk" in src else "SL" if "risk-" in src else
+                  "TP" if "profit-" in src else "PASSIVE_X3" if "withdraw-" in src
+                  else "NO_FILL")
+            episodes.append((ep,notion,kind))
+    if len(episodes)!=len(result["episodes"]):
+        raise X2Error("financial episode count mismatch")
+    for (ep,notion,kind),reported in zip(episodes,result["episodes"]):
+        if (any(reported.get(k)!=v for k,v in ep.items()) or
+                D(reported["entry_notional"])!=notion or
+                reported["exit_type"]!=kind):
+            raise X2Error("financial episode differs from ledger events")
     if result.get("research_mode") or result.get("funnel"):
         f=result["funnel"]
-        if (sum(f["terminal_counts"].values())+f["unprocessed"]
+        if (any(type(v) is not int or v<0 for v in
+                [*f["terminal_counts"].values(),f["unprocessed"]]) or
+                sum(f["terminal_counts"].values())+f["unprocessed"]
                 !=result["signal_count"]):
             raise X2Error("R4 signal funnel not conserved")
 
@@ -89,22 +203,34 @@ def hash_source(root):
     return {p.relative_to(root).as_posix():sha256_file(p) for p in paths}
 
 
+@decimal50
+def regime_tests(episodes, start, end):
+    result={}
+    for label in REG:
+        group=[e for e in episodes if e["regime"]==label
+               and D(e["entry_notional"])>0]
+        test=(calendar_bootstrap(group,
+              datetime.fromtimestamp(start/1000,timezone.utc).date().isoformat(),
+              datetime.fromtimestamp(end/1000,timezone.utc).date().isoformat())
+              if len(group)>=100 else {"p":1,"status":"INSUFFICIENT",
+                                       "p_is_placeholder":True,"ci95":None})
+        result[label]={"n":len(group),"p":test["p"],
+                       "placeholder":test["p_is_placeholder"],
+                       "ci95":test["ci95"],"status":test["status"]}
+    return result
+
+
+@decimal50
 def report_family(rows, start, end):
     """Exactly 96 fixed B baseline regime tests, never posthoc family shrink."""
     bykey={}
     for row in rows:
         if row["mode"]!="B" or row["scenario"]!="baseline":
             continue
+        tests=(row["regime_tests"] if "regime_tests" in row else
+               regime_tests(row["regime_episodes"],start,end))
         for regime in REG:
-            subgroup=[e for e in row["regime_episodes"] if e["regime"]==regime]
-            test=(calendar_bootstrap(subgroup,
-                    datetime.fromtimestamp(start/1000,timezone.utc).date().isoformat(),
-                    datetime.fromtimestamp(end/1000,timezone.utc).date().isoformat())
-                  if len(subgroup)>=100 else {"p":1,"status":"INSUFFICIENT",
-                                              "p_is_placeholder":True,"ci95":None})
-            bykey[(row["symbol"],row["filter"],row["k"],row["exit"],regime)]={
-                "n":len(subgroup),"p":test["p"],"placeholder":test["p_is_placeholder"],
-                "ci95":test["ci95"],"status":test["status"]}
+            bykey[(row["symbol"],row["filter"],row["k"],row["exit"],regime)]=tests[regime]
     keys=list(product(SYMS,("F0","F1"),(".25",".50"),
                       ("X1","X2","X3"),REG))
     if len(keys)!=96 or set(bykey)!=set(keys):
@@ -132,6 +258,10 @@ def audit_matrix(rows, inventory):
     if len([r for r in rows if r["symbol"]=="ETHUSDT"])!=72:
         raise X2Error("ETH row count invalid")
     for row in rows:
+        parts=row["cell_id"].split(":")
+        for name,value in zip(("symbol","mode","filter","scenario","k","ttl","exit"),parts):
+            if name in row and str(row[name])!=value:
+                raise X2Error("matrix metadata differs from cell identity")
         for side in ("strategy","matched"):
             path=row[side+"_path"]
             if path not in inventory or row[side+"_sha256"]!=inventory[path]:
