@@ -117,6 +117,62 @@ def replay(symbol, bars, funding, eligible, selection, config, start, end,
     return strategy,matched
 
 
+def generate_diag15(symbol, bars, funding_events, config, start, end, workdir):
+    """Original 15m A/F0 baseline; never an additional family member."""
+    diag=[]
+    eligible15=prepare_decisions(bars,15,Path(workdir)/"15m.db")
+    placebo15=select_matched(eligible15,15,start,end)
+    for k,exit_style in STRUCT:
+        a=replay_cell(symbol,bars,funding_events,15,k,2,exit_style,
+             config,start,end,eligible=eligible15)
+        b=replay_cell(symbol,bars,funding_events,15,k,2,exit_style,
+             config,start,end,eligible=eligible15,
+             signal_times=placebo15["selected_timestamps"])
+        audit_result(a,config["capital"],None)
+        audit_result(b,config["capital"],None)
+        diag.append({"symbol":symbol,"cell_id":
+            f"{symbol}:15m:A:F0:baseline:{k}:2:{exit_style}",
+            "metrics":money(a,b),"diagnostic_only":True})
+    return diag
+
+
+def diag15(args):
+    config=load_config(args.config)
+    head=git_head()
+    inp=sha256_file(args.input)
+    sources=read_sources(args.input)
+    graph=stage_args(args.stage_config,"r4-run",head,inp)
+    target=Path(args.output)/"reports/r4-diag15.json"
+    if target.exists():
+        raise X2Error("15m diagnostic report already exists; no overwrite")
+    start,end=int(config["evaluation_start"]),int(config["evaluation_end"])
+    rows=[]
+    hashes={path:sha256_file(path) for src in sources.values()
+            for path in src.values()}
+    with TemporaryDirectory(prefix="maker-r4-diag15-") as tmp:
+        for symbol in SYMS:
+            sub=Path(tmp)/symbol
+            sub.mkdir()
+            src=sources[symbol]
+            prepared=prepare_bars(src["bars"],sub/"bars.db")
+            if (prepared["count"]!=1604160 or
+                prepared["start_open_ms"] > 1696118400000 or
+                prepared["end_open_ms"]+60000 < end):
+                raise X2Error("full historical coverage/bar count incorrect")
+            fund=read_funding(src["funding"])
+            rows.extend(generate_diag15(symbol,prepared["bars"],
+                        fund["events"],config,start,end,sub))
+    if (sha256_file(args.input)!=inp or any(
+            sha256_file(path)!=digest for path,digest in hashes.items())):
+        raise X2Error("15m diagnostic input changed during run")
+    report={"stage":"r4-run","source_head":head,"input_sha256":inp,
+            "graph_sha256":graph,"rows":rows,"family_member":False}
+    if target.exists():
+        raise X2Error("15m diagnostic report already exists; no overwrite")
+    atomic_json(target,report)
+    return report
+
+
 def run(args):
     config=load_config(args.config)  # Enforces original frozen dates.
     sources=read_sources(args.input)
@@ -180,20 +236,8 @@ def run(args):
                             rows.append(entry)
                             # No matrix raw is held after each cell write.
                             del a,b
-            # Original 15m A/F0 baseline is diagnostic, never a 145th family row.
-            eligible15=prepare_decisions(bars,15,sub/"15m.db")
-            placebo15=select_matched(eligible15,15,start,end)
-            for k,exit_style in STRUCT:
-                a=replay_cell(symbol,bars,fund["events"],15,k,2,exit_style,
-                     config,start,end,eligible=eligible15)
-                b=replay_cell(symbol,bars,fund["events"],15,k,2,exit_style,
-                     config,start,end,eligible=eligible15,
-                     signal_times=placebo15["selected_timestamps"])
-                audit_result(a,config["capital"],None)
-                audit_result(b,config["capital"],None)
-                diag.append({"symbol":symbol,"cell_id":
-                    f"{symbol}:15m:A:F0:baseline:{k}:2:{exit_style}",
-                    "metrics":money(a,b),"diagnostic_only":True})
+            diag.extend(generate_diag15(symbol,bars,fund["events"],
+                                        config,start,end,sub))
     audit_matrix(rows,items)
     family=report_family(rows,start,end)
     matrix=[{k:v for k,v in r.items() if k!="regime_episodes"} for r in rows]
@@ -287,11 +331,7 @@ def main(argv=None):
     args=parser.parse_args(argv)
     try:
         if args.diag15:
-            root=Path(args.output)
-            doc=json.loads((root/"reports/r4-diag15.json").read_text())
-            if not doc.get("rows"):
-                raise X2Error("15m diagnosis absent")
-            result=doc
+            result=diag15(args)
         else:
             result=run(args) if args.run else verify(args)
         print(json.dumps(result,sort_keys=True,default=str),flush=True)
