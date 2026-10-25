@@ -16,6 +16,7 @@ SK = Path(__file__).resolve().parent
 sys.path.insert(0, str(SK))
 import chatgpt_page_io as io  # noqa: E402
 from relay_fixes import card_guard, RelayFixError
+import product_dispatch as pd
 
 TITLE = "要允許 ChatGPT 使用 GitHub 嗎？"
 SECRET = re.compile(r"(?i)(sk-[a-z0-9]{20,}|gh[pousr]_[a-z0-9]{20,}|github_pat_[a-z0-9_]{20,}|PRIVATE KEY|api[_-]?key\s*[=:]\s*[\"'][a-z0-9]{20,}|\.env\b)")
@@ -99,6 +100,9 @@ def main():
             checks = {"scoped_single_use":False,"reason":str(exc)}
         ev = {"at": stamp, "checks": checks, "decision": "CLICK" if verdict else "REFUSE", "card_sha": __import__("hashlib").sha256(text.encode()).hexdigest()}
         if verdict:
+            iid = json.loads((Path(a.job)/"active_instruction.json").read_text())["instruction_id"]
+            pd.approval_once(job, Path(a.job), iid, card_sha, chat=chat)
+            pd.approve_check(job, Path(a.job), iid, card_sha, chat=chat)
             c = run_op(node, "card_allow", target=tid)
             ev["click"] = c
             if not (c.get("result") or {}).get("clicked"):
@@ -106,9 +110,14 @@ def main():
                 print(json.dumps(ev, ensure_ascii=False)); return 5
             time.sleep(4)
             ev["after"] = (run_op(node, "card_text", target=tid, expand=False).get("result") or {}).get("ok")
+            if ev["after"] is not False:
+                ev["status"] = "CARD_UNKNOWN"
+                print(json.dumps(ev, ensure_ascii=False)); return 5
+            pd.reconcile(job, Path(a.job), iid, receipt="APPROVED",
+                         chat=chat, fingerprint=card_sha)
         (out / ("decision-%s.json" % stamp)).write_text(json.dumps(ev, ensure_ascii=False, indent=1))
         print(json.dumps(ev, ensure_ascii=False))
-        return 0 if verdict else 4
+        return 0 if verdict and ev.get("after") is False else 4
 
 
 if __name__ == "__main__":
