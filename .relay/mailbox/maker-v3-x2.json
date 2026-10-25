@@ -1,0 +1,67 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 75,
+  "branch": "research/maker-v3-x2-20261020",
+  "task_id": "MAKER-V3-X2",
+  "instruction_id": "MAKER-V3-X2-R4-3-r1",
+  "status": "WAITING_CI",
+  "source_head_sha": "2266c559554ad761bf542345070501ff4ca0b52f",
+  "summary": "Bounded continuation from prior real a9153f270bf3d3243d26a39c14d256a17000ee81 r4_report.py; original create_file not replayed. Added source r4_entry.py (real 1m ETH/BTC validated disk-backed 1604160-minute preparer/feature sampler, 144 ordered structure x A/B x F0/F1 x baseline/delay2/cost1_5x strategy+matched replay_cell calls, per-cell raw artifact atomic writing, causal prior-day regime classification, H2 SpeedFilter, strict input/frozen evaluation window and hash manifest; also separate 15m A/F0 baseline descriptive diagnostics), r4_reflection.py (verified-result/accepted prior-stage receipt-bound non-investable exploratory interpretation) and synthetic structural tests/test_r4_entry.py. Updated r4_entry.py verify stage to rehash files and independently replay account events, reject missing matrix/duplicate IDs and verify distinct current-stage graph while binding accepted run receipt to original run graph. r4_report.py implements exact 96-hypothesis p=1 placeholders, BH/Bonferroni and independent B ledger audit. No original U1/U2/core/ledger tests altered; 6 earlier surviving mutants and lack of new holdout remain explicit. IMPORTANT: file-only implementation NOT executed. Potential acceptance risks: large historic full run under 5GiB unmeasured; complete calendar/per-regime performance and H1/H2 classification require actual artifact review; receipt compatibility with actual controller state owner fields and verification semantics unverified; no established 144-row output, staging graph or deployment evidence. Strict source-only WAITING_CI, not finished R4 research/strategy PASS. No merge/deploy/trade/network/private config access.",
+  "changed_files": [
+    "engineering/maker_x2/r4_report.py",
+    "engineering/maker_x2/r4_entry.py",
+    "engineering/maker_x2/r4_reflection.py",
+    "engineering/maker_x2/tests/test_r4_entry.py",
+    ".relay/mailbox/maker-v3-x2.json"
+  ],
+  "tests": [
+    {
+      "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "GitHub file connector only. No Python subprocess, full public history, resource cap, synthetic CLI integration, exit-code or exact-head CI evidence available this turn."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_r4_entry.py -v",
+      "result": "NOT_RUN",
+      "evidence": "GitHub file connector only. No Python subprocess, full public history, resource cap, synthetic CLI integration, exit-code or exact-head CI evidence available this turn."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 r4_entry.py --run --config CONFIG.json --input INPUT.json --output NEW_OUTPUT --stage-config GRAPH_RUN.json",
+      "result": "NOT_RUN",
+      "evidence": "GitHub file connector only. No Python subprocess, full public history, resource cap, synthetic CLI integration, exit-code or exact-head CI evidence available this turn."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 r4_entry.py --verify --config CONFIG.json --input INPUT.json --output NEW_OUTPUT --stage-config GRAPH_VERIFY.json --receipt ACCEPTED_RUN_RECEIPT.json",
+      "result": "NOT_RUN",
+      "evidence": "GitHub file connector only. No Python subprocess, full public history, resource cap, synthetic CLI integration, exit-code or exact-head CI evidence available this turn."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 r4_reflection.py --config CONFIG.json --input INPUT.json --output NEW_OUTPUT --stage-config GRAPH_REFLECT.json --receipt ACCEPTED_VERIFY_RECEIPT.json --report NEW_OUTPUT/reports/r4-reflection.json",
+      "result": "NOT_RUN",
+      "evidence": "GitHub file connector only. No Python subprocess, full public history, resource cap, synthetic CLI integration, exit-code or exact-head CI evidence available this turn."
+    }
+  ],
+  "remaining_work": [
+    "Main CIO pin full source SHA 2266c559554ad761bf542345070501ff4ca0b52f and final mailbox head ancestry; review all four real source/test blobs, compare only exact changed-file allowlist and U1/U2 preserved blobs.",
+    "Run full 152 protected tests + new R4 tests under umask0022/0002, inspect any failures honestly. Run red/green matrix incomplete, duplicates, hash tamper, fixed96 p1, BH/Bonf, zero-trade, replay ledger, B multi-episode/funding/LIQ and strategy/matched H2 fairness. Synthetic full CLI --run/--verify/--diag15 acceptance is NOT demonstrated; no synthetic claim as market result.",
+    "Measure actual 5GiB capped 1604160-bars per symbol real 144-cell replay and 15m diagnostic within authorized time, original config/date/account per-trade margin/leverage and immutable data. Preserve original 2023-10-01 warmup and [2023-11-01,2026-10-19) no window shrink. If MemoryError/timeouts occur stop and report rather than retry smaller window.",
+    "Validate r4-report interpretation: strict m96 hypotheses with p1 placeholders, finite-family family p and BH/Bonf, B net_bp/alpha/PF, H1 post-2024-05 regime sign and H2 exposure/funding/LIQ comparison. Review that missing data, gaps and open tails do not produce defensive PASS. Independent ETH/BTC accounts never combined.",
+    "Review operator-specific existing stage_relay C1196 graph and receipt schema, stage config source_head/input_sha256/graph sha and accepted receipt owner metadata; current implementation assumes stage name string and owner_pid/owner_start/owner_boot/owner_token. No fabricated accepted receipt. External graph/actual controller integration NOT verified; request separate scoped glue only if concrete mismatch, do not silently bypass.",
+    "Run stage r4-run -> r4-verify -> r4-reflection in true subprocess, require nonzero on bad chain; run exact-head push and pull_request CI. Preserve original state/evidence hash and do not adopt dead process or manually mark completed.",
+    "Explicit missing or incomplete pieces still requiring independent verification: --diag15 currently reads existing diagnostic report rather than independently generating it; stage verify receipt path is required only when --stage-config supplied; verify audit report is written postverification and reflects its own current graph; reflection requires exact receipt; no independent real market run, no complete hard-coded U3 96-cell candidate risk gates, no strong receipt owner state binding beyond declared fields."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Pin source_head_sha 2266c559554ad761bf542345070501ff4ca0b52f and final head. Run protected+R4 normal discovery, strict CLI synthetic and 5GiB resource, data/fee/episode differential and all 144 artifact verification, stage relay graph+receipt integration, then exact-head dual CI. Do not adopt pipeline before all controls and factual artifacts PASS.",
+    "if_pass": "Accept engineering-only U3 bounded source after independent real output/receipt/control verification; full R4 exploratory performance or deploy requires separate complete acceptance.",
+    "if_fail": "Record exact trace/return-code/evidence/complete source SHA; mark BLOCKED, keep prior graphs/states immutable and do not bypass guard or change unallowlisted core.",
+    "blockers": [
+      "New U3 tests/CLI/CI/historical/resource tests NOT_RUN",
+      "15m diag currently inspection only; cannot be claimed as standalone diagnostic generation",
+      "Actual owner receipt/controller and stage semantic compatibility unverified",
+      "144 market rows and m96 family reports unproduced and not accepted",
+      "No deployment/market efficacy evidence"
+    ]
+  }
+}
