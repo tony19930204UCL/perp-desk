@@ -79,8 +79,9 @@ class GraphTests(unittest.TestCase):
               "--output-root",str(self.output),
               "--bootstrap-acceptance-json",str(self.proof),
               "--python",sys.executable,"--out",str(self.out)]
+        expected=self.build_graph()
         self.assertEqual(main(args),0)
-        self.assertEqual(json.loads(self.out.read_text()),self.build_graph())
+        self.assertEqual(json.loads(self.out.read_text()),expected)
         self.assertEqual(main(args),1)
 
     def test_no_runtime_side_effect(self):
