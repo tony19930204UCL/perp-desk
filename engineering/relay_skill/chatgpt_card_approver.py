@@ -12,9 +12,10 @@ import argparse, json, re, sys, time
 from pathlib import Path
 
 HOME = Path(__file__).resolve().parent.parent
-SK = HOME / "skills" / "chatgpt-engineering-relay" / "scripts"
+SK = Path(__file__).resolve().parent
 sys.path.insert(0, str(SK))
 import chatgpt_page_io as io  # noqa: E402
+from relay_fixes import card_guard, RelayFixError
 
 TITLE = "要允許 ChatGPT 使用 GitHub 嗎？"
 SECRET = re.compile(r"(?i)(sk-[a-z0-9]{20,}|gh[pousr]_[a-z0-9]{20,}|github_pat_[a-z0-9_]{20,}|PRIVATE KEY|api[_-]?key\s*[=:]\s*[\"'][a-z0-9]{20,}|\.env\b)")
@@ -88,20 +89,21 @@ def main():
         (out / ("card-%s.txt" % stamp)).write_text(text)
         if a.mode == "details":
             print(text); return 0
-        checks = {
-            "title": TITLE in text,
-            "scope_named": any(p in text or Path(p).name in text for p in allow)
-                           or (job["branch"] in text and "R4" in text),
-            "no_secret": not SECRET.search(text),
-            "no_bad_words": not BAD.search(text),
-            "one_allow_once": text.count("允許一次") == 1,
-            "no_other_repo": all(m == job["repository"] for m in re.findall(r"[\w.-]+/[\w.-]+/(?:tree|blob)/", "")) ,
-        }
-        verdict = all(checks.values())
+        try:
+            card_sha = card_guard(job,text)
+            verdict = True
+            checks = {"scoped_single_use":True}
+        except RelayFixError as exc:
+            card_sha = __import__("hashlib").sha256(text.encode()).hexdigest()
+            verdict = False
+            checks = {"scoped_single_use":False,"reason":str(exc)}
         ev = {"at": stamp, "checks": checks, "decision": "CLICK" if verdict else "REFUSE", "card_sha": __import__("hashlib").sha256(text.encode()).hexdigest()}
         if verdict:
             c = run_op(node, "card_allow", target=tid)
             ev["click"] = c
+            if not (c.get("result") or {}).get("clicked"):
+                ev["status"] = "CARD_UNKNOWN"
+                print(json.dumps(ev, ensure_ascii=False)); return 5
             time.sleep(4)
             ev["after"] = (run_op(node, "card_text", target=tid, expand=False).get("result") or {}).get("ok")
         (out / ("decision-%s.json" % stamp)).write_text(json.dumps(ev, ensure_ascii=False, indent=1))
