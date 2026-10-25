@@ -415,6 +415,9 @@ def release_revise(job, job_dir, instruction, verdict_path, *, chat=None):
         if job.get("dispatch_release_grant") != grant:
             raise DispatchBlocked("RELEASE_GRANT_MISMATCH")
         if (prior.get("phase") != "SENT_CONFIRMED"
+                or not prior.get("send_receipt_sha256")
+                or _confirmed(prior["job_dir"],old_scope["instruction"],
+                              old_scope["chat"]) != prior["send_receipt_sha256"]
                 or prior.get("adopted_send")
                 or any(card.get("phase") == "APPROVE_INTENT"
                        for card in prior.get("cards", {}).values())):
