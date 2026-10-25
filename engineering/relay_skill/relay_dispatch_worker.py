@@ -17,6 +17,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 import product_dispatch as pd
+from relay_fixes import atomic
 
 HERE = Path(__file__).resolve().parent
 IO = str(HERE / "chatgpt_page_io.py")
@@ -101,6 +102,7 @@ def main(argv=None):
     deadline = time.monotonic() + a.deadline_min * 60
     st = {"instruction_id": a.instruction_id, "started": now(), "phase": "WAIT_LOGIN", "send": None, "handback": False, "cycles": 0}
     sent_done = False
+    card_attempted = False
     while time.monotonic() < deadline:
         st["cycles"] += 1
         st["at"] = now()
@@ -126,29 +128,54 @@ def main(argv=None):
                 st["send"] = res
                 if res.get("status") in ("CONFIRMED", "SEND_UNKNOWN"):
                     sent_done = True
-                    st["phase"] = "TRACKING" if res["status"] == "CONFIRMED" else "TRACKING_SEND_UNKNOWN"
+                    st["phase"] = "SENT" if res["status"] == "CONFIRMED" else "TRACKING_SEND_UNKNOWN"
                 else:
                     st["phase"] = "PRESEND_RETRY_NEXT_CYCLE"
             else:
                 st["phase"] = "WAIT_LOGIN"
+        if sent_done and st["phase"] not in ("TRACKING_SEND_UNKNOWN","CARD_REFUSED"):
+            # A card is never retried: durable intent precedes external click.
+            rc, cards = run_json([sys.executable, IO, "approve-card",
+                  "--chat-url", policy["dispatch_chat_url"]], 120)
+            pending = cards.get("cards") if rc == 0 else None
+            if pending and not card_attempted:
+                card_attempted = True
+                st["phase"] = "CARD_PENDING"
+                st["since"] = now()
+                atomic(job/"worker-state.json", st)
+                atomic(job/"card-intent.json", {"instruction_id":a.instruction_id,
+                       "phase":"CARD_PENDING","since":st["since"]})
+                cmd=[sys.executable,str(HERE/"chatgpt_card_approver.py"),
+                     "allow","--job",str(job)]
+                try:
+                    code, verdict = run_json(cmd, 180)
+                except (OSError,subprocess.TimeoutExpired,ValueError) as exc:
+                    code, verdict = 5, {"status":"UNKNOWN","reason":type(exc).__name__}
+                st["card"] = verdict
+                st["phase"] = "CARD_APPROVED" if code == 0 else "CARD_REFUSED"
+                atomic(job/"worker-state.json", st)
+            elif pending and card_attempted:
+                st["phase"] = "CARD_REFUSED"
+                st["card"] = {"reason":"SECOND_CARD_OR_UNRESOLVED_INTENT"}
         if sent_done:
             f = gh_json(["repos/%s/contents/%s?ref=%s" % (a.repo, a.mailbox_path, a.branch)])
             br = gh_json(["repos/%s/branches/%s" % (a.repo, a.branch)])
             st["branch_head"] = br["commit"]["sha"] if br else None
             if f and mailbox_matches(f.get("content", ""), a.instruction_id):
                 st["handback"] = True
-                st["phase"] = "HANDBACK_FOUND"
+                st["phase"] = "HANDBACK"
                 st["mailbox_blob"] = f.get("sha")
                 break
         write_atomic(job / "worker-state.json", st)
         time.sleep(a.poll_s)
-    if st["phase"] not in ("HANDBACK_FOUND", "ABORTED_PREFLIGHT"):
-        st["phase"] = "EXPIRED_" + st["phase"]
+    if st["phase"] not in ("HANDBACK", "ABORTED_PREFLIGHT", "CARD_REFUSED"):
+        st["phase"] = "EXPIRED"
+        st["since"] = now()
     st["finished"] = now()
     write_atomic(job / "worker-state.json", st)
     write_atomic(job / "worker-result.json", st)
     print(json.dumps(st, ensure_ascii=False))
-    return 0 if st["phase"] in ("HANDBACK_FOUND",) else 3
+    return 0 if st["phase"] == "HANDBACK" else 3
 
 
 if __name__ == "__main__":
