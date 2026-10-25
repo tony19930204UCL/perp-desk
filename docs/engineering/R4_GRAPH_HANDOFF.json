@@ -1,0 +1,53 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 82,
+  "branch": "research/r4-graph-builder-20261025",
+  "task_id": "r4-graph-builder",
+  "instruction_id": "r4graph-001",
+  "status": "READY_FOR_REVIEW",
+  "source_head_sha": "624307f311a82976a450e4b172febb6ddc392ae1",
+  "summary": "Created stdlib-only, create-once build_r4_graph.py on PR82, with deterministic canonical JSON and exact installed stage_relay graph shape (schema1/kind stage_relay/bootstrap.acceptance_path+stage_id+source_head+input_sha256/stages[].id/mode/source_head/input_sha256/command/cwd/lease_seconds/reports). Single graph has r4-run, r4-verify and r4-reflection, reports 144/1/1 and run symbol counts ETH72/BTC72; run uses prlimit --as=5368709120 -- python -u r4_entry.py --run, verify uses r4_entry.py --verify, reflection explicitly uses r4_reflection.py with --config/--input/--output/--stage-config/--receipt/--acceptance/--report. Operator provides absolute namespace path ending stage-relay/C0041; installed supervisor requires graph.evidence_root to be its child stage-relay/C0041/evidence, so both are enforced and documented. Bootstrap ACCEPTED JSON and referenced evidence SHA256 must already exist under evidence root; file input SHA256 is computed over original input-json bytes, optional bootstrap acceptance digest is printed but not added as an unsupported graph field. The output and graph cannot overwrite existing files. All commands/paths validated and source-head exact40hex. Emission is source-only; no controller launch, market replay or acceptance. Two new unittest modules cover deterministic output/create-only behavior and negative input/controller contract. File-only GitHub connector cannot execute Python; all current-turn tests are NOT_RUN. Controller and R4 CLI files were read-only from the requested branches. This is candidate handback for independent strict controller verification, not pipeline execution or research PASS.",
+  "changed_files": [
+    "engineering/maker_x2/build_r4_graph.py",
+    "engineering/maker_x2/tests/test_build_r4_graph.py",
+    "engineering/maker_x2/tests/test_build_r4_graph_neg.py",
+    "docs/engineering/R4_GRAPH_HANDOFF.json"
+  ],
+  "tests": [
+    {
+      "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p 'test_build_r4_graph*.py' -v",
+      "result": "NOT_RUN",
+      "evidence": "Only authorized GitHub read/create_file/update_file operations performed; no Python executor used."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "Current-turn code not run. Existing controller tests on another branch not relabeled as this PR evidence."
+    },
+    {
+      "command": "python3 -m unittest discover -s engineering/tests -p test_stage_relay.py -v",
+      "result": "NOT_RUN",
+      "evidence": "Controller source/tests read-only on fix/c0041-stage-relay-20261020; no runtime invocation."
+    }
+  ],
+  "remaining_work": [
+    "Main CIO pin exact PR82 final head and source_head_sha, verify only 4 allowlisted files changed and all artifact identifiers satisfy casing and maximum length.",
+    "Independently execute both graph unittest modules and full discovery on immutable PR82. Test input/output directories must be ephemeral; no real controller or market executions in these fixtures.",
+    "Review one emitted graph against engineering/stage_relay.py configuration(), stage_inputs(), validate_argv(), check_report(), bootstrap() and installed_paths() from fix/c0041-stage-relay-20261020. Confirm graph.evidence_root points to namespace/evidence, --out to namespace/graph.json, and report artifact paths are relative to evidence_root. Check installed namespace not an arbitrary profile.",
+    "Ensure actual operator-provided bootstrap acceptance, evidence file and source/market input have exact identities and valid hashes before real installation. The builder does not synthesize acceptance or permit account credentials.",
+    "Verify generated real graph command, cwd and inputs correspond to actual installed R4 scripts, Python binary, 5GiB cap and existing report/receipt contract. For verify/reflection, receipt/acceptance inbox files remain external trusted state, not fabricated by builder. Independent controller acceptance required prior to next stage.",
+    "Obtain new exact-head push and pull_request CI where available; test results and CI NOT_RUN in this GitHub-only engineering turn. No merge, deploy, trading or paid usage."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Pin PR82 source SHA 624307f311a82976a450e4b172febb6ddc392ae1 and final mailbox commit; inspect build_r4_graph.py and two unittest modules against exact controller configuration/bootstrap/worker/report schema; run isolated unittest discovery and compare two invocations byte-for-byte from identical fresh inputs. Verify negative cases for invalid namespace/head/cwd/missing command/wrong rows/denied executor/reflection routing, plus source/input/bootstrap hashes.",
+    "if_pass": "Accept only bounded offline R4 graph builder source; operator alone supplies verified local paths, real external bootstrap acceptance and controls activation through installed supervisor. No market or strategy acceptance.",
+    "if_fail": "Preserve exact test ID, error, controller-contract mismatch and full SHA. Do not change controller or bypass verification or write outside PR82 allowlist.",
+    "blockers": [
+      "No Python tests, CLI graph generation, stage supervisor execution or new CI run performed in this GitHub-only turn",
+      "Real bootstrap acceptance and operator path/input/config identities were not available, not fabricated",
+      "No market replay or deployment authorized"
+    ]
+  }
+}
