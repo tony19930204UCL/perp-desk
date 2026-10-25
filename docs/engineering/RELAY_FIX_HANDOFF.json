@@ -1,0 +1,58 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 83,
+  "branch": "research/relay-reliability-20261025",
+  "task_id": "relay-reliability",
+  "instruction_id": "relay-001",
+  "status": "READY_FOR_REVIEW",
+  "source_head_sha": "2a0b757e0bfadc9d1dca6bc58e23794a99213dcf",
+  "summary": "Offline-only PR83 candidate for observed relay roots A-F; no real ChatGPT send, browser click, GitHub mailbox polling, credentials or network actions were executed here. A: relay_fixes.bubble_match and chatgpt_page_io.PAGE_STATE use one turn-bound complete DOM message subtree stripped of UI controls, no substring/trailing Show more trimming; positive exact readback can reconcile a folded message without resending. B: tracker detects pending cards and calls the existing scoped allow-once approver exactly once after CONFIRMED; relay_fixes.card_guard rejects secrets, permission expansion, out-of-scope paths and other repository references; chatgpt_card_approver persists product_dispatch.APPROVE_INTENT before a single click, requires card disappearance readback and never retries unknown acknowledgements. C: product_dispatch.release_revise still requires SENT_CONFIRMED and now rechecks its original positive send receipt SHA and pending card intent, preserving generation/verdict binding; SEND_UNKNOWN remains blocked until positive reconcile, never treated as sufficient. D: worker-state.json contains instruction/phase/since; phases WAIT_LOGIN/SENT/CARD_PENDING/CARD_APPROVED/HANDBACK/EXPIRED and CARD_REFUSED are visible, with durable card-intent and no second click across restarts. E: make_job CLI builds an explicit repo/branch/PR/chat/allowlist/expiry job.json in a new directory without inferring chat and refusing overwrite. F: synthetic drill exercises folded full-message send evidence, single card scoped gate, handback and new instruction phase plus refusal/no-resend controls; these do not constitute browser-based proof. Exact previous seed guard on send intent remains; product_dispatch release still generation/verdict-bound. WARNING: source candidate NOT executed: main runtime, Node/CDP DOM compatibility, installed approval journal semantics, and tracker click/readback remain to be verified independently. One known gap: drill uses synthetic state progression rather than executing the complete tracker with a fake subprocess transport. No claim of full production acceptance.",
+  "changed_files": [
+    "engineering/relay_skill/relay_fixes.py",
+    "engineering/relay_skill/chatgpt_page_io.py",
+    "engineering/relay_skill/product_dispatch.py",
+    "engineering/relay_skill/relay_dispatch_worker.py",
+    "engineering/relay_skill/chatgpt_card_approver.py",
+    "engineering/relay_skill/tests/test_relay_fixes.py",
+    "engineering/relay_skill/tests/test_relay_drill.py",
+    "docs/engineering/RELAY_FIX_HANDOFF.json"
+  ],
+  "tests": [
+    {
+      "command": "cd engineering/relay_skill && python3 -m unittest discover -s tests -p 'test_relay_fixes.py' -v",
+      "result": "NOT_RUN",
+      "evidence": "Current tool interface performed GitHub reads and file writes only; no Python tests executed."
+    },
+    {
+      "command": "cd engineering/relay_skill && python3 -m unittest discover -s tests -p 'test_relay_drill.py' -v",
+      "result": "NOT_RUN",
+      "evidence": "Synthetic fake-state drill authored but not executed in this turn."
+    },
+    {
+      "command": "cd engineering/relay_skill && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "Existing + newly added Python tests not run; no PASS/rc claimed."
+    }
+  ],
+  "remaining_work": [
+    "Main CIO independently pin source SHA, compare PR83 diff with exact allowlist and verify no changes to approval_transaction.py, original test assertions, main, network or credentials.",
+    "Run all stdlib tests on Linux with offline fake page/transport. Add if needed an executable fake worker transport integration asserting click exactly once, correct positive reconciliation of a folded full subtree, handback, generation-bound REVISE release and next instruction without a duplicate send.",
+    "Verify chatgpt_page_io full subtree DOM boundaries on real sanitized snapshots: unique user turn, nonempty and full subtree, no injected UI controls; ensure ambiguous/suffix-only text remains UNKNOWN and no new send is attempted.",
+    "Verify installed approver integration against one allowed GitHub card, expanded details, strict repo/branch/path, no secrets, no always/remember, exactly one click, same-card readback and persisted approval journal. Distinguish click ack loss as UNKNOWN without retry or permissive fallback.",
+    "Check worker restored card-intent across crash/restart; CARD_REFUSED and EXPIRED state files remain script-readable and stop progressing; card appearance in SEND_UNKNOWN must not be approved until exact positive send reconciliation.",
+    "Check release_revise with validated REVISE verdict, generation and matching receipt; no release during open card intent, after approval unknown, or after unrelated release. Validate explicit make-job generated scope with actual job admission interface.",
+    "Get exact-head dual CI and Main test execution evidence. No real browser, deployment, trading or account activity authorized."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Pin source_head_sha 2a0b757e0bfadc9d1dca6bc58e23794a99213dcf and final PR83 head; run offline unittest discovery and independently execute synthetic send/readback/card/drill with fake transports. Check invariants: no second send after SEND_INTENT, no second card click after approval intent, exact folded user-turn subtree, scoped allow-once and strict positive send + REVISE generation gating.",
+    "if_pass": "Accept only bounded research-tooling reliability source after actual tests and integration evidence, not authorization to run browser automation or approve live cards.",
+    "if_fail": "Preserve complete traceback, exact file/commit SHA and refusal; treat UNKNOWN as unresolved and do not retry send/approval or bypass dispatch lock.",
+    "blockers": [
+      "All current-turn Python tests/CI NOT_RUN",
+      "No live browser/page DOM or real approval-click evidence",
+      "The full tracker subprocess fake transport acceptance drill remains to be independently demonstrated"
+    ]
+  }
+}
