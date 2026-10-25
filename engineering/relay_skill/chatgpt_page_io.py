@@ -30,6 +30,7 @@ import sys
 import time
 import uuid
 import product_dispatch as pd
+import relay_fixes as fixes
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -83,12 +84,7 @@ def normalize_bubble(text):
 
 def bubble_equals(prompt, bubble):
     """bubble = {'pre': str|None, 'full': str}; either rendering may equal the prompt."""
-    p = normalize_bubble(prompt)
-    for key in ("pre", "full"):
-        v = bubble.get(key)
-        if v is not None and normalize_bubble(v) == p:
-            return True
-    return False
+    return fixes.bubble_match(prompt, bubble)
 
 
 def count_matching(prompt, bubbles):
@@ -309,7 +305,17 @@ function PAGE_STATE() {
   const boxes = q('[contenteditable="true"][role="textbox"]').filter(e => !inBubble(e));
   const comp = boxes.length === 1 ? boxes[0] : null;
   const ctext = comp ? Array.from(comp.children).map(p => p.textContent).join('\n') : null;
-  const bubbles = q('[data-user-message-bubble]').map(b => { const pre = q('.whitespace-pre-wrap', b)[0]; return { pre: pre ? pre.textContent : null, full: b.innerText }; });
+  const bubbles = q('[data-user-message-bubble]').map(b => {
+    const pre = q('.whitespace-pre-wrap', b)[0];
+    const roots = q('[data-message-author-role="user"]');
+    const bound = roots.filter(t => t.contains(b));
+    const msg = pre || b;
+    const copy = msg.cloneNode(true);
+    copy.querySelectorAll('button,[role="button"],[aria-expanded],svg')
+        .forEach(x => x.remove());
+    return { pre: pre ? pre.textContent : null, full: b.innerText,
+      turn_bound: bound.length === 1, subtree: copy.textContent };
+  });
   const btns = q('button').filter(b => !b.closest('nav,aside'));
   const lab = b => (b.getAttribute('aria-label') || '') + '|' + (b.getAttribute('data-testid') || '');
   const send = btns.filter(b => /send-button|^(傳送|Send)/i.test(lab(b)));
