@@ -157,7 +157,7 @@ def main(argv=None):
             elif pending and card_attempted:
                 st["phase"] = "CARD_REFUSED"
                 st["card"] = {"reason":"SECOND_CARD_OR_UNRESOLVED_INTENT"}
-        if sent_done:
+        if sent_done and st["phase"] != "CARD_REFUSED":
             f = gh_json(["repos/%s/contents/%s?ref=%s" % (a.repo, a.mailbox_path, a.branch)])
             br = gh_json(["repos/%s/branches/%s" % (a.repo, a.branch)])
             st["branch_head"] = br["commit"]["sha"] if br else None
@@ -166,14 +166,16 @@ def main(argv=None):
                 st["phase"] = "HANDBACK"
                 st["mailbox_blob"] = f.get("sha")
                 break
-        write_atomic(job / "worker-state.json", st)
+        atomic(job / "worker-state.json", st)
+        if st["phase"] == "CARD_REFUSED":
+            break
         time.sleep(a.poll_s)
     if st["phase"] not in ("HANDBACK", "ABORTED_PREFLIGHT", "CARD_REFUSED"):
         st["phase"] = "EXPIRED"
         st["since"] = now()
     st["finished"] = now()
-    write_atomic(job / "worker-state.json", st)
-    write_atomic(job / "worker-result.json", st)
+    atomic(job / "worker-state.json", st)
+    atomic(job / "worker-result.json", st)
     print(json.dumps(st, ensure_ascii=False))
     return 0 if st["phase"] == "HANDBACK" else 3
 
