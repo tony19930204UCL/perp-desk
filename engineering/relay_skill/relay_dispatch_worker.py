@@ -108,7 +108,7 @@ def main(argv=None):
     deadline = time.monotonic() + a.deadline_min * 60
     st = {"instruction_id": a.instruction_id, "started": now(), "phase": "WAIT_LOGIN", "send": None, "handback": False, "cycles": 0}
     sent_done = False
-    card_attempted = False
+    card_attempted = (job / 'card-intent.json').exists()
     while time.monotonic() < deadline:
         st["cycles"] += 1
         st["at"] = now()
