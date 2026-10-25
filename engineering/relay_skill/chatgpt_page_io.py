@@ -309,8 +309,8 @@ function PAGE_STATE() {
     const pre = q('.whitespace-pre-wrap', b)[0];
     const roots = q('[data-message-author-role="user"]');
     const bound = roots.filter(t => t.contains(b));
-    const msg = pre || b;
-    const copy = msg.cloneNode(true);
+    // Inspect the complete bound message tree, not truncated preview text.
+    const copy = b.cloneNode(true);
     copy.querySelectorAll('button,[role="button"],[aria-expanded],svg')
         .forEach(x => x.remove());
     return { pre: pre ? pre.textContent : null, full: b.innerText,
