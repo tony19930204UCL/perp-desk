@@ -85,7 +85,13 @@ def main(argv=None):
     policy = json.loads((job / "job.json").read_text(encoding="utf-8"))
     if policy.get("repository") != a.repo or policy.get("branch") != a.branch:
         raise pd.DispatchBlocked("WORKER_SCOPE_MISMATCH")
-    template = (Path(__file__).with_name("instruction-template.txt")).read_text(encoding="utf-8")
+    source = Path(__file__).with_name("instruction-template.txt")
+    template = (source.read_text(encoding="utf-8") if source.exists() else
+        "ENGINEERING RELAY bounded job (not approval)\\n"
+        "Repo: {repository}, PR: {pr_number}, Branch: {branch}\\n"
+        "Chat: {chat_url}, Instruction: {instruction_id}\\n"
+        "Allowed: {write_allowlist}, Expiry: {valid_until}\\n"
+        "No resend after SEND_INTENT, no scope expansion.\\n")
     guidance = template.format(repository=policy["repository"], pr_number=policy["pr_number"],
         branch=policy["branch"], chat_url=policy["dispatch_chat_url"],
         instruction_id=a.instruction_id, write_allowlist=json.dumps(policy["write_allowlist"]),
