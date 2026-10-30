@@ -14,6 +14,8 @@ import hashlib
 import json
 import subprocess
 import sys
+import time
+import resource
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from datetime import datetime, timezone
@@ -33,6 +35,16 @@ from r4_report import (SYMS, SCEN, STRUCT, PREREG, money, audit_result,
                        regime_tests, entry_notionals)
 
 STAGES = ("r4-run", "r4-verify", "r4-reflection")
+
+
+def phase_log(name, symbol, started=None):
+    """Process-wide high-water RSS; Linux ru_maxrss is KiB."""
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+    elapsed = "" if started is None else f" sec={time.monotonic()-started:.3f}"
+    print(f"PHASE {symbol} {name} peak_rss_mib={rss:.1f}{elapsed}",
+          flush=True)
+    return time.monotonic()
+
 
 
 def cap_memory():
@@ -238,6 +250,7 @@ def run(args):
     with TemporaryDirectory(prefix="maker-r4-") as tmp:
         for symbol in SYMS:
             print("PREPARE",symbol,flush=True)
+            tick=phase_log("begin",symbol)
             sub=Path(tmp)/symbol
             sub.mkdir()
             src=sources[symbol]
@@ -246,6 +259,7 @@ def run(args):
                 prepared["start_open_ms"] > 1696118400000 or
                 prepared["end_open_ms"]+60000 < end):
                 raise X2Error("full historical coverage/bar count incorrect")
+            tick=phase_log("prepare_bars",symbol,tick)
             fund=read_funding(src["funding"])
             inputs[symbol]={"bars_sha256":prepared["sha256"],
                             "funding_sha256":fund["sha256"],
@@ -253,11 +267,16 @@ def run(args):
                             "funding":fund["count"],
                             "gaps":prepared["gaps"]}
             bars=prepared["bars"]
+            tick=phase_log("read_funding",symbol,tick)
             table=classify(bars,start,end)
+            tick=phase_log("classify",symbol,tick)
             regimes[symbol]=table
             eligible=prepare_decisions(bars,1,sub/"1m.db")
+            tick=phase_log("prepare_decisions",symbol,tick)
             matched=select_matched(eligible,1,start,end)
+            tick=phase_log("select_matched",symbol,tick)
             speed=SpeedFilter(bars)
+            tick=phase_log("SpeedFilter",symbol,tick)
             print("FEATURES",symbol,"1m",len(eligible),flush=True)
             for mode in ("A","B"):
                 for filt in ("F0","F1"):
@@ -265,6 +284,7 @@ def run(args):
                         for k,exit_style in STRUCT:
                             cid=f"{symbol}:{mode}:{filt}:{scenario}:{k}:2:{exit_style}"
                             print("REPLAY",cid,flush=True)
+                            cell_tick=time.monotonic()
                             a,b=replay(symbol,bars,fund["events"],eligible,
                                 matched,config,start,end,k,exit_style,mode,
                                 filt=="F1",scenario,speed)
@@ -280,10 +300,15 @@ def run(args):
                             if mode=="B" and scenario=="baseline":
                                 entry["regime_tests"]=regime_tests(collect(a,table),start,end)
                             rows.append(entry)
+                            phase_log("replay "+cid,symbol,cell_tick)
                             # No matrix raw is held after each cell write.
                             del a,b
+            tick=time.monotonic()
             diag.extend(generate_diag15(symbol,bars,fund["events"],
                                         config,start,end,sub,root))
+            phase_log("diag15",symbol,tick)
+            del speed, eligible, matched, table, bars, prepared, fund
+            phase_log("symbol_done",symbol)
     for row in diag:
         for side in ("strategy","matched"):
             items[row[side+"_path"]]=row[side+"_sha256"]
