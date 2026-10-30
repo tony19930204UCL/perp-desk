@@ -1,0 +1,39 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 85,
+  "branch": "research/r4-recon-fix-20261030",
+  "task_id": "r4-recon-fix",
+  "instruction_id": "r4recon-001",
+  "status": "WAITING_CI",
+  "source_head_sha": "a9254530ae6e2a70ef9fd60b54227e2808d08b5c",
+  "summary": "accounting.replay retains independent step-by-step cash updates, now with localcontext prec=60 and explicit ROUND_HALF_EVEN; expected_cash remains independently aggregated. The cash reconciliation compares with absolute tolerance 1E-30. A 1E-6 mismatch still raises LedgerError. Added funding precision and tamper regression tests; not run.",
+  "changed_files": [
+    "engineering/maker_x2/accounting.py",
+    "engineering/maker_x2/tests/test_cash_ctx.py",
+    "docs/engineering/R4_RECON_HANDOFF.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s engineering/maker_x2/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "Only GitHub source connector available; no checked-out repository in execution environment."
+    },
+    {
+      "command": "cd engineering/maker_x2 && python3 -m unittest discover -s tests -p test_cash_ctx.py -v",
+      "result": "NOT_RUN",
+      "evidence": "Test source committed but no local checkout or executable GitHub runner."
+    },
+    {
+      "command": "R4 ETHUSDT B:F0:delay2:.25:X2 ledger replay",
+      "result": "NOT_RUN",
+      "evidence": "Original ledger event stream and R4 run not available locally."
+    }
+  ],
+  "remaining_work": [
+    "Execute all existing maker_x2 tests and focused new tests on exact PR85 HEAD",
+    "Verify old deterministic ledger outputs and independent ETHUSDT R4 replay",
+    "Confirm 1E-30 tolerated dust with 60-digit precision without masking real fee/funding errors"
+  ],
+  "next_step_reminder": "Main CIO: run exact-head unittest discovery and ETHUSDT B:F0:delay2:.25:X2, verify no cash reconciliation failure and unchanged accounting economics. Do not merge/deploy/trade."
+}
