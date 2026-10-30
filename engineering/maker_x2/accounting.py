@@ -61,7 +61,7 @@ No market data, future funding, synthetic close, liquidation,
 margin, or strategy execution is inferred.
 """
 
-from decimal import Decimal, InvalidOperation, localcontext
+from decimal import Decimal, InvalidOperation, localcontext, ROUND_HALF_EVEN
 
 
 MAKER_FEE = Decimal("0.0002")
@@ -137,6 +137,12 @@ def _identity(event, expected_seq, previous_ts, seen):
     return event_id, ts
 
 
+def _check_cash(cash, expected_cash):
+    """Independent accumulation versus summary; tolerate rounding dust only."""
+    if abs(cash - expected_cash) > Decimal("1E-30"):
+        raise LedgerError("cash reconciliation failed")
+
+
 def replay(initial_cash, events):
     """Replay short fill/funding events independently of any trading engine.
 
@@ -157,7 +163,8 @@ def replay(initial_cash, events):
     Raises LedgerError on malformed events or invalid transitions.
     """
     with localcontext() as ctx:
-        ctx.prec = 50
+        ctx.prec = 60
+        ctx.rounding = ROUND_HALF_EVEN
 
         starting_cash = _decimal(initial_cash, "initial_cash")
         if starting_cash < ZERO:
@@ -332,8 +339,7 @@ def replay(initial_cash, events):
             starting_cash + realized - fees - funding_cost
         )
 
-        if cash != expected_cash:
-            raise LedgerError("cash reconciliation failed")
+        _check_cash(cash, expected_cash)
 
         return {
             "initial_cash": starting_cash,
