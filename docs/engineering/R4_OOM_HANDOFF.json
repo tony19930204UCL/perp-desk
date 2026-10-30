@@ -1,1 +1,59 @@
-{"schema_version":2,"status":"PLACEHOLDER_SETUP_BY_OPERATOR","task_id":"r4-oom-repair"}
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 84,
+  "branch": "research/r4-oom-repair-20261030",
+  "task_id": "r4-oom-repair",
+  "instruction_id": "r4oom-001",
+  "status": "BLOCKED",
+  "source_head_sha": "12f4c9a17d987561afdd4ac3b9cbdd02d84d199a",
+  "pre_mailbox_source_head_sha": "12f4c9a17d987561afdd4ac3b9cbdd02d84d199a",
+  "summary": "Bound SpeedFilter memory to short Decimal close window plus compact timestamps, preserving five Decimal-ratio computation. Added per-phase process-wide high-water RSS and elapsed seconds logs, plus a focused unexecuted regression suite. No synthetic full-size benchmark, full run, deterministic fixture comparison or four killed mutants demonstrated. SIGKILL root cause remains unknown.",
+  "changed_files": [
+    "engineering/maker_x2/path_speed.py",
+    "engineering/maker_x2/r4_entry.py",
+    "engineering/maker_x2/tests/test_r4_memory.py",
+    "docs/engineering/R4_OOM_HANDOFF.json"
+  ],
+  "tests": [
+    {
+      "command": "python3 -m unittest discover -s engineering/maker_x2/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "GitHub source-only connector; full repository and test runtime unavailable locally"
+    },
+    {
+      "command": "umask 0022; python3 -m unittest discover -s engineering/maker_x2/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No full repository available in the execution container"
+    },
+    {
+      "command": "umask 0002; python3 -m unittest discover -s engineering/maker_x2/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No full repository available in the execution container"
+    },
+    {
+      "command": "python3 r4_entry.py --run (full original stage argv)",
+      "result": "NOT_RUN",
+      "evidence": "No actual historical bars, stage graph, or matching host environment available"
+    },
+    {
+      "command": "full-size synthetic 1604160-bar phase benchmark",
+      "result": "NOT_RUN",
+      "evidence": "Benchmark not implemented/executed; RSS and times unknown"
+    },
+    {
+      "command": "four injected mutants",
+      "result": "NOT_RUN",
+      "evidence": "Mutation probes not executed and not claimed killed"
+    }
+  ],
+  "remaining_work": [
+    "Run tests and repair regressions, especially speed filter parity and nonmonotone lookups",
+    "Implement and execute full-sized synthetic benchmark with every requested phase and report actual RSS/times",
+    "Run small-fixture pre/post byte comparison",
+    "Design and run four injected mutation tests",
+    "Determine source of SIGKILL using host OOM/limit telemetry",
+    "Run actual full 144-cell matrix and verify peak RSS <=1536 MiB"
+  ],
+  "next_step_reminder": "Main CIO: Treat as partial source delivery, not acceptance. Re-run exact-head CI and synthetic/full benchmark. No deploy/trade/merge. Confirm memory reduction and results unchanged."
+}
