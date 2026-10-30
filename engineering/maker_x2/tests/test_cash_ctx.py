@@ -30,11 +30,13 @@ class CashContext(unittest.TestCase):
         self.assertEqual(result["event_count"], 4)
         self.assertEqual(len(result["settlements"]), 3)
         self.assertEqual(result["fees_paid"], Decimal("0.02"))
-        self.assertLessEqual(
-            abs(result["cash"] - (
-                result["initial_cash"] + result["realized_gross"]
-                - result["fees_paid"] - result["funding_cost"])),
-            Decimal("1E-30"))
+        with localcontext() as ctx:
+            ctx.prec = 60
+            self.assertLessEqual(
+                abs(result["cash"] - (
+                    result["initial_cash"] + result["realized_gross"]
+                    - result["fees_paid"] - result["funding_cost"])),
+                Decimal("1E-30"))
         self.assertEqual(result["remaining_signed_qty"], Decimal("-1"))
 
     def test_tampered_cash_rejected(self):
@@ -42,10 +44,12 @@ class CashContext(unittest.TestCase):
             _check_cash(Decimal("150.000001"), Decimal("150"))
 
     def test_dust_is_bounded(self):
-        _check_cash(Decimal("150") + Decimal("1E-30"), Decimal("150"))
-        with self.assertRaises(LedgerError):
-            _check_cash(Decimal("150") + Decimal("1.0001E-30"),
-                        Decimal("150"))
+        with localcontext() as ctx:
+            ctx.prec = 60
+            _check_cash(Decimal("150") + Decimal("1E-30"), Decimal("150"))
+            with self.assertRaises(LedgerError):
+                _check_cash(Decimal("150") + Decimal("1.0001E-30"),
+                            Decimal("150"))
 
 
 if __name__ == "__main__":
