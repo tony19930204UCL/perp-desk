@@ -1,6 +1,7 @@
 """Causal five-minute path-speed filter with amortized sorted trailing window."""
 from bisect import bisect_left, bisect_right, insort
 from collections import deque
+from array import array
 from decimal import Decimal
 from regime_split import pct7
 
@@ -29,31 +30,31 @@ def speed5(bars, i):
 
 class SpeedFilter:
     def __init__(self, bars):
-        self.bars = list(bars)
-        self.ends, self.speeds = [], []
-        self.gaps = [0]
+        # Do not materialize multi-year disk-backed bars or Decimal prices.
+        # Keep the original five Decimal divisions and float conversion.
+        self.ends = array("q")
+        self.speeds = []
+        self.gaps = array("I", [0])
         last = None
-        close = []
-        times = []
-        for bar in self.bars:
+        close = deque(maxlen=WIN_BARS + 1)
+        for i, bar in enumerate(bars):
             ts = bar["ts"]
             if type(ts) is not int or (last is not None and ts <= last):
                 raise ValueError("bar timestamps must strictly increase")
-            self.gaps.append(self.gaps[-1] + int(last is not None and ts-last != MINUTE))
+            self.gaps.append(self.gaps[-1] + int(
+                last is not None and ts-last != MINUTE))
             last = ts
             price = Decimal(str(bar["close"]))
             if not price.is_finite() or price <= 0:
                 raise ValueError("invalid close")
             close.append(price)
-            times.append(ts)
-        for i in range(len(close)):
             if i < WIN_BARS:
                 self.speeds.append(None)
             else:
                 self.speeds.append(float(sum(
                     (abs(close[j] / close[j-1] - 1)
-                     for j in range(i-4, i+1)), Decimal(0))))
-            self.ends.append(times[i] + MINUTE)
+                     for j in range(1, WIN_BARS+1)), Decimal(0))))
+            self.ends.append(ts + MINUTE)
         self._right = self._left = 0
         self._ordered = []
         self._previous = None
