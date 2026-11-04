@@ -112,7 +112,7 @@ class BossData(unittest.TestCase):
                                 res.headers["Content-Security-Policy"])
                     except urllib.error.HTTPError as exc:
                         if route == "/api/desk-readonly":
-                            self.assertEqual(exc.code, 500)
+                            self.assertEqual(exc.code, 404)
                         else:
                             raise
             for route in ("/boss.js?x=1", "/api/boss-dashboard?x=1",
