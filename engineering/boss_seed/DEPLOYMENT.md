@@ -15,7 +15,7 @@ These are independently read from the current PR88 candidate; SHA-256 must be co
 | lab/dashboard_v2_server.py | 06517ba13f9e1a15361754ae8f0161f01fa64180 |
 | lab/tests/test_boss_data.py | 95860330bb5c1555328cfbd13f94231a6d542a09 |
 | lab/tests/test_boss_ui.py | 07c41154743856f3f359939d56b13209b12ce370 |
-| lab/tests/fixtures/boss_synthetic.json | 9d60a41cddaf5794433c339fc1c46ca66ac83e19 |
+| lab/tests/fixtures/boss_synthetic.json | 6931b4c3b3d5eace004dce41caf7042a7852bdb5 |
 
 Additional release dependencies **must remain the existing accepted files**: `lab/dashboard_v2_reader.py`, `lab/owner_activity.py`, `lab/owner_metro_model.py`, `lab/desk_readonly.py` and its dependencies, `lab/owner_activity.html`, `lab/owner_activity.js`, `lab/dashboard_v2.html`, `lab/dashboard_v2_ui.js`, `lab/owner_cards.js`, and any other unchanged original route asset. The seeded server additionally names `lab/desk_home.js` and `lab/owner_cards.js`, absent from this branch. The seeded optional `desk_readonly.py` is also absent; its API now fails closed with 404. These paths are outside this task's allowed writes and must be explicitly reconciled by the parent before claiming full old-route acceptance. This list is not evidence that the files exist in the current seed; preflight must fail closed if any required route asset/import is absent. No unverified hash is claimed for untouched dependencies.
 
