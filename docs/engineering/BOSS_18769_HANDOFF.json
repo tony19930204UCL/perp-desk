@@ -1,0 +1,67 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 88,
+  "branch": "engineering/boss-18769-20261104",
+  "task_id": "BOSS-18769-20261104",
+  "instruction_id": "BOSS18769-r0",
+  "status": "WAITING_CI",
+  "source_head_sha": "4b77ba29fab88bd10f44ff9b7b873525f1de62c0",
+  "summary": "Seed verified. Delivered external read-only three-desk UI with tactical money/zero/null, radar/orders/trades, unverified Binance prediction, four separate weekly F2/F3 cards, collapsed engineering diagnostics; fixed missing optional desk import and mapped engineering to existing read-only asset. No deployment. Historic 8 PASS/1 FAIL retained, not claimed rerun.",
+  "changed_files": [
+    "lab/boss.html",
+    "lab/boss.js",
+    "lab/boss.css",
+    "lab/dashboard_v2_server.py",
+    "lab/tests/test_boss_data.py",
+    "lab/tests/test_boss_ui.py",
+    "lab/tests/fixtures/boss_synthetic.json",
+    "engineering/boss_seed/DEPLOYMENT.md",
+    "engineering/boss_seed/DELIVERY.md",
+    "docs/engineering/BOSS_18769_HANDOFF.json"
+  ],
+  "tests": [
+    {
+      "command": "TMPDIR=$PWD/.boss-tmp python3 -m unittest discover -s lab/tests -p 'test_boss_*.py' -v (umask 0022)",
+      "result": "NOT_RUN",
+      "evidence": "Source-only GitHub connector; no checkout/test-execution capability invoked; synthetic tests committed."
+    },
+    {
+      "command": "TMPDIR=$PWD/.boss-tmp python3 -m unittest discover -s lab/tests -p 'test_boss_*.py' -v (umask 0002)",
+      "result": "NOT_RUN",
+      "evidence": "Not executed. Requires workspace-owned temporary directory and independent runner."
+    },
+    {
+      "command": "TMPDIR=$PWD/.boss-tmp python3 -m unittest discover -s lab/tests -v",
+      "result": "NOT_RUN",
+      "evidence": "No full legacy suite or HTTP server acceptance executed."
+    },
+    {
+      "command": "Chromium headless DOM 1280px / 390px plus real scrollWidth checks",
+      "result": "NOT_RUN",
+      "evidence": "Chromium availability not verified; optional browser tests shipped. Horizontal overflow awaits independent measurement."
+    },
+    {
+      "command": "Original seeded 9-test context",
+      "result": "NOT_RUN",
+      "evidence": "Historical operator evidence only: 8 adapter PASS and 1 HTTP500 homepage FAIL before missing assets delivered. Not executed this round."
+    }
+  ],
+  "remaining_work": [
+    "Independent CI exact-head run; no local PASS claims.",
+    "Seed lacks desk_readonly.py, desk_home.js and owner_cards.js; original desk API/UI not established and extra paths outside this allowlist.",
+    "Run desktop/mobile real Chromium including 390px horizontal overflow and hostile-text/CSP assertions.",
+    "Verify all old APIs/static routes and exact startup/watchdog argv/expect/required_paths against operator-owned configuration. Route to owner_activity.html is fallback, not exact missing desk_home.html semantics.",
+    "Parent compute local full SHA-256 release manifest and validate full inherited PR diff; no deploy without independent acceptance."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Read PR88 exact pre-mailbox source HEAD 4b77ba29fab88bd10f44ff9b7b873525f1de62c0; verify allowlist/diffs, run tests under both umasks and Chromium at 1280/390, check legacy URLs, original failure and missing seeded dependencies.",
+    "if_pass": "Review source and missing-route resolution; separately authorize any further integration or parent-only deployment after full rollback preflight. Do not automatically merge.",
+    "if_fail": "Return exact failing commands, stack traces, CI run IDs and a narrow bounded correction. Do not change producer/risk/account or bypass approvals.",
+    "blockers": [
+      "Three preexisting seeded dependencies absent/out of scope: lab/desk_readonly.py, lab/desk_home.js, lab/owner_cards.js.",
+      "Full CI, real browser/overflow tests, and actual watchdog configuration not verified."
+    ]
+  }
+}
