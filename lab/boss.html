@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>18769 三戰場｜唯讀總覽</title>
+<link rel="stylesheet" href="/boss.css">
+<script src="/boss.js" defer></script>
+</head>
+<body>
+<header class="shell head">
+<div><p class="eyebrow">OWNER / READ ONLY</p><h1>三戰場即時來源總覽</h1><p>來源原始時間為準；未取得數字不補零、不推算成實盤。</p></div>
+<nav aria-label="頁面"><a aria-current="page" href="/">三戰場</a><a href="/engineering">工程觀察</a><a href="/history">歷史頁</a></nav>
+</header>
+<main class="shell">
+<p id="site-status" class="notice" role="status">正在讀取本地唯讀來源；所有金額暫為未知。</p>
+<section id="tactical" class="panel" aria-labelledby="tactical-title">
+<div class="section-head"><div><p class="eyebrow">01 / 150U TACTICAL PAPER</p><h2 id="tactical-title">150U 戰術帳戶</h2></div><p id="tactical-time">來源時間未知</p></div>
+<p id="tactical-state">狀態未知</p>
+<div class="metrics">
+<div><small>權益（非起始本金）</small><strong id="equity">尚無估值</strong></div>
+<div><small>保守可用額</small><strong id="available">尚無資料</strong></div>
+<div><small>已實現 PnL</small><strong id="realized">尚無資料</strong></div>
+<div><small>未實現 PnL</small><strong id="unrealized">尚無資料</strong></div>
+<div><small>現金</small><strong id="cash">尚無資料</strong></div>
+<div><small>手續費</small><strong id="fees">尚無資料</strong></div>
+<div><small>資金費淨流</small><strong id="funding">尚無資料</strong></div>
+<div><small>持倉</small><strong id="position">持倉未知</strong></div>
+</div>
+<p class="subtle" id="tactical-note">保守可用額不等於交易所可用保證金。強平模型尚未完整；紙盤並非100%實盤一致。</p>
+<div class="columns"><div><h3>有效指令</h3><ul id="orders"><li>來源尚未取得</li></ul></div><div><h3>雷達 Top3</h3><p id="radar-time">來源時間未知</p><ul id="top3"><li>來源尚未取得</li></ul></div></div>
+<h3>最近交易與帳本事件</h3><ul id="trades"><li>來源尚未取得</li></ul>
+</section>
+<section id="prediction" class="panel" aria-labelledby="prediction-title">
+<div class="section-head"><div><p class="eyebrow">02 / BINANCE WALLET</p><h2 id="prediction-title">Binance BTC 5 分鐘預測</h2></div><p id="prediction-time">來源時間未知</p></div>
+<p id="prediction-state">尚未啟動，規則與商品映射未驗證</p>
+<p class="notice">歷史官方查證：2026-11-04 20:58:04 UTC，未認證 GET Binance Wallet prediction market/list、market/search 均回 HTTP 400 / -2014（API-key format invalid）。並未取得市場、規則、報價或結算依據；WebSocket 未嘗試。此為固定歷史觀察，並非本頁新查詢。</p>
+<div class="metrics"><div><small>本金／下注</small><strong id="prediction-stake">尚無資料</strong></div><div><small>已驗證淨 PnL</small><strong id="prediction-pnl">尚無資料</strong></div><div><small>官方勝率</small><strong id="prediction-win">尚無資料</strong></div></div>
+<p class="subtle">不是 Polymarket。探索性 proxy 不能當作官方勝率，未驗證前不顯示模擬績效。</p>
+</section>
+<section id="weekly" class="panel" aria-labelledby="weekly-title">
+<div class="section-head"><div><p class="eyebrow">03 / WEEKLY F2 + F3</p><h2 id="weekly-title">每週雙批次｜四個獨立假設組合</h2></div><p id="weekly-time">來源時間未知</p></div>
+<p class="subtle">每個 book 各假設 150U gross，多空各半；四組不是同一資金帳戶，不能合併權益。費用預扣往返 14bp，歷史未結算不代表零收益。</p>
+<div class="books">
+<article id="book-0" class="book"><h3>第一批 · F2</h3><div class="book-data"></div></article>
+<article id="book-1" class="book"><h3>第一批 · F3</h3><div class="book-data"></div></article>
+<article id="book-2" class="book"><h3>第二批 · F2</h3><div class="book-data"></div></article>
+<article id="book-3" class="book"><h3>第二批 · F3</h3><div class="book-data"></div></article>
+</div>
+<p id="weekly-settlements" class="subtle">結算來源未知，不可當作已證明零結算。</p>
+</section>
+<details id="diagnostics" class="panel">
+<summary>系統工程健康度（點擊展開）</summary>
+<p>僅供工程診斷；不構成帳戶數值來源。</p><pre id="engineering-data">工程來源尚未取得</pre>
+</details>
+</main>
+</body>
+</html>

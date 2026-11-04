@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-Hant-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Monitor | Owner activity</title><style>
+:root{font-family:system-ui,"Noto Sans TC",sans-serif;color-scheme:dark;background:#0c111a;color:#ecf1f8}
+*{box-sizing:border-box}body{margin:0}a{color:#9bc8ff}button,input,select{font:inherit;color:inherit}button,select,input{background:#161f2c;border:1px solid #354357;border-radius:8px;padding:10px}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #76b5fe;outline-offset:2px}
+.shell{width:min(100%,1480px);margin:auto;padding:20px clamp(14px,3vw,40px) 55px;overflow-wrap:anywhere}
+nav{display:flex;align-items:center;gap:20px;border-bottom:1px solid #293448;padding-bottom:14px;flex-wrap:wrap}nav .brand{font-size:1.15rem;font-weight:800;letter-spacing:.05em;color:#fff}.tabs{display:flex;gap:14px}.tabs a{text-decoration:none;color:#9eafc5}.tabs [aria-current=page]{color:#f6c778;border-bottom:2px solid #f6c778;padding-bottom:14px}
+.heading{display:flex;justify-content:space-between;gap:18px;align-items:start;margin:30px 0 14px;flex-wrap:wrap}.eyebrow{text-transform:uppercase;letter-spacing:.15em;font-size:.73rem;font-weight:800;color:#e7ba71}h1{font-size:clamp(1.9rem,4vw,3rem);margin:5px 0}h2{font-size:1.18rem;margin:0 0 12px}h3{font-size:1rem;margin:6px 0}p{line-height:1.5;margin:5px 0}.subtle,.meta{color:#a8b6c7;font-size:.87rem}.status{color:#ffe1a0}
+.notice{border-left:3px solid #d6a252;background:#292518;padding:12px 14px;margin:12px 0 22px;line-height:1.5}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0 26px}
+.panel,.metric{border:1px solid #2b3748;background:#151e2b;border-radius:13px;padding:18px;min-width:0}.metric strong{font-size:1.9rem;display:block;font-variant-numeric:tabular-nums}.metric span{color:#a8b6c7;font-size:.82rem}
+.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(290px,.85fr);gap:16px}.stack{display:grid;gap:16px;align-content:start}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px}.toolbar input{flex:2;min-width:150px}.toolbar select{flex:1;min-width:120px}
+.task{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto);gap:6px 10px;width:100%;text-align:left;border:0;border-top:1px solid #2d394b;border-radius:0;background:transparent;padding:14px 4px}.task:first-child{border-top:0}.task:hover,.task[data-selected=true]{background:#26334a}.task strong{overflow-wrap:anywhere}.task .meta{grid-column:1 / -1}.pill{display:inline-flex;border-radius:99px;background:#283648;padding:4px 9px;color:#bed4f3;font-size:.76rem;font-weight:700;align-self:start}.pill.warning{background:#483524;color:#ffcc8c}.pill.ok{background:#213e38;color:#a7ead1}
+/* Dynamic source text must wrap without dictating a grid or flex item's minimum width. */
+.layout>.stack,.stack>.panel,.task>*,.toolbar>*,#detail dl>div,.tabs{min-width:0}
+.task .meta,.pill,#detail h2,#detail p,#status,#tasks{overflow-wrap:anywhere;word-break:break-word}
+.pill{max-width:100%;white-space:normal}
+.tabs{flex-wrap:wrap}
+.count{font-size:.82rem;color:#b4c4d8}#detail dl{display:grid;grid-template-columns:1fr;gap:10px}#detail dt{color:#9caec5;font-size:.8rem}#detail dd{margin:3px 0 0;overflow-wrap:anywhere}#detail dl>div{border-top:1px solid #2a3445;padding-top:9px}
+.source-row,.event,.stage{padding:11px 0;border-top:1px solid #303b4d;overflow-wrap:anywhere}.source-row:first-child,.event:first-child,.stage:first-child{border-top:0}.inline{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+footer{color:#a8b6c7;font-size:.8rem;margin-top:26px;line-height:1.6}
+@media(max-width:850px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:1fr}.heading{margin-top:20px}}
+@media(max-width:600px){
+ .task{grid-template-columns:minmax(0,1fr)}
+ .task .pill{grid-column:1;justify-self:start}
+ .toolbar input{flex:1 1 100%;min-width:0}
+ .toolbar select{flex:1 1 calc(50% - 5px);min-width:0}
+}
+@media(max-width:430px){.metrics{gap:8px}.panel,.metric{padding:13px}.metric strong{font-size:1.45rem}.tabs{gap:10px}.shell{padding-inline:12px}}
+
+/* Owner Metro white product; old observer IDs retained for audit details. */
+:root{color-scheme:light;background:#F8FAFC;color:#0F172A}
+body{background:#F8FAFC;color:#0F172A}
+.panel,.metric{background:#FFFFFF;border:1px solid #E2E8F0;border-radius:16px}
+nav{border-color:#E2E8F0}nav .brand{color:#0F172A}
+nav .tabs a,.subtle,.meta,footer,.metric span,.count{color:#64748B}
+nav .tabs [aria-current=page]{color:#2563EB;border-color:#2563EB}
+.eyebrow{color:#475569}.notice{background:#EFF6FF;border-color:#3B82F6}
+button,input,select{background:white;color:#0F172A;border-color:#CBD5E1}
+.task{border-color:#E2E8F0}.task:hover,.task[data-selected=true]{background:#EFF6FF}
+.pill{background:#F1F5F9;color:#475569}.pill.ok{background:#DCFCE7;color:#166534}
+.pill.warning{background:#FEF3C7;color:#92400E}
+#metro{margin:18px 0 26px}
+#metro .layout{grid-template-columns:minmax(0,68fr) minmax(0,32fr)}
+.metro-routes{display:grid;gap:14px}
+#metrics{display:none}
+#legacyAudit{margin-top:16px}
+.metro-stop.next:not(:last-child):after{animation:metro-flow 1.6s linear infinite;background:repeating-linear-gradient(90deg,#94A3B8 0 8px,transparent 8px 15px);border:0;height:3px}
+@keyframes metro-flow{to{background-position:30px 0}}
+@media(prefers-reduced-motion:reduce){.metro-stop.next:not(:last-child):after{animation:none}}
+
+.metro-route{border:1px solid #E2E8F0;border-radius:16px;background:#fff;padding:18px;min-width:0}
+.metro-route h3{margin:0 0 14px}
+.metro-line{display:flex;gap:0;overflow-x:auto;padding:12px 0 18px}
+.metro-stop{min-width:132px;flex:1;display:grid;grid-template-rows:auto auto;justify-items:center;gap:9px;text-align:center;font-size:.8rem;color:#475569;position:relative}
+.metro-stop:not(:last-child):after{content:'';position:absolute;top:10px;left:calc(50% + 13px);width:calc(100% - 26px);border-top:3px dashed #CBD5E1}
+.metro-stop.done:not(:last-child):after{border-top:3px solid #16A34A}
+.metro-stop .dot{width:23px;height:23px;border-radius:50%;border:2px solid currentColor;background:#fff;z-index:1;display:grid;place-items:center}
+.metro-stop.done .dot{color:white;background:#16A34A;border-color:#16A34A}
+.metro-stop.active .dot{width:28px;height:28px;border-width:6px;animation:metro-pulse 1.5s ease-in-out infinite}
+.metro-stop.waiting .dot{border-color:#F59E0B}
+.metro-route.blue .active .dot{color:#2563EB}.metro-route.green .active .dot{color:#16A34A}.metro-route.purple .active .dot{color:#9333EA}
+.metro-route .route-note{font-size:.83rem;color:#64748B;overflow-wrap:anywhere}
+@keyframes metro-pulse{50%{box-shadow:0 0 0 7px #94A3B833}}
+@media(prefers-reduced-motion:reduce){.metro-stop.active .dot{animation:none}.metro-stop:after{animation:none}}
+@media(max-width:850px){#metro .layout{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:430px){.metro-stop{min-width:120px}.metro-route{padding:12px}}
+.metro-stop.retest .dot{color:#D97706;background:#FFFBEB;border-color:#D97706}
+.metro-stop.user .dot{color:#7C3AED;background:#F5F3FF;border-color:#7C3AED}
+.metro-stop.failed .dot{color:#DC2626;background:#FEF2F2;border-color:#DC2626}
+.metro-stop.retest:not(:last-child):after,.metro-stop.failed:not(:last-child):after{border-top:3px dashed #D97706}
+.metro-stop.user:not(:last-child):after{border-top:3px dotted #7C3AED}
+#metroKpis details{width:100%;min-width:0}
+#metroKpis summary{cursor:pointer;list-style:revert;overflow-wrap:anywhere}
+#metroKpis details div{max-height:300px;overflow-y:auto;overflow-wrap:anywhere;font-size:.82rem;font-weight:400}
+#metroKpis time{color:#64748B;font-size:.75rem}
+#metroRecent{max-height:320px;overflow-y:auto}
+</style><script src="/owner_activity.js" defer></script></head><body><div class="shell">
+<nav aria-label="Observer sections"><span class="brand">◈ PAPER / OBSERVER</span><div class="tabs"><a href="/dashboard_v2.html">帳務 / Account</a><a href="/owner_activity.html" aria-current="page">Monitor / 工作活動</a></div><span class="meta">READ-ONLY · LOCAL</span></nav>
+<header class="heading"><div><span class="eyebrow">OWNER ACTIVITY / OBSERVATION</span><h1>工作活動總覽</h1><p class="subtle">執行證據、計畫與排程分開呈現。沒有資料並不代表一切正常。</p></div><button id="refresh" type="button">↻ 重新整理</button></header>
+<div class="notice" id="status" role="status" aria-live="polite">等待唯讀來源…</div>
+<div class="metrics" id="metrics" aria-label="Observed counts"></div>
+<section id="metro" aria-label="Owner Metro live observation">
+<div class="metrics" id="metroKpis" aria-label="Live verified product counts"></div>
+<section class="panel" aria-label="近況" style="margin-bottom:16px"><h2>近況</h2><div id="metroRecent" aria-live="polite"></div></section>
+<div class="layout"><div class="metro-routes" id="metroRoutes" aria-live="polite"></div>
+<aside class="stack"><section class="panel"><h2>Spotlight · Maker</h2><div id="metroSpot"></div></section>
+<section class="panel"><h2>來源狀態 / Verification</h2><div id="metroHealth"></div></section></aside></div>
+<details class="panel" id="metroHistory" style="margin-top:16px"><summary>歷史與凍結工作（<span id="metroHistoryCount">未知</span>）</summary><div id="metroHistoryRows"></div></details>
+</section>
+<details class="panel" id="legacyAudit"><summary>完整原始稽核工作與失敗紀錄（預設收合）</summary><main class="layout"><div class="stack">
+<section class="panel"><div class="inline"><h2>工作與承諾</h2><span class="count" id="visibleCount">—</span></div><div class="toolbar"><label class="sr-only" for="search">搜尋 C-ID 或標題</label><input id="search" type="search" placeholder="搜尋 C-ID / 工作名稱"><label class="sr-only" for="stateFilter">狀態</label><select id="stateFilter"><option value="">全部狀態</option><option value="running_verified">可驗證執行</option><option value="activity_unconfirmed">活動未確認</option><option value="blocked">受阻</option><option value="scheduled_idle">排程閒置</option><option value="missed">排程逾期</option><option value="failed">失敗</option><option value="engineering_accepted">工程已驗收</option></select><label class="sr-only" for="stageFilter">階段</label><select id="stageFilter"><option value="">全部階段</option></select></div><div id="tasks" aria-live="polite"></div></section>
+<section class="panel"><h2>階段與依賴</h2><p class="subtle">退出門檻及日期無權威來源時明確標為未提供，不使用完成百分比。</p><div id="stages"></div></section>
+<section class="panel"><h2>近期安全產出</h2><div id="events"></div></section></div>
+<aside class="stack"><section class="panel" id="detail" aria-label="Task detail"><h2>任務詳情</h2><p class="subtle">選擇左側任務以閱讀承諾、執行驗證與依賴。</p></section>
+<section class="panel"><h2>資料來源 / Source health</h2><div id="sources"></div></section></aside></main></details>
+<footer>Monitor 僅讀取啟動時設定的可信 profile。排程啟用不等於有 worker；cron 成功不等於成果驗收。工程驗收、部署與無人值守閉環為不同證據。這個畫面不會啟動服務或交易。</footer>
+</div></body></html>

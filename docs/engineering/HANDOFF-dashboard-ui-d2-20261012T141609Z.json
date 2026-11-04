@@ -1,0 +1,56 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 57,
+  "branch": "feat/dashboard-ui-d2-20261012T141609Z",
+  "task_id": "dashboard-ui-d2-20261012T141609Z",
+  "instruction_id": "D2-U3A-r1",
+  "status": "WAITING_CI",
+  "source_head_sha": "7d294aba16591298f62e002fb86118e2511b5752",
+  "summary": "Bounded UI-only repair: translate producer lowercase journal kinds decision/experiment/observation/prediction/mistake; add DISPATCHED => 已派工 alongside OPEN/VERIFIED/DROPPED; preserve nonempty string verdict as free text through textContent (未知 only for absent/non-string/empty), including hostile literal strings. Existing uppercase aliases, unknown enum fallback, fetch clearing and race handling remain unchanged. Added real build_model -> JSON -> actual Node DOM renderer regression plus state aliases/unknown tests. HTML, API, model, reader, server and engines unchanged.",
+  "changed_files": [
+    "lab/dashboard_v2_ui.js",
+    "lab/tests/test_dashboard_v2_ui.py",
+    "docs/engineering/HANDOFF-dashboard-ui-d2-20261012T141609Z.json"
+  ],
+  "tests": [
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -p 'test_dashboard_v2_ui.py' -v",
+      "result": "NOT_RUN",
+      "evidence": "Added two deterministic unittest methods with Node execution; no local exact-head repository environment was used for execution. Needs CI/operator run."
+    },
+    {
+      "command": "python3 -m unittest discover -s automation/tests",
+      "result": "NOT_RUN",
+      "evidence": "Not executed locally; await exact-head CI."
+    },
+    {
+      "command": "cd lab && python3 -m unittest discover -s tests -v",
+      "result": "NOT_RUN",
+      "evidence": "Not executed locally; await exact-head CI."
+    },
+    {
+      "command": "GitHub Actions exact-head push and pull_request checks",
+      "result": "NOT_RUN",
+      "evidence": "At source head 7d294aba16591298f62e002fb86118e2511b5752, connector reported one workflow run 38267295699 in_progress with no conclusion. Mailbox commit creates another head; both events require final-head verification."
+    },
+    {
+      "command": "GitHub compare a6cd2d920bafd1a6efe09a43e16acffcc9dee6dd...7d294aba16591298f62e002fb86118e2511b5752",
+      "result": "PASS",
+      "evidence": "GitHub compare ahead 2, behind 0: only lab/dashboard_v2_ui.js and lab/tests/test_dashboard_v2_ui.py changed before mailbox; no frozen files touched."
+    }
+  ],
+  "remaining_work": [
+    "Main CIO: run focused UI test and both requested Python unittest discovery commands at final mailbox head; inspect failures before acceptance.",
+    "Main CIO: confirm exact-head push and pull_request workflow conclusions success; current runs are not accepted as green.",
+    "Operator: rerun real Chromium build_model fixture at 1280/390 verifying decision => 決策, DISPATCHED => 已派工, 判定：驗收待定 retained, missing verdict unknown, hostile verdict literally displayed with no executable DOM nodes, no horizontal overflow.",
+    "Serving integration and deployment out of scope; static assets remain unserved by API-only server."
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "Verify final PR57 head and compare against previous r0 accepted a6cd2d920bafd1a6efe09a43e16acffcc9dee6dd; run focused UI suite, automation suite, full lab suite, exact-head push and pull_request CI and browser probes at 1280/390. Check no paths outside the four-file allowlist.",
+    "if_pass": "Accept bounded D2-U3A-r1 static UI repair only. Keep serving integration separate; do not merge/deploy in this unit.",
+    "if_fail": "Return exact CI failing test or browser evidence and repair only the existing allowed files.",
+    "blockers": []
+  }
+}
