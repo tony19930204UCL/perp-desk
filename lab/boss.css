@@ -1,0 +1,36 @@
+:root{font-family:system-ui,"Noto Sans TC",sans-serif;color-scheme:dark;background:#0b1320;color:#eff4fc}
+*{box-sizing:border-box}
+body{margin:0;min-width:0}
+.shell{width:min(100%,1280px);margin:0 auto;padding:22px clamp(14px,3vw,35px)}
+.head{display:flex;gap:20px;justify-content:space-between;align-items:center}
+.head>*{min-width:0}
+h1{font-size:clamp(1.7rem,3vw,2.5rem);line-height:1.2;margin:3px 0 7px}
+h2{font-size:clamp(1.2rem,2vw,1.6rem);margin:2px 0}
+h3{font-size:1rem;margin:12px 0}
+p{line-height:1.55;margin:7px 0}
+.eyebrow{color:#a9c8f5;letter-spacing:.13em;font-weight:750;font-size:.76rem}
+nav{display:flex;flex-wrap:wrap;gap:12px}
+a{color:#b9d8ff;text-underline-offset:4px}
+a:focus-visible,summary:focus-visible{outline:3px solid #a7d3ff;outline-offset:4px}
+.panel{min-width:0;background:#162237;border:1px solid #32445c;border-radius:16px;padding:clamp(13px,2vw,22px);margin-bottom:20px}
+.section-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:center}
+.section-head>p,.subtle,small{color:#b8c7da}
+.section-head>p{font-size:.84rem}
+.notice{padding:12px 14px;background:#27344b;border-left:3px solid #f8ca78;border-radius:6px;overflow-wrap:anywhere}
+.metrics,.books{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:17px 0}
+.metrics>div,.book{min-width:0;background:#101b2d;border:1px solid #32445c;border-radius:12px;padding:15px;overflow-wrap:anywhere}
+.metrics small{display:block;font-size:.78rem;margin-bottom:7px}
+.metrics strong{font-size:clamp(1rem,1.8vw,1.45rem);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.books{grid-template-columns:repeat(2,minmax(0,1fr))}
+.book h3{color:#d7eaff;margin:0 0 12px}
+.book p{margin:7px 0;border-bottom:1px solid #26364a;padding-bottom:6px}
+.book b{font-variant-numeric:tabular-nums}
+.columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.columns>div{min-width:0}
+ul{padding-left:19px;margin:8px 0}
+li{margin:8px 0;overflow-wrap:anywhere}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem}
+summary{cursor:pointer;font-weight:700}
+#diagnostics{margin-top:12px}
+@media(max-width:760px){.head{display:block}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:420px){.shell{padding:12px}.panel{padding:12px;margin-bottom:13px}.books{grid-template-columns:minmax(0,1fr)}.metrics{gap:8px}.metrics>div{padding:10px}.metrics strong{font-size:1rem}.notice{padding:10px}}
