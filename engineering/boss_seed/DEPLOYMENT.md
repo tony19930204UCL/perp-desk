@@ -12,12 +12,12 @@ These are independently read from the current PR88 candidate; SHA-256 must be co
 | lab/boss.js | 3db6f661705f1e7d74a0e53a2b6e2db8a95c315d |
 | lab/boss.css | 892499628b19583737fa778abd07606276e8854d |
 | lab/boss_readonly.py | 076642cf71f03d3a81a0cf8c84123a99d04b16a6 |
-| lab/dashboard_v2_server.py | bcc789263860b9c035e0e978502178705653c93b |
-| lab/tests/test_boss_data.py | 7879c8494b2716d8f00e06e22f353fce70ae73e2 |
+| lab/dashboard_v2_server.py | 06517ba13f9e1a15361754ae8f0161f01fa64180 |
+| lab/tests/test_boss_data.py | 95860330bb5c1555328cfbd13f94231a6d542a09 |
 | lab/tests/test_boss_ui.py | 07c41154743856f3f359939d56b13209b12ce370 |
 | lab/tests/fixtures/boss_synthetic.json | 9d60a41cddaf5794433c339fc1c46ca66ac83e19 |
 
-Additional release dependencies **must remain the existing accepted files**: `lab/dashboard_v2_reader.py`, `lab/owner_activity.py`, `lab/owner_metro_model.py`, `lab/desk_readonly.py` and its dependencies, `lab/owner_activity.html`, `lab/owner_activity.js`, `lab/dashboard_v2.html`, `lab/dashboard_v2_ui.js`, `lab/owner_cards.js`, and any other unchanged original route asset. This list is not evidence that the files exist in the current seed; preflight must fail closed if any required route asset/import is absent. No unverified hash is claimed for untouched dependencies.
+Additional release dependencies **must remain the existing accepted files**: `lab/dashboard_v2_reader.py`, `lab/owner_activity.py`, `lab/owner_metro_model.py`, `lab/desk_readonly.py` and its dependencies, `lab/owner_activity.html`, `lab/owner_activity.js`, `lab/dashboard_v2.html`, `lab/dashboard_v2_ui.js`, `lab/owner_cards.js`, and any other unchanged original route asset. The seeded server additionally names `lab/desk_home.js` and `lab/owner_cards.js`, absent from this branch. The seeded optional `desk_readonly.py` is also absent; its API now fails closed with 404. These paths are outside this task's allowed writes and must be explicitly reconciled by the parent before claiming full old-route acceptance. This list is not evidence that the files exist in the current seed; preflight must fail closed if any required route asset/import is absent. No unverified hash is claimed for untouched dependencies.
 
 ## Parent-only preflight
 
