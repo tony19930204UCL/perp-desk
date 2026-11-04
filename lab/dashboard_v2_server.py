@@ -9,15 +9,23 @@ import time
 from dashboard_v2_reader import read_dashboard
 from owner_activity import read_activity
 from owner_metro_model import read_metro
+from desk_readonly import read_desk
+from boss_readonly import read_boss
 
 
 _ROUTE = '/api/dashboard'
 _ASSET_DIR = Path(__file__).resolve().parent
 _STATIC_ROUTES = {
-    '/': ('dashboard_v2.html', 'text/html; charset=utf-8'),
+    '/history': ('dashboard_v2.html', 'text/html; charset=utf-8'),
+    '/desk_home.js': ('desk_home.js', 'application/javascript; charset=utf-8'),
+    '/': ('boss.html', 'text/html; charset=utf-8'),
+    '/engineering': ('desk_home.html', 'text/html; charset=utf-8'),
+    '/boss.js': ('boss.js', 'application/javascript; charset=utf-8'),
+    '/boss.css': ('boss.css', 'text/css; charset=utf-8'),
     '/dashboard_v2.html': ('dashboard_v2.html', 'text/html; charset=utf-8'),
     '/owner_activity.html': ('owner_activity.html', 'text/html; charset=utf-8'),
     '/owner_activity.js': ('owner_activity.js', 'application/javascript; charset=utf-8'),
+    '/owner_cards.js': ('owner_cards.js', 'application/javascript; charset=utf-8'),
     '/dashboard_v2_ui.js': ('dashboard_v2_ui.js', 'application/javascript; charset=utf-8'),
 }
 _ERRORS = {
@@ -98,6 +106,7 @@ def create_server(*, scorecard_path, journal_path, ledger_path, port=0,
             self.send_header('Content-Length', str(len(payload)))
             self.send_header('Cache-Control', 'no-store')
             self.send_header('X-Content-Type-Options', 'nosniff')
+            self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
             if allow:
                 self.send_header('Allow', 'GET, HEAD')
             self.end_headers()
@@ -137,6 +146,28 @@ def create_server(*, scorecard_path, journal_path, ledger_path, port=0,
                 self._respond(403, _ERRORS[403], head=head)
                 return
             target = self.raw_requestline.split()[1]
+            if self.path == '/api/boss-dashboard' and target == b'/api/boss-dashboard' and monitor_root is not None:
+                try:
+                    payload = json.dumps(read_boss(monitor_root, now_ms=clock()), ensure_ascii=False,
+                                         allow_nan=False, separators=(',', ':')).encode('utf-8')
+                except Exception:
+                    self._respond(500, _ERRORS[500], head=head)
+                    return
+                self._respond(200, payload, head=head)
+                return
+            if self.path == '/api/desk-readonly' and target == b'/api/desk-readonly':
+                if monitor_root is None:
+                    self._respond(404, _ERRORS[404], head=head)
+                    return
+                try:
+                    payload = json.dumps(read_desk(monitor_root, now_ms=clock()),
+                                         ensure_ascii=False, allow_nan=False,
+                                         separators=(',', ':')).encode('utf-8')
+                except Exception:
+                    self._respond(500, _ERRORS[500], head=head)
+                    return
+                self._respond(200, payload, head=head)
+                return
             if self.path == '/api/owner-metro' and target == b'/api/owner-metro':
                 if monitor_root is None:
                     self._respond(404, _ERRORS[404], head=head)
@@ -165,6 +196,14 @@ def create_server(*, scorecard_path, journal_path, ledger_path, port=0,
                     return
                 self._respond(200, payload, head=head)
                 return
+            if self.path == '/api/owner-cards' and target == b'/api/owner-cards' and monitor_root is not None:
+                try:
+                    payload = (Path(monitor_root) / 'lab' / 'journal' / 'owner_cards_status.json').read_bytes()[:200000]
+                except Exception:
+                    self._respond(500, _ERRORS[500], head=head)
+                    return
+                self._respond(200, payload, head=head)
+                return
             if self.path == _ROUTE and target == b'/api/dashboard':
                 try:
                     result = read_dashboard(scorecard, journal, ledger,
@@ -185,6 +224,9 @@ def create_server(*, scorecard_path, journal_path, ledger_path, port=0,
             filename, content_type = asset
             try:
                 payload = _read_asset(filename)
+                if self.path in ('/history', '/dashboard_v2.html'):
+                    banner = '<body style="padding-top:80px"><aside style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#fff1cc;color:#402b00;padding:12px">歷史保留頁（非現況，可能過期或含已知錯誤）。<a href="/">返回交易台</a></aside>'
+                    payload = payload.replace(b'<body>', banner.encode('utf-8'), 1)
             except OSError:
                 self._respond(500, _ERRORS[500], head=head)
                 return
