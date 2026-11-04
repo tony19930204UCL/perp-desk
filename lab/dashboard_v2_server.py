@@ -9,7 +9,12 @@ import time
 from dashboard_v2_reader import read_dashboard
 from owner_activity import read_activity
 from owner_metro_model import read_metro
-from desk_readonly import read_desk
+try:
+    from desk_readonly import read_desk
+except ModuleNotFoundError as exc:
+    if exc.name != 'desk_readonly':
+        raise
+    read_desk = None  # Seed omitted this optional non-accepted route adapter.
 from boss_readonly import read_boss
 
 
@@ -156,7 +161,7 @@ def create_server(*, scorecard_path, journal_path, ledger_path, port=0,
                 self._respond(200, payload, head=head)
                 return
             if self.path == '/api/desk-readonly' and target == b'/api/desk-readonly':
-                if monitor_root is None:
+                if monitor_root is None or read_desk is None:
                     self._respond(404, _ERRORS[404], head=head)
                     return
                 try:
