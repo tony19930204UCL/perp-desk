@@ -1,0 +1,26 @@
+{
+  "kind": "OPERATOR_SEED_NOT_IMPLEMENTED",
+  "source_files": {
+    "scripts/tactical_sniper.py": {
+      "sha256": "c3c251a1fed7fdae5896244b41263a2ef8864a3f011a6dbceadac6e424d1c57a",
+      "bytes": 9988
+    },
+    "scripts/tactical_runtime.py": {
+      "sha256": "0688697a1696a4e3772f856ec6dee50bb52b862e2e07a51677129f73dff65b79",
+      "bytes": 4886
+    },
+    "scripts/news_admission.py": {
+      "sha256": "3b8c30b2304681c63859beb15b02b5ac11ea53078c32368d7989776002544940",
+      "bytes": 4705
+    },
+    "scripts/sniper_scanner.py": {
+      "sha256": "6ac7969e6e8c9dce69cd3d2a8fd54dde39b38555339b77ebfdb83bf967302623",
+      "bytes": 13073
+    },
+    "scripts/desk_watchdog.py": {
+      "sha256": "6ce8afe4223f2be325001e71a9f0dcf933bd11440dd21cc97a9c24902e145139",
+      "bytes": 5671
+    }
+  },
+  "admission": "Preserve frozen news_admission.py behavior. No runtime data or private config supplied. CLI root and news-config stay explicit. No UI edits."
+}
