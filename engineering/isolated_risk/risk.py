@@ -69,7 +69,7 @@ def liquidation(side, qty, entry, collateral, cashflow, rows):
     return roots[0]
 
 def gate(symbol, now, mark, feed, tier_doc, fee_doc, filters, leverage,
-         qty, collateral, entry, flow=0):
+         qty, collateral, entry, flow=0, side="long"):
     """Entry requires complete current official rules, price and fees."""
     try:
         rows = brackets(tier_doc or {}, symbol, now)
@@ -89,9 +89,9 @@ def gate(symbol, now, mark, feed, tier_doc, fee_doc, filters, leverage,
             raise ValueError("LEVERAGE_CAP")
         if dec(fee_doc["taker"]) < 0 or dec(fee_doc["taker"]) > 1:
             raise ValueError("INVALID_FEE")
-        if dec(filters["liquidationFee"]) < 0:
+        if not 0 <= dec(filters["liquidationFee"]) <= 1:
             raise ValueError("INVALID_LIQ_FEE")
-        liquidation("long", qty, entry, collateral, flow, rows)
+        liquidation(side, qty, entry, collateral, flow, rows)
         return {"admissible": True, "tier": str(tier[1])}
     except (ValueError, KeyError, TypeError, StopIteration, InvalidOperation) as exc:
         return {"admissible": False, "reason": str(exc)}
