@@ -51,14 +51,15 @@ class Depth:
             if int(d["u"]) < self.last:
                 continue
             if first:
-                if not int(d["U"]) <= self.last <= int(d["u"]):
+                if not int(d["U"]) <= self.last + 1 <= int(d["u"]):
                     self.ready = False
                     break
                 self._apply(d)
                 first = False
             elif not self.delta(d):
                 break
-        return self.ready and not first
+        self.ready = self.ready and not first
+        return self.ready
 
 class Feeds:
     ROUTE = {"bookTicker": "public", "depthUpdate": "public",
