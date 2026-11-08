@@ -1,0 +1,32 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 91,
+  "branch": "engineering/auto-allow-smoke3-20261108",
+  "task_id": "AUTO-ALLOW-SMOKE3-20261108",
+  "instruction_id": "AUTO-ALLOW-SMOKE3-r1-20261108",
+  "status": "READY_FOR_REVIEW",
+  "source_head_sha": "499107892f76dd282d85b5f7c3ecf949c20e9f05",
+  "summary": "僅建立自動核准卡片煙測說明與 schema-v2 交接紀錄；未執行產品功能或部署。",
+  "changed_files": [
+    "docs/engineering/AUTO_ALLOW_SMOKE3.md",
+    "docs/engineering/AUTO_ALLOW_SMOKE3_HANDOFF.json"
+  ],
+  "tests": [
+    {
+      "command": "NOT_RUN",
+      "result": "NOT_RUN",
+      "evidence": "本次僅建立文件，未執行自動化測試。"
+    }
+  ],
+  "remaining_work": [
+    "Main CIO 核對 PR #91 的兩個新增檔案與提交紀錄。"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "核對 PR #91 仍為 draft，僅新增允許的兩個檔案；確認 Markdown commit 與交接檔的 source_head_sha 一致。",
+    "if_pass": "記錄煙測結果並進行獨立審查，不合併 PR。",
+    "if_fail": "保留失敗證據並停止後續寫入，交由主責人員處理。",
+    "blockers": []
+  }
+}
