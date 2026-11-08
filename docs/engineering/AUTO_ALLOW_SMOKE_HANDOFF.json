@@ -1,0 +1,32 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 89,
+  "branch": "engineering/auto-allow-smoke-20261108",
+  "task_id": "AUTO-ALLOW-SMOKE-20261108",
+  "instruction_id": "AUTO-ALLOW-SMOKE-r1-20261108",
+  "status": "READY_FOR_REVIEW",
+  "source_head_sha": "8cfe1256703120981bd2f1c3196b6bc8a051ec43",
+  "summary": "已依序建立繁體中文煙測說明文件及 schema-v2 交接紀錄；僅進行文件寫入，不涉及部署、交易或憑證。",
+  "changed_files": [
+    "docs/engineering/AUTO_ALLOW_SMOKE.md",
+    "docs/engineering/AUTO_ALLOW_SMOKE_HANDOFF.json"
+  ],
+  "tests": [
+    {
+      "command": "NOT_RUN",
+      "result": "NOT_RUN",
+      "evidence": "本次僅以 GitHub connector 寫入文件，未執行自動化或本機測試。"
+    }
+  ],
+  "remaining_work": [
+    "由 Main CIO 核對兩個新增文件、PR 89 分支及提交 SHA，獨立確認寫入結果。"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "檢查 PR 89 為 draft，核對兩個文件內容、變更白名單及 source_head_sha 是否等於 Markdown 寫入後的提交。",
+    "if_pass": "記錄煙測驗收結果；保持 PR 為 draft，不合併或部署。",
+    "if_fail": "保留失敗證據並停止後續寫入，交由 Main CIO 決定處理。",
+    "blockers": []
+  }
+}
