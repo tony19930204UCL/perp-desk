@@ -1,0 +1,32 @@
+{
+  "schema_version": 2,
+  "repository": "tony19930204UCL/perp-desk",
+  "pr_number": 90,
+  "branch": "engineering/auto-allow-smoke2-20261108",
+  "task_id": "AUTO-ALLOW-SMOKE2-20261108",
+  "instruction_id": "AUTO-ALLOW-SMOKE2-r1-20261108",
+  "status": "READY_FOR_REVIEW",
+  "source_head_sha": "03599add60f08747e2b0df0be40372ddfe3a902c",
+  "summary": "第二次自動核准卡片煙測：依序建立繁體中文說明及 schema-v2 交接檔；未修改其他內容。",
+  "changed_files": [
+    "docs/engineering/AUTO_ALLOW_SMOKE2.md",
+    "docs/engineering/AUTO_ALLOW_SMOKE2_HANDOFF.json"
+  ],
+  "tests": [
+    {
+      "command": "NOT_RUN",
+      "result": "NOT_RUN",
+      "evidence": "僅透過 GitHub connector 建立文件，未執行測試指令。"
+    }
+  ],
+  "remaining_work": [
+    "由 Main CIO 驗證 PR 90 的狀態、兩個檔案及提交紀錄。"
+  ],
+  "next_step_reminder": {
+    "to": "Main CIO",
+    "verify_now": "核對 PR 90 為 Draft、限定檔案、Markdown 提交 SHA 與 JSON 欄位。",
+    "if_pass": "記錄本次煙測驗收結果，保持 Draft，勿合併或部署。",
+    "if_fail": "記錄實際錯誤證據並停止後續操作。",
+    "blockers": []
+  }
+}
